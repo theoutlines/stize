@@ -22,7 +22,14 @@ final appRouter = GoRouter(
       path: '/map',
       builder: (context, state) {
         final args = state.extra as MapScreenArgs;
-        return MapScreen(stops: args.stops, center: args.center, centerLabel: args.centerLabel, title: args.title);
+        return MapScreen(
+          stops: args.stops,
+          center: args.center,
+          centerLabel: args.centerLabel,
+          title: args.title,
+          polyline: args.polyline,
+          extraMarkers: args.extraMarkers,
+        );
       },
     ),
     GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),

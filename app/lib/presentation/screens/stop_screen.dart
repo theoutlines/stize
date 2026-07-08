@@ -3,13 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:latlong2/latlong.dart' as ll;
+
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
+import '../../domain/models/stop.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/arrival_tile.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/live_vehicles_map.dart';
 
 class StopScreen extends ConsumerStatefulWidget {
   const StopScreen({super.key, required this.stopId, this.initialStopName});
@@ -81,7 +85,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
           error: (err, st) => ListView(
             children: [_errorState(l10n, err)],
           ),
-          data: (b) => _boardBody(context, l10n, b),
+          data: (b) => _boardBody(context, l10n, b, ref.watch(stopLocationProvider(widget.stopId)).valueOrNull),
         ),
       ),
     );
@@ -105,7 +109,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     return EmptyState(icon: Icons.error_outline, title: l10n.noNetworkTitle, subtitle: l10n.noNetworkSubtitle);
   }
 
-  Widget _boardBody(BuildContext context, AppLocalizations l10n, ArrivalsBoard board) {
+  Widget _boardBody(BuildContext context, AppLocalizations l10n, ArrivalsBoard board, Stop? stopLocation) {
     if (board.serviceStatus == ServiceStatus.unavailable) {
       return ListView(
         children: [
@@ -135,13 +139,27 @@ class _StopScreenState extends ConsumerState<StopScreen> {
       );
     }
 
+    final vehiclesWithGps = board.arrivals.where((a) => a.gps != null).toList();
+    final ageSeconds = DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
+    final isStale = ageSeconds > 90; // well past the ~30s refresh cadence — likely a stuck cache
+
     return ListView(
       children: [
+        if (stopLocation != null && vehiclesWithGps.isNotEmpty)
+          SizedBox(
+            height: 220,
+            child: LiveVehiclesMap(
+              arrivals: vehiclesWithGps,
+              stopLocation: ll.LatLng(stopLocation.lat, stopLocation.lon),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Text(
             _freshnessLabel(l10n, board.updatedAt),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.outline),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: isStale ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.outline,
+                ),
           ),
         ),
         if (lines.length > 1)

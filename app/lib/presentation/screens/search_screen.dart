@@ -115,6 +115,22 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 
+  Future<void> _openLineOnMap(LineInfo line) async {
+    final shape = await ref.read(linesRepositoryProvider).getShapeByLineNumber(line.line);
+    if (!mounted) return;
+    final routeStops = shape.stops
+        .map((s) => Stop(stopId: s.stopId, name: s.name, lat: s.lat, lon: s.lon, lines: [line.line]))
+        .toList();
+    context.push(
+      '/map',
+      extra: MapScreenArgs(
+        stops: routeStops,
+        polyline: shape.polyline,
+        title: '${line.line}: ${shape.origin} → ${shape.destination}',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -194,6 +210,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             leading: Icon(vehicleIconFor(line.vehicleType)),
             title: Text(line.line),
             subtitle: Text('${line.origin} → ${line.destination}'),
+            trailing: const Icon(Icons.map_outlined),
+            onTap: () => _openLineOnMap(line),
           ),
         for (final place in _places)
           ListTile(
