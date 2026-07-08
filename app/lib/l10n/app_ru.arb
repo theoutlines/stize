@@ -1,0 +1,60 @@
+{
+  "@@locale": "ru",
+
+  "appTitle": "Stigla",
+
+  "navMyStops": "Мои остановки",
+  "navSearch": "Поиск",
+  "navAbout": "О приложении",
+
+  "myStopsEmptyTitle": "Пока нет избранных остановок",
+  "myStopsEmptySubtitle": "Найди остановку, улицу или линию и добавь сюда.",
+
+  "searchHint": "Остановка, улица или линия…",
+  "searchNoResults": "Ничего не нашлось. Может, стоит попробовать иначе написать?",
+
+  "stopUpdatedJustNow": "Обновлено только что",
+  "stopUpdatedSecondsAgo": "Обновлено {seconds} сек назад",
+  "stopUpdatedMinutesAgo": "Обновлено {minutes} мин назад",
+
+  "arrivalEtaMinutes": "{minutes} мин",
+  "arrivalEtaNow": "Сейчас",
+  "arrivalStopsAway": "{count, plural, =0{здесь} one{{count} остановка} few{{count} остановки} many{{count} остановок} other{{count} остановок}}",
+
+  "emptyArrivalsTitle": "Пока тихо на этой остановке",
+  "emptyArrivalsSubtitle": "Транспорт скоро появится.",
+
+  "noNetworkTitle": "Кажется, интернет отвалился",
+  "noNetworkSubtitle": "Проверь связь и потяни вниз, чтобы попробовать снова.",
+
+  "loadingArrivals": "Смотрим, что едет…",
+
+  "serviceKilledTitle": "Мы ненадолго остановились",
+  "serviceKilledSubtitle": "Скоро вернёмся.",
+
+  "unknownStopTitle": "Не могу найти эту остановку",
+  "unknownStopSubtitle": "Возможно, её переименовали или убрали из расписания.",
+
+  "retry": "Попробовать снова",
+  "addToFavorites": "Добавить в мои остановки",
+  "removeFromFavorites": "Убрать из моих остановок",
+
+  "settingsTitle": "Настройки",
+  "settingsLanguage": "Язык",
+  "settingsTheme": "Тема",
+  "settingsThemeSystem": "Как в системе",
+  "settingsThemeLight": "Светлая",
+  "settingsThemeDark": "Тёмная",
+  "settingsRefreshInterval": "Интервал обновления",
+  "settingsRefreshIntervalSeconds": "{seconds} сек",
+
+  "aboutTitle": "О Stigla",
+  "aboutDisclaimer": "Неофициальное приложение. Не связано с JKP Upravljanje javnim prevozom Beograd.",
+  "aboutDescription": "Stigla показывает прибытие транспорта Белграда в реальном времени. Сделано для личного использования.",
+
+  "lineFilterAll": "Все линии",
+
+  "vehicleTypeBus": "Автобус",
+  "vehicleTypeTram": "Трамвай",
+  "vehicleTypeTrolleybus": "Троллейбус"
+}

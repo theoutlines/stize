@@ -1,0 +1,66 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Stigla",
+  "@appTitle": {"description": "App name, shown in title bars and the OS app switcher"},
+
+  "navMyStops": "My Stops",
+  "navSearch": "Search",
+  "navAbout": "About",
+
+  "myStopsEmptyTitle": "No favorite stops yet",
+  "myStopsEmptySubtitle": "Search for a stop, street, or line and add it here.",
+
+  "searchHint": "Search stops, streets, or lines…",
+  "searchNoResults": "Nothing found. Try a different spelling?",
+
+  "stopUpdatedJustNow": "Updated just now",
+  "stopUpdatedSecondsAgo": "Updated {seconds}s ago",
+  "@stopUpdatedSecondsAgo": {"placeholders": {"seconds": {"type": "int"}}},
+  "stopUpdatedMinutesAgo": "Updated {minutes} min ago",
+  "@stopUpdatedMinutesAgo": {"placeholders": {"minutes": {"type": "int"}}},
+
+  "arrivalEtaMinutes": "{minutes} min",
+  "@arrivalEtaMinutes": {"placeholders": {"minutes": {"type": "int"}}},
+  "arrivalEtaNow": "Now",
+  "arrivalStopsAway": "{count, plural, =0{here} =1{1 stop away} other{{count} stops away}}",
+  "@arrivalStopsAway": {"placeholders": {"count": {"type": "int"}}},
+
+  "emptyArrivalsTitle": "It's quiet here right now",
+  "emptyArrivalsSubtitle": "Something should be along shortly.",
+
+  "noNetworkTitle": "Looks like the connection dropped",
+  "noNetworkSubtitle": "Check your connection and pull down to try again.",
+
+  "loadingArrivals": "Checking what's on the way…",
+
+  "serviceKilledTitle": "We're taking a short break",
+  "serviceKilledSubtitle": "Back soon.",
+
+  "unknownStopTitle": "Can't find that stop",
+  "unknownStopSubtitle": "It may have been renamed or removed from the schedule.",
+
+  "retry": "Try again",
+  "addToFavorites": "Add to My Stops",
+  "removeFromFavorites": "Remove from My Stops",
+
+  "settingsTitle": "Settings",
+  "settingsLanguage": "Language",
+  "settingsTheme": "Theme",
+  "settingsThemeSystem": "Match system",
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsRefreshInterval": "Refresh interval",
+  "settingsRefreshIntervalSeconds": "{seconds}s",
+  "@settingsRefreshIntervalSeconds": {"placeholders": {"seconds": {"type": "int"}}},
+
+  "aboutTitle": "About Stigla",
+  "aboutDisclaimer": "Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.",
+  "aboutDescription": "Stigla shows real-time Belgrade public transport arrivals. Built for personal use.",
+
+  "lineFilterAll": "All lines",
+
+  "vehicleTypeBus": "Bus",
+  "vehicleTypeTram": "Tram",
+  "vehicleTypeTrolleybus": "Trolleybus"
+}

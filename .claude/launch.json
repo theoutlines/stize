@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "flutter-web",
+      "runtimeExecutable": "/opt/homebrew/bin/flutter",
+      "runtimeArgs": [
+        "run",
+        "-d",
+        "web-server",
+        "--web-port",
+        "5959",
+        "--web-hostname",
+        "127.0.0.1"
+      ],
+      "cwd": "app",
+      "port": 5959
+    }
+  ]
+}
