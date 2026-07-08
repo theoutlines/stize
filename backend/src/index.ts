@@ -19,6 +19,7 @@ import {
   searchStops,
 } from "./lib/gtfsData";
 import { geocodeSearch } from "./lib/geocode";
+import { listAlerts, refreshAlerts } from "./lib/alerts";
 import {
   RateLimitedError,
   ValidationError,
@@ -221,6 +222,23 @@ app.post("/api/v1/admin/ideas/:id/hide", async (c) => {
   return c.json({ status: "hidden" });
 });
 
+// Contextual route-change alerts (experimental). Refreshed by a cron trigger
+// (see `scheduled` handler below), not on the request path — this endpoint
+// just serves whatever's currently cached in KV.
+app.get("/api/v1/alerts", async (c) => {
+  const alerts = await listAlerts(c.env);
+  return c.json({ alerts });
+});
+
+app.post("/api/v1/admin/alerts/refresh", async (c) => {
+  const token = c.req.header("X-Admin-Token");
+  if (!token || token !== c.env.ADMIN_TOKEN) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  const result = await refreshAlerts(c.env);
+  return c.json(result);
+});
+
 app.post("/api/v1/admin/killswitch", async (c) => {
   const token = c.req.header("X-Admin-Token");
   if (!token || token !== c.env.ADMIN_TOKEN) {
@@ -234,4 +252,14 @@ app.post("/api/v1/admin/killswitch", async (c) => {
   return c.json({ status: body.killed ? "killed" : "ok" });
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(
+      refreshAlerts(env).then(
+        (result) => console.log(`alerts refresh: +${result.added}, total ${result.total}`),
+        (err) => console.error("alerts refresh failed", err),
+      ),
+    );
+  },
+};

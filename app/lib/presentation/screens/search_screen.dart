@@ -127,6 +127,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         stops: routeStops,
         polyline: shape.polyline,
         title: '${line.line}: ${shape.origin} → ${shape.destination}',
+        lineNumber: line.line,
       ),
     );
   }

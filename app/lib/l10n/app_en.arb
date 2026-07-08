@@ -75,6 +75,10 @@
 
   "lineFilterAll": "All lines",
 
+  "alertUpcomingLabel": "Upcoming change",
+  "alertActiveLabel": "Route change",
+  "alertReadMore": "Read more",
+
   "vehicleTypeBus": "Bus",
   "vehicleTypeTram": "Tram",
   "vehicleTypeTrolleybus": "Trolleybus"

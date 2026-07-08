@@ -5,11 +5,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stigla/data/api/api_exceptions.dart';
 import 'package:stigla/domain/models/arrival.dart';
 import 'package:stigla/domain/models/favorite_stop.dart';
+import 'package:stigla/domain/models/route_alert.dart';
+import 'package:stigla/domain/models/stop.dart';
 import 'package:stigla/domain/repositories/arrivals_repository.dart';
 import 'package:stigla/domain/repositories/favorites_repository.dart';
 import 'package:stigla/l10n/app_localizations.dart';
 import 'package:stigla/presentation/providers/providers.dart';
 import 'package:stigla/presentation/screens/stop_screen.dart';
+
+const _batutovaStop = Stop(stopId: '20091', name: 'Batutova', lat: 44.795374, lon: 20.499713, lines: ['79']);
 
 // Real captured shape from the live backend for stop 20091 (Batutova, line 79).
 final _sampleBoard = ArrivalsBoard.fromJson({
@@ -57,11 +61,19 @@ class _FakeFavoritesRepository implements FavoritesRepository {
   Future<void> remove(String stopId) async => _stops.removeWhere((s) => s.stopId == stopId);
 }
 
-Widget _wrap(Widget child, {required ArrivalsRepository arrivals, FavoritesRepository? favorites}) {
+Widget _wrap(
+  Widget child, {
+  required ArrivalsRepository arrivals,
+  FavoritesRepository? favorites,
+  List<RouteAlert> alerts = const [],
+  Stop? stopLocation = _batutovaStop,
+}) {
   return ProviderScope(
     overrides: [
       arrivalsRepositoryProvider.overrideWithValue(arrivals),
       if (favorites != null) favoritesRepositoryProvider.overrideWithValue(favorites),
+      alertsProvider.overrideWith((ref) async => alerts),
+      stopLocationProvider('20091').overrideWith((ref) async => stopLocation),
     ],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -141,6 +153,61 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Looks like the connection dropped'), findsOneWidget);
+  });
+
+  testWidgets('shows a route alert banner when it matches a line serving this stop', (tester) async {
+    final alert = RouteAlert(
+      id: 'test-alert',
+      url: 'https://www.bgprevoz.rs/vesti/test-alert',
+      title: 'Test',
+      publishedAt: DateTime(2026, 1, 1),
+      lines: const ['79'],
+      stops: const [],
+      validFrom: null,
+      validUntil: null,
+      confidence: 'line',
+      summary: 'Linija 79 menja trasu.',
+    );
+
+    await tester.pumpWidget(
+      _wrap(
+        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+        arrivals: _FakeArrivalsRepository(_sampleBoard),
+        favorites: _FakeFavoritesRepository(),
+        alerts: [alert],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Linija 79 menja trasu.'), findsOneWidget);
+    expect(find.text('Route change'), findsOneWidget);
+  });
+
+  testWidgets('does not show an alert for an unrelated line', (tester) async {
+    final alert = RouteAlert(
+      id: 'test-alert',
+      url: 'https://www.bgprevoz.rs/vesti/test-alert',
+      title: 'Test',
+      publishedAt: DateTime(2026, 1, 1),
+      lines: const ['35'],
+      stops: const [],
+      validFrom: null,
+      validUntil: null,
+      confidence: 'line',
+      summary: 'Linija 35 menja trasu.',
+    );
+
+    await tester.pumpWidget(
+      _wrap(
+        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+        arrivals: _FakeArrivalsRepository(_sampleBoard),
+        favorites: _FakeFavoritesRepository(),
+        alerts: [alert],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Linija 35 menja trasu.'), findsNothing);
   });
 
   testWidgets('toggling favorite updates the star icon', (tester) async {

@@ -200,6 +200,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get lineFilterAll => 'Все линии';
 
   @override
+  String get alertUpcomingLabel => 'Скоро изменение';
+
+  @override
+  String get alertActiveLabel => 'Изменение маршрута';
+
+  @override
+  String get alertReadMore => 'Подробнее';
+
+  @override
   String get vehicleTypeBus => 'Автобус';
 
   @override

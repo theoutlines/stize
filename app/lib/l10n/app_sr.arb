@@ -68,6 +68,10 @@
 
   "lineFilterAll": "Sve linije",
 
+  "alertUpcomingLabel": "Uskoro promena",
+  "alertActiveLabel": "Promena linije",
+  "alertReadMore": "Više detalja",
+
   "vehicleTypeBus": "Autobus",
   "vehicleTypeTram": "Tramvaj",
   "vehicleTypeTrolleybus": "Trolejbus"

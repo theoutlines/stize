@@ -16,4 +16,6 @@ export interface Env {
   TURNSTILE_SECRET_KEY?: string;
 
   NOMINATIM_USER_AGENT_CONTACT: string;
+
+  ANTHROPIC_API_KEY: string;
 }

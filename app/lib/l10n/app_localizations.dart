@@ -406,6 +406,24 @@ abstract class AppLocalizations {
   /// **'All lines'**
   String get lineFilterAll;
 
+  /// No description provided for @alertUpcomingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming change'**
+  String get alertUpcomingLabel;
+
+  /// No description provided for @alertActiveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Route change'**
+  String get alertActiveLabel;
+
+  /// No description provided for @alertReadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Read more'**
+  String get alertReadMore;
+
   /// No description provided for @vehicleTypeBus.
   ///
   /// In en, this message translates to:

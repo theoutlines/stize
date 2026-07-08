@@ -6,6 +6,7 @@ import '../../data/device/device_id_service.dart';
 import '../../data/local/gtfs_offline_cache.dart';
 import '../../data/local/settings_store.dart';
 import '../../data/location/location_service.dart';
+import '../../data/repositories/alerts_repository_impl.dart';
 import '../../data/repositories/arrivals_repository_impl.dart';
 import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/geocode_repository_impl.dart';
@@ -15,7 +16,9 @@ import '../../data/repositories/stops_repository_impl.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/idea.dart';
+import '../../domain/models/route_alert.dart';
 import '../../domain/models/stop.dart';
+import '../../domain/repositories/alerts_repository.dart';
 import '../../domain/repositories/arrivals_repository.dart';
 import '../../domain/repositories/favorites_repository.dart';
 import '../../domain/repositories/geocode_repository.dart';
@@ -26,6 +29,16 @@ import '../../domain/repositories/stops_repository.dart';
 final apiClientProvider = Provider<StiglaApiClient>((ref) => StiglaApiClient());
 
 final deviceIdServiceProvider = Provider<DeviceIdService>((ref) => DeviceIdService());
+
+final alertsRepositoryProvider = Provider<AlertsRepository>(
+  (ref) => AlertsRepositoryImpl(ref.watch(apiClientProvider)),
+);
+
+/// Route-change alerts (experimental). Small volume, refreshed on each
+/// screen visit rather than cached — no need for anything fancier.
+final alertsProvider = FutureProvider.autoDispose<List<RouteAlert>>((ref) {
+  return ref.watch(alertsRepositoryProvider).list();
+});
 
 final ideasRepositoryProvider = Provider<IdeasRepository>(
   (ref) => IdeasRepositoryImpl(ref.watch(apiClientProvider), ref.watch(deviceIdServiceProvider)),
