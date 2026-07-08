@@ -136,6 +136,16 @@ final favoritesControllerProvider = AsyncNotifierProvider<FavoritesController, L
   FavoritesController.new,
 );
 
+/// Favorites resolved against the on-device GTFS mirror to get coordinates
+/// for map markers — `FavoriteStop` itself only stores id+name.
+final favoriteStopLocationsProvider = FutureProvider.autoDispose<List<Stop>>((ref) async {
+  final favorites = await ref.watch(favoritesControllerProvider.future);
+  if (favorites.isEmpty) return const [];
+  final allStops = await ref.watch(gtfsOfflineCacheProvider).getStops();
+  final byId = {for (final s in allStops) s.stopId: s};
+  return [for (final f in favorites) if (byId[f.stopId] != null) byId[f.stopId]!];
+});
+
 class IdeasController extends AsyncNotifier<List<Idea>> {
   @override
   Future<List<Idea>> build() {

@@ -6,9 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'about_screen.dart';
+import 'home_map_screen.dart';
 import 'ideas_screen.dart';
-import 'my_stops_screen.dart';
-import 'search_screen.dart';
 
 class RootScreen extends ConsumerStatefulWidget {
   const RootScreen({super.key});
@@ -36,14 +35,13 @@ class _RootScreenState extends ConsumerState<RootScreen> {
     return Scaffold(
       body: IndexedStack(
         index: _index,
-        children: const [MyStopsScreen(), SearchScreen(), IdeasScreen(), AboutScreen()],
+        children: const [HomeMapScreen(), IdeasScreen(), AboutScreen()],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: [
-          NavigationDestination(icon: const Icon(Icons.star_outline), selectedIcon: const Icon(Icons.star), label: l10n.navMyStops),
-          NavigationDestination(icon: const Icon(Icons.search_outlined), selectedIcon: const Icon(Icons.search), label: l10n.navSearch),
+          NavigationDestination(icon: const Icon(Icons.map_outlined), selectedIcon: const Icon(Icons.map), label: l10n.navHome),
           NavigationDestination(icon: const Icon(Icons.lightbulb_outline), selectedIcon: const Icon(Icons.lightbulb), label: l10n.navIdeas),
           NavigationDestination(icon: const Icon(Icons.info_outline), selectedIcon: const Icon(Icons.info), label: l10n.navAbout),
         ],
