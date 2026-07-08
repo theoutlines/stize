@@ -195,6 +195,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get lineFilterAll => 'All lines';
 
   @override
+  String get alertUpcomingLabel => 'Upcoming change';
+
+  @override
+  String get alertActiveLabel => 'Route change';
+
+  @override
+  String get alertReadMore => 'Read more';
+
+  @override
   String get vehicleTypeBus => 'Bus';
 
   @override

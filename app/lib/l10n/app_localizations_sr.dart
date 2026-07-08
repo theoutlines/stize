@@ -197,6 +197,15 @@ class AppLocalizationsSr extends AppLocalizations {
   String get lineFilterAll => 'Sve linije';
 
   @override
+  String get alertUpcomingLabel => 'Uskoro promena';
+
+  @override
+  String get alertActiveLabel => 'Promena linije';
+
+  @override
+  String get alertReadMore => 'Više detalja';
+
+  @override
   String get vehicleTypeBus => 'Autobus';
 
   @override

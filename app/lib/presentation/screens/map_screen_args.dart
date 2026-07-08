@@ -11,6 +11,7 @@ class MapScreenArgs {
     this.title,
     this.polyline,
     this.extraMarkers = const [],
+    this.lineNumber,
   });
 
   final List<Stop> stops;
@@ -19,4 +20,5 @@ class MapScreenArgs {
   final String? title;
   final List<List<double>>? polyline;
   final List<Marker> extraMarkers;
+  final String? lineNumber;
 }

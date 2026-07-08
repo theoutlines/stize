@@ -68,6 +68,10 @@
 
   "lineFilterAll": "Все линии",
 
+  "alertUpcomingLabel": "Скоро изменение",
+  "alertActiveLabel": "Изменение маршрута",
+  "alertReadMore": "Подробнее",
+
   "vehicleTypeBus": "Автобус",
   "vehicleTypeTram": "Трамвай",
   "vehicleTypeTrolleybus": "Троллейбус"

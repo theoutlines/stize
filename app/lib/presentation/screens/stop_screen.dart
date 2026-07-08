@@ -8,12 +8,14 @@ import 'package:latlong2/latlong.dart' as ll;
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
+import '../../domain/models/route_alert.dart';
 import '../../domain/models/stop.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/arrival_tile.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/live_vehicles_map.dart';
+import '../widgets/route_alert_banner.dart';
 
 class StopScreen extends ConsumerStatefulWidget {
   const StopScreen({super.key, required this.stopId, this.initialStopName});
@@ -53,10 +55,20 @@ class _StopScreenState extends ConsumerState<StopScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final board = ref.watch(arrivalsProvider(widget.stopId));
+    final stopLocation = ref.watch(stopLocationProvider(widget.stopId)).valueOrNull;
     final isFavoriteAsync = ref.watch(favoritesControllerProvider).maybeWhen(
           data: (favs) => favs.any((f) => f.stopId == widget.stopId),
           orElse: () => false,
         );
+
+    final allAlerts = ref.watch(alertsProvider).valueOrNull ?? const <RouteAlert>[];
+    final stopName = board.valueOrNull?.stopName ?? widget.initialStopName ?? '';
+    final relevantAlerts = allAlerts.where((a) {
+      if (a.isExpired) return false;
+      final matchesLine = stopLocation?.lines.any(a.matchesLine) ?? false;
+      final matchesStop = a.matchesStopName(stopName);
+      return matchesLine || matchesStop;
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -78,14 +90,15 @@ class _StopScreenState extends ConsumerState<StopScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(arrivalsProvider(widget.stopId)),
-        child: board.when(
-          loading: () => ListView(
-            children: [EmptyState(icon: Icons.directions_transit_outlined, title: l10n.loadingArrivals)],
-          ),
-          error: (err, st) => ListView(
-            children: [_errorState(l10n, err)],
-          ),
-          data: (b) => _boardBody(context, l10n, b, ref.watch(stopLocationProvider(widget.stopId)).valueOrNull),
+        child: ListView(
+          children: [
+            for (final alert in relevantAlerts) RouteAlertBanner(alert: alert),
+            board.when(
+              loading: () => EmptyState(icon: Icons.directions_transit_outlined, title: l10n.loadingArrivals),
+              error: (err, st) => _errorState(l10n, err),
+              data: (b) => _boardBody(context, l10n, b, stopLocation),
+            ),
+          ],
         ),
       ),
     );
@@ -111,14 +124,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
 
   Widget _boardBody(BuildContext context, AppLocalizations l10n, ArrivalsBoard board, Stop? stopLocation) {
     if (board.serviceStatus == ServiceStatus.unavailable) {
-      return ListView(
-        children: [
-          EmptyState(
-            icon: Icons.pause_circle_outline,
-            title: l10n.serviceKilledTitle,
-            subtitle: l10n.serviceKilledSubtitle,
-          ),
-        ],
+      return EmptyState(
+        icon: Icons.pause_circle_outline,
+        title: l10n.serviceKilledTitle,
+        subtitle: l10n.serviceKilledSubtitle,
       );
     }
 
@@ -128,14 +137,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         : board.arrivals.where((a) => a.line == _lineFilter).toList();
 
     if (board.arrivals.isEmpty) {
-      return ListView(
-        children: [
-          EmptyState(
-            icon: Icons.nightlight_outlined,
-            title: l10n.emptyArrivalsTitle,
-            subtitle: l10n.emptyArrivalsSubtitle,
-          ),
-        ],
+      return EmptyState(
+        icon: Icons.nightlight_outlined,
+        title: l10n.emptyArrivalsTitle,
+        subtitle: l10n.emptyArrivalsSubtitle,
       );
     }
 
@@ -143,7 +148,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     final ageSeconds = DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
     final isStale = ageSeconds > 90; // well past the ~30s refresh cadence — likely a stuck cache
 
-    return ListView(
+    return Column(
       children: [
         if (stopLocation != null && vehiclesWithGps.isNotEmpty)
           SizedBox(

@@ -20,5 +20,8 @@ binding = "STIGLA_IDEAS_DB"
 database_name = "stigla-ideas"
 database_id = "fdd98e75-c0a7-4641-90c8-2706d6e70506"
 
+[triggers]
+crons = ["0 6 * * *"]
+
 [vars]
 API_VERSION = "v1"
