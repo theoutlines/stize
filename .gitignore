@@ -1,6 +1,7 @@
 # Env / secrets
 .env
 .env.*
+.dev.vars
 !.env.example
 *.pem
 *.key
