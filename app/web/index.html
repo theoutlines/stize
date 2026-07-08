@@ -18,7 +18,7 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Real-time Belgrade public transport arrivals.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -29,10 +29,37 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>stigla</title>
+  <title>Stigla</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Matches the app's own theme background so the pre-Flutter paint isn't a
+       jarring white flash while CanvasKit/fonts download on a cold load. */
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #eef3f1;
+    }
+    @media (prefers-color-scheme: dark) {
+      html, body { background: #10140f; }
+    }
+    #stigla-loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #6b7a72;
+      font-size: 15px;
+    }
+    @media (prefers-color-scheme: dark) {
+      #stigla-loading { color: #8a9992; }
+    }
+  </style>
 </head>
 <body>
+  <div id="stigla-loading">Loading Stigla…</div>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
