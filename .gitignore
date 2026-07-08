@@ -25,6 +25,7 @@ app/web/build/
 # Cloudflare Workers / Node
 backend/node_modules/
 backend/.wrangler/
+app/.wrangler/
 backend/dist/
 node_modules/
 
