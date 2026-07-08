@@ -39,3 +39,4 @@ Thumbs.db
 .vscode/
 .idea/
 *.iml
+.claude/
