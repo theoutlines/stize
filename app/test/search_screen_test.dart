@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:stigla/data/location/location_service.dart';
 import 'package:stigla/domain/models/geocode_result.dart';
 import 'package:stigla/domain/models/line_info.dart';
+import 'package:stigla/domain/models/route_shape.dart';
 import 'package:stigla/domain/models/stop.dart';
 import 'package:stigla/domain/models/vehicle_type.dart';
 import 'package:stigla/domain/repositories/geocode_repository.dart';
@@ -44,6 +45,11 @@ class _FakeLinesRepository implements LinesRepository {
 
   @override
   Future<List<LineInfo>> search(String query) async => result;
+
+  @override
+  Future<RouteShape> getShapeByLineNumber(String line) {
+    throw UnimplementedError();
+  }
 }
 
 class _FakeGeocodeRepository implements GeocodeRepository {

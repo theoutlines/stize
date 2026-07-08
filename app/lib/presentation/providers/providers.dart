@@ -12,6 +12,7 @@ import '../../data/repositories/lines_repository_impl.dart';
 import '../../data/repositories/stops_repository_impl.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
+import '../../domain/models/stop.dart';
 import '../../domain/repositories/arrivals_repository.dart';
 import '../../domain/repositories/favorites_repository.dart';
 import '../../domain/repositories/geocode_repository.dart';
@@ -50,6 +51,17 @@ final settingsStoreProvider = Provider<SettingsStore>((ref) => SettingsStore());
 /// periodically call `ref.invalidate(arrivalsProvider(stopId))`.
 final arrivalsProvider = FutureProvider.family.autoDispose<ArrivalsBoard, String>((ref, stopId) {
   return ref.watch(arrivalsRepositoryProvider).getArrivals(stopId);
+});
+
+/// Looks up a stop's coordinates from the on-device GTFS mirror, for the
+/// live-tracking mini map — the arrivals contract itself doesn't carry the
+/// stop's own lat/lon, only the vehicles'.
+final stopLocationProvider = FutureProvider.family.autoDispose<Stop?, String>((ref, stopId) async {
+  final stops = await ref.watch(gtfsOfflineCacheProvider).getStops();
+  for (final s in stops) {
+    if (s.stopId == stopId) return s;
+  }
+  return null;
 });
 
 class SettingsController extends AsyncNotifier<AppSettings> {

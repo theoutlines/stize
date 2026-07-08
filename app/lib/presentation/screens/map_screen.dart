@@ -8,28 +8,52 @@ import '../../domain/models/stop.dart';
 const _belgradeCenter = ll.LatLng(44.8125, 20.4612);
 
 /// Shows stop markers on an OSM map, optionally with a highlighted center
-/// point (the user's location, or a geocoded street/place).
+/// point (the user's location, or a geocoded street/place) and/or a route
+/// polyline (a line's full trace).
 class MapScreen extends StatelessWidget {
-  const MapScreen({super.key, required this.stops, this.center, this.centerLabel, this.title});
+  const MapScreen({
+    super.key,
+    required this.stops,
+    this.center,
+    this.centerLabel,
+    this.title,
+    this.polyline,
+    this.extraMarkers = const [],
+  });
 
   final List<Stop> stops;
   final ll.LatLng? center;
   final String? centerLabel;
   final String? title;
+  final List<List<double>>? polyline;
+  final List<Marker> extraMarkers;
 
   @override
   Widget build(BuildContext context) {
-    final initialCenter = center ?? (stops.isNotEmpty ? ll.LatLng(stops.first.lat, stops.first.lon) : _belgradeCenter);
+    final initialCenter = center ??
+        (polyline != null && polyline!.isNotEmpty
+            ? ll.LatLng(polyline!.first[0], polyline!.first[1])
+            : (stops.isNotEmpty ? ll.LatLng(stops.first.lat, stops.first.lon) : _belgradeCenter));
 
     return Scaffold(
       appBar: AppBar(title: Text(title ?? centerLabel ?? '')),
       body: FlutterMap(
-        options: MapOptions(initialCenter: initialCenter, initialZoom: 15),
+        options: MapOptions(initialCenter: initialCenter, initialZoom: 14),
         children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             userAgentPackageName: 'com.theoutlines.stigla',
           ),
+          if (polyline != null && polyline!.isNotEmpty)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: polyline!.map((p) => ll.LatLng(p[0], p[1])).toList(),
+                  color: Theme.of(context).colorScheme.primary,
+                  strokeWidth: 4,
+                ),
+              ],
+            ),
           MarkerLayer(
             markers: [
               if (center != null)
@@ -52,6 +76,7 @@ class MapScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+              ...extraMarkers,
             ],
           ),
           const SimpleAttributionWidget(

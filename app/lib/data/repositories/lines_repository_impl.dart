@@ -1,4 +1,5 @@
 import '../../domain/models/line_info.dart';
+import '../../domain/models/route_shape.dart';
 import '../../domain/repositories/lines_repository.dart';
 import '../api/api_exceptions.dart';
 import '../api/stigla_api_client.dart';
@@ -20,5 +21,11 @@ class LinesRepositoryImpl implements LinesRepository {
     } on NetworkException {
       return _offlineCache.searchLinesOffline(query);
     }
+  }
+
+  @override
+  Future<RouteShape> getShapeByLineNumber(String line) async {
+    final json = await _client.getJson('/api/v1/lines/by-number/${Uri.encodeComponent(line)}/shape');
+    return RouteShape.fromJson(json);
   }
 }
