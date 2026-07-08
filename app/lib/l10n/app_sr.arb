@@ -1,0 +1,60 @@
+{
+  "@@locale": "sr",
+
+  "appTitle": "Stigla",
+
+  "navMyStops": "Moja stajališta",
+  "navSearch": "Pretraga",
+  "navAbout": "O aplikaciji",
+
+  "myStopsEmptyTitle": "Još nemaš omiljena stajališta",
+  "myStopsEmptySubtitle": "Pronađi stajalište, ulicu ili liniju i dodaj je ovde.",
+
+  "searchHint": "Stajalište, ulica ili linija…",
+  "searchNoResults": "Ništa nije pronađeno. Probaj drugačiji unos.",
+
+  "stopUpdatedJustNow": "Ažurirano upravo sada",
+  "stopUpdatedSecondsAgo": "Ažurirano pre {seconds} sek",
+  "stopUpdatedMinutesAgo": "Ažurirano pre {minutes} min",
+
+  "arrivalEtaMinutes": "{minutes} min",
+  "arrivalEtaNow": "Sada",
+  "arrivalStopsAway": "{count, plural, =0{ovde} one{{count} stanica} few{{count} stanice} other{{count} stanica}}",
+
+  "emptyArrivalsTitle": "Trenutno je tiho na ovom stajalištu",
+  "emptyArrivalsSubtitle": "Prevoz bi trebalo uskoro da stigne.",
+
+  "noNetworkTitle": "Izgleda da je internet nestao",
+  "noNetworkSubtitle": "Proveri vezu i povuci na dole da pokušaš ponovo.",
+
+  "loadingArrivals": "Gledamo šta dolazi…",
+
+  "serviceKilledTitle": "Pravimo kratku pauzu",
+  "serviceKilledSubtitle": "Vraćamo se uskoro.",
+
+  "unknownStopTitle": "Ne mogu da pronađem to stajalište",
+  "unknownStopSubtitle": "Možda je preimenovano ili uklonjeno iz reda vožnje.",
+
+  "retry": "Pokušaj ponovo",
+  "addToFavorites": "Dodaj u Moja stajališta",
+  "removeFromFavorites": "Ukloni iz Mojih stajališta",
+
+  "settingsTitle": "Podešavanja",
+  "settingsLanguage": "Jezik",
+  "settingsTheme": "Tema",
+  "settingsThemeSystem": "Prati sistem",
+  "settingsThemeLight": "Svetla",
+  "settingsThemeDark": "Tamna",
+  "settingsRefreshInterval": "Interval osvežavanja",
+  "settingsRefreshIntervalSeconds": "{seconds} sek",
+
+  "aboutTitle": "O Stigla aplikaciji",
+  "aboutDisclaimer": "Nezvanična aplikacija. Nije povezana sa JKP Upravljanje javnim prevozom Beograd.",
+  "aboutDescription": "Stigla prikazuje dolaske javnog prevoza u Beogradu u realnom vremenu. Napravljeno za ličnu upotrebu.",
+
+  "lineFilterAll": "Sve linije",
+
+  "vehicleTypeBus": "Autobus",
+  "vehicleTypeTram": "Tramvaj",
+  "vehicleTypeTrolleybus": "Trolejbus"
+}

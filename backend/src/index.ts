@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import type { Env } from "./env";
 import type {
   HealthResponse,
@@ -12,6 +13,11 @@ import { getLineByNumber, getRouteShape, nearbyStops, searchLines, searchStops }
 import { geocodeSearch } from "./lib/geocode";
 
 const app = new Hono<{ Bindings: Env }>();
+
+// Public read-only API consumed directly from the Flutter web build running
+// on an arbitrary origin (stigla.theoutlines.xyz, localhost during dev, ...).
+// Nothing here is per-user or cookie-authenticated, so a permissive origin is fine.
+app.use("*", cors({ origin: "*", allowHeaders: ["Content-Type", "X-Admin-Token", "X-Device-Id"] }));
 
 app.get("/api/v1/health", async (c) => {
   const killed = await isServiceKilled(c.env);
