@@ -12,10 +12,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get appTitle => 'Stigla';
 
   @override
-  String get navMyStops => 'Мои остановки';
+  String get navHome => 'Карта';
 
   @override
-  String get navSearch => 'Поиск';
+  String get navMyStops => 'Мои остановки';
 
   @override
   String get navIdeas => 'Идеи';

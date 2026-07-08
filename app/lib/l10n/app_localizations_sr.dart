@@ -12,10 +12,10 @@ class AppLocalizationsSr extends AppLocalizations {
   String get appTitle => 'Stigla';
 
   @override
-  String get navMyStops => 'Moja stajališta';
+  String get navHome => 'Mapa';
 
   @override
-  String get navSearch => 'Pretraga';
+  String get navMyStops => 'Moja stajališta';
 
   @override
   String get navIdeas => 'Ideje';

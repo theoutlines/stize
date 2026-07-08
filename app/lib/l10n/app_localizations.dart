@@ -106,17 +106,17 @@ abstract class AppLocalizations {
   /// **'Stigla'**
   String get appTitle;
 
+  /// No description provided for @navHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Map'**
+  String get navHome;
+
   /// No description provided for @navMyStops.
   ///
   /// In en, this message translates to:
   /// **'My Stops'**
   String get navMyStops;
-
-  /// No description provided for @navSearch.
-  ///
-  /// In en, this message translates to:
-  /// **'Search'**
-  String get navSearch;
 
   /// No description provided for @navIdeas.
   ///

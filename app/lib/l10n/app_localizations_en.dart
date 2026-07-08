@@ -12,10 +12,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Stigla';
 
   @override
-  String get navMyStops => 'My Stops';
+  String get navHome => 'Map';
 
   @override
-  String get navSearch => 'Search';
+  String get navMyStops => 'My Stops';
 
   @override
   String get navIdeas => 'Ideas';

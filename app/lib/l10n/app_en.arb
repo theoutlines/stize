@@ -4,8 +4,8 @@
   "appTitle": "Stigla",
   "@appTitle": {"description": "App name, shown in title bars and the OS app switcher"},
 
+  "navHome": "Map",
   "navMyStops": "My Stops",
-  "navSearch": "Search",
   "navIdeas": "Ideas",
   "navAbout": "About",
 
