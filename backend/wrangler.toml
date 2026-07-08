@@ -15,5 +15,10 @@ binding = "ASSETS"
 binding = "STIGLA_KV"
 id = "9908db7cfc444d6692a66b2577b91288"
 
+[[d1_databases]]
+binding = "STIGLA_IDEAS_DB"
+database_name = "stigla-ideas"
+database_id = "fdd98e75-c0a7-4641-90c8-2706d6e70506"
+
 [vars]
 API_VERSION = "v1"

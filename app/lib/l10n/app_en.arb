@@ -6,7 +6,20 @@
 
   "navMyStops": "My Stops",
   "navSearch": "Search",
+  "navIdeas": "Ideas",
   "navAbout": "About",
+
+  "ideasEmptyTitle": "No ideas yet",
+  "ideasEmptySubtitle": "Be the first to suggest something.",
+  "ideaInputHint": "What should Stigla do better?",
+  "ideaSubmit": "Suggest",
+  "ideaRateLimited": "One new idea at a time — try again in a few minutes.",
+  "ideaVotesCount": "{count, plural, =0{No votes yet} =1{1 vote} other{{count} votes}}",
+  "@ideaVotesCount": {"placeholders": {"count": {"type": "int"}}},
+  "ideaCommentsTitle": "Comments",
+  "ideaCommentInputHint": "Add a comment…",
+  "ideaCommentSubmit": "Post",
+  "ideaCommentsEmpty": "No comments yet.",
 
   "myStopsEmptyTitle": "No favorite stops yet",
   "myStopsEmptySubtitle": "Search for a stop, street, or line and add it here.",

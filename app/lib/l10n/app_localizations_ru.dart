@@ -18,7 +18,52 @@ class AppLocalizationsRu extends AppLocalizations {
   String get navSearch => 'Поиск';
 
   @override
+  String get navIdeas => 'Идеи';
+
+  @override
   String get navAbout => 'О приложении';
+
+  @override
+  String get ideasEmptyTitle => 'Пока нет идей';
+
+  @override
+  String get ideasEmptySubtitle => 'Стань первым, кто что-то предложит.';
+
+  @override
+  String get ideaInputHint => 'Что улучшить в Stigla?';
+
+  @override
+  String get ideaSubmit => 'Предложить';
+
+  @override
+  String get ideaRateLimited =>
+      'Можно предложить только одну идею за раз — попробуй через несколько минут.';
+
+  @override
+  String ideaVotesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count голосов',
+      many: '$count голосов',
+      few: '$count голоса',
+      one: '$count голос',
+      zero: 'Пока нет голосов',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get ideaCommentsTitle => 'Комментарии';
+
+  @override
+  String get ideaCommentInputHint => 'Добавить комментарий…';
+
+  @override
+  String get ideaCommentSubmit => 'Отправить';
+
+  @override
+  String get ideaCommentsEmpty => 'Пока нет комментариев.';
 
   @override
   String get myStopsEmptyTitle => 'Пока нет избранных остановок';

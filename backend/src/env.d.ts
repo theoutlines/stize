@@ -1,5 +1,6 @@
 export interface Env {
   STIGLA_KV: KVNamespace;
+  STIGLA_IDEAS_DB: D1Database;
   ASSETS: Fetcher;
 
   API_VERSION: string;

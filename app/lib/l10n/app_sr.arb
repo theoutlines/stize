@@ -5,7 +5,19 @@
 
   "navMyStops": "Moja stajališta",
   "navSearch": "Pretraga",
+  "navIdeas": "Ideje",
   "navAbout": "O aplikaciji",
+
+  "ideasEmptyTitle": "Još nema ideja",
+  "ideasEmptySubtitle": "Budi prvi koji će nešto predložiti.",
+  "ideaInputHint": "Šta bi Stigla trebalo da radi bolje?",
+  "ideaSubmit": "Predloži",
+  "ideaRateLimited": "Jedna ideja odjednom — probaj ponovo za nekoliko minuta.",
+  "ideaVotesCount": "{count, plural, =0{Još nema glasova} one{{count} glas} few{{count} glasa} other{{count} glasova}}",
+  "ideaCommentsTitle": "Komentari",
+  "ideaCommentInputHint": "Dodaj komentar…",
+  "ideaCommentSubmit": "Pošalji",
+  "ideaCommentsEmpty": "Još nema komentara.",
 
   "myStopsEmptyTitle": "Još nemaš omiljena stajališta",
   "myStopsEmptySubtitle": "Pronađi stajalište, ulicu ili liniju i dodaj je ovde.",

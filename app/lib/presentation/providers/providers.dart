@@ -2,24 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/api/stigla_api_client.dart';
+import '../../data/device/device_id_service.dart';
 import '../../data/local/gtfs_offline_cache.dart';
 import '../../data/local/settings_store.dart';
 import '../../data/location/location_service.dart';
 import '../../data/repositories/arrivals_repository_impl.dart';
 import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/geocode_repository_impl.dart';
+import '../../data/repositories/ideas_repository_impl.dart';
 import '../../data/repositories/lines_repository_impl.dart';
 import '../../data/repositories/stops_repository_impl.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
+import '../../domain/models/idea.dart';
 import '../../domain/models/stop.dart';
 import '../../domain/repositories/arrivals_repository.dart';
 import '../../domain/repositories/favorites_repository.dart';
 import '../../domain/repositories/geocode_repository.dart';
+import '../../domain/repositories/ideas_repository.dart';
 import '../../domain/repositories/lines_repository.dart';
 import '../../domain/repositories/stops_repository.dart';
 
 final apiClientProvider = Provider<StiglaApiClient>((ref) => StiglaApiClient());
+
+final deviceIdServiceProvider = Provider<DeviceIdService>((ref) => DeviceIdService());
+
+final ideasRepositoryProvider = Provider<IdeasRepository>(
+  (ref) => IdeasRepositoryImpl(ref.watch(apiClientProvider), ref.watch(deviceIdServiceProvider)),
+);
 
 final gtfsOfflineCacheProvider = Provider<GtfsOfflineCache>(
   (ref) => GtfsOfflineCache(ref.watch(apiClientProvider)),
@@ -112,3 +122,32 @@ class FavoritesController extends AsyncNotifier<List<FavoriteStop>> {
 final favoritesControllerProvider = AsyncNotifierProvider<FavoritesController, List<FavoriteStop>>(
   FavoritesController.new,
 );
+
+class IdeasController extends AsyncNotifier<List<Idea>> {
+  @override
+  Future<List<Idea>> build() {
+    return ref.watch(ideasRepositoryProvider).list();
+  }
+
+  Future<void> submit(String text) async {
+    await ref.read(ideasRepositoryProvider).submit(text);
+    ref.invalidateSelf();
+  }
+
+  Future<void> toggleVote(int ideaId) async {
+    final repo = ref.read(ideasRepositoryProvider);
+    final result = await repo.toggleVote(ideaId);
+    final current = state.valueOrNull;
+    if (current == null) return;
+    state = AsyncData([
+      for (final idea in current)
+        if (idea.id == ideaId) idea.copyWith(votes: result.votes, hasVoted: result.hasVoted) else idea,
+    ]);
+  }
+}
+
+final ideasControllerProvider = AsyncNotifierProvider<IdeasController, List<Idea>>(IdeasController.new);
+
+final ideaCommentsProvider = FutureProvider.family.autoDispose<List<IdeaComment>, int>((ref, ideaId) {
+  return ref.watch(ideasRepositoryProvider).listComments(ideaId);
+});

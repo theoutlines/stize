@@ -10,6 +10,12 @@ class NotFoundException implements Exception {
   final String message;
 }
 
+/// Thrown on a 429 — e.g. the idea-submission rate limit.
+class RateLimitedException implements Exception {
+  const RateLimitedException(this.message);
+  final String message;
+}
+
 /// Thrown on any other non-2xx response from our own backend.
 class ApiException implements Exception {
   const ApiException(this.statusCode, this.message);

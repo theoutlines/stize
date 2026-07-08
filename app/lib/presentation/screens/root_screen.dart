@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'about_screen.dart';
+import 'ideas_screen.dart';
 import 'my_stops_screen.dart';
 import 'search_screen.dart';
 
@@ -35,7 +36,7 @@ class _RootScreenState extends ConsumerState<RootScreen> {
     return Scaffold(
       body: IndexedStack(
         index: _index,
-        children: const [MyStopsScreen(), SearchScreen(), AboutScreen()],
+        children: const [MyStopsScreen(), SearchScreen(), IdeasScreen(), AboutScreen()],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
@@ -43,6 +44,7 @@ class _RootScreenState extends ConsumerState<RootScreen> {
         destinations: [
           NavigationDestination(icon: const Icon(Icons.star_outline), selectedIcon: const Icon(Icons.star), label: l10n.navMyStops),
           NavigationDestination(icon: const Icon(Icons.search_outlined), selectedIcon: const Icon(Icons.search), label: l10n.navSearch),
+          NavigationDestination(icon: const Icon(Icons.lightbulb_outline), selectedIcon: const Icon(Icons.lightbulb), label: l10n.navIdeas),
           NavigationDestination(icon: const Icon(Icons.info_outline), selectedIcon: const Icon(Icons.info), label: l10n.navAbout),
         ],
       ),

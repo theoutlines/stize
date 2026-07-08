@@ -18,7 +18,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navSearch => 'Search';
 
   @override
+  String get navIdeas => 'Ideas';
+
+  @override
   String get navAbout => 'About';
+
+  @override
+  String get ideasEmptyTitle => 'No ideas yet';
+
+  @override
+  String get ideasEmptySubtitle => 'Be the first to suggest something.';
+
+  @override
+  String get ideaInputHint => 'What should Stigla do better?';
+
+  @override
+  String get ideaSubmit => 'Suggest';
+
+  @override
+  String get ideaRateLimited =>
+      'One new idea at a time — try again in a few minutes.';
+
+  @override
+  String ideaVotesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count votes',
+      one: '1 vote',
+      zero: 'No votes yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get ideaCommentsTitle => 'Comments';
+
+  @override
+  String get ideaCommentInputHint => 'Add a comment…';
+
+  @override
+  String get ideaCommentSubmit => 'Post';
+
+  @override
+  String get ideaCommentsEmpty => 'No comments yet.';
 
   @override
   String get myStopsEmptyTitle => 'No favorite stops yet';

@@ -18,7 +18,51 @@ class AppLocalizationsSr extends AppLocalizations {
   String get navSearch => 'Pretraga';
 
   @override
+  String get navIdeas => 'Ideje';
+
+  @override
   String get navAbout => 'O aplikaciji';
+
+  @override
+  String get ideasEmptyTitle => 'Još nema ideja';
+
+  @override
+  String get ideasEmptySubtitle => 'Budi prvi koji će nešto predložiti.';
+
+  @override
+  String get ideaInputHint => 'Šta bi Stigla trebalo da radi bolje?';
+
+  @override
+  String get ideaSubmit => 'Predloži';
+
+  @override
+  String get ideaRateLimited =>
+      'Jedna ideja odjednom — probaj ponovo za nekoliko minuta.';
+
+  @override
+  String ideaVotesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count glasova',
+      few: '$count glasa',
+      one: '$count glas',
+      zero: 'Još nema glasova',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get ideaCommentsTitle => 'Komentari';
+
+  @override
+  String get ideaCommentInputHint => 'Dodaj komentar…';
+
+  @override
+  String get ideaCommentSubmit => 'Pošalji';
+
+  @override
+  String get ideaCommentsEmpty => 'Još nema komentara.';
 
   @override
   String get myStopsEmptyTitle => 'Još nemaš omiljena stajališta';

@@ -118,11 +118,77 @@ abstract class AppLocalizations {
   /// **'Search'**
   String get navSearch;
 
+  /// No description provided for @navIdeas.
+  ///
+  /// In en, this message translates to:
+  /// **'Ideas'**
+  String get navIdeas;
+
   /// No description provided for @navAbout.
   ///
   /// In en, this message translates to:
   /// **'About'**
   String get navAbout;
+
+  /// No description provided for @ideasEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No ideas yet'**
+  String get ideasEmptyTitle;
+
+  /// No description provided for @ideasEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Be the first to suggest something.'**
+  String get ideasEmptySubtitle;
+
+  /// No description provided for @ideaInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What should Stigla do better?'**
+  String get ideaInputHint;
+
+  /// No description provided for @ideaSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest'**
+  String get ideaSubmit;
+
+  /// No description provided for @ideaRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'One new idea at a time — try again in a few minutes.'**
+  String get ideaRateLimited;
+
+  /// No description provided for @ideaVotesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No votes yet} =1{1 vote} other{{count} votes}}'**
+  String ideaVotesCount(int count);
+
+  /// No description provided for @ideaCommentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments'**
+  String get ideaCommentsTitle;
+
+  /// No description provided for @ideaCommentInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a comment…'**
+  String get ideaCommentInputHint;
+
+  /// No description provided for @ideaCommentSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Post'**
+  String get ideaCommentSubmit;
+
+  /// No description provided for @ideaCommentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No comments yet.'**
+  String get ideaCommentsEmpty;
 
   /// No description provided for @myStopsEmptyTitle.
   ///
