@@ -35,6 +35,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'Ничего не нашлось. Может, стоит попробовать иначе написать?';
 
   @override
+  String get nearbyStopsTitle => 'Остановки рядом';
+
+  @override
+  String get nearbyStopsEmpty =>
+      'Включи геолокацию или поищи остановку, улицу или линию выше.';
+
+  @override
   String get stopUpdatedJustNow => 'Обновлено только что';
 
   @override

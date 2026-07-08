@@ -12,6 +12,8 @@
 
   "searchHint": "Остановка, улица или линия…",
   "searchNoResults": "Ничего не нашлось. Может, стоит попробовать иначе написать?",
+  "nearbyStopsTitle": "Остановки рядом",
+  "nearbyStopsEmpty": "Включи геолокацию или поищи остановку, улицу или линию выше.",
 
   "stopUpdatedJustNow": "Обновлено только что",
   "stopUpdatedSecondsAgo": "Обновлено {seconds} сек назад",

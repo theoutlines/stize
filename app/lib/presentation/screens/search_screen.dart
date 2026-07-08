@@ -3,12 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart' as ll;
 
+import '../../data/location/location_service.dart';
+import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/stop.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/vehicle_icon.dart';
+import 'map_screen_args.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -22,7 +26,40 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Timer? _debounce;
   List<Stop> _stops = [];
   List<LineInfo> _lines = [];
+  List<GeocodeResult> _places = [];
   bool _loading = false;
+
+  List<Stop> _nearbyStops = [];
+  ll.LatLng? _myPosition;
+  bool _nearbyLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNearby();
+  }
+
+  Future<void> _loadNearby() async {
+    setState(() => _nearbyLoading = true);
+    try {
+      final position = await ref.read(locationServiceProvider).getCurrentPosition();
+      final point = ll.LatLng(position.latitude, position.longitude);
+      final stops = await ref.read(stopsRepositoryProvider).nearby(lat: point.latitude, lon: point.longitude);
+      if (!mounted) return;
+      setState(() {
+        _myPosition = point;
+        _nearbyStops = stops;
+        _nearbyLoading = false;
+      });
+    } on LocationUnavailable {
+      // Soft fallback: no location, just leave the manual search available.
+      if (!mounted) return;
+      setState(() => _nearbyLoading = false);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _nearbyLoading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -37,6 +74,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       setState(() {
         _stops = [];
         _lines = [];
+        _places = [];
       });
       return;
     }
@@ -48,10 +86,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     try {
       final stops = await ref.read(stopsRepositoryProvider).search(query);
       final lines = await ref.read(linesRepositoryProvider).search(query);
+      List<GeocodeResult> places = [];
+      try {
+        places = await ref.read(geocodeRepositoryProvider).search(query);
+      } catch (_) {
+        // Geocoding is a best-effort second layer; ignore failures here.
+      }
       if (!mounted) return;
       setState(() {
         _stops = stops;
         _lines = lines;
+        _places = places;
         _loading = false;
       });
     } catch (_) {
@@ -60,11 +105,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
   }
 
+  Future<void> _openPlaceOnMap(GeocodeResult place) async {
+    final center = ll.LatLng(place.lat, place.lon);
+    final stops = await ref.read(stopsRepositoryProvider).nearby(lat: place.lat, lon: place.lon);
+    if (!mounted) return;
+    context.push(
+      '/map',
+      extra: MapScreenArgs(stops: stops, center: center, centerLabel: place.displayName),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final hasQuery = _controller.text.trim().isNotEmpty;
-    final hasResults = _stops.isNotEmpty || _lines.isNotEmpty;
+    final hasResults = _stops.isNotEmpty || _lines.isNotEmpty || _places.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -74,30 +129,79 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           onChanged: _onChanged,
           decoration: InputDecoration(hintText: l10n.searchHint, border: InputBorder.none),
         ),
+        actions: [
+          if (hasQuery && _stops.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.map_outlined),
+              onPressed: () => context.push('/map', extra: MapScreenArgs(stops: _stops)),
+            ),
+        ],
       ),
       body: _loading
           ? const LinearProgressIndicator()
-          : (!hasQuery
-              ? const SizedBox.shrink()
-              : (!hasResults
-                  ? Center(child: Text(l10n.searchNoResults))
-                  : ListView(
-                      children: [
-                        for (final stop in _stops)
-                          ListTile(
-                            leading: const Icon(Icons.location_on_outlined),
-                            title: Text(stop.name),
-                            subtitle: Text(stop.lines.join(', ')),
-                            onTap: () => context.push('/stop/${stop.stopId}?name=${Uri.encodeComponent(stop.name)}'),
-                          ),
-                        for (final line in _lines)
-                          ListTile(
-                            leading: Icon(vehicleIconFor(line.vehicleType)),
-                            title: Text(line.line),
-                            subtitle: Text('${line.origin} → ${line.destination}'),
-                          ),
-                      ],
-                    ))),
+          : (!hasQuery ? _nearbyBody(l10n) : (!hasResults ? Center(child: Text(l10n.searchNoResults)) : _resultsBody())),
+    );
+  }
+
+  Widget _nearbyBody(AppLocalizations l10n) {
+    if (_nearbyLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_nearbyStops.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Text(l10n.nearbyStopsEmpty, textAlign: TextAlign.center),
+        ),
+      );
+    }
+    return ListView(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.my_location),
+          title: Text(l10n.nearbyStopsTitle),
+          trailing: IconButton(
+            icon: const Icon(Icons.map_outlined),
+            onPressed: () => context.push(
+              '/map',
+              extra: MapScreenArgs(stops: _nearbyStops, center: _myPosition),
+            ),
+          ),
+        ),
+        for (final stop in _nearbyStops)
+          ListTile(
+            leading: const Icon(Icons.location_on_outlined),
+            title: Text(stop.name),
+            subtitle: Text(stop.lines.join(', ')),
+            onTap: () => context.push('/stop/${stop.stopId}?name=${Uri.encodeComponent(stop.name)}'),
+          ),
+      ],
+    );
+  }
+
+  Widget _resultsBody() {
+    return ListView(
+      children: [
+        for (final stop in _stops)
+          ListTile(
+            leading: const Icon(Icons.location_on_outlined),
+            title: Text(stop.name),
+            subtitle: Text(stop.lines.join(', ')),
+            onTap: () => context.push('/stop/${stop.stopId}?name=${Uri.encodeComponent(stop.name)}'),
+          ),
+        for (final line in _lines)
+          ListTile(
+            leading: Icon(vehicleIconFor(line.vehicleType)),
+            title: Text(line.line),
+            subtitle: Text('${line.origin} → ${line.destination}'),
+          ),
+        for (final place in _places)
+          ListTile(
+            leading: const Icon(Icons.map_outlined),
+            title: Text(place.displayName),
+            onTap: () => _openPlaceOnMap(place),
+          ),
+      ],
     );
   }
 }

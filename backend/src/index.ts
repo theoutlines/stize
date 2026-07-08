@@ -9,7 +9,15 @@ import type {
 } from "./types";
 import { isServiceKilled, setServiceKilled } from "./lib/killswitch";
 import { getArrivals } from "./lib/arrivals";
-import { getLineByNumber, getRouteShape, nearbyStops, searchLines, searchStops } from "./lib/gtfsData";
+import {
+  getAllLines,
+  getAllStops,
+  getLineByNumber,
+  getRouteShape,
+  nearbyStops,
+  searchLines,
+  searchStops,
+} from "./lib/gtfsData";
 import { geocodeSearch } from "./lib/geocode";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -59,6 +67,22 @@ app.get("/api/v1/stops", async (c) => {
   const query = c.req.query("query") ?? "";
   const stops = await searchStops(c.env, query);
   const body: StopsResponse = { stops };
+  return c.json(body);
+});
+
+// Full dumps for the client's on-device offline reference cache (rebuilt
+// on redeploy only, so aggressive caching downstream is safe).
+app.get("/api/v1/stops/all", async (c) => {
+  const stops = await getAllStops(c.env);
+  c.header("cache-control", "public, max-age=3600");
+  const body: StopsResponse = { stops };
+  return c.json(body);
+});
+
+app.get("/api/v1/lines/all", async (c) => {
+  const lines = await getAllLines(c.env);
+  c.header("cache-control", "public, max-age=3600");
+  const body: LinesResponse = { lines };
   return c.json(body);
 });
 

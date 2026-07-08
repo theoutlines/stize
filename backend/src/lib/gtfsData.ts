@@ -30,6 +30,15 @@ async function loadLines(env: Env): Promise<LineDto[]> {
   return linesCache;
 }
 
+// Full dumps, for the client's on-device offline reference cache.
+export async function getAllStops(env: Env): Promise<StopDto[]> {
+  return loadStops(env);
+}
+
+export async function getAllLines(env: Env): Promise<LineDto[]> {
+  return loadLines(env);
+}
+
 export async function getStopById(env: Env, stopId: string): Promise<StopDto | null> {
   const stops = await loadStops(env);
   return stops.find((s) => s.stop_id === stopId) ?? null;

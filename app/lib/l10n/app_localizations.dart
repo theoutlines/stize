@@ -148,6 +148,18 @@ abstract class AppLocalizations {
   /// **'Nothing found. Try a different spelling?'**
   String get searchNoResults;
 
+  /// No description provided for @nearbyStopsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby stops'**
+  String get nearbyStopsTitle;
+
+  /// No description provided for @nearbyStopsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on location, or search for a stop, street, or line above.'**
+  String get nearbyStopsEmpty;
+
   /// No description provided for @stopUpdatedJustNow.
   ///
   /// In en, this message translates to:

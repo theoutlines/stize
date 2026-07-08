@@ -12,6 +12,8 @@
 
   "searchHint": "Stajalište, ulica ili linija…",
   "searchNoResults": "Ništa nije pronađeno. Probaj drugačiji unos.",
+  "nearbyStopsTitle": "Stajališta u blizini",
+  "nearbyStopsEmpty": "Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.",
 
   "stopUpdatedJustNow": "Ažurirano upravo sada",
   "stopUpdatedSecondsAgo": "Ažurirano pre {seconds} sek",

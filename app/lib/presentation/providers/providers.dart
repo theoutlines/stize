@@ -2,31 +2,45 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/api/stigla_api_client.dart';
+import '../../data/local/gtfs_offline_cache.dart';
 import '../../data/local/settings_store.dart';
+import '../../data/location/location_service.dart';
 import '../../data/repositories/arrivals_repository_impl.dart';
 import '../../data/repositories/favorites_repository_impl.dart';
+import '../../data/repositories/geocode_repository_impl.dart';
 import '../../data/repositories/lines_repository_impl.dart';
 import '../../data/repositories/stops_repository_impl.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
 import '../../domain/repositories/arrivals_repository.dart';
 import '../../domain/repositories/favorites_repository.dart';
+import '../../domain/repositories/geocode_repository.dart';
 import '../../domain/repositories/lines_repository.dart';
 import '../../domain/repositories/stops_repository.dart';
 
 final apiClientProvider = Provider<StiglaApiClient>((ref) => StiglaApiClient());
+
+final gtfsOfflineCacheProvider = Provider<GtfsOfflineCache>(
+  (ref) => GtfsOfflineCache(ref.watch(apiClientProvider)),
+);
 
 final arrivalsRepositoryProvider = Provider<ArrivalsRepository>(
   (ref) => ArrivalsRepositoryImpl(ref.watch(apiClientProvider)),
 );
 
 final stopsRepositoryProvider = Provider<StopsRepository>(
-  (ref) => StopsRepositoryImpl(ref.watch(apiClientProvider)),
+  (ref) => StopsRepositoryImpl(ref.watch(apiClientProvider), ref.watch(gtfsOfflineCacheProvider)),
 );
 
 final linesRepositoryProvider = Provider<LinesRepository>(
-  (ref) => LinesRepositoryImpl(ref.watch(apiClientProvider)),
+  (ref) => LinesRepositoryImpl(ref.watch(apiClientProvider), ref.watch(gtfsOfflineCacheProvider)),
 );
+
+final geocodeRepositoryProvider = Provider<GeocodeRepository>(
+  (ref) => GeocodeRepositoryImpl(ref.watch(apiClientProvider)),
+);
+
+final locationServiceProvider = Provider<LocationService>((ref) => LocationService());
 
 final favoritesRepositoryProvider = Provider<FavoritesRepository>((ref) => FavoritesRepositoryImpl());
 

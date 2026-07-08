@@ -1,19 +1,32 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../providers/providers.dart';
 import 'about_screen.dart';
 import 'my_stops_screen.dart';
 import 'search_screen.dart';
 
-class RootScreen extends StatefulWidget {
+class RootScreen extends ConsumerStatefulWidget {
   const RootScreen({super.key});
 
   @override
-  State<RootScreen> createState() => _RootScreenState();
+  ConsumerState<RootScreen> createState() => _RootScreenState();
 }
 
-class _RootScreenState extends State<RootScreen> {
+class _RootScreenState extends ConsumerState<RootScreen> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fire-and-forget: keeps the offline stop/line reference fresh without
+    // blocking startup. Safe to ignore failures — the live API is always
+    // tried first anyway.
+    unawaited(ref.read(gtfsOfflineCacheProvider).refreshIfStale());
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -13,6 +13,8 @@
 
   "searchHint": "Search stops, streets, or lines…",
   "searchNoResults": "Nothing found. Try a different spelling?",
+  "nearbyStopsTitle": "Nearby stops",
+  "nearbyStopsEmpty": "Turn on location, or search for a stop, street, or line above.",
 
   "stopUpdatedJustNow": "Updated just now",
   "stopUpdatedSecondsAgo": "Updated {seconds}s ago",

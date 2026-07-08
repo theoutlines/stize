@@ -5,7 +5,7 @@ const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // geocoding results for a street n
 const BELGRADE_VIEWBOX = "20.2,44.95,20.65,44.65"; // lon1,lat1,lon2,lat2 — biases results, doesn't hard-filter
 
 export interface GeocodeResult {
-  displayName: string;
+  display_name: string;
   lat: number;
   lon: number;
 }
@@ -34,7 +34,7 @@ export async function geocodeSearch(env: Env, query: string): Promise<GeocodeRes
 
   const body = (await res.json()) as Array<{ display_name: string; lat: string; lon: string }>;
   const results = body.map((r) => ({
-    displayName: r.display_name,
+    display_name: r.display_name,
     lat: parseFloat(r.lat),
     lon: parseFloat(r.lon),
   }));

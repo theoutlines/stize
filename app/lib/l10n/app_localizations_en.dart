@@ -34,6 +34,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchNoResults => 'Nothing found. Try a different spelling?';
 
   @override
+  String get nearbyStopsTitle => 'Nearby stops';
+
+  @override
+  String get nearbyStopsEmpty =>
+      'Turn on location, or search for a stop, street, or line above.';
+
+  @override
   String get stopUpdatedJustNow => 'Updated just now';
 
   @override

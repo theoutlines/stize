@@ -34,6 +34,13 @@ class AppLocalizationsSr extends AppLocalizations {
   String get searchNoResults => 'Ništa nije pronađeno. Probaj drugačiji unos.';
 
   @override
+  String get nearbyStopsTitle => 'Stajališta u blizini';
+
+  @override
+  String get nearbyStopsEmpty =>
+      'Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.';
+
+  @override
   String get stopUpdatedJustNow => 'Ažurirano upravo sada';
 
   @override
