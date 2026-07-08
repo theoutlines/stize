@@ -1,0 +1,37 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Flutter / Dart
+app/.dart_tool/
+app/.flutter-plugin-dependencies
+app/build/
+app/.pub-cache/
+app/.pub/
+app/ios/Pods/
+app/ios/.symlinks/
+app/ios/Flutter/Flutter.framework
+app/ios/Flutter/Flutter.podspec
+app/android/.gradle/
+app/android/local.properties
+app/web/build/
+**/*.g.dart
+**/*.freezed.dart
+
+# Cloudflare Workers / Node
+backend/node_modules/
+backend/.wrangler/
+backend/dist/
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
