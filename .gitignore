@@ -41,3 +41,7 @@ Thumbs.db
 .idea/
 *.iml
 .claude/
+
+# MapTiler key (client key, kept out of the repo; passed via --dart-define-from-file)
+app/dart_defines.json
+dart_defines.json

@@ -28,7 +28,6 @@ final appRouter = GoRouter(
           centerLabel: args.centerLabel,
           title: args.title,
           polyline: args.polyline,
-          extraMarkers: args.extraMarkers,
           lineNumber: args.lineNumber,
         );
       },

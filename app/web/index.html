@@ -32,6 +32,67 @@
   <title>Stigla</title>
   <link rel="manifest" href="manifest.json">
 
+  <!-- MapLibre GL JS: the web rendering backend for the `maplibre` Flutter plugin. -->
+  <script src="https://unpkg.com/maplibre-gl@^5.0/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@^5.0/dist/maplibre-gl.css" rel="stylesheet"/>
+  <script>
+    // The `maplibre` Flutter plugin creates the GL JS map during the platform
+    // view's initState — before Flutter has laid the view into its final slot —
+    // so the map measures a 0-size viewport and never requests tiles until
+    // something resizes it. Wrap the Map constructor to call resize() on a few
+    // short timers after creation, once the real size is in place.
+    (function () {
+      function patch() {
+        if (!(window.maplibregl && window.maplibregl.Map)) return false;
+        var Orig = window.maplibregl.Map;
+        if (Orig.__stiglaPatched) return true;
+        function Patched(opts) {
+          var m = new Orig(opts);
+          window.__stiglaMap = m;
+          // Flutter web settles the platform-view layout over a variable window
+          // (sometimes several seconds), and until then GL JS won't request
+          // tiles or repaint. Nudge resize() periodically until well past that
+          // settle; once tiles are up, resize() is a cheap no-op. Also observe
+          // the container for any later size changes.
+          var ticks = 0;
+          var iv = setInterval(function () {
+            try { m.resize(); } catch (e) {}
+            // maplibre-gl-js caches "image missing" for a symbol layer that was
+            // added before its icon (added async via addImageFromWidget) reached
+            // the sprite atlas, and never re-evaluates. Re-setting icon-image on
+            // our own ('stg-*') symbol layers forces that re-evaluation so the
+            // stop/cluster markers actually paint. A no-op once they're up.
+            try {
+              var st = m.getStyle();
+              (st.layers || []).forEach(function (l) {
+                if (l.type === 'symbol' && l.layout &&
+                    typeof l.layout['icon-image'] === 'string' &&
+                    l.layout['icon-image'].indexOf('stg-') === 0) {
+                  m.setLayoutProperty(l.id, 'icon-image', l.layout['icon-image']);
+                }
+              });
+            } catch (e) {}
+            if (++ticks > 44) clearInterval(iv); // ~22s at 500ms
+          }, 500);
+          try {
+            var ro = new ResizeObserver(function () { try { m.resize(); } catch (e) {} });
+            ro.observe(m.getContainer());
+          } catch (e) {}
+          return m;
+        }
+        Patched.prototype = Orig.prototype;
+        Object.keys(Orig).forEach(function (k) { try { Patched[k] = Orig[k]; } catch (e) {} });
+        Patched.__stiglaPatched = true;
+        window.maplibregl.Map = Patched;
+        return true;
+      }
+      if (!patch()) {
+        var iv = setInterval(function () { if (patch()) clearInterval(iv); }, 30);
+        setTimeout(function () { clearInterval(iv); }, 8000);
+      }
+    })();
+  </script>
+
   <style>
     /* Matches the app's own theme background so the pre-Flutter paint isn't a
        jarring white flash while CanvasKit/fonts download on a cold load. */

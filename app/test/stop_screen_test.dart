@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:stigla/core/map_support.dart';
 import 'package:stigla/data/api/api_exceptions.dart';
 import 'package:stigla/domain/models/arrival.dart';
 import 'package:stigla/domain/models/favorite_stop.dart';
@@ -84,6 +85,11 @@ Widget _wrap(
 }
 
 void main() {
+  // MapLibre (the live-vehicles mini-map) has no platform impl under
+  // `flutter test`; render it as a placeholder so StopScreen can be pumped.
+  setUp(() => kMapRenderingEnabled = false);
+  tearDown(() => kMapRenderingEnabled = true);
+
   testWidgets('renders a live arrival matching the real backend contract', (tester) async {
     await tester.pumpWidget(
       _wrap(

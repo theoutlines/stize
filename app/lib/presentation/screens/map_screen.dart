@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
+import 'package:maplibre/maplibre.dart';
 
+import '../../core/map_style.dart';
+import '../../core/map_support.dart';
 import '../../domain/models/stop.dart';
 import '../providers/providers.dart';
 import '../widgets/route_alert_banner.dart';
 
-const _belgradeCenter = ll.LatLng(44.8125, 20.4612);
+const _belgradeCenter = Geographic(lon: 20.4612, lat: 44.8125);
 
-/// Shows stop markers on an OSM map, optionally with a highlighted center
-/// point (the user's location, or a geocoded street/place) and/or a route
-/// polyline (a line's full trace).
-class MapScreen extends ConsumerWidget {
+/// Shows a set of stops on a MapLibre vector map, optionally with a highlighted
+/// center point (a geocoded street/place) and/or a route polyline (a line's
+/// full trace).
+class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({
     super.key,
     required this.stops,
@@ -21,7 +23,6 @@ class MapScreen extends ConsumerWidget {
     this.centerLabel,
     this.title,
     this.polyline,
-    this.extraMarkers = const [],
     this.lineNumber,
   });
 
@@ -30,78 +31,144 @@ class MapScreen extends ConsumerWidget {
   final String? centerLabel;
   final String? title;
   final List<List<double>>? polyline;
-  final List<Marker> extraMarkers;
   final String? lineNumber;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final initialCenter = center ??
-        (polyline != null && polyline!.isNotEmpty
-            ? ll.LatLng(polyline!.first[0], polyline!.first[1])
-            : (stops.isNotEmpty ? ll.LatLng(stops.first.lat, stops.first.lon) : _belgradeCenter));
+  ConsumerState<MapScreen> createState() => _MapScreenState();
+}
 
-    final alerts = lineNumber == null
+class _MapScreenState extends ConsumerState<MapScreen> {
+  MapController? _controller;
+  bool _imagesReady = false;
+
+  Geographic get _initialCenter {
+    if (widget.center != null)
+      return Geographic(
+        lon: widget.center!.longitude,
+        lat: widget.center!.latitude,
+      );
+    final poly = widget.polyline;
+    if (poly != null && poly.isNotEmpty)
+      return Geographic(lon: poly.first[1], lat: poly.first[0]);
+    if (widget.stops.isNotEmpty)
+      return Geographic(
+        lon: widget.stops.first.lon,
+        lat: widget.stops.first.lat,
+      );
+    return _belgradeCenter;
+  }
+
+  Future<void> _onStyleLoaded(StyleController style) async {
+    await registerStigmaImages(style, Theme.of(context).colorScheme);
+    if (mounted) setState(() => _imagesReady = true);
+  }
+
+  void _onEvent(MapEvent event) {
+    if (event is! MapEventClick) return;
+    final controller = _controller;
+    if (controller == null) return;
+    final screen = controller.toScreenLocation(event.point);
+    final features = controller.featuresInRect(
+      Rect.fromCircle(center: screen, radius: 22),
+    );
+    for (final f in features) {
+      final stopId = f.properties['stopId'];
+      if (stopId is String) {
+        final stop = widget.stops.firstWhere(
+          (s) => s.stopId == stopId,
+          orElse: () => widget.stops.first,
+        );
+        context.push(
+          '/stop/${stop.stopId}?name=${Uri.encodeComponent(stop.name)}',
+        );
+        return;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final alerts = widget.lineNumber == null
         ? const []
         : (ref.watch(alertsProvider).valueOrNull ?? const [])
-            .where((a) => !a.isExpired && a.matchesLine(lineNumber!))
-            .toList();
+              .where((a) => !a.isExpired && a.matchesLine(widget.lineNumber!))
+              .toList();
 
     return Scaffold(
-      appBar: AppBar(title: Text(title ?? centerLabel ?? '')),
+      appBar: AppBar(title: Text(widget.title ?? widget.centerLabel ?? '')),
       body: Column(
         children: [
           for (final alert in alerts) RouteAlertBanner(alert: alert),
           Expanded(
-            child: FlutterMap(
-              options: MapOptions(initialCenter: initialCenter, initialZoom: 14),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.theoutlines.stigla',
-                ),
-                if (polyline != null && polyline!.isNotEmpty)
-                  PolylineLayer(
-                    polylines: [
-                      Polyline(
-                        points: polyline!.map((p) => ll.LatLng(p[0], p[1])).toList(),
-                        color: Theme.of(context).colorScheme.primary,
-                        strokeWidth: 4,
+            child: kMapRenderingEnabled
+                ? MapResizeNudge(
+                    child: MapLibreMap(
+                      options: MapOptions(
+                        initCenter: _initialCenter,
+                        initZoom: 13,
+                        initStyle: MapStyle.forBrightness(theme.brightness),
                       ),
-                    ],
-                  ),
-                MarkerLayer(
-                  markers: [
-                    if (center != null)
-                      Marker(
-                        point: center!,
-                        width: 40,
-                        height: 40,
-                        child: const Icon(Icons.place, color: Colors.redAccent, size: 36),
-                      ),
-                    for (final stop in stops)
-                      Marker(
-                        point: ll.LatLng(stop.lat, stop.lon),
-                        width: 44,
-                        height: 44,
-                        child: GestureDetector(
-                          onTap: () => context.push('/stop/${stop.stopId}?name=${Uri.encodeComponent(stop.name)}'),
-                          child: Tooltip(
-                            message: stop.name,
-                            child: Icon(Icons.directions_bus_rounded, color: Theme.of(context).colorScheme.primary, size: 30),
-                          ),
-                        ),
-                      ),
-                    ...extraMarkers,
-                  ],
-                ),
-                const SimpleAttributionWidget(
-                  source: Text('© OpenStreetMap contributors'),
-                ),
-              ],
-            ),
+                      onMapCreated: (c) => _controller = c,
+                      onStyleLoaded: _onStyleLoaded,
+                      onEvent: _onEvent,
+                      layers: _buildLayers(theme),
+                      children: const [SourceAttribution()],
+                    ),
+                  )
+                : const SizedBox.expand(),
           ),
         ],
       ),
     );
+  }
+
+  List<Layer> _buildLayers(ThemeData theme) {
+    final poly = widget.polyline;
+    return [
+      if (poly != null && poly.length >= 2)
+        PolylineLayer(
+          polylines: [
+            Feature<LineString>(
+              geometry: LineString.from([
+                for (final p in poly) Geographic(lon: p[1], lat: p[0]),
+              ]),
+            ),
+          ],
+          color: theme.colorScheme.primary,
+          width: 4,
+        ),
+      if (_imagesReady) ...[
+        MarkerLayer(
+          points: [
+            for (final s in widget.stops)
+              Feature<Point>(
+                geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
+                properties: {'stopId': s.stopId, 'name': s.name},
+              ),
+          ],
+          iconImage: MapImages.bus,
+          iconSize: 0.5,
+          iconAllowOverlap: true,
+        ),
+        if (widget.center != null)
+          MarkerLayer(
+            points: [
+              Feature<Point>(
+                geometry: Point(
+                  Geographic(
+                    lon: widget.center!.longitude,
+                    lat: widget.center!.latitude,
+                  ),
+                ),
+              ),
+            ],
+            iconImage: MapImages.place,
+            iconSize: 0.5,
+            iconAnchor: IconAnchor.bottom,
+            iconAllowOverlap: true,
+          ),
+      ],
+    ];
   }
 }

@@ -1,36 +1,36 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
+import 'package:maplibre/maplibre.dart';
 
+import '../../core/map_style.dart';
+import '../../core/map_support.dart';
 import '../../data/location/location_service.dart';
 import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/stop.dart';
+import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/vehicle_icon.dart';
 import 'map_screen_args.dart';
 import 'my_stops_screen.dart';
 
-const _belgradeCenter = ll.LatLng(44.8125, 20.4612);
+const _belgradeCenter = Geographic(lon: 20.4612, lat: 44.8125);
 const _distance = ll.Distance();
 
-// Below this zoom the whole-city view would pack hundreds of overlapping stop
-// markers into an unreadable blob, so we hide them and let the user zoom in —
-// the same "stops appear as you zoom" behaviour every map navigator uses.
-const _minStopsZoom = 14.0;
+// Load stops for the viewport from this zoom up; below it the map is a clean
+// overview. Between here and [_individualZoom] stops are shown clustered; at or
+// above it each stop gets its own pin.
+const _minStopsZoom = 12.0;
+const _individualZoom = 15.0;
 
-/// The app's home screen: a full-screen map (like a navigator app) with a
-/// floating universal-search bar on top. Stops are shown as markers for
-/// whatever part of the map is currently visible — decoupled from geolocation,
-/// so they always appear even if the user denies (or hasn't yet granted)
-/// location access. On entry we also try to recenter on the user's own
-/// position; after the first permission grant that happens automatically on
-/// every launch.
+/// Full-screen MapLibre + MapTiler vector map with a floating universal-search
+/// bar. Stops load for the visible viewport (independent of geolocation) and
+/// are clustered when zoomed out; on entry the map recenters on the user.
 class HomeMapScreen extends ConsumerStatefulWidget {
   const HomeMapScreen({super.key});
 
@@ -39,95 +39,80 @@ class HomeMapScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
-  final _mapController = MapController();
+  MapController? _controller;
+  ColorScheme _scheme = const ColorScheme.light();
+  Brightness? _styleBrightness;
+  bool _imagesReady = false;
+
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
-  Timer? _debounce;
-  Timer? _mapDebounce;
+  Timer? _searchDebounce;
 
-  // Map-readiness: flutter_map throws if `move()` is called before the widget
-  // has laid out at least once. If a camera target resolves before that, we
-  // stash it here and apply it in onMapReady.
-  bool _mapReady = false;
-  ll.LatLng? _pendingCenter;
-  double? _pendingZoom;
+  Geographic? _myPosition;
 
-  ll.LatLng? _myPosition;
-
-  // Stops currently drawn on the map, loaded for the visible area.
+  // Stops loaded for the current viewport, and the derived marker features.
   List<Stop> _areaStops = [];
   ll.LatLng? _lastFetchCenter;
   double _lastFetchRadius = 0;
   int _stopsRequestSeq = 0;
+
+  List<Feature<Point>> _clusterPts = [];
+  List<Feature<Point>> _busPts = [];
+  List<Feature<Point>> _tramPts = [];
+  List<Feature<Point>> _trolleyPts = [];
 
   bool _searching = false;
   List<Stop> _resultStops = [];
   List<LineInfo> _resultLines = [];
   List<GeocodeResult> _resultPlaces = [];
 
-  ll.LatLng? _pinnedPlace;
+  Geographic? _pinnedPlace;
   String? _pinnedPlaceLabel;
 
   @override
-  void initState() {
-    super.initState();
-    // Kick off geolocation immediately; it recenters the map once resolved.
-    // Stop loading is driven separately by onMapReady / onPositionChanged.
-    _loadMyLocation();
-  }
-
-  @override
   void dispose() {
-    _debounce?.cancel();
-    _mapDebounce?.cancel();
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  // ---- Camera helpers -------------------------------------------------------
+  // ---- Map lifecycle --------------------------------------------------------
 
-  void _centerOn(ll.LatLng point, double zoom) {
-    if (_mapReady) {
-      _mapController.move(point, zoom);
-    } else {
-      _pendingCenter = point;
-      _pendingZoom = zoom;
-    }
+  void _onMapCreated(MapController controller) {
+    _controller = controller;
+    _loadMyLocation();
   }
 
-  void _onMapReady() {
-    _mapReady = true;
-    if (_pendingCenter != null) {
-      _mapController.move(_pendingCenter!, _pendingZoom ?? _mapController.camera.zoom);
-      _pendingCenter = null;
-      _pendingZoom = null;
-    }
-    // Always show stops for wherever the map first lands, even before (or
-    // without) a geolocation fix.
+  Future<void> _onStyleLoaded(StyleController style) async {
+    await registerStigmaImages(style, _scheme);
+    if (!mounted) return;
+    setState(() => _imagesReady = true);
+    // Show stops for wherever the map currently sits, even before a fix.
     _loadStopsForVisibleArea();
   }
 
-  void _onPositionChanged(MapCamera camera, bool hasGesture) {
-    // Debounce: only refetch once the camera settles.
-    _mapDebounce?.cancel();
-    _mapDebounce = Timer(const Duration(milliseconds: 400), _loadStopsForVisibleArea);
+  void _onEvent(MapEvent event) {
+    if (event is MapEventCameraIdle) {
+      _loadStopsForVisibleArea();
+    } else if (event is MapEventClick) {
+      _handleTap(event.point);
+    }
   }
 
   // ---- Location -------------------------------------------------------------
 
   Future<void> _loadMyLocation() async {
     try {
-      final position = await ref.read(locationServiceProvider).getCurrentPosition();
-      final point = ll.LatLng(position.latitude, position.longitude);
+      final position = await ref
+          .read(locationServiceProvider)
+          .getCurrentPosition();
+      final point = Geographic(lon: position.longitude, lat: position.latitude);
       if (!mounted) return;
       setState(() => _myPosition = point);
-      // Centering fires onPositionChanged, which loads the stops around the
-      // new camera position — no need to fetch here as well.
-      _centerOn(point, 16);
+      await _controller?.animateCamera(center: point, zoom: 16);
     } on LocationUnavailable {
-      // Soft fallback: stay on the current/default view; stops still load via
-      // the map callbacks and manual search still works.
+      // Soft fallback: stay on the current view; stops still load, search works.
     } catch (_) {
       // Same soft fallback for any other failure.
     }
@@ -135,39 +120,43 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
 
   // ---- Stops for the visible area ------------------------------------------
 
-  void _loadStopsForVisibleArea() {
-    if (!_mapReady || !mounted) return;
-    if (_mapController.camera.zoom < _minStopsZoom) {
-      // Zoomed too far out — clear the blob and wait for the user to zoom in.
+  double _radiusForVisibleArea(MapCamera camera) {
+    try {
+      final region = _controller!.getVisibleRegion();
+      final ne = ll.LatLng(region.latitudeNorth, region.longitudeEast);
+      final center = ll.LatLng(camera.center.lat, camera.center.lon);
+      return _distance.as(ll.LengthUnit.Meter, center, ne).clamp(400.0, 3000.0);
+    } catch (_) {
+      return 1200;
+    }
+  }
+
+  Future<void> _loadStopsForVisibleArea() async {
+    final controller = _controller;
+    if (controller == null || !mounted) return;
+    final camera = controller.getCamera();
+    if (camera.zoom < _minStopsZoom) {
       if (_areaStops.isNotEmpty) {
-        setState(() => _areaStops = []);
         _lastFetchCenter = null;
+        setState(() {
+          _areaStops = [];
+          _rebuildMarkerFeatures();
+        });
       }
       return;
     }
-    _loadStopsAround(_mapController.camera.center);
-  }
-
-  /// Radius (meters) that roughly covers the visible viewport, clamped so we
-  /// never ask the backend for the whole city at once nor a uselessly tiny
-  /// patch when zoomed in tight.
-  double _radiusForVisibleArea() {
-    try {
-      final camera = _mapController.camera;
-      final corner = camera.visibleBounds.northEast;
-      final meters = _distance.as(ll.LengthUnit.Meter, camera.center, corner);
-      return meters.clamp(400.0, 2000.0);
-    } catch (_) {
-      return 1000;
-    }
-  }
-
-  Future<void> _loadStopsAround(ll.LatLng center) async {
-    final radius = _radiusForVisibleArea();
-    // Skip refetching if we've barely moved relative to the last fetch.
+    final center = ll.LatLng(camera.center.lat, camera.center.lon);
+    final radius = _radiusForVisibleArea(camera);
     if (_lastFetchCenter != null) {
-      final moved = _distance.as(ll.LengthUnit.Meter, _lastFetchCenter!, center);
-      if (moved < _lastFetchRadius * 0.35 && (radius - _lastFetchRadius).abs() < _lastFetchRadius * 0.5) {
+      final moved = _distance.as(
+        ll.LengthUnit.Meter,
+        _lastFetchCenter!,
+        center,
+      );
+      if (moved < _lastFetchRadius * 0.35 &&
+          (radius - _lastFetchRadius).abs() < _lastFetchRadius * 0.5) {
+        // Barely moved — still recluster (zoom may have changed) but skip refetch.
+        setState(_rebuildMarkerFeatures);
         return;
       }
     }
@@ -177,19 +166,145 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
     try {
       final stops = await ref
           .read(stopsRepositoryProvider)
-          .nearby(lat: center.latitude, lon: center.longitude, radiusMeters: radius);
-      if (!mounted || seq != _stopsRequestSeq) return; // a newer request won
-      setState(() => _areaStops = stops);
+          .nearby(
+            lat: center.latitude,
+            lon: center.longitude,
+            radiusMeters: radius,
+          );
+      if (!mounted || seq != _stopsRequestSeq) return;
+      setState(() {
+        _areaStops = stops;
+        _rebuildMarkerFeatures();
+      });
     } catch (_) {
-      // Leave whatever stops are already shown; transient failures shouldn't
-      // wipe the map.
+      // Keep whatever is shown on a transient failure.
     }
+  }
+
+  /// Rebuilds the cluster/per-type marker feature lists from [_areaStops] using
+  /// the current camera. Client-side screen-space grid clustering (the maplibre
+  /// 0.3.x GeoJsonSource has no native clustering).
+  void _rebuildMarkerFeatures() {
+    final controller = _controller;
+    final favoriteIds = _favoriteIds;
+    final visibleStops = [
+      for (final s in _areaStops)
+        if (!favoriteIds.contains(s.stopId)) s,
+    ];
+
+    final clusters = <Feature<Point>>[];
+    final bus = <Feature<Point>>[];
+    final tram = <Feature<Point>>[];
+    final trolley = <Feature<Point>>[];
+
+    void addIndividual(Stop s) {
+      final feature = Feature<Point>(
+        geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
+        properties: {'stopId': s.stopId, 'name': s.name},
+      );
+      switch (stopPrimaryType(s)) {
+        case VehicleType.tram:
+          tram.add(feature);
+        case VehicleType.trolleybus:
+          trolley.add(feature);
+        case VehicleType.bus:
+          bus.add(feature);
+      }
+    }
+
+    final zoom = controller?.getCamera().zoom ?? 14;
+    if (controller == null || zoom >= _individualZoom) {
+      for (final s in visibleStops) {
+        addIndividual(s);
+      }
+    } else {
+      const cell = 66.0;
+      final buckets = <String, List<Stop>>{};
+      for (final s in visibleStops) {
+        final off = controller.toScreenLocation(
+          Geographic(lon: s.lon, lat: s.lat),
+        );
+        final key = '${(off.dx / cell).floor()}:${(off.dy / cell).floor()}';
+        buckets.putIfAbsent(key, () => []).add(s);
+      }
+      for (final bucket in buckets.values) {
+        if (bucket.length == 1) {
+          addIndividual(bucket.first);
+        } else {
+          var lat = 0.0, lon = 0.0;
+          for (final s in bucket) {
+            lat += s.lat;
+            lon += s.lon;
+          }
+          clusters.add(
+            Feature<Point>(
+              geometry: Point(
+                Geographic(lon: lon / bucket.length, lat: lat / bucket.length),
+              ),
+              properties: {'cluster': true, 'point_count': bucket.length},
+            ),
+          );
+        }
+      }
+    }
+
+    _clusterPts = clusters;
+    _busPts = bus;
+    _tramPts = tram;
+    _trolleyPts = trolley;
+  }
+
+  Set<String> get _favoriteIds =>
+      (ref.read(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[])
+          .map((s) => s.stopId)
+          .toSet();
+
+  // ---- Taps -----------------------------------------------------------------
+
+  void _handleTap(Geographic point) {
+    final controller = _controller;
+    if (controller == null) return;
+    final screen = controller.toScreenLocation(point);
+    final features = controller.featuresInRect(
+      Rect.fromCircle(center: screen, radius: 22),
+    );
+    for (final f in features) {
+      final props = f.properties;
+      final stopId = props['stopId'];
+      if (stopId is String) {
+        final stop = _stopById(stopId);
+        if (stop != null) {
+          _openStop(stop);
+          return;
+        }
+      }
+      if (props['cluster'] == true) {
+        final camera = controller.getCamera();
+        controller.animateCamera(
+          center: point,
+          zoom: (camera.zoom + 2).clamp(12, 18),
+        );
+        return;
+      }
+    }
+  }
+
+  Stop? _stopById(String id) {
+    for (final s in _areaStops) {
+      if (s.stopId == id) return s;
+    }
+    final favs =
+        ref.read(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
+    for (final s in favs) {
+      if (s.stopId == id) return s;
+    }
+    return null;
   }
 
   // ---- Search ---------------------------------------------------------------
 
   void _onSearchChanged(String query) {
-    _debounce?.cancel();
+    _searchDebounce?.cancel();
     if (query.trim().isEmpty) {
       setState(() {
         _searching = false;
@@ -200,7 +315,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
       return;
     }
     setState(() => _searching = true);
-    _debounce = Timer(const Duration(milliseconds: 300), () => _runSearch(query));
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 300),
+      () => _runSearch(query),
+    );
   }
 
   Future<void> _runSearch(String query) async {
@@ -210,7 +328,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
     try {
       places = await ref.read(geocodeRepositoryProvider).search(query);
     } catch (_) {
-      // Geocoding is a best-effort second layer; ignore failures here.
+      // Geocoding is best-effort.
     }
     if (!mounted) return;
     setState(() {
@@ -237,11 +355,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
   }
 
   Future<void> _openLine(LineInfo line) async {
-    final shape = await ref.read(linesRepositoryProvider).getShapeByLineNumber(line.line);
+    final shape = await ref
+        .read(linesRepositoryProvider)
+        .getShapeByLineNumber(line.line);
     if (!mounted) return;
     _clearSearch();
     final routeStops = shape.stops
-        .map((s) => Stop(stopId: s.stopId, name: s.name, lat: s.lat, lon: s.lon, lines: [line.line]))
+        .map(
+          (s) => Stop(
+            stopId: s.stopId,
+            name: s.name,
+            lat: s.lat,
+            lon: s.lon,
+            lines: [line.line],
+          ),
+        )
         .toList();
     context.push(
       '/map',
@@ -255,197 +383,265 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
   }
 
   Future<void> _openPlace(GeocodeResult place) async {
-    final center = ll.LatLng(place.lat, place.lon);
+    final center = Geographic(lon: place.lon, lat: place.lat);
     if (!mounted) return;
     _clearSearch();
     setState(() {
       _pinnedPlace = center;
       _pinnedPlaceLabel = place.displayName;
     });
-    // Centering fires onPositionChanged, which loads the stops there.
-    _centerOn(center, 16);
+    await _controller?.animateCamera(center: center, zoom: 16);
   }
 
   void _openFavorites() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyStopsScreen()));
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const MyStopsScreen()));
   }
+
+  Future<void> _recenterOnMe() async {
+    if (_myPosition != null) {
+      await _controller?.animateCamera(center: _myPosition!, zoom: 16);
+    } else {
+      await _loadMyLocation();
+    }
+  }
+
+  // ---- Build ----------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final favoriteStops = ref.watch(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
-    final favoriteIds = favoriteStops.map((f) => f.stopId).toSet();
+    _scheme = theme.colorScheme;
+    final brightness = theme.brightness;
+
+    // Follow the app theme: swap the MapTiler style when brightness flips.
+    if (_styleBrightness == null) {
+      _styleBrightness = brightness;
+    } else if (_styleBrightness != brightness && _controller != null) {
+      _styleBrightness = brightness;
+      _imagesReady = false;
+      _controller!.setStyle(MapStyle.forBrightness(brightness));
+    }
+
+    final favoriteStops =
+        ref.watch(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
 
     return Scaffold(
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _belgradeCenter,
-              initialZoom: 14,
-              minZoom: 10,
-              maxZoom: 18,
-              onMapReady: _onMapReady,
-              onPositionChanged: _onPositionChanged,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.theoutlines.stigla',
-              ),
-              MarkerLayer(
-                markers: [
-                  for (final stop in _areaStops)
-                    _stopMarker(context, stop, isFavorite: favoriteIds.contains(stop.stopId)),
-                  for (final stop in _resultStops)
-                    if (!_areaStops.any((s) => s.stopId == stop.stopId))
-                      _stopMarker(context, stop, isFavorite: favoriteIds.contains(stop.stopId)),
-                  for (final fav in favoriteStops)
-                    if (!_areaStops.any((s) => s.stopId == fav.stopId) &&
-                        !_resultStops.any((s) => s.stopId == fav.stopId))
-                      _stopMarker(context, fav, isFavorite: true),
-                  if (_pinnedPlace != null)
-                    Marker(
-                      point: _pinnedPlace!,
-                      width: 40,
-                      height: 40,
-                      child: const Icon(Icons.place, color: Colors.redAccent, size: 36),
-                    ),
-                  if (_myPosition != null)
-                    Marker(
-                      point: _myPosition!,
-                      width: 22,
-                      height: 22,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SimpleAttributionWidget(source: Text('© OpenStreetMap contributors')),
-            ],
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  Material(
-                    elevation: 4,
-                    borderRadius: BorderRadius.circular(28),
-                    color: theme.colorScheme.surface,
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.star_outline),
-                          tooltip: l10n.navMyStops,
-                          onPressed: _openFavorites,
-                        ),
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            focusNode: _focusNode,
-                            onChanged: _onSearchChanged,
-                            decoration: InputDecoration(
-                              hintText: l10n.searchHint,
-                              border: InputBorder.none,
-                            ),
-                          ),
-                        ),
-                        if (_searching)
-                          IconButton(icon: const Icon(Icons.close), onPressed: _clearSearch)
-                        else
-                          IconButton(
-                            icon: const Icon(Icons.settings_outlined),
-                            tooltip: l10n.settingsTitle,
-                            onPressed: () => context.push('/settings'),
-                          ),
-                      ],
-                    ),
+          if (kMapRenderingEnabled)
+            Positioned.fill(
+              child: MapResizeNudge(
+                child: MapLibreMap(
+                  options: MapOptions(
+                    initCenter: _belgradeCenter,
+                    initZoom: 14,
+                    minZoom: 10,
+                    maxZoom: 18,
+                    initStyle: MapStyle.forBrightness(brightness),
                   ),
-                  if (_searching)
-                    Expanded(
-                      child: Material(
-                        elevation: 4,
-                        borderRadius: BorderRadius.circular(16),
-                        color: theme.colorScheme.surface,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: _searchResultsList(l10n),
-                        ),
-                      ),
-                    )
-                  else if (_pinnedPlaceLabel != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Material(
-                        elevation: 2,
-                        borderRadius: BorderRadius.circular(20),
-                        color: theme.colorScheme.surface,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.place, size: 18, color: Colors.redAccent),
-                              const SizedBox(width: 8),
-                              Flexible(child: Text(_pinnedPlaceLabel!, overflow: TextOverflow.ellipsis)),
-                              IconButton(
-                                icon: const Icon(Icons.close, size: 18),
-                                onPressed: () => setState(() {
-                                  _pinnedPlace = null;
-                                  _pinnedPlaceLabel = null;
-                                }),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+                  onMapCreated: _onMapCreated,
+                  onStyleLoaded: _onStyleLoaded,
+                  onEvent: _onEvent,
+                  layers: _buildLayers(favoriteStops),
+                  children: const [SourceAttribution()],
+                ),
               ),
-            ),
-          ),
+            )
+          else
+            const SizedBox.expand(),
+          _searchOverlay(l10n, theme),
         ],
       ),
       floatingActionButton: _searching
           ? null
           : FloatingActionButton(
               tooltip: l10n.navMyStops,
-              onPressed: _loadMyLocation,
+              onPressed: _recenterOnMe,
               child: const Icon(Icons.my_location),
             ),
     );
   }
 
-  Marker _stopMarker(BuildContext context, Stop stop, {required bool isFavorite}) {
-    final theme = Theme.of(context);
-    return Marker(
-      point: ll.LatLng(stop.lat, stop.lon),
-      width: 40,
-      height: 40,
-      child: GestureDetector(
-        onTap: () => _openStop(stop),
-        child: Tooltip(
-          message: stop.name,
-          child: Icon(
-            isFavorite ? Icons.star : Icons.directions_bus_rounded,
-            color: theme.colorScheme.primary,
-            size: isFavorite ? 28 : 30,
-          ),
+  List<Layer> _buildLayers(List<Stop> favoriteStops) {
+    if (!_imagesReady) return const [];
+    return [
+      if (_clusterPts.isNotEmpty)
+        MarkerLayer(
+          points: _clusterPts,
+          iconImage: MapImages.cluster,
+          iconSize: _iconSize,
+          iconAllowOverlap: true,
+          textField: '{point_count}',
+          textColor: _scheme.onPrimary,
+          textSize: 13,
+          textAllowOverlap: true,
+        ),
+      if (_busPts.isNotEmpty)
+        MarkerLayer(
+          points: _busPts,
+          iconImage: MapImages.bus,
+          iconSize: _iconSize,
+          iconAllowOverlap: true,
+        ),
+      if (_tramPts.isNotEmpty)
+        MarkerLayer(
+          points: _tramPts,
+          iconImage: MapImages.tram,
+          iconSize: _iconSize,
+          iconAllowOverlap: true,
+        ),
+      if (_trolleyPts.isNotEmpty)
+        MarkerLayer(
+          points: _trolleyPts,
+          iconImage: MapImages.trolley,
+          iconSize: _iconSize,
+          iconAllowOverlap: true,
+        ),
+      if (favoriteStops.isNotEmpty)
+        MarkerLayer(
+          points: [
+            for (final s in favoriteStops)
+              Feature<Point>(
+                geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
+                properties: {'stopId': s.stopId, 'name': s.name},
+              ),
+          ],
+          iconImage: MapImages.favorite,
+          iconSize: _iconSize,
+          iconAllowOverlap: true,
+        ),
+      if (_pinnedPlace != null)
+        MarkerLayer(
+          points: [Feature<Point>(geometry: Point(_pinnedPlace!))],
+          iconImage: MapImages.place,
+          iconSize: _iconSize,
+          iconAnchor: IconAnchor.bottom,
+          iconAllowOverlap: true,
+        ),
+      if (_myPosition != null)
+        MarkerLayer(
+          points: [Feature<Point>(geometry: Point(_myPosition!))],
+          iconImage: MapImages.me,
+          iconSize: _iconSize,
+          iconAllowOverlap: true,
+        ),
+    ];
+  }
+
+  // Widget-rendered marker images are captured at device pixel ratio, so they
+  // come out larger than their logical size — scale down to taste.
+  static const _iconSize = 0.5;
+
+  Widget _searchOverlay(AppLocalizations l10n, ThemeData theme) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Material(
+              elevation: 4,
+              borderRadius: BorderRadius.circular(28),
+              color: theme.colorScheme.surface,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.star_outline),
+                    tooltip: l10n.navMyStops,
+                    onPressed: _openFavorites,
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _focusNode,
+                      onChanged: _onSearchChanged,
+                      decoration: InputDecoration(
+                        hintText: l10n.searchHint,
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  if (_searching)
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: _clearSearch,
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.settings_outlined),
+                      tooltip: l10n.settingsTitle,
+                      onPressed: () => context.push('/settings'),
+                    ),
+                ],
+              ),
+            ),
+            if (_searching)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Material(
+                    elevation: 4,
+                    borderRadius: BorderRadius.circular(16),
+                    color: theme.colorScheme.surface,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: _searchResultsList(l10n),
+                    ),
+                  ),
+                ),
+              )
+            else if (_pinnedPlaceLabel != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Material(
+                  elevation: 2,
+                  borderRadius: BorderRadius.circular(20),
+                  color: theme.colorScheme.surface,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.place,
+                          size: 18,
+                          color: Color(0xFFE5484D),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            _pinnedPlaceLabel!,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () => setState(() {
+                            _pinnedPlace = null;
+                            _pinnedPlaceLabel = null;
+                          }),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
 
   Widget _searchResultsList(AppLocalizations l10n) {
-    final hasResults = _resultStops.isNotEmpty || _resultLines.isNotEmpty || _resultPlaces.isNotEmpty;
+    final hasResults =
+        _resultStops.isNotEmpty ||
+        _resultLines.isNotEmpty ||
+        _resultPlaces.isNotEmpty;
     if (!hasResults) {
       return Center(child: Text(l10n.searchNoResults));
     }
