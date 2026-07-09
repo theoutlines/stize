@@ -14,10 +14,10 @@ class MapStyle {
   /// Whether a MapTiler key was provided at build time.
   static bool get hasKey => _key.isNotEmpty;
 
-  // Clean navigator-style base maps with a matching dark variant. This is a
+  // Clean navigator-tuned base maps with a matching dark variant. This is a
   // starting point — final visual tuning is done in the MapTiler editor.
-  static const _lightStyle = 'streets-v2';
-  static const _darkStyle = 'streets-v2-dark';
+  static const _lightStyle = 'streets-v4';
+  static const _darkStyle = 'streets-v4-dark';
 
   static String _url(String style) =>
       'https://api.maptiler.com/maps/$style/style.json?key=$_key';

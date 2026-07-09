@@ -32,7 +32,10 @@ const _individualZoom = 15.0;
 /// bar. Stops load for the visible viewport (independent of geolocation) and
 /// are clustered when zoomed out; on entry the map recenters on the user.
 class HomeMapScreen extends ConsumerStatefulWidget {
-  const HomeMapScreen({super.key});
+  const HomeMapScreen({super.key, this.onOpenDrawer});
+
+  /// Opens the app's navigation drawer (owned by the root scaffold).
+  final VoidCallback? onOpenDrawer;
 
   @override
   ConsumerState<HomeMapScreen> createState() => _HomeMapScreenState();
@@ -548,9 +551,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.star_outline),
-                    tooltip: l10n.navMyStops,
-                    onPressed: _openFavorites,
+                    icon: const Icon(Icons.menu),
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).openAppDrawerTooltip,
+                    onPressed: widget.onOpenDrawer,
                   ),
                   Expanded(
                     child: TextField(
@@ -570,9 +575,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
                     )
                   else
                     IconButton(
-                      icon: const Icon(Icons.settings_outlined),
-                      tooltip: l10n.settingsTitle,
-                      onPressed: () => context.push('/settings'),
+                      icon: const Icon(Icons.star_outline),
+                      tooltip: l10n.navMyStops,
+                      onPressed: _openFavorites,
                     ),
                 ],
               ),

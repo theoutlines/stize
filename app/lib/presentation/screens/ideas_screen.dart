@@ -8,7 +8,10 @@ import '../widgets/empty_state.dart';
 import 'idea_comments_screen.dart';
 
 class IdeasScreen extends ConsumerStatefulWidget {
-  const IdeasScreen({super.key});
+  const IdeasScreen({super.key, this.onOpenDrawer});
+
+  /// Opens the app's navigation drawer (owned by the root scaffold).
+  final VoidCallback? onOpenDrawer;
 
   @override
   ConsumerState<IdeasScreen> createState() => _IdeasScreenState();
@@ -50,7 +53,16 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen> {
     final ideas = ref.watch(ideasControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.navIdeas)),
+      appBar: AppBar(
+        title: Text(l10n.navIdeas),
+        leading: widget.onOpenDrawer == null
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.menu),
+                tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+                onPressed: widget.onOpenDrawer,
+              ),
+      ),
       body: Column(
         children: [
           Padding(
@@ -79,7 +91,10 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen> {
           Expanded(
             child: ideas.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, st) => EmptyState(icon: Icons.wifi_off_rounded, title: l10n.noNetworkTitle),
+              error: (err, st) => EmptyState(
+                icon: Icons.wifi_off_rounded,
+                title: l10n.noNetworkTitle,
+              ),
               data: (list) {
                 if (list.isEmpty) {
                   return EmptyState(
@@ -96,12 +111,25 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen> {
                       title: Text(idea.text),
                       subtitle: Text(l10n.ideaVotesCount(idea.votes)),
                       leading: IconButton(
-                        icon: Icon(idea.hasVoted ? Icons.arrow_circle_up : Icons.arrow_circle_up_outlined),
-                        color: idea.hasVoted ? Theme.of(context).colorScheme.primary : null,
-                        onPressed: () => ref.read(ideasControllerProvider.notifier).toggleVote(idea.id),
+                        icon: Icon(
+                          idea.hasVoted
+                              ? Icons.arrow_circle_up
+                              : Icons.arrow_circle_up_outlined,
+                        ),
+                        color: idea.hasVoted
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
+                        onPressed: () => ref
+                            .read(ideasControllerProvider.notifier)
+                            .toggleVote(idea.id),
                       ),
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => IdeaCommentsScreen(ideaId: idea.id, ideaText: idea.text)),
+                        MaterialPageRoute(
+                          builder: (_) => IdeaCommentsScreen(
+                            ideaId: idea.id,
+                            ideaText: idea.text,
+                          ),
+                        ),
                       ),
                     );
                   },

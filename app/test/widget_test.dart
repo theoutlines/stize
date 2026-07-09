@@ -11,10 +11,15 @@ void main() {
   setUp(() => kMapRenderingEnabled = false);
   tearDown(() => kMapRenderingEnabled = true);
 
-  testWidgets('app boots to the home map without crashing', (WidgetTester tester) async {
+  testWidgets('app boots to the home map with drawer nav (no bottom tab bar)', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const ProviderScope(child: StiglaApp()));
     await tester.pump();
 
-    expect(find.byType(NavigationBar), findsOneWidget);
+    // Navigation moved from a bottom tab bar to a left drawer opened via a
+    // hamburger in the search bar.
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byIcon(Icons.menu), findsWidgets);
   });
 }

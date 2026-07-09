@@ -3,9 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
-import 'about_screen.dart';
+import '../widgets/app_drawer.dart';
 import 'home_map_screen.dart';
 import 'ideas_screen.dart';
 
@@ -17,6 +16,7 @@ class RootScreen extends ConsumerStatefulWidget {
 }
 
 class _RootScreenState extends ConsumerState<RootScreen> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _index = 0;
 
   @override
@@ -28,22 +28,23 @@ class _RootScreenState extends ConsumerState<RootScreen> {
     unawaited(ref.read(gtfsOfflineCacheProvider).refreshIfStale());
   }
 
+  void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
+
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: AppDrawer(
+        currentIndex: _index,
+        onSelect: (i) => setState(() => _index = i),
+      ),
+      // A single Scaffold owns the drawer; the section pages switch inside it,
+      // and each opens the drawer through [_openDrawer] (hamburger / edge swipe).
       body: IndexedStack(
         index: _index,
-        children: const [HomeMapScreen(), IdeasScreen(), AboutScreen()],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          NavigationDestination(icon: const Icon(Icons.map_outlined), selectedIcon: const Icon(Icons.map), label: l10n.navHome),
-          NavigationDestination(icon: const Icon(Icons.lightbulb_outline), selectedIcon: const Icon(Icons.lightbulb), label: l10n.navIdeas),
-          NavigationDestination(icon: const Icon(Icons.info_outline), selectedIcon: const Icon(Icons.info), label: l10n.navAbout),
+        children: [
+          HomeMapScreen(onOpenDrawer: _openDrawer),
+          IdeasScreen(onOpenDrawer: _openDrawer),
         ],
       ),
     );
