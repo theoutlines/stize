@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../domain/models/stop.dart';
 import '../domain/models/vehicle_type.dart';
+import '../presentation/widgets/vehicle_icon.dart';
 
 /// The camera is fenced to Belgrade and its immediate agglomeration: the app is
 /// a *city* transit map, so there's no reason to let the user fly out to a
@@ -197,15 +198,9 @@ class MapImages {
   };
 }
 
-IconData _vehicleIcon(VehicleType type) => switch (type) {
-  VehicleType.bus => Icons.directions_bus_rounded,
-  VehicleType.tram => Icons.tram_rounded,
-  VehicleType.trolleybus => Icons.directions_bus_filled_rounded,
-};
-
 /// A clean circular stop pin: a white disc with a thin colored ring and the
 /// transport-type glyph inside — deliberately not a default map balloon.
-Widget _stopPin(IconData icon, Color color, ColorScheme scheme) {
+Widget _stopPin(Widget glyph, Color color, ColorScheme scheme) {
   return SizedBox(
     width: 40,
     height: 40,
@@ -225,7 +220,7 @@ Widget _stopPin(IconData icon, Color color, ColorScheme scheme) {
             ),
           ],
         ),
-        child: Icon(icon, color: color, size: 18),
+        child: glyph,
       ),
     ),
   );
@@ -338,31 +333,55 @@ Future<void> registerStigmaImages(
     // keeps them clearly distinct from the solid moving-vehicle pills (D3).
     style.addImageFromWidget(
       id: MapImages.bus,
-      widget: _stopPin(Icons.directions_bus_rounded, _busColor, scheme),
+      widget: _stopPin(
+        vehicleGlyph(VehicleType.bus, size: 18, color: _busColor),
+        _busColor,
+        scheme,
+      ),
     ),
     style.addImageFromWidget(
       id: MapImages.tram,
-      widget: _stopPin(Icons.tram_rounded, _tramColor, scheme),
+      widget: _stopPin(
+        vehicleGlyph(VehicleType.tram, size: 18, color: _tramColor),
+        _tramColor,
+        scheme,
+      ),
     ),
     style.addImageFromWidget(
       id: MapImages.trolley,
       widget: _stopPin(
-        Icons.directions_bus_filled_rounded,
+        vehicleGlyph(VehicleType.trolleybus, size: 18, color: _trolleyColor),
         _trolleyColor,
         scheme,
       ),
     ),
     style.addImageFromWidget(
       id: MapImages.mixedStop,
-      widget: _stopPin(Icons.directions_transit_rounded, _mixedStopColor, scheme),
+      widget: _stopPin(
+        const Icon(
+          Icons.directions_transit_rounded,
+          size: 18,
+          color: _mixedStopColor,
+        ),
+        _mixedStopColor,
+        scheme,
+      ),
     ),
     style.addImageFromWidget(
       id: MapImages.favorite,
-      widget: _stopPin(Icons.star_rounded, const Color(0xFFF6A609), scheme),
+      widget: _stopPin(
+        const Icon(Icons.star_rounded, size: 18, color: Color(0xFFF6A609)),
+        const Color(0xFFF6A609),
+        scheme,
+      ),
     ),
     style.addImageFromWidget(
       id: MapImages.place,
-      widget: _stopPin(Icons.place, const Color(0xFFE5484D), scheme),
+      widget: _stopPin(
+        const Icon(Icons.place, size: 18, color: Color(0xFFE5484D)),
+        const Color(0xFFE5484D),
+        scheme,
+      ),
     ),
     style.addImageFromWidget(
       id: MapImages.vehicle,
@@ -378,9 +397,6 @@ Future<void> registerStigmaImages(
 
 /// The image id for a moving-vehicle marker of a given type.
 String vehicleImageFor(VehicleType type) => MapImages.vehicle;
-
-/// Icon used when we register per-type vehicle markers later, if needed.
-IconData movingVehicleIcon(VehicleType type) => _vehicleIcon(type);
 
 // ---- Live vehicle markers ---------------------------------------------------
 
@@ -581,7 +597,7 @@ class _VehicleMarkerState extends State<VehicleMarker>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_vehicleIcon(widget.type), color: Colors.white, size: 13),
+          vehicleGlyph(widget.type, size: 13, color: Colors.white),
           Text(
             widget.line,
             style: const TextStyle(
