@@ -52,6 +52,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
   Timer? _searchDebounce;
 
   Geographic? _myPosition;
+  // A camera target that resolved (e.g. from geolocation) before the map
+  // controller was ready; applied in [_onMapCreated].
+  Geographic? _pendingCenter;
+  double? _pendingZoom;
 
   // Stops loaded for the current viewport, and the derived marker features.
   List<Stop> _areaStops = [];
@@ -73,6 +77,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
   String? _pinnedPlaceLabel;
 
   @override
+  void initState() {
+    super.initState();
+    // Start locating immediately, in parallel with the map creating itself, so
+    // an already-granted user is centered the moment either finishes.
+    _startLocation();
+  }
+
+  @override
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
@@ -84,7 +96,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
 
   void _onMapCreated(MapController controller) {
     _controller = controller;
-    _loadMyLocation();
+    // Apply any camera target that resolved before the map was ready.
+    if (_pendingCenter != null) {
+      controller.moveCamera(center: _pendingCenter!, zoom: _pendingZoom ?? 16);
+      _pendingCenter = null;
+      _pendingZoom = null;
+    }
   }
 
   Future<void> _onStyleLoaded(StyleController style) async {
@@ -105,19 +122,51 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
 
   // ---- Location -------------------------------------------------------------
 
-  Future<void> _loadMyLocation() async {
+  /// Two-stage locate for a snappy launch: if access is already granted, jump
+  /// to the OS's last-known fix instantly, then refine with a fresh one. If not
+  /// granted yet, the fresh call also handles the one-time permission prompt.
+  Future<void> _startLocation() async {
+    final service = ref.read(locationServiceProvider);
+    final cached = await service.lastKnownIfGranted();
+    if (cached != null) {
+      _centerOnMe(
+        Geographic(lon: cached.longitude, lat: cached.latitude),
+        animate: false,
+      );
+    }
     try {
-      final position = await ref
-          .read(locationServiceProvider)
-          .getCurrentPosition();
-      final point = Geographic(lon: position.longitude, lat: position.latitude);
-      if (!mounted) return;
-      setState(() => _myPosition = point);
-      await _controller?.animateCamera(center: point, zoom: 16);
+      final fresh = await service.getCurrentPosition();
+      _centerOnMe(
+        Geographic(lon: fresh.longitude, lat: fresh.latitude),
+        animate: cached != null,
+      );
     } on LocationUnavailable {
       // Soft fallback: stay on the current view; stops still load, search works.
     } catch (_) {
       // Same soft fallback for any other failure.
+    }
+  }
+
+  void _centerOnMe(Geographic point, {required bool animate}) {
+    if (!mounted) return;
+    setState(() => _myPosition = point);
+    final controller = _controller;
+    if (controller == null) {
+      _pendingCenter = point;
+      _pendingZoom = 16;
+    } else if (animate) {
+      controller.animateCamera(center: point, zoom: 16);
+    } else {
+      controller.moveCamera(center: point, zoom: 16);
+    }
+  }
+
+  Future<void> _recenterOnMe() async {
+    final me = _myPosition;
+    if (me != null) {
+      await _controller?.animateCamera(center: me, zoom: 16);
+    } else {
+      await _startLocation();
     }
   }
 
@@ -402,14 +451,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
     ).push(MaterialPageRoute(builder: (_) => const MyStopsScreen()));
   }
 
-  Future<void> _recenterOnMe() async {
-    if (_myPosition != null) {
-      await _controller?.animateCamera(center: _myPosition!, zoom: 16);
-    } else {
-      await _loadMyLocation();
-    }
-  }
-
   // ---- Build ----------------------------------------------------------------
 
   @override
@@ -455,16 +496,48 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
             )
           else
             const SizedBox.expand(),
-          _searchOverlay(l10n, theme),
+          // Round action buttons at the top: menu (left), recenter (right).
+          _topButtons(theme),
+          // Search + favourites, anchored to the bottom (thumb-reachable);
+          // results grow upward from the bar.
+          _bottomSearch(l10n, theme),
         ],
       ),
-      floatingActionButton: _searching
-          ? null
-          : FloatingActionButton(
-              tooltip: l10n.navMyStops,
-              onPressed: _recenterOnMe,
-              child: const Icon(Icons.my_location),
+    );
+  }
+
+  Widget _topButtons(ThemeData theme) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _roundButton(
+              theme,
+              icon: Icons.menu,
+              tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+              onTap: widget.onOpenDrawer,
             ),
+            _roundButton(theme, icon: Icons.my_location, onTap: _recenterOnMe),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _roundButton(
+    ThemeData theme, {
+    required IconData icon,
+    String? tooltip,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: theme.colorScheme.surface,
+      elevation: 3,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: IconButton(icon: Icon(icon), tooltip: tooltip, onPressed: onTap),
     );
   }
 
@@ -538,69 +611,33 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
   // come out larger than their logical size — scale down to taste.
   static const _iconSize = 0.5;
 
-  Widget _searchOverlay(AppLocalizations l10n, ThemeData theme) {
+  Widget _bottomSearch(AppLocalizations l10n, ThemeData theme) {
+    final maxResultsHeight = MediaQuery.of(context).size.height * 0.4;
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Material(
-              elevation: 4,
-              borderRadius: BorderRadius.circular(28),
-              color: theme.colorScheme.surface,
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.menu),
-                    tooltip: MaterialLocalizations.of(
-                      context,
-                    ).openAppDrawerTooltip,
-                    onPressed: widget.onOpenDrawer,
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      focusNode: _focusNode,
-                      onChanged: _onSearchChanged,
-                      decoration: InputDecoration(
-                        hintText: l10n.searchHint,
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  if (_searching)
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: _clearSearch,
-                    )
-                  else
-                    IconButton(
-                      icon: const Icon(Icons.star_outline),
-                      tooltip: l10n.navMyStops,
-                      onPressed: _openFavorites,
-                    ),
-                ],
-              ),
-            ),
-            if (_searching)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Results / pinned place sit ABOVE the bar since it's at the bottom.
+              if (_searching)
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxResultsHeight),
                   child: Material(
                     elevation: 4,
                     borderRadius: BorderRadius.circular(16),
                     color: theme.colorScheme.surface,
+                    clipBehavior: Clip.antiAlias,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: _searchResultsList(l10n),
                     ),
                   ),
-                ),
-              )
-            else if (_pinnedPlaceLabel != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Material(
+                )
+              else if (_pinnedPlaceLabel != null)
+                Material(
                   elevation: 2,
                   borderRadius: BorderRadius.circular(20),
                   color: theme.colorScheme.surface,
@@ -635,8 +672,51 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
                     ),
                   ),
                 ),
+              if (_searching || _pinnedPlaceLabel != null)
+                const SizedBox(height: 8),
+              Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(28),
+                color: theme.colorScheme.surface,
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    Icon(
+                      Icons.search,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        focusNode: _focusNode,
+                        onChanged: _onSearchChanged,
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          hintText: l10n.searchHint,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_searching)
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: _clearSearch,
+                      )
+                    else
+                      IconButton(
+                        icon: const Icon(Icons.star_outline),
+                        tooltip: l10n.navMyStops,
+                        onPressed: _openFavorites,
+                      ),
+                  ],
+                ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -648,9 +728,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
         _resultLines.isNotEmpty ||
         _resultPlaces.isNotEmpty;
     if (!hasResults) {
-      return Center(child: Text(l10n.searchNoResults));
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(l10n.searchNoResults, textAlign: TextAlign.center),
+      );
     }
     return ListView(
+      shrinkWrap: true,
       children: [
         for (final stop in _resultStops)
           ListTile(
