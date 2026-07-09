@@ -24,6 +24,7 @@
 
   "searchHint": "Stajalište, ulica ili linija…",
   "searchNoResults": "Ništa nije pronađeno. Probaj drugačiji unos.",
+  "locationDenied": "Lokacija je isključena. Dozvoli pristup da vidiš gde se nalaziš.",
   "nearbyStopsTitle": "Stajališta u blizini",
   "nearbyStopsEmpty": "Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.",
 

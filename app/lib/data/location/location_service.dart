@@ -18,9 +18,13 @@ class LocationUnavailable implements Exception {
 class LocationService {
   /// Whether location access has already been granted, without prompting.
   Future<bool> isPermissionGranted() async {
-    final permission = await Geolocator.checkPermission();
-    return permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse;
+    try {
+      final permission = await Geolocator.checkPermission();
+      return permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// A cached fix the OS already has — returns immediately (no GPS wait), so we
@@ -61,6 +65,7 @@ class LocationService {
     return Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.medium,
+        timeLimit: Duration(seconds: 12),
       ),
     );
   }

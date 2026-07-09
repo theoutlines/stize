@@ -78,6 +78,10 @@ class AppLocalizationsSr extends AppLocalizations {
   String get searchNoResults => 'Ništa nije pronađeno. Probaj drugačiji unos.';
 
   @override
+  String get locationDenied =>
+      'Lokacija je isključena. Dozvoli pristup da vidiš gde se nalaziš.';
+
+  @override
   String get nearbyStopsTitle => 'Stajališta u blizini';
 
   @override

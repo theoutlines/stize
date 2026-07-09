@@ -122,11 +122,18 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
 
   // ---- Location -------------------------------------------------------------
 
-  /// Two-stage locate for a snappy launch: if access is already granted, jump
-  /// to the OS's last-known fix instantly, then refine with a fresh one. If not
-  /// granted yet, the fresh call also handles the one-time permission prompt.
-  Future<void> _startLocation() async {
+  /// Locate the user and recenter on them.
+  ///
+  /// On entry ([requestPermission] false) we never pop the OS prompt — browsers
+  /// block a geolocation request that isn't tied to a user gesture anyway — so
+  /// we only auto-center when access is *already* granted (instantly via the
+  /// last-known fix, then refined). The recenter button passes
+  /// [requestPermission] true so the prompt fires from a real tap, and reports
+  /// back if access is denied instead of failing silently.
+  Future<void> _startLocation({bool requestPermission = false}) async {
     final service = ref.read(locationServiceProvider);
+    if (!requestPermission && !await service.isPermissionGranted()) return;
+
     final cached = await service.lastKnownIfGranted();
     if (cached != null) {
       _centerOnMe(
@@ -141,10 +148,18 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
         animate: cached != null,
       );
     } on LocationUnavailable {
-      // Soft fallback: stay on the current view; stops still load, search works.
+      if (requestPermission) _showLocationDenied();
     } catch (_) {
-      // Same soft fallback for any other failure.
+      if (requestPermission) _showLocationDenied();
     }
+  }
+
+  void _showLocationDenied() {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(l10n.locationDenied)));
   }
 
   void _centerOnMe(Geographic point, {required bool animate}) {
@@ -166,7 +181,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
     if (me != null) {
       await _controller?.animateCamera(center: me, zoom: 16);
     } else {
-      await _startLocation();
+      await _startLocation(requestPermission: true);
     }
   }
 
