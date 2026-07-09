@@ -69,6 +69,10 @@
   "retry": "Try again",
   "addToFavorites": "Add to My Stops",
   "removeFromFavorites": "Remove from My Stops",
+  "pinnedRenameTitle": "Custom name",
+  "pinnedCustomNameHint": "e.g. Home, Work",
+  "pinnedUseDefaultName": "Default name",
+  "pinLineTooltip": "Pin line",
 
   "settingsTitle": "Settings",
   "settingsLanguage": "Language",
@@ -89,6 +93,7 @@
   "alertUpcomingLabel": "Upcoming change",
   "alertActiveLabel": "Route change",
   "alertReadMore": "Read more",
+  "alertsBannerTitle": "Transport changes",
 
   "vehicleTypeBus": "Bus",
   "vehicleTypeTram": "Tram",

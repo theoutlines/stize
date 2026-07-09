@@ -15,7 +15,7 @@ import '../providers/providers.dart';
 import '../widgets/arrival_tile.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/live_vehicles_map.dart';
-import '../widgets/route_alert_banner.dart';
+import '../widgets/route_alerts_strip.dart';
 
 class StopScreen extends ConsumerStatefulWidget {
   const StopScreen({super.key, required this.stopId, this.initialStopName});
@@ -92,7 +92,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         onRefresh: () async => ref.invalidate(arrivalsProvider(widget.stopId)),
         child: ListView(
           children: [
-            for (final alert in relevantAlerts) RouteAlertBanner(alert: alert),
+            RouteAlertsStrip(alerts: relevantAlerts),
             board.when(
               loading: () => EmptyState(icon: Icons.directions_transit_outlined, title: l10n.loadingArrivals),
               error: (err, st) => _errorState(l10n, err),

@@ -2,10 +2,23 @@ import 'package:latlong2/latlong.dart' as ll;
 
 import '../domain/models/arrival.dart';
 import '../domain/models/vehicle_type.dart';
+import 'route_path.dart';
 
 class VehicleTrack {
-  VehicleTrack(this.to, {required this.line, required this.type, this.heading})
-    : from = to;
+  VehicleTrack(
+    this.to, {
+    required this.line,
+    required this.type,
+    this.heading,
+    this.path,
+  }) : from = to {
+    if (path != null) {
+      final d = path!.project(to);
+      fromDist = d;
+      toDist = d;
+    }
+  }
+
   ll.LatLng from;
   ll.LatLng to;
 
@@ -15,12 +28,27 @@ class VehicleTrack {
   final VehicleType type;
 
   /// Travel direction in degrees (0 = north, clockwise), or null if unknown.
+  /// Used only as a fallback heading when there's no route [path]; with a path
+  /// the heading is derived from the path tangent so it always matches motion.
   double? heading;
 
+  /// The vehicle's route geometry, when known. When present, the marker moves
+  /// *along* this path between updates instead of in a straight line (X5).
+  RoutePath? path;
+
+  /// Distance-along [path] (metres) the animation eases between. Unused in the
+  /// straight-line fallback.
+  double fromDist = 0;
+  double toDist = 0;
+
   /// How many *consecutive* provider updates have landed with the vehicle at
-  /// (essentially) the same real position. Movement resets it to 0. This is a
-  /// soft "looks stuck" heuristic, not a hard traffic signal.
+  /// (essentially) the same real position. Movement resets it to 0.
   int staleCount = 0;
+
+  /// How many consecutive updates the vehicle has been *absent* from the feed.
+  /// A short absence is a data blip, not the end of a trip, so the marker is
+  /// held (and faded) for a grace period before being dropped (X6).
+  int missingCount = 0;
 }
 
 /// One vehicle position update fed into [VehicleTrackAnimator.syncSamples].
@@ -31,6 +59,7 @@ class VehicleSample {
     required this.line,
     required this.type,
     this.heading,
+    this.path,
   });
 
   final String key;
@@ -38,26 +67,45 @@ class VehicleSample {
   final String line;
   final VehicleType type;
   final double? heading;
+
+  /// The vehicle's route geometry, if the caller could resolve it.
+  final RoutePath? path;
 }
 
 /// Pure interpolation logic behind the live-tracking map, kept separate from
-/// the widget tree so it can be unit-tested without spinning up FlutterMap
-/// (which would otherwise mean real tile-server network calls in tests).
+/// the widget tree so it can be unit-tested without spinning up a real map.
 ///
-/// Rule: a vehicle's displayed position only ever eases from wherever it
-/// currently sits toward the most recently known *real* GPS fix. It never
-/// jumps backward, and never runs past the latest known position.
+/// Two guarantees hold the tracking together:
+///  * **Move along the route, not through buildings (X5).** When a vehicle's
+///    route [RoutePath] is known, its displayed position eases along that path
+///    between successive real fixes (projected onto the path), and its heading
+///    comes from the path tangent so the arrow always matches the motion. With
+///    no path we fall back to a conservative straight-line ease.
+///  * **Never run ahead of the real vehicle (F1).** The marker only ever eases
+///    toward a position/along-distance the vehicle has *already* reported — it
+///    never extrapolates forward — so on-screen it lags rather than races.
+///  * **Don't flicker on a data blip (X6).** A vehicle missing from one or two
+///    updates is held on its last known position (and faded) for a grace period
+///    before its marker is removed.
 class VehicleTrackAnimator {
   final Map<String, VehicleTrack> _tracks = {};
 
   Map<String, VehicleTrack> get tracks => _tracks;
 
-  // A vehicle whose reported position hasn't moved beyond this many degrees
-  // between updates (~11 m) is treated as not having moved.
-  static const _stillEpsilon = 1e-4;
+  // A vehicle whose reported position hasn't moved beyond this between updates
+  // is treated as not having moved (~11 m either way).
+  static const _stillEpsilon = 1e-4; // degrees, straight-line fallback
+  static const _stillMeters = 12.0; // path mode
 
-  // Consecutive no-move updates before we call a vehicle "looks stuck".
-  static const _stuckThreshold = 2;
+  // Consecutive no-move updates before we call a vehicle "looks stuck" (E4).
+  // Updates land ~every 30s, and a vehicle legitimately dwells at a stop or a
+  // red light, so a single or double no-move read is normal — only from the
+  // 3rd (~90s of no real movement, past normal dwell) do we flag it.
+  static const _stuckThreshold = 3;
+
+  // Keep a vanished vehicle on its last position for this many missing updates
+  // before dropping it (X6 grace period).
+  static const _graceThreshold = 2;
 
   static String keyFor(Arrival a) => a.garageNo ?? '${a.line}-${a.routeId}';
 
@@ -91,10 +139,30 @@ class VehicleTrackAnimator {
           line: s.line,
           type: s.type,
           heading: s.heading,
+          path: s.path,
         );
+        continue;
+      }
+
+      existing.missingCount = 0;
+      // A path may only have become available on a later update.
+      existing.path ??= s.path;
+      if (s.heading != null) existing.heading = s.heading;
+
+      final path = existing.path;
+      if (path != null && path.isUsable) {
+        final newDist = path.project(s.position);
+        final curDist = _lerpD(existing.fromDist, existing.toDist, currentT);
+        if ((newDist - existing.toDist).abs() < _stillMeters) {
+          existing.staleCount++;
+        } else {
+          existing.staleCount = 0;
+        }
+        existing.fromDist = curDist;
+        existing.toDist = newDist;
+        existing.from = path.pointAt(curDist);
+        existing.to = s.position;
       } else {
-        // Movement heuristic compares the new *real* fix against the previous
-        // one (existing.to), before we overwrite it.
         if (_isSamePlace(existing.to, s.position)) {
           existing.staleCount++;
         } else {
@@ -102,10 +170,17 @@ class VehicleTrackAnimator {
         }
         existing.from = _interpolate(existing.from, existing.to, currentT);
         existing.to = s.position;
-        if (s.heading != null) existing.heading = s.heading;
       }
     }
-    _tracks.removeWhere((key, _) => !seen.contains(key));
+
+    // Grace period: age out vehicles missing from this update rather than
+    // dropping them the instant they blink out of the feed (X6).
+    for (final entry in _tracks.entries) {
+      if (!seen.contains(entry.key)) entry.value.missingCount++;
+    }
+    _tracks.removeWhere(
+      (key, t) => !seen.contains(key) && t.missingCount > _graceThreshold,
+    );
   }
 
   /// Whether a vehicle currently reads as stuck (hasn't moved across the last
@@ -113,7 +188,20 @@ class VehicleTrackAnimator {
   bool isStuck(String key) =>
       (_tracks[key]?.staleCount ?? 0) >= _stuckThreshold;
 
+  /// Display opacity for a vehicle: fully opaque while present, fading out over
+  /// the grace period once it goes missing (X6).
+  double opacityFor(String key) {
+    final missing = _tracks[key]?.missingCount ?? 0;
+    if (missing <= 0) return 1.0;
+    return missing == 1 ? 0.5 : 0.3;
+  }
+
   VehicleTrack? trackFor(String key) => _tracks[key];
+
+  /// Drop every track immediately, bypassing the grace period — for a hard
+  /// reset like zooming out past the vehicle layer, where holding stale markers
+  /// would be wrong.
+  void clear() => _tracks.clear();
 
   static bool _isSamePlace(ll.LatLng a, ll.LatLng b) =>
       (a.latitude - b.latitude).abs() < _stillEpsilon &&
@@ -121,11 +209,34 @@ class VehicleTrackAnimator {
 
   ll.LatLng positionOf(String key, double t) {
     final track = _tracks[key]!;
+    final path = track.path;
+    if (path != null && path.isUsable) {
+      return path.pointAt(_lerpD(track.fromDist, track.toDist, t));
+    }
     return _interpolate(track.from, track.to, t);
+  }
+
+  /// The heading to draw for a vehicle at animation time [t]: along the route
+  /// tangent (matching the on-screen motion) when a path is known, else the
+  /// provider-supplied fallback heading.
+  double? headingAt(String key, double t) {
+    final track = _tracks[key];
+    if (track == null) return null;
+    final path = track.path;
+    if (path != null && path.isUsable) {
+      final cur = _lerpD(track.fromDist, track.toDist, t);
+      return path.headingAt(cur, forward: track.toDist >= track.fromDist);
+    }
+    return track.heading;
   }
 
   Iterable<MapEntry<String, ll.LatLng>> currentPositions(double t) {
     return _tracks.keys.map((key) => MapEntry(key, positionOf(key, t)));
+  }
+
+  static double _lerpD(double from, double to, double t) {
+    final clampedT = t.clamp(0.0, 1.0);
+    return from + (to - from) * clampedT;
   }
 
   static ll.LatLng _interpolate(ll.LatLng from, ll.LatLng to, double t) {

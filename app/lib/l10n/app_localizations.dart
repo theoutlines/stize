@@ -388,6 +388,30 @@ abstract class AppLocalizations {
   /// **'Remove from My Stops'**
   String get removeFromFavorites;
 
+  /// No description provided for @pinnedRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom name'**
+  String get pinnedRenameTitle;
+
+  /// No description provided for @pinnedCustomNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Home, Work'**
+  String get pinnedCustomNameHint;
+
+  /// No description provided for @pinnedUseDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'Default name'**
+  String get pinnedUseDefaultName;
+
+  /// No description provided for @pinLineTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin line'**
+  String get pinLineTooltip;
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:
@@ -477,6 +501,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Read more'**
   String get alertReadMore;
+
+  /// No description provided for @alertsBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Transport changes'**
+  String get alertsBannerTitle;
 
   /// No description provided for @vehicleTypeBus.
   ///

@@ -9,14 +9,18 @@ import 'package:maplibre/maplibre.dart';
 
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
+import '../../core/route_path.dart';
 import '../../core/vehicle_track_animator.dart';
 import '../../data/location/location_service.dart';
 import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
+import '../../domain/models/pinned_line.dart';
 import '../../domain/models/stop.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import '../widgets/favorites_carousel.dart';
+import '../widgets/stop_sheet.dart';
 import '../widgets/vehicle_icon.dart';
 import 'map_screen_args.dart';
 import 'my_stops_screen.dart';
@@ -36,6 +40,9 @@ const _individualZoom = 15.0;
 // backend's ~30s per-stop cache: polling faster just re-reads the same cached
 // positions, which the movement heuristic would misread as "stuck".
 const _minVehiclesZoom = 14.0;
+// At/above this zoom vehicles show as full number pills; between [_minVehiclesZoom,
+// this) they render as simple coloured dots (progressive detail, B2).
+const _vehicleDetailZoom = 15.5;
 const _vehiclesRefreshInterval = Duration(seconds: 30);
 const _vehiclesMaxRadius = 1000.0;
 
@@ -89,6 +96,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   List<Feature<Point>> _busPts = [];
   List<Feature<Point>> _tramPts = [];
   List<Feature<Point>> _trolleyPts = [];
+  List<Feature<Point>> _mixedPts = [];
+
+  // Tram rail geometry (C2), fetched once from the tram lines' GTFS shapes and
+  // drawn as thin lines under everything else.
+  bool _tramRailsRequested = false;
+  List<List<List<double>>> _tramRails = [];
+
+  // Per-line route geometry cache (X5): line number -> path (null = fetched but
+  // unavailable). Vehicles move along these instead of teleporting.
+  final Map<String, RoutePath?> _shapeCache = {};
+  final Set<String> _shapeFetching = {};
 
   bool _searching = false;
   List<Stop> _resultStops = [];
@@ -146,6 +164,28 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // before a location fix — transport shows up right away.
     _loadStopsForVisibleArea();
     _loadVehiclesForVisibleArea(force: true);
+    _loadTramRails();
+  }
+
+  /// Fetches the tram lines' route shapes once and keeps them as thin rail
+  /// lines on the map (C2). Best-effort per line — a missing shape just omits
+  /// that route.
+  Future<void> _loadTramRails() async {
+    if (_tramRailsRequested) return;
+    _tramRailsRequested = true;
+    final repo = ref.read(linesRepositoryProvider);
+    final rails = <List<List<double>>>[];
+    await Future.wait([
+      for (final line in tramLineNumbers)
+        repo
+            .getShapeByLineNumber(line)
+            .then((shape) {
+              if (shape.polyline.length >= 2) rails.add(shape.polyline);
+            })
+            .catchError((_) {}),
+    ]);
+    if (!mounted) return;
+    setState(() => _tramRails = rails);
   }
 
   void _onEvent(MapEvent event) {
@@ -214,12 +254,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   }
 
   Future<void> _recenterOnMe() async {
+    // Recenter immediately on the best position we already have (instant
+    // feedback), then always kick off a fresh fix that recenters again — so the
+    // button reliably moves the camera to the user on every tap, and a stale
+    // cached position gets corrected rather than leaving the button feeling
+    // dead (X3).
     final me = _myPosition;
     if (me != null) {
       await _controller?.animateCamera(center: me, zoom: 16);
-    } else {
-      await _startLocation(requestPermission: true);
     }
+    await _startLocation(requestPermission: true);
   }
 
   // ---- Stops for the visible area ------------------------------------------
@@ -300,13 +344,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final bus = <Feature<Point>>[];
     final tram = <Feature<Point>>[];
     final trolley = <Feature<Point>>[];
+    final mixed = <Feature<Point>>[];
 
     void addIndividual(Stop s) {
       final feature = Feature<Point>(
         geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
         properties: {'stopId': s.stopId, 'name': s.name},
       );
-      switch (stopPrimaryType(s)) {
+      final types = stopTypes(s);
+      if (types.length > 1) {
+        mixed.add(feature); // one unified marker for multi-type stops (D2)
+        return;
+      }
+      switch (types.isEmpty ? VehicleType.bus : types.first) {
         case VehicleType.tram:
           tram.add(feature);
         case VehicleType.trolleybus:
@@ -356,6 +406,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _busPts = bus;
     _tramPts = tram;
     _trolleyPts = trolley;
+    _mixedPts = mixed;
   }
 
   Set<String> get _favoriteIds =>
@@ -377,7 +428,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // source a wide fan-out).
     if (camera.zoom < _minVehiclesZoom) {
       if (_hasVehicles) {
-        _vehAnimator.syncSamples(const [], _vehAnim.value);
+        _vehAnimator.clear(); // hard reset — no grace period on a zoom-out
         _lastVehiclesCenter = null;
         setState(() => _hasVehicles = false);
       }
@@ -396,6 +447,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           .read(vehiclesRepositoryProvider)
           .nearby(lat: center.latitude, lon: center.longitude, radiusMeters: radius);
       if (!mounted || seq != _vehiclesRequestSeq) return;
+      // Make sure each visible line's route geometry is (being) fetched so the
+      // animator can move markers along the road, not through buildings (X5).
+      _ensureShapesFor(vehicles.map((v) => v.line));
       _vehAnimator.syncSamples([
         for (final v in vehicles)
           VehicleSample(
@@ -404,12 +458,37 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             line: v.line,
             type: v.vehicleType,
             heading: v.heading,
+            path: _shapeCache[v.line],
           ),
       ], _vehAnim.value);
       _vehAnim.forward(from: 0);
-      setState(() => _hasVehicles = vehicles.isNotEmpty);
+      // Reflect the animator's set (which may still hold briefly-missing
+      // vehicles during their grace period), not just this response (X6).
+      setState(() => _hasVehicles = _vehAnimator.tracks.isNotEmpty);
     } catch (_) {
       // Keep whatever is shown on a transient failure.
+    }
+  }
+
+  /// Lazily fetches (once, cached) the route geometry for each given line so
+  /// vehicles on it can be animated along the route. A failed lookup caches
+  /// null — the vehicle then falls back to a plain straight-line ease.
+  void _ensureShapesFor(Iterable<String> lines) {
+    for (final line in lines.toSet()) {
+      if (_shapeCache.containsKey(line) || _shapeFetching.contains(line)) {
+        continue;
+      }
+      _shapeFetching.add(line);
+      ref
+          .read(linesRepositoryProvider)
+          .getShapeByLineNumber(line)
+          .then((shape) {
+            _shapeCache[line] = RoutePath.fromLatLon(shape.polyline);
+          })
+          .catchError((_) {
+            _shapeCache[line] = null;
+          })
+          .whenComplete(() => _shapeFetching.remove(line));
     }
   }
 
@@ -536,7 +615,35 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   void _openStop(Stop stop) {
     _clearSearch();
-    context.push('/stop/${stop.stopId}?name=${Uri.encodeComponent(stop.name)}');
+    // Seamless (A1): overlay the arrivals on the same map instead of pushing a
+    // whole new screen with its own map.
+    showStopSheet(context, stopId: stop.stopId, stopName: stop.name);
+  }
+
+  bool _isLinePinned(String line) {
+    final pinned =
+        ref.watch(pinnedLinesControllerProvider).valueOrNull ??
+        const <PinnedLine>[];
+    return pinned.any((l) => l.line == line);
+  }
+
+  void _togglePinLine(LineInfo line) {
+    final notifier = ref.read(pinnedLinesControllerProvider.notifier);
+    final pinned =
+        ref.read(pinnedLinesControllerProvider).valueOrNull ??
+        const <PinnedLine>[];
+    if (pinned.any((l) => l.line == line.line)) {
+      notifier.remove(line.line);
+    } else {
+      notifier.add(
+        PinnedLine(
+          line: line.line,
+          vehicleType: line.vehicleType,
+          origin: line.origin,
+          destination: line.destination,
+        ),
+      );
+    }
   }
 
   Future<void> _openLine(LineInfo line) async {
@@ -615,8 +722,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   options: MapOptions(
                     initCenter: _belgradeCenter,
                     initZoom: 15,
-                    minZoom: 10,
-                    maxZoom: 18,
+                    // Fence the camera to the city (B1): no zooming out to a
+                    // country view, no dragging far past the agglomeration.
+                    minZoom: kCityMinZoom,
+                    maxZoom: kCityMaxZoom,
+                    maxBounds: belgradeMaxBounds,
                     initStyle: MapStyle.forBrightness(brightness),
                   ),
                   onMapCreated: _onMapCreated,
@@ -624,7 +734,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   onEvent: _onEvent,
                   layers: _buildLayers(favoriteStops),
                   children: [
-                    const SourceAttribution(),
+                    const CompactAttribution(),
+                    // "My position" as a widget marker so it survives every zoom
+                    // level (X2), not a cullable GL symbol.
+                    if (_myPosition != null)
+                      WidgetLayer(
+                        markers: [
+                          Marker(
+                            point: _myPosition!,
+                            size: MeLocationDot.markerSize,
+                            child: const MeLocationDot(),
+                          ),
+                        ],
+                      ),
                     // Live vehicles, rebuilt each animation tick so their eased
                     // positions update; only this subtree repaints.
                     AnimatedBuilder(
@@ -671,7 +793,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final camera = controller.getCamera();
     controller.animateCamera(
       center: camera.center,
-      zoom: (camera.zoom + delta).clamp(10.0, 18.0),
+      zoom: (camera.zoom + delta).clamp(kCityMinZoom, kCityMaxZoom),
     );
   }
 
@@ -745,25 +867,33 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   List<Marker> _vehicleMarkers() {
     if (!_hasVehicles) return const [];
+    final zoom = _controller?.getCamera().zoom ?? 15.0;
+    final compact = zoom < _vehicleDetailZoom;
     final markers = <Marker>[];
     for (final entry in _vehAnimator.currentPositions(_vehAnim.value)) {
       final key = entry.key;
       final track = _vehAnimator.trackFor(key);
       if (track == null) continue;
       final pos = entry.value;
+      final opacity = _vehAnimator.opacityFor(key);
+      final marker = VehicleMarker(
+        key: ValueKey(key),
+        line: track.line,
+        type: track.type,
+        color: vehicleColor(track.type),
+        // Heading follows the route tangent so the arrow matches the motion.
+        heading: compact ? null : _vehAnimator.headingAt(key, _vehAnim.value),
+        stuck: _vehAnimator.isStuck(key),
+        compact: compact,
+        onTap: () => _openVehicleLine(track.line),
+      );
       markers.add(
         Marker(
           point: Geographic(lon: pos.longitude, lat: pos.latitude),
           size: VehicleMarker.markerSize,
-          child: VehicleMarker(
-            key: ValueKey(key),
-            line: track.line,
-            type: track.type,
-            color: vehicleColor(track.type),
-            heading: track.heading,
-            stuck: _vehAnimator.isStuck(key),
-            onTap: () => _openVehicleLine(track.line),
-          ),
+          child: opacity >= 1.0
+              ? marker
+              : Opacity(opacity: opacity, child: marker),
         ),
       );
     }
@@ -773,6 +903,20 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   List<Layer> _buildLayers(List<Stop> favoriteStops) {
     if (!_imagesReady) return const [];
     return [
+      // Tram rails, under everything (C2).
+      if (_tramRails.isNotEmpty)
+        PolylineLayer(
+          polylines: [
+            for (final poly in _tramRails)
+              Feature<LineString>(
+                geometry: LineString.from([
+                  for (final p in poly) Geographic(lon: p[1], lat: p[0]),
+                ]),
+              ),
+          ],
+          color: tramRailColor,
+          width: 2,
+        ),
       if (_clusterPts.isNotEmpty)
         MarkerLayer(
           points: _clusterPts,
@@ -805,6 +949,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           iconSize: _iconSize,
           iconAllowOverlap: true,
         ),
+      if (_mixedPts.isNotEmpty)
+        MarkerLayer(
+          points: _mixedPts,
+          iconImage: MapImages.mixedStop,
+          iconSize: _iconSize,
+          iconAllowOverlap: true,
+        ),
       if (favoriteStops.isNotEmpty)
         MarkerLayer(
           points: [
@@ -826,13 +977,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           iconAnchor: IconAnchor.bottom,
           iconAllowOverlap: true,
         ),
-      if (_myPosition != null)
-        MarkerLayer(
-          points: [Feature<Point>(geometry: Point(_myPosition!))],
-          iconImage: MapImages.me,
-          iconSize: _iconSize,
-          iconAllowOverlap: true,
-        ),
+      // NB: "my position" is intentionally *not* here — it's a WidgetLayer
+      // marker (see build) so it can't be culled at low zoom (X2).
     ];
   }
 
@@ -903,6 +1049,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                 ),
               if (_searching || _pinnedPlaceLabel != null)
                 const SizedBox(height: 8),
+              // Quick-access favourites carousel just above the search bar (P3);
+              // hidden while searching and when there are no favourites.
+              if (!_searching)
+                FavoritesCarousel(
+                  onOpenStop: _openStop,
+                  onOpenLine: (line) => _openVehicleLine(line.line),
+                ),
               Material(
                 elevation: 4,
                 borderRadius: BorderRadius.circular(28),
@@ -977,7 +1130,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             leading: Icon(vehicleIconFor(line.vehicleType)),
             title: Text(line.line),
             subtitle: Text('${line.origin} → ${line.destination}'),
-            trailing: const Icon(Icons.map_outlined),
+            trailing: IconButton(
+              icon: Icon(
+                _isLinePinned(line.line)
+                    ? Icons.push_pin
+                    : Icons.push_pin_outlined,
+              ),
+              tooltip: l10n.pinLineTooltip,
+              onPressed: () => _togglePinLine(line),
+            ),
             onTap: () => _openLine(line),
           ),
         for (final place in _resultPlaces)

@@ -187,6 +187,18 @@ class AppLocalizationsSr extends AppLocalizations {
   String get removeFromFavorites => 'Ukloni iz Mojih stajališta';
 
   @override
+  String get pinnedRenameTitle => 'Naziv po meri';
+
+  @override
+  String get pinnedCustomNameHint => 'npr. Kuća, Posao';
+
+  @override
+  String get pinnedUseDefaultName => 'Podrazumevano ime';
+
+  @override
+  String get pinLineTooltip => 'Zakači liniju';
+
+  @override
   String get settingsTitle => 'Podešavanja';
 
   @override
@@ -234,6 +246,9 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get alertReadMore => 'Više detalja';
+
+  @override
+  String get alertsBannerTitle => 'Izmene u prevozu';
 
   @override
   String get vehicleTypeBus => 'Autobus';

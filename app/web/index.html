@@ -20,9 +20,16 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Real-time Belgrade public transport arrivals.">
 
+  <!-- Full-bleed on mobile web: the map renders edge-to-edge (including under
+       the status bar / notch), while in-app controls keep clear of it via
+       Flutter SafeArea. viewport-fit=cover exposes the safe-area insets;
+       black-translucent lets content extend under the iOS status bar (X1). -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="stigla">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 

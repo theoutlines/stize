@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:maplibre/maplibre.dart';
 
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
+import '../../domain/models/route_alert.dart';
 import '../../domain/models/stop.dart';
 import '../providers/providers.dart';
-import '../widgets/route_alert_banner.dart';
+import '../widgets/route_alerts_strip.dart';
+import '../widgets/stop_sheet.dart';
 
 const _belgradeCenter = Geographic(lon: 20.4612, lat: 44.8125);
 
@@ -78,9 +79,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           (s) => s.stopId == stopId,
           orElse: () => widget.stops.first,
         );
-        context.push(
-          '/stop/${stop.stopId}?name=${Uri.encodeComponent(stop.name)}',
-        );
+        // Overlay arrivals on this same map (A1) rather than pushing a screen.
+        showStopSheet(context, stopId: stop.stopId, stopName: stop.name);
         return;
       }
     }
@@ -90,8 +90,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final alerts = widget.lineNumber == null
-        ? const []
-        : (ref.watch(alertsProvider).valueOrNull ?? const [])
+        ? const <RouteAlert>[]
+        : (ref.watch(alertsProvider).valueOrNull ?? const <RouteAlert>[])
               .where((a) => !a.isExpired && a.matchesLine(widget.lineNumber!))
               .toList();
 
@@ -99,7 +99,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       appBar: AppBar(title: Text(widget.title ?? widget.centerLabel ?? '')),
       body: Column(
         children: [
-          for (final alert in alerts) RouteAlertBanner(alert: alert),
+          RouteAlertsStrip(alerts: alerts),
           Expanded(
             child: kMapRenderingEnabled
                 ? MapResizeNudge(
@@ -113,7 +113,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       onStyleLoaded: _onStyleLoaded,
                       onEvent: _onEvent,
                       layers: _buildLayers(theme),
-                      children: const [SourceAttribution()],
+                      children: const [CompactAttribution()],
                     ),
                   )
                 : const SizedBox.expand(),

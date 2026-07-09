@@ -62,6 +62,10 @@
   "retry": "Pokušaj ponovo",
   "addToFavorites": "Dodaj u Moja stajališta",
   "removeFromFavorites": "Ukloni iz Mojih stajališta",
+  "pinnedRenameTitle": "Naziv po meri",
+  "pinnedCustomNameHint": "npr. Kuća, Posao",
+  "pinnedUseDefaultName": "Podrazumevano ime",
+  "pinLineTooltip": "Zakači liniju",
 
   "settingsTitle": "Podešavanja",
   "settingsLanguage": "Jezik",
@@ -81,6 +85,7 @@
   "alertUpcomingLabel": "Uskoro promena",
   "alertActiveLabel": "Promena linije",
   "alertReadMore": "Više detalja",
+  "alertsBannerTitle": "Izmene u prevozu",
 
   "vehicleTypeBus": "Autobus",
   "vehicleTypeTram": "Tramvaj",

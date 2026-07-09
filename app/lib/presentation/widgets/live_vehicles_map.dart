@@ -153,7 +153,7 @@ class _LiveVehiclesMapState extends ConsumerState<LiveVehiclesMap>
         onStyleLoaded: _onStyleLoaded,
         layers: _mapLayers(context),
         children: [
-          const SourceAttribution(),
+          const CompactAttribution(),
           // Live vehicles, rebuilt each animation tick so their eased positions
           // update; only this subtree repaints, not the whole map.
           AnimatedBuilder(

@@ -190,6 +190,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get removeFromFavorites => 'Убрать из моих остановок';
 
   @override
+  String get pinnedRenameTitle => 'Своё название';
+
+  @override
+  String get pinnedCustomNameHint => 'напр. Дом, Работа';
+
+  @override
+  String get pinnedUseDefaultName => 'Стандартное имя';
+
+  @override
+  String get pinLineTooltip => 'Закрепить линию';
+
+  @override
   String get settingsTitle => 'Настройки';
 
   @override
@@ -237,6 +249,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get alertReadMore => 'Подробнее';
+
+  @override
+  String get alertsBannerTitle => 'Изменения по транспорту';
 
   @override
   String get vehicleTypeBus => 'Автобус';

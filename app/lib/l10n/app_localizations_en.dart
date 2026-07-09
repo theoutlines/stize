@@ -185,6 +185,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get removeFromFavorites => 'Remove from My Stops';
 
   @override
+  String get pinnedRenameTitle => 'Custom name';
+
+  @override
+  String get pinnedCustomNameHint => 'e.g. Home, Work';
+
+  @override
+  String get pinnedUseDefaultName => 'Default name';
+
+  @override
+  String get pinLineTooltip => 'Pin line';
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override
@@ -232,6 +244,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get alertReadMore => 'Read more';
+
+  @override
+  String get alertsBannerTitle => 'Transport changes';
 
   @override
   String get vehicleTypeBus => 'Bus';

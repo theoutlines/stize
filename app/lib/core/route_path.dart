@@ -1,0 +1,126 @@
+import 'dart:math' as math;
+
+import 'package:latlong2/latlong.dart' as ll;
+
+/// A route polyline (road-accurate GTFS geometry) with helpers to project a
+/// point onto it and to sample a position/heading by distance-along.
+///
+/// This is what lets a live vehicle glide *along its route* between updates
+/// instead of teleporting in a straight line through buildings (X5): we project
+/// each real GPS fix onto the path to get a distance-along, then move the marker
+/// smoothly between successive distances, staying on the road geometry the whole
+/// way. Pure and Flutter-free so it can be unit-tested.
+class RoutePath {
+  RoutePath(this.points) : _cum = _cumulative(points);
+
+  final List<ll.LatLng> points;
+  final List<double> _cum; // cumulative metres at each vertex
+
+  static const _d = ll.Distance();
+  static const _metresPerDegree = 111320.0;
+
+  double get length => _cum.isEmpty ? 0 : _cum.last;
+  bool get isUsable => points.length >= 2;
+
+  /// Builds a path from a `[[lat, lon], ...]` polyline, or null if too short.
+  static RoutePath? fromLatLon(List<List<double>>? poly) {
+    if (poly == null || poly.length < 2) return null;
+    return RoutePath([for (final p in poly) ll.LatLng(p[0], p[1])]);
+  }
+
+  static List<double> _cumulative(List<ll.LatLng> pts) {
+    final cum = <double>[];
+    var acc = 0.0;
+    for (var i = 0; i < pts.length; i++) {
+      if (i > 0) acc += _d(pts[i - 1], pts[i]);
+      cum.add(acc);
+    }
+    return cum;
+  }
+
+  /// Distance-along the path (metres) of the closest point to [p].
+  double project(ll.LatLng p) {
+    var bestAlong = 0.0;
+    var bestDist = double.infinity;
+    for (var i = 0; i < points.length - 1; i++) {
+      final seg = _projectOnSegment(p, points[i], points[i + 1]);
+      if (seg.dist < bestDist) {
+        bestDist = seg.dist;
+        bestAlong = _cum[i] + (_cum[i + 1] - _cum[i]) * seg.t;
+      }
+    }
+    return bestAlong;
+  }
+
+  /// The position at [dist] metres along the path (clamped to its ends).
+  /// Called every animation frame per vehicle, so the segment lookup is a
+  /// binary search over the cumulative distances (O(log n)).
+  ll.LatLng pointAt(double dist) {
+    if (points.isEmpty) return const ll.LatLng(0, 0);
+    if (points.length == 1) return points.first;
+    final d = dist.clamp(0.0, length);
+    final i = _segmentFor(d);
+    final segLen = _cum[i + 1] - _cum[i];
+    final t = segLen == 0 ? 0.0 : (d - _cum[i]) / segLen;
+    return ll.LatLng(
+      points[i].latitude + (points[i + 1].latitude - points[i].latitude) * t,
+      points[i].longitude +
+          (points[i + 1].longitude - points[i].longitude) * t,
+    );
+  }
+
+  /// Compass bearing (0 = north, clockwise) of the segment containing [dist].
+  /// [forward] false reverses it — for a vehicle travelling the path backward.
+  double headingAt(double dist, {bool forward = true}) {
+    if (points.length < 2) return 0;
+    final i = _segmentFor(dist.clamp(0.0, length));
+    final a = forward ? points[i] : points[i + 1];
+    final b = forward ? points[i + 1] : points[i];
+    return _bearing(a, b);
+  }
+
+  // Index i such that _cum[i] <= d <= _cum[i+1], via binary search.
+  int _segmentFor(double d) {
+    var lo = 0;
+    var hi = points.length - 1; // last valid segment start is length-2
+    while (lo < hi) {
+      final mid = (lo + hi) >> 1;
+      if (_cum[mid + 1] < d) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return lo.clamp(0, points.length - 2);
+  }
+
+  // Projects p onto segment a→b using a local equirectangular approximation
+  // (accurate at city scale). Returns the clamped position t in [0,1] and the
+  // perpendicular distance in metres.
+  static ({double t, double dist}) _projectOnSegment(
+    ll.LatLng p,
+    ll.LatLng a,
+    ll.LatLng b,
+  ) {
+    final cosLat = math.cos(a.latitude * math.pi / 180);
+    final bx = (b.longitude - a.longitude) * cosLat;
+    final by = b.latitude - a.latitude;
+    final px = (p.longitude - a.longitude) * cosLat;
+    final py = p.latitude - a.latitude;
+    final len2 = bx * bx + by * by;
+    final t = len2 == 0 ? 0.0 : ((px * bx + py * by) / len2).clamp(0.0, 1.0);
+    final dx = px - bx * t;
+    final dy = py - by * t;
+    return (t: t, dist: math.sqrt(dx * dx + dy * dy) * _metresPerDegree);
+  }
+
+  static double _bearing(ll.LatLng a, ll.LatLng b) {
+    final lat1 = a.latitude * math.pi / 180;
+    final lat2 = b.latitude * math.pi / 180;
+    final dLon = (b.longitude - a.longitude) * math.pi / 180;
+    final y = math.sin(dLon) * math.cos(lat2);
+    final x = math.cos(lat1) * math.sin(lat2) -
+        math.sin(lat1) * math.cos(lat2) * math.cos(dLon);
+    return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
+  }
+}

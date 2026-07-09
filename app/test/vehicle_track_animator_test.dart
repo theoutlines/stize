@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart' as ll;
 
+import 'package:stigla/core/route_path.dart';
 import 'package:stigla/core/vehicle_track_animator.dart';
 import 'package:stigla/domain/models/arrival.dart';
 import 'package:stigla/domain/models/vehicle_type.dart';
@@ -62,13 +64,69 @@ void main() {
     expect(animator.positionOf('P1', 1.0).latitude, 20.0);
   });
 
-  test('drops a vehicle once it no longer appears in the arrivals list', () {
+  test('holds a briefly-missing vehicle through a grace period, then drops it', () {
     final animator = VehicleTrackAnimator();
     animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
     expect(animator.tracks.containsKey('P1'), isTrue);
+    expect(animator.opacityFor('P1'), 1.0);
 
+    // Missing from one update — held (faded), not dropped (X6 data blip).
+    animator.sync([], 1.0);
+    expect(animator.tracks.containsKey('P1'), isTrue);
+    expect(animator.opacityFor('P1'), lessThan(1.0));
+
+    // Still missing on the next — still within grace.
+    animator.sync([], 1.0);
+    expect(animator.tracks.containsKey('P1'), isTrue);
+
+    // Missing beyond the grace period — now dropped.
     animator.sync([], 1.0);
     expect(animator.tracks.containsKey('P1'), isFalse);
+  });
+
+  test('clear() drops everything immediately (zoom-out reset)', () {
+    final animator = VehicleTrackAnimator();
+    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
+    expect(animator.tracks, isNotEmpty);
+    animator.clear();
+    expect(animator.tracks, isEmpty);
+  });
+
+  test('with a route path, moves along the route, not diagonally (X5)', () {
+    // L-shaped route A(east)->B(north)->C; vehicle jumps from A to C.
+    final path = RoutePath.fromLatLon([
+      [44.80, 20.50],
+      [44.80, 20.52],
+      [44.81, 20.52],
+    ]);
+    final animator = VehicleTrackAnimator();
+    animator.syncSamples([
+      VehicleSample(
+        key: 'P1',
+        position: const ll.LatLng(44.80, 20.50), // at A
+        line: '2',
+        type: VehicleType.tram,
+        path: path,
+      ),
+    ], 0);
+    animator.syncSamples([
+      VehicleSample(
+        key: 'P1',
+        position: const ll.LatLng(44.81, 20.52), // at C
+        line: '2',
+        type: VehicleType.tram,
+        path: path,
+      ),
+    ], 1.0);
+
+    // Halfway through the animation, a straight line A->C would put the marker
+    // at the diagonal midpoint (~44.805, 20.51). Following the route instead
+    // keeps it near the eastward first leg (lon ~20.52), off that diagonal.
+    final mid = animator.positionOf('P1', 0.5);
+    expect(mid.longitude, closeTo(20.52, 3e-3));
+    // Heading tracks the route direction (east on the first leg here).
+    final h = animator.headingAt('P1', 0.5)!;
+    expect(h, closeTo(90, 5));
   });
 
   test('flags a vehicle as stuck after repeated no-move updates', () {
@@ -77,11 +135,15 @@ void main() {
     animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
     expect(animator.isStuck('P1'), isFalse);
 
-    // Same position again — one stale update, still below threshold.
+    // Same position again — one stale update, still normal dwell (below thr).
     animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
     expect(animator.isStuck('P1'), isFalse);
 
-    // Second consecutive no-move update — now it reads as stuck.
+    // Second consecutive no-move update — still within normal dwell.
+    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
+    expect(animator.isStuck('P1'), isFalse);
+
+    // Third consecutive no-move update (~90s) — now it reads as stuck.
     animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
     expect(animator.isStuck('P1'), isTrue);
 

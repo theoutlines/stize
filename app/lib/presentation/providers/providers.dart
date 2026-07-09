@@ -12,16 +12,19 @@ import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/geocode_repository_impl.dart';
 import '../../data/repositories/ideas_repository_impl.dart';
 import '../../data/repositories/lines_repository_impl.dart';
+import '../../data/repositories/pinned_favorites_repository_impl.dart';
 import '../../data/repositories/stops_repository_impl.dart';
 import '../../data/repositories/vehicles_repository_impl.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/idea.dart';
+import '../../domain/models/pinned_line.dart';
 import '../../domain/models/route_alert.dart';
 import '../../domain/models/stop.dart';
 import '../../domain/repositories/alerts_repository.dart';
 import '../../domain/repositories/arrivals_repository.dart';
 import '../../domain/repositories/favorites_repository.dart';
+import '../../domain/repositories/pinned_favorites_repository.dart';
 import '../../domain/repositories/geocode_repository.dart';
 import '../../domain/repositories/ideas_repository.dart';
 import '../../domain/repositories/lines_repository.dart';
@@ -151,6 +154,52 @@ final favoriteStopLocationsProvider = FutureProvider.autoDispose<List<Stop>>((re
   final byId = {for (final s in allStops) s.stopId: s};
   return [for (final f in favorites) if (byId[f.stopId] != null) byId[f.stopId]!];
 });
+
+// ---- Carousel favourites: pinned lines + custom names (P3) -----------------
+
+final pinnedFavoritesRepositoryProvider = Provider<PinnedFavoritesRepository>(
+  (ref) => PinnedFavoritesRepositoryImpl(),
+);
+
+class PinnedLinesController extends AsyncNotifier<List<PinnedLine>> {
+  @override
+  Future<List<PinnedLine>> build() {
+    return ref.watch(pinnedFavoritesRepositoryProvider).getLines();
+  }
+
+  Future<void> add(PinnedLine line) async {
+    await ref.read(pinnedFavoritesRepositoryProvider).addLine(line);
+    ref.invalidateSelf();
+  }
+
+  Future<void> remove(String line) async {
+    await ref.read(pinnedFavoritesRepositoryProvider).removeLine(line);
+    ref.invalidateSelf();
+  }
+}
+
+final pinnedLinesControllerProvider =
+    AsyncNotifierProvider<PinnedLinesController, List<PinnedLine>>(
+      PinnedLinesController.new,
+    );
+
+/// Custom display names keyed by `stop:<id>` / `line:<number>` / `route:<id>`.
+class CustomNamesController extends AsyncNotifier<Map<String, String>> {
+  @override
+  Future<Map<String, String>> build() {
+    return ref.watch(pinnedFavoritesRepositoryProvider).getCustomNames();
+  }
+
+  Future<void> setName(String key, String? name) async {
+    await ref.read(pinnedFavoritesRepositoryProvider).setCustomName(key, name);
+    ref.invalidateSelf();
+  }
+}
+
+final customNamesControllerProvider =
+    AsyncNotifierProvider<CustomNamesController, Map<String, String>>(
+      CustomNamesController.new,
+    );
 
 class IdeasController extends AsyncNotifier<List<Idea>> {
   @override

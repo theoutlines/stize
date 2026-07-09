@@ -13,6 +13,9 @@ class MyStopsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final favorites = ref.watch(favoritesControllerProvider);
+    final customNames =
+        ref.watch(customNamesControllerProvider).valueOrNull ??
+        const <String, String>{};
 
     return Scaffold(
       appBar: AppBar(
@@ -39,9 +42,11 @@ class MyStopsScreen extends ConsumerWidget {
             itemCount: stops.length,
             itemBuilder: (context, i) {
               final stop = stops[i];
+              final custom = customNames['stop:${stop.stopId}'];
               return ListTile(
                 leading: const Icon(Icons.star),
-                title: Text(stop.name),
+                title: Text(custom ?? stop.name),
+                subtitle: custom != null ? Text(stop.name) : null,
                 trailing: IconButton(
                   icon: const Icon(Icons.close),
                   tooltip: l10n.removeFromFavorites,

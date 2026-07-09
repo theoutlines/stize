@@ -2,9 +2,25 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:maplibre/maplibre.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../domain/models/stop.dart';
 import '../domain/models/vehicle_type.dart';
+
+/// The camera is fenced to Belgrade and its immediate agglomeration: the app is
+/// a *city* transit map, so there's no reason to let the user fly out to a
+/// country/continent view (which would also fan the per-stop source out
+/// pointlessly wide). Paired with a floor on the zoom in [MapOptions.minZoom].
+const belgradeMaxBounds = LngLatBounds(
+  longitudeWest: 20.15,
+  longitudeEast: 20.80,
+  latitudeSouth: 44.63,
+  latitudeNorth: 44.98,
+);
+
+/// Lowest zoom we allow: keeps the view at city scale, never the whole country.
+const kCityMinZoom = 11.0;
+const kCityMaxZoom = 18.0;
 
 // Belgrade line-number → vehicle-type heuristic. The stops feed only carries
 // line numbers (not a per-stop vehicle type), so classify by the well-known
@@ -12,6 +28,13 @@ import '../domain/models/vehicle_type.dart';
 // pick a stop's marker icon.
 const _tramLines = {'2', '3', '5', '6', '7', '9', '10', '11', '12', '13', '14'};
 const _trolleyLines = {'19', '21', '22', '28', '29', '40', '41'};
+
+/// Tram line numbers, exposed so the map can draw the tram rail network (C2).
+List<String> get tramLineNumbers => _tramLines.toList();
+
+/// Thin rail line colour: the tram red, semi-transparent, so the tracks read as
+/// tram infrastructure without competing with the markers on top.
+const tramRailColor = Color(0x99D3342B);
 
 VehicleType classifyLine(String line) {
   final numeric = RegExp(r'^\d+').firstMatch(line)?.group(0) ?? line;
@@ -30,6 +53,26 @@ VehicleType stopPrimaryType(Stop stop) {
     if (type == VehicleType.trolleybus) hasTrolley = true;
   }
   return hasTrolley ? VehicleType.trolleybus : VehicleType.bus;
+}
+
+/// The distinct vehicle types a stop is served by (from its line numbers).
+Set<VehicleType> stopTypes(Stop stop) {
+  final types = <VehicleType>{};
+  for (final line in stop.lines) {
+    types.add(classifyLine(line));
+  }
+  return types;
+}
+
+/// The marker-image id for a stop, coloured by the type it serves (D1). A stop
+/// served by more than one type (e.g. bus + trolley) gets a single *unified*
+/// "mixed" marker (D2) rather than several stacked icons — the official app's
+/// habit of drawing two pins on a mixed stop is exactly the clutter we avoid.
+/// Always one marker per stop.
+String stopImageFor(Stop stop) {
+  final types = stopTypes(stop);
+  if (types.length > 1) return MapImages.mixedStop;
+  return MapImages.forStop(types.isEmpty ? VehicleType.bus : types.first);
 }
 
 /// Works around a MapLibre-on-web init race: the web plugin measures the map
@@ -69,6 +112,64 @@ class _MapResizeNudgeState extends State<MapResizeNudge> {
   );
 }
 
+/// A small, always-compact map attribution chip for the corner of a map.
+///
+/// Replaces the maplibre package's `SourceAttribution`, which (a) starts
+/// *expanded* — a wide "MapLibre © MapTiler © OpenStreetMap" bar that overlaps
+/// markers on first paint — and (b) collapses to a bare circular ⓘ button that
+/// reads as a mystery control floating on the map. MapTiler's terms require the
+/// attribution to stay visible, so we don't remove it; we just keep it tiny,
+/// static, and pinned to a corner (default bottom-left, clear of the bottom
+/// search bar). The labels link out to the respective copyright pages.
+class CompactAttribution extends StatelessWidget {
+  const CompactAttribution({super.key, this.alignment = Alignment.bottomLeft});
+
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final style = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: scheme.onSurface.withValues(alpha: 0.7),
+      fontSize: 9.5,
+      height: 1.0,
+    );
+
+    Widget link(String label, String url) => GestureDetector(
+      onTap: () =>
+          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      child: Text(label, style: style),
+    );
+
+    return SafeArea(
+      child: Align(
+        alignment: alignment,
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: scheme.surface.withValues(alpha: 0.68),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                link('© MapTiler', 'https://www.maptiler.com/copyright/'),
+                Text('  ', style: style),
+                link(
+                  '© OpenStreetMap',
+                  'https://www.openstreetmap.org/copyright',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// When false, the MapLibre-backed widgets render a plain placeholder instead
 /// of the native map. `MapLibreMap` throws `UnsupportedError` under
 /// `flutter test` (no platform implementation), so widget tests that pump a
@@ -82,6 +183,7 @@ class MapImages {
   static const bus = 'stg-bus';
   static const tram = 'stg-tram';
   static const trolley = 'stg-trolley';
+  static const mixedStop = 'stg-stop-mixed';
   static const favorite = 'stg-fav';
   static const place = 'stg-place';
   static const vehicle = 'stg-vehicle';
@@ -182,6 +284,19 @@ Widget _meDot(ColorScheme scheme) {
   );
 }
 
+/// The user's own-location dot as a standalone widget, for rendering via a
+/// [WidgetLayer] instead of a GL symbol. Drawn by Flutter, it can't be dropped
+/// by symbol collision/placement at low zoom, so "my position" stays visible at
+/// every zoom level (X2).
+class MeLocationDot extends StatelessWidget {
+  const MeLocationDot({super.key});
+
+  static const Size markerSize = Size(24, 24);
+
+  @override
+  Widget build(BuildContext context) => _meDot(Theme.of(context).colorScheme);
+}
+
 /// The cluster bubble background; the count is drawn on top via the layer's
 /// text field.
 Widget _clusterBubble(ColorScheme scheme) {
@@ -218,21 +333,28 @@ Future<void> registerStigmaImages(
   ColorScheme scheme,
 ) async {
   await Future.wait([
+    // Stop pins carry the colour of the transport type they serve (D1); a stop
+    // with several types gets one unified "mixed" pin (D2). Hollow-disc shape
+    // keeps them clearly distinct from the solid moving-vehicle pills (D3).
     style.addImageFromWidget(
       id: MapImages.bus,
-      widget: _stopPin(Icons.directions_bus_rounded, scheme.primary, scheme),
+      widget: _stopPin(Icons.directions_bus_rounded, _busColor, scheme),
     ),
     style.addImageFromWidget(
       id: MapImages.tram,
-      widget: _stopPin(Icons.tram_rounded, scheme.primary, scheme),
+      widget: _stopPin(Icons.tram_rounded, _tramColor, scheme),
     ),
     style.addImageFromWidget(
       id: MapImages.trolley,
       widget: _stopPin(
         Icons.directions_bus_filled_rounded,
-        scheme.primary,
+        _trolleyColor,
         scheme,
       ),
+    ),
+    style.addImageFromWidget(
+      id: MapImages.mixedStop,
+      widget: _stopPin(Icons.directions_transit_rounded, _mixedStopColor, scheme),
     ),
     style.addImageFromWidget(
       id: MapImages.favorite,
@@ -264,16 +386,17 @@ IconData movingVehicleIcon(VehicleType type) => _vehicleIcon(type);
 
 /// Brand colour of a moving-vehicle marker, keyed by type.
 ///
-/// Buses are the Belgrade transit blue, trolleybuses orange. Trams are a single
-/// neutral colour *for now*: colouring a tram by its real carriage livery
-/// (red/blue/green) is a deferred feature that depends on resolving the vehicle
-/// model from its garage number — see the killer-feature plan. When that lands,
-/// pass [tramOverride] to recolour an individual tram; the rest of the marker
-/// pipeline already flows the colour through unchanged.
+/// Buses are the Belgrade transit blue, trolleybuses orange, trams red — a
+/// base per-type distinction (C1). Colouring a tram by its *real* carriage
+/// livery still sits on top of this as a deferred feature that depends on
+/// resolving the vehicle model from its garage number — see the killer-feature
+/// plan. When that lands, pass [tramOverride] to recolour an individual tram;
+/// the rest of the marker pipeline already flows the colour through unchanged.
 const _busColor = Color(0xFF1B67C4); // transit blue
 const _trolleyColor = Color(0xFFEF7B22); // orange
-const _tramColor = Color(0xFF4A5A6A); // neutral slate (future: by model)
-const _stuckColor = Color(0xFFE5484D); // "looks stuck" red
+const _tramColor = Color(0xFFD3342B); // tram red (Belgrade livery)
+const _mixedStopColor = Color(0xFF5B6B7A); // multi-type stop, neutral slate
+const _stuckColor = Color(0xFFB00842); // "looks stuck": deep crimson, ≠ tram red
 
 Color vehicleColor(VehicleType type, {Color? tramOverride}) => switch (type) {
   VehicleType.bus => _busColor,
@@ -298,6 +421,7 @@ class VehicleMarker extends StatefulWidget {
     this.heading,
     this.stuck = false,
     this.selected = false,
+    this.compact = false,
     this.onTap,
   });
 
@@ -311,6 +435,12 @@ class VehicleMarker extends StatefulWidget {
 
   final bool stuck;
   final bool selected;
+
+  /// Progressive detail (B2): at far-out zoom render just a coloured dot (the
+  /// type colour, no line number) so a dense city reads as "where each type
+  /// clusters" instead of a wall of number pills; up close, the full pill.
+  final bool compact;
+
   final VoidCallback? onTap;
 
   /// The fixed box a [WidgetLayer] `Marker` must reserve for this widget. Tall
@@ -361,16 +491,20 @@ class _VehicleMarkerState extends State<VehicleMarker>
       child: Stack(
         alignment: Alignment.center,
         children: [
-          if (heading != null)
-            // Rotating this full-box layer orbits the arrow around the pill's
-            // centre to the heading bearing; the arrow glyph (points up when
-            // unrotated) ends up pointing outward along the direction of travel.
+          if (heading != null && !widget.compact)
+            // The direction "beak": a bubble tail that reads as part of the
+            // marker (X4), not a triangle floating beside it. It sits flush on
+            // the pill's edge and the whole layer rotates to the heading, so the
+            // beak points outward along the direction of travel while the pill's
+            // number stays upright.
             Positioned.fill(
               child: Transform.rotate(
                 angle: heading * (math.pi / 180),
-                child: Align(
-                  alignment: const Alignment(0, -0.5),
-                  child: _directionArrow(widget.color),
+                child: Center(
+                  child: Transform.translate(
+                    offset: const Offset(0, -18),
+                    child: _beak(widget.stuck ? _stuckColor : widget.color),
+                  ),
                 ),
               ),
             ),
@@ -399,7 +533,7 @@ class _VehicleMarkerState extends State<VehicleMarker>
                 child: child,
               );
             },
-            child: _pill(scheme, haloColor),
+            child: widget.compact ? _dot(scheme) : _pill(scheme),
           ),
           ),
         ],
@@ -407,30 +541,31 @@ class _VehicleMarkerState extends State<VehicleMarker>
     );
   }
 
-  /// A white-outlined navigation arrow, pointing up (north) when unrotated.
-  Widget _directionArrow(Color color) {
+  /// The directional beak (bubble tail): a filled triangle in the pill colour
+  /// with a white outline, apex pointing up (outward) when unrotated. Placed
+  /// flush against the pill so it reads as part of the marker.
+  Widget _beak(Color color) {
     return SizedBox(
-      width: 22,
-      height: 22,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          const Icon(Icons.navigation, size: 20, color: Colors.white),
-          Icon(Icons.navigation, size: 14, color: color),
-        ],
-      ),
+      width: 18,
+      height: 12,
+      child: CustomPaint(painter: _BeakPainter(fill: color)),
     );
   }
 
-  Widget _pill(ColorScheme scheme, Color haloColor) {
+  /// The full number pill. Compact vertical layout (E2): the type glyph sits
+  /// directly above the line number so the bubble stays tight instead of
+  /// stretching wide. No warning glyph — a stuck vehicle is signalled by colour
+  /// alone (E3), never a `⚠` on the pill.
+  Widget _pill(ColorScheme scheme) {
     final borderColor = widget.stuck
         ? _stuckColor
         : (widget.selected ? scheme.onSurface : Colors.white);
+    final fill = widget.stuck ? _stuckColor : widget.color;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: widget.color,
-        borderRadius: BorderRadius.circular(999),
+        color: fill,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: borderColor,
           width: widget.selected || widget.stuck ? 2.5 : 1.5,
@@ -443,27 +578,76 @@ class _VehicleMarkerState extends State<VehicleMarker>
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_vehicleIcon(widget.type), color: Colors.white, size: 15),
-          const SizedBox(width: 4),
+          Icon(_vehicleIcon(widget.type), color: Colors.white, size: 13),
           Text(
             widget.line,
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w700,
               fontSize: 13,
-              height: 1.0,
+              height: 1.05,
             ),
           ),
-          if (widget.stuck) ...[
-            const SizedBox(width: 3),
-            const Icon(Icons.warning_amber_rounded,
-                color: Colors.white, size: 13),
-          ],
         ],
       ),
     );
   }
+
+  /// The far-zoom dot (B2): a small type-coloured disc, no number. Turns the
+  /// stuck colour when the vehicle looks stuck (E3/E4 — colour, not a badge).
+  Widget _dot(ColorScheme scheme) {
+    final fill = widget.stuck ? _stuckColor : widget.color;
+    return Container(
+      width: 16,
+      height: 16,
+      decoration: BoxDecoration(
+        color: fill,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: widget.selected ? scheme.onSurface : Colors.white,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Paints the marker's direction beak — a filled triangle (apex up) with a
+/// white outline, so rotated into place it looks like the pointed tail of the
+/// marker bubble rather than a separate arrow.
+class _BeakPainter extends CustomPainter {
+  const _BeakPainter({required this.fill});
+
+  final Color fill;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(size.width / 2, 0) // apex, pointing outward
+      ..lineTo(0, size.height)
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = fill);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_BeakPainter oldDelegate) => oldDelegate.fill != fill;
 }

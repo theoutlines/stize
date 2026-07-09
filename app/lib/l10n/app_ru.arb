@@ -62,6 +62,10 @@
   "retry": "Попробовать снова",
   "addToFavorites": "Добавить в мои остановки",
   "removeFromFavorites": "Убрать из моих остановок",
+  "pinnedRenameTitle": "Своё название",
+  "pinnedCustomNameHint": "напр. Дом, Работа",
+  "pinnedUseDefaultName": "Стандартное имя",
+  "pinLineTooltip": "Закрепить линию",
 
   "settingsTitle": "Настройки",
   "settingsLanguage": "Язык",
@@ -81,6 +85,7 @@
   "alertUpcomingLabel": "Скоро изменение",
   "alertActiveLabel": "Изменение маршрута",
   "alertReadMore": "Подробнее",
+  "alertsBannerTitle": "Изменения по транспорту",
 
   "vehicleTypeBus": "Автобус",
   "vehicleTypeTram": "Трамвай",
