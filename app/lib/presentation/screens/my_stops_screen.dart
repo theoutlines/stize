@@ -28,7 +28,7 @@ class MyStopsScreen extends ConsumerWidget {
         ],
       ),
       body: favorites.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: CircularProgressIndicator.adaptive()),
         error: (err, st) => EmptyState(icon: Icons.error_outline, title: err.toString()),
         data: (stops) {
           if (stops.isEmpty) {

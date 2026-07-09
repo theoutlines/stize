@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/adaptive.dart';
 import '../../l10n/app_localizations.dart';
 import '../screens/my_stops_screen.dart';
 
@@ -75,9 +76,7 @@ class AppDrawer extends StatelessWidget {
                     onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const MyStopsScreen(),
-                        ),
+                        adaptiveRoute((_) => const MyStopsScreen()),
                       );
                     },
                   ),
