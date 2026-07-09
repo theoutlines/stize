@@ -19,13 +19,13 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settingsTitle)),
       body: settingsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: CircularProgressIndicator.adaptive()),
         error: (err, st) => Center(child: Text(err.toString())),
         data: (settings) => ListView(
           children: [
             ListTile(title: Text(l10n.settingsLanguage)),
             for (final code in _localeOptions)
-              RadioListTile<String?>(
+              RadioListTile<String?>.adaptive(
                 title: Text(_localeLabel(code)),
                 value: code,
                 groupValue: settings.localeCode,
@@ -33,19 +33,19 @@ class SettingsScreen extends ConsumerWidget {
               ),
             const Divider(),
             ListTile(title: Text(l10n.settingsTheme)),
-            RadioListTile<ThemeMode>(
+            RadioListTile<ThemeMode>.adaptive(
               title: Text(l10n.settingsThemeSystem),
               value: ThemeMode.system,
               groupValue: settings.themeMode,
               onChanged: (value) => controller.setThemeMode(value!),
             ),
-            RadioListTile<ThemeMode>(
+            RadioListTile<ThemeMode>.adaptive(
               title: Text(l10n.settingsThemeLight),
               value: ThemeMode.light,
               groupValue: settings.themeMode,
               onChanged: (value) => controller.setThemeMode(value!),
             ),
-            RadioListTile<ThemeMode>(
+            RadioListTile<ThemeMode>.adaptive(
               title: Text(l10n.settingsThemeDark),
               value: ThemeMode.dark,
               groupValue: settings.themeMode,
@@ -54,7 +54,7 @@ class SettingsScreen extends ConsumerWidget {
             const Divider(),
             ListTile(title: Text(l10n.settingsRefreshInterval)),
             for (final seconds in _refreshIntervalOptions)
-              RadioListTile<int>(
+              RadioListTile<int>.adaptive(
                 title: Text(l10n.settingsRefreshIntervalSeconds(seconds)),
                 value: seconds,
                 groupValue: settings.refreshIntervalSeconds,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/adaptive.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
@@ -90,7 +91,7 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen> {
           ),
           Expanded(
             child: ideas.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator.adaptive()),
               error: (err, st) => EmptyState(
                 icon: Icons.wifi_off_rounded,
                 title: l10n.noNetworkTitle,
@@ -124,8 +125,8 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen> {
                             .toggleVote(idea.id),
                       ),
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => IdeaCommentsScreen(
+                        adaptiveRoute(
+                          (_) => IdeaCommentsScreen(
                             ideaId: idea.id,
                             ideaText: idea.text,
                           ),

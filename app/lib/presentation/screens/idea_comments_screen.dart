@@ -54,7 +54,7 @@ class _IdeaCommentsScreenState extends ConsumerState<IdeaCommentsScreen> {
           ),
           Expanded(
             child: comments.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator.adaptive()),
               error: (err, st) => Center(child: Text(l10n.noNetworkTitle)),
               data: (list) {
                 if (list.isEmpty) {
