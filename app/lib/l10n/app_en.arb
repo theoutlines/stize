@@ -42,6 +42,16 @@
   "arrivalStopsAway": "{count, plural, =0{here} =1{1 stop away} other{{count} stops away}}",
   "@arrivalStopsAway": {"placeholders": {"count": {"type": "int"}}},
 
+  "vehicleMoving": "On the move",
+  "vehicleStuck": "Looks stopped",
+  "vehicleNextStop": "Next stop",
+  "vehicleUpcomingStops": "Rest of the route",
+  "vehicleYourStop": "your stop",
+  "vehicleEtaApprox": "Arrival times are approximate",
+  "vehicleShowRoute": "Show route on map",
+  "vehicleEtaMinutesApprox": "≈ {minutes} min",
+  "@vehicleEtaMinutesApprox": {"placeholders": {"minutes": {"type": "int"}}},
+
   "emptyArrivalsTitle": "It's quiet here right now",
   "emptyArrivalsSubtitle": "Something should be along shortly.",
 

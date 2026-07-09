@@ -36,6 +36,15 @@
   "arrivalEtaNow": "Сейчас",
   "arrivalStopsAway": "{count, plural, =0{здесь} one{{count} остановка} few{{count} остановки} many{{count} остановок} other{{count} остановок}}",
 
+  "vehicleMoving": "В движении",
+  "vehicleStuck": "Похоже, стоит",
+  "vehicleNextStop": "Следующая остановка",
+  "vehicleUpcomingStops": "Дальше по маршруту",
+  "vehicleYourStop": "ваша остановка",
+  "vehicleEtaApprox": "Время прибытия ориентировочное",
+  "vehicleShowRoute": "Показать маршрут на карте",
+  "vehicleEtaMinutesApprox": "≈ {minutes} мин",
+
   "emptyArrivalsTitle": "Пока тихо на этой остановке",
   "emptyArrivalsSubtitle": "Транспорт скоро появится.",
 

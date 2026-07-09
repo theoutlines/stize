@@ -126,6 +126,32 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get vehicleMoving => 'В движении';
+
+  @override
+  String get vehicleStuck => 'Похоже, стоит';
+
+  @override
+  String get vehicleNextStop => 'Следующая остановка';
+
+  @override
+  String get vehicleUpcomingStops => 'Дальше по маршруту';
+
+  @override
+  String get vehicleYourStop => 'ваша остановка';
+
+  @override
+  String get vehicleEtaApprox => 'Время прибытия ориентировочное';
+
+  @override
+  String get vehicleShowRoute => 'Показать маршрут на карте';
+
+  @override
+  String vehicleEtaMinutesApprox(int minutes) {
+    return '≈ $minutes мин';
+  }
+
+  @override
   String get emptyArrivalsTitle => 'Пока тихо на этой остановке';
 
   @override

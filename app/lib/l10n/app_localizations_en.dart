@@ -121,6 +121,32 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get vehicleMoving => 'On the move';
+
+  @override
+  String get vehicleStuck => 'Looks stopped';
+
+  @override
+  String get vehicleNextStop => 'Next stop';
+
+  @override
+  String get vehicleUpcomingStops => 'Rest of the route';
+
+  @override
+  String get vehicleYourStop => 'your stop';
+
+  @override
+  String get vehicleEtaApprox => 'Arrival times are approximate';
+
+  @override
+  String get vehicleShowRoute => 'Show route on map';
+
+  @override
+  String vehicleEtaMinutesApprox(int minutes) {
+    return '≈ $minutes min';
+  }
+
+  @override
   String get emptyArrivalsTitle => 'It\'s quiet here right now';
 
   @override

@@ -257,3 +257,172 @@ String vehicleImageFor(VehicleType type) => MapImages.vehicle;
 
 /// Icon used when we register per-type vehicle markers later, if needed.
 IconData movingVehicleIcon(VehicleType type) => _vehicleIcon(type);
+
+// ---- Live vehicle markers ---------------------------------------------------
+
+/// Brand colour of a moving-vehicle marker, keyed by type.
+///
+/// Buses are the Belgrade transit blue, trolleybuses orange. Trams are a single
+/// neutral colour *for now*: colouring a tram by its real carriage livery
+/// (red/blue/green) is a deferred feature that depends on resolving the vehicle
+/// model from its garage number — see the killer-feature plan. When that lands,
+/// pass [tramOverride] to recolour an individual tram; the rest of the marker
+/// pipeline already flows the colour through unchanged.
+const _busColor = Color(0xFF1B67C4); // transit blue
+const _trolleyColor = Color(0xFFEF7B22); // orange
+const _tramColor = Color(0xFF4A5A6A); // neutral slate (future: by model)
+const _stuckColor = Color(0xFFE5484D); // "looks stuck" red
+
+Color vehicleColor(VehicleType type, {Color? tramOverride}) => switch (type) {
+  VehicleType.bus => _busColor,
+  VehicleType.trolleybus => _trolleyColor,
+  VehicleType.tram => tramOverride ?? _tramColor,
+};
+
+/// An informative live-vehicle marker rendered as a real Flutter widget on the
+/// map (via [WidgetLayer]): a coloured pill carrying the type glyph and line
+/// number — like the number capsules in Yandex/Google transit.
+///
+/// Movement state, derived from our own tracking (not any traffic API), is
+/// shown on the pill itself:
+///  * moving  → a soft halo *breathes* around it (alive);
+///  * stuck   → the halo stops pulsing and turns red (looks stuck).
+class VehicleMarker extends StatefulWidget {
+  const VehicleMarker({
+    super.key,
+    required this.line,
+    required this.type,
+    required this.color,
+    this.stuck = false,
+    this.selected = false,
+    this.onTap,
+  });
+
+  final String line;
+  final VehicleType type;
+  final Color color;
+  final bool stuck;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  /// The fixed box a [WidgetLayer] `Marker` must reserve for this widget.
+  static const Size markerSize = Size(120, 56);
+
+  @override
+  State<VehicleMarker> createState() => _VehicleMarkerState();
+}
+
+class _VehicleMarkerState extends State<VehicleMarker>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    if (!widget.stuck) _pulse.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant VehicleMarker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.stuck && _pulse.isAnimating) {
+      _pulse.stop();
+    } else if (!widget.stuck && !_pulse.isAnimating) {
+      _pulse.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final haloColor = widget.stuck ? _stuckColor : widget.color;
+    return SizedBox.fromSize(
+      size: VehicleMarker.markerSize,
+      child: Center(
+        child: GestureDetector(
+          onTap: widget.onTap,
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedBuilder(
+            animation: _pulse,
+            builder: (context, child) {
+              // Breathing glow: spread pulses out while fading. Stuck vehicles
+              // hold a steady soft red glow instead.
+              final t = _pulse.value;
+              final spread = widget.stuck ? 2.5 : 1.0 + t * 6.0;
+              final glowOpacity = widget.stuck ? 0.55 : (1 - t) * 0.5;
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: haloColor.withValues(alpha: glowOpacity),
+                      blurRadius: widget.stuck ? 6 : 4 + t * 8,
+                      spreadRadius: spread,
+                    ),
+                  ],
+                ),
+                child: child,
+              );
+            },
+            child: _pill(scheme, haloColor),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _pill(ColorScheme scheme, Color haloColor) {
+    final borderColor = widget.stuck
+        ? _stuckColor
+        : (widget.selected ? scheme.onSurface : Colors.white);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: widget.color,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: borderColor,
+          width: widget.selected || widget.stuck ? 2.5 : 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_vehicleIcon(widget.type), color: Colors.white, size: 15),
+          const SizedBox(width: 4),
+          Text(
+            widget.line,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              height: 1.0,
+            ),
+          ),
+          if (widget.stuck) ...[
+            const SizedBox(width: 3),
+            const Icon(Icons.warning_amber_rounded,
+                color: Colors.white, size: 13),
+          ],
+        ],
+      ),
+    );
+  }
+}

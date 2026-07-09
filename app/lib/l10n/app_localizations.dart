@@ -268,6 +268,54 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{here} =1{1 stop away} other{{count} stops away}}'**
   String arrivalStopsAway(int count);
 
+  /// No description provided for @vehicleMoving.
+  ///
+  /// In en, this message translates to:
+  /// **'On the move'**
+  String get vehicleMoving;
+
+  /// No description provided for @vehicleStuck.
+  ///
+  /// In en, this message translates to:
+  /// **'Looks stopped'**
+  String get vehicleStuck;
+
+  /// No description provided for @vehicleNextStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Next stop'**
+  String get vehicleNextStop;
+
+  /// No description provided for @vehicleUpcomingStops.
+  ///
+  /// In en, this message translates to:
+  /// **'Rest of the route'**
+  String get vehicleUpcomingStops;
+
+  /// No description provided for @vehicleYourStop.
+  ///
+  /// In en, this message translates to:
+  /// **'your stop'**
+  String get vehicleYourStop;
+
+  /// No description provided for @vehicleEtaApprox.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrival times are approximate'**
+  String get vehicleEtaApprox;
+
+  /// No description provided for @vehicleShowRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'Show route on map'**
+  String get vehicleShowRoute;
+
+  /// No description provided for @vehicleEtaMinutesApprox.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ {minutes} min'**
+  String vehicleEtaMinutesApprox(int minutes);
+
   /// No description provided for @emptyArrivalsTitle.
   ///
   /// In en, this message translates to:

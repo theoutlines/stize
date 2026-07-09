@@ -1,11 +1,23 @@
 import 'package:latlong2/latlong.dart' as ll;
 
 import '../domain/models/arrival.dart';
+import '../domain/models/vehicle_type.dart';
 
 class VehicleTrack {
-  VehicleTrack(this.to) : from = to;
+  VehicleTrack(this.to, {required this.line, required this.type})
+    : from = to;
   ll.LatLng from;
   ll.LatLng to;
+
+  /// Line number and type, carried so the marker can render an informative
+  /// badge without re-looking-up the arrival.
+  final String line;
+  final VehicleType type;
+
+  /// How many *consecutive* provider updates have landed with the vehicle at
+  /// (essentially) the same real position. Movement resets it to 0. This is a
+  /// soft "looks stuck" heuristic, not a hard traffic signal.
+  int staleCount = 0;
 }
 
 /// Pure interpolation logic behind the live-tracking map, kept separate from
@@ -19,6 +31,13 @@ class VehicleTrackAnimator {
   final Map<String, VehicleTrack> _tracks = {};
 
   Map<String, VehicleTrack> get tracks => _tracks;
+
+  // A vehicle whose reported position hasn't moved beyond this many degrees
+  // between updates (~11 m) is treated as not having moved.
+  static const _stillEpsilon = 1e-4;
+
+  // Consecutive no-move updates before we call a vehicle "looks stuck".
+  static const _stuckThreshold = 2;
 
   static String keyFor(Arrival a) => a.garageNo ?? '${a.line}-${a.routeId}';
 
@@ -35,14 +54,36 @@ class VehicleTrackAnimator {
       final newPos = ll.LatLng(gps.lat, gps.lon);
       final existing = _tracks[key];
       if (existing == null) {
-        _tracks[key] = VehicleTrack(newPos);
+        _tracks[key] = VehicleTrack(
+          newPos,
+          line: a.line,
+          type: a.vehicleType,
+        );
       } else {
+        // Movement heuristic compares the new *real* fix against the previous
+        // one (existing.to), before we overwrite it.
+        if (_isSamePlace(existing.to, newPos)) {
+          existing.staleCount++;
+        } else {
+          existing.staleCount = 0;
+        }
         existing.from = _interpolate(existing.from, existing.to, currentT);
         existing.to = newPos;
       }
     }
     _tracks.removeWhere((key, _) => !seen.contains(key));
   }
+
+  /// Whether a vehicle currently reads as stuck (hasn't moved across the last
+  /// [_stuckThreshold] updates). Unknown keys are treated as moving.
+  bool isStuck(String key) =>
+      (_tracks[key]?.staleCount ?? 0) >= _stuckThreshold;
+
+  VehicleTrack? trackFor(String key) => _tracks[key];
+
+  static bool _isSamePlace(ll.LatLng a, ll.LatLng b) =>
+      (a.latitude - b.latitude).abs() < _stillEpsilon &&
+      (a.longitude - b.longitude).abs() < _stillEpsilon;
 
   ll.LatLng positionOf(String key, double t) {
     final track = _tracks[key]!;
