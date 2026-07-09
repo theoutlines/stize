@@ -80,6 +80,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Ничего не нашлось. Может, стоит попробовать иначе написать?';
 
   @override
+  String get locationDenied =>
+      'Геолокация выключена. Разрешите доступ, чтобы видеть себя на карте.';
+
+  @override
   String get nearbyStopsTitle => 'Остановки рядом';
 
   @override

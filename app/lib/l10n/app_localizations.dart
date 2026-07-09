@@ -214,6 +214,12 @@ abstract class AppLocalizations {
   /// **'Nothing found. Try a different spelling?'**
   String get searchNoResults;
 
+  /// No description provided for @locationDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is off. Allow location access to see where you are.'**
+  String get locationDenied;
+
   /// No description provided for @nearbyStopsTitle.
   ///
   /// In en, this message translates to:

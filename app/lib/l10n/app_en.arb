@@ -26,6 +26,7 @@
 
   "searchHint": "Search stops, streets, or lines…",
   "searchNoResults": "Nothing found. Try a different spelling?",
+  "locationDenied": "Location is off. Allow location access to see where you are.",
   "nearbyStopsTitle": "Nearby stops",
   "nearbyStopsEmpty": "Turn on location, or search for a stop, street, or line above.",
 

@@ -77,6 +77,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchNoResults => 'Nothing found. Try a different spelling?';
 
   @override
+  String get locationDenied =>
+      'Location is off. Allow location access to see where you are.';
+
+  @override
   String get nearbyStopsTitle => 'Nearby stops';
 
   @override
