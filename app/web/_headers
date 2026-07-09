@@ -1,0 +1,15 @@
+# Cloudflare Pages custom headers.
+# The Flutter web entry points keep stable filenames but change every build,
+# so they must be revalidated on each load (cheap: an ETag 304 when unchanged)
+# instead of being served stale from the 4h default cache. Without this a
+# returning visitor could keep running an old build for hours after a deploy.
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/flutter_bootstrap.js
+  Cache-Control: public, max-age=0, must-revalidate
+/main.dart.js
+  Cache-Control: public, max-age=0, must-revalidate
+/flutter_service_worker.js
+  Cache-Control: public, max-age=0, must-revalidate
+/version.json
+  Cache-Control: public, max-age=0, must-revalidate
