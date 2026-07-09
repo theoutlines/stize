@@ -123,6 +123,32 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
+  String get vehicleMoving => 'U pokretu';
+
+  @override
+  String get vehicleStuck => 'Izgleda da stoji';
+
+  @override
+  String get vehicleNextStop => 'Sledeća stanica';
+
+  @override
+  String get vehicleUpcomingStops => 'Dalje na ruti';
+
+  @override
+  String get vehicleYourStop => 'vaša stanica';
+
+  @override
+  String get vehicleEtaApprox => 'Vremena dolaska su okvirna';
+
+  @override
+  String get vehicleShowRoute => 'Prikaži rutu na mapi';
+
+  @override
+  String vehicleEtaMinutesApprox(int minutes) {
+    return '≈ $minutes min';
+  }
+
+  @override
   String get emptyArrivalsTitle => 'Trenutno je tiho na ovom stajalištu';
 
   @override

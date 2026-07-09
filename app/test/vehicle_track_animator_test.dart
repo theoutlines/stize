@@ -71,6 +71,33 @@ void main() {
     expect(animator.tracks.containsKey('P1'), isFalse);
   });
 
+  test('flags a vehicle as stuck after repeated no-move updates', () {
+    final animator = VehicleTrackAnimator();
+    // First fix: brand new, moving by default.
+    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
+    expect(animator.isStuck('P1'), isFalse);
+
+    // Same position again — one stale update, still below threshold.
+    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
+    expect(animator.isStuck('P1'), isFalse);
+
+    // Second consecutive no-move update — now it reads as stuck.
+    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
+    expect(animator.isStuck('P1'), isTrue);
+
+    // It moves again → back to moving.
+    animator.sync([_arrival(garageNo: 'P1', lat: 44.82, lon: 20.52)], 1.0);
+    expect(animator.isStuck('P1'), isFalse);
+  });
+
+  test('carries the line and type onto the track', () {
+    final animator = VehicleTrackAnimator();
+    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
+    final track = animator.trackFor('P1');
+    expect(track?.line, '79');
+    expect(track?.type, VehicleType.bus);
+  });
+
   test('ignores arrivals with no GPS fix', () {
     final animator = VehicleTrackAnimator();
     final noGps = Arrival(

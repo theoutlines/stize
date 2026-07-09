@@ -36,6 +36,15 @@
   "arrivalEtaNow": "Sada",
   "arrivalStopsAway": "{count, plural, =0{ovde} one{{count} stanica} few{{count} stanice} other{{count} stanica}}",
 
+  "vehicleMoving": "U pokretu",
+  "vehicleStuck": "Izgleda da stoji",
+  "vehicleNextStop": "Sledeća stanica",
+  "vehicleUpcomingStops": "Dalje na ruti",
+  "vehicleYourStop": "vaša stanica",
+  "vehicleEtaApprox": "Vremena dolaska su okvirna",
+  "vehicleShowRoute": "Prikaži rutu na mapi",
+  "vehicleEtaMinutesApprox": "≈ {minutes} min",
+
   "emptyArrivalsTitle": "Trenutno je tiho na ovom stajalištu",
   "emptyArrivalsSubtitle": "Prevoz bi trebalo uskoro da stigne.",
 
