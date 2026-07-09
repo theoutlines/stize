@@ -1,6 +1,5 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../domain/models/vehicle_type.dart';
 
@@ -19,9 +18,9 @@ IconData vehicleIconFor(VehicleType type) {
 }
 
 /// A per-type transport glyph as a widget: a bus for buses, a tram for trams,
-/// and — since Material Icons has none — a *composed* trolleybus (a bus body
-/// with two trolley poles reaching up to the wire) so each type reads by shape,
-/// not colour alone.
+/// and — since Material Icons has none — a dedicated trolleybus SVG, so each
+/// type reads by shape, not colour alone. Recoloured to [color] (white on the
+/// coloured pills, the type colour on stop pins).
 Widget vehicleGlyph(
   VehicleType type, {
   required double size,
@@ -33,58 +32,11 @@ Widget vehicleGlyph(
     case VehicleType.tram:
       return Icon(Icons.tram_rounded, size: size, color: color);
     case VehicleType.trolleybus:
-      return _TrolleybusGlyph(size: size, color: color);
+      return SvgPicture.asset(
+        'assets/icons/trolleybus.svg',
+        width: size,
+        height: size,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
   }
-}
-
-class _TrolleybusGlyph extends StatelessWidget {
-  const _TrolleybusGlyph({required this.size, required this.color});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Icon(Icons.directions_bus_rounded, size: size, color: color),
-          // Poles drawn on top of the roof so they read even at small sizes.
-          Positioned.fill(
-            child: CustomPaint(painter: _TrolleyPolesPainter(color)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Two trolley poles rising from the bus roof to a wire contact up and to the
-/// right, with a small contact dot.
-class _TrolleyPolesPainter extends CustomPainter {
-  const _TrolleyPolesPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final s = size.width;
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(1.0, s * 0.06)
-      ..strokeCap = StrokeCap.round;
-
-    final contact = Offset(s * 0.72, s * 0.10);
-    canvas.drawLine(Offset(s * 0.42, s * 0.32), contact, paint);
-    canvas.drawLine(Offset(s * 0.55, s * 0.32), contact, paint);
-    canvas.drawCircle(contact, math.max(0.8, s * 0.05), Paint()..color = color);
-  }
-
-  @override
-  bool shouldRepaint(_TrolleyPolesPainter oldDelegate) =>
-      oldDelegate.color != color;
 }
