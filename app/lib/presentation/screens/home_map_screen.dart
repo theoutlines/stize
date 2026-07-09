@@ -17,10 +17,20 @@ import 'map_screen_args.dart';
 import 'my_stops_screen.dart';
 
 const _belgradeCenter = ll.LatLng(44.8125, 20.4612);
+const _distance = ll.Distance();
+
+// Below this zoom the whole-city view would pack hundreds of overlapping stop
+// markers into an unreadable blob, so we hide them and let the user zoom in —
+// the same "stops appear as you zoom" behaviour every map navigator uses.
+const _minStopsZoom = 14.0;
 
 /// The app's home screen: a full-screen map (like a navigator app) with a
-/// floating universal-search bar on top, nearby/favorite stops shown as
-/// markers directly on the map rather than as a separate list.
+/// floating universal-search bar on top. Stops are shown as markers for
+/// whatever part of the map is currently visible — decoupled from geolocation,
+/// so they always appear even if the user denies (or hasn't yet granted)
+/// location access. On entry we also try to recenter on the user's own
+/// position; after the first permission grant that happens automatically on
+/// every launch.
 class HomeMapScreen extends ConsumerStatefulWidget {
   const HomeMapScreen({super.key});
 
@@ -33,9 +43,22 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
   Timer? _debounce;
+  Timer? _mapDebounce;
+
+  // Map-readiness: flutter_map throws if `move()` is called before the widget
+  // has laid out at least once. If a camera target resolves before that, we
+  // stash it here and apply it in onMapReady.
+  bool _mapReady = false;
+  ll.LatLng? _pendingCenter;
+  double? _pendingZoom;
 
   ll.LatLng? _myPosition;
-  List<Stop> _nearbyStops = [];
+
+  // Stops currently drawn on the map, loaded for the visible area.
+  List<Stop> _areaStops = [];
+  ll.LatLng? _lastFetchCenter;
+  double _lastFetchRadius = 0;
+  int _stopsRequestSeq = 0;
 
   bool _searching = false;
   List<Stop> _resultStops = [];
@@ -48,34 +71,122 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
   @override
   void initState() {
     super.initState();
+    // Kick off geolocation immediately; it recenters the map once resolved.
+    // Stop loading is driven separately by onMapReady / onPositionChanged.
     _loadMyLocation();
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _mapDebounce?.cancel();
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
+  // ---- Camera helpers -------------------------------------------------------
+
+  void _centerOn(ll.LatLng point, double zoom) {
+    if (_mapReady) {
+      _mapController.move(point, zoom);
+    } else {
+      _pendingCenter = point;
+      _pendingZoom = zoom;
+    }
+  }
+
+  void _onMapReady() {
+    _mapReady = true;
+    if (_pendingCenter != null) {
+      _mapController.move(_pendingCenter!, _pendingZoom ?? _mapController.camera.zoom);
+      _pendingCenter = null;
+      _pendingZoom = null;
+    }
+    // Always show stops for wherever the map first lands, even before (or
+    // without) a geolocation fix.
+    _loadStopsForVisibleArea();
+  }
+
+  void _onPositionChanged(MapCamera camera, bool hasGesture) {
+    // Debounce: only refetch once the camera settles.
+    _mapDebounce?.cancel();
+    _mapDebounce = Timer(const Duration(milliseconds: 400), _loadStopsForVisibleArea);
+  }
+
+  // ---- Location -------------------------------------------------------------
+
   Future<void> _loadMyLocation() async {
     try {
       final position = await ref.read(locationServiceProvider).getCurrentPosition();
       final point = ll.LatLng(position.latitude, position.longitude);
-      final stops = await ref.read(stopsRepositoryProvider).nearby(lat: point.latitude, lon: point.longitude);
       if (!mounted) return;
-      setState(() {
-        _myPosition = point;
-        _nearbyStops = stops;
-      });
-      _mapController.move(point, 15);
+      setState(() => _myPosition = point);
+      // Centering fires onPositionChanged, which loads the stops around the
+      // new camera position — no need to fetch here as well.
+      _centerOn(point, 16);
     } on LocationUnavailable {
-      // Soft fallback: stay on the default city-wide view, manual search still works.
+      // Soft fallback: stay on the current/default view; stops still load via
+      // the map callbacks and manual search still works.
     } catch (_) {
       // Same soft fallback for any other failure.
     }
   }
+
+  // ---- Stops for the visible area ------------------------------------------
+
+  void _loadStopsForVisibleArea() {
+    if (!_mapReady || !mounted) return;
+    if (_mapController.camera.zoom < _minStopsZoom) {
+      // Zoomed too far out — clear the blob and wait for the user to zoom in.
+      if (_areaStops.isNotEmpty) {
+        setState(() => _areaStops = []);
+        _lastFetchCenter = null;
+      }
+      return;
+    }
+    _loadStopsAround(_mapController.camera.center);
+  }
+
+  /// Radius (meters) that roughly covers the visible viewport, clamped so we
+  /// never ask the backend for the whole city at once nor a uselessly tiny
+  /// patch when zoomed in tight.
+  double _radiusForVisibleArea() {
+    try {
+      final camera = _mapController.camera;
+      final corner = camera.visibleBounds.northEast;
+      final meters = _distance.as(ll.LengthUnit.Meter, camera.center, corner);
+      return meters.clamp(400.0, 2000.0);
+    } catch (_) {
+      return 1000;
+    }
+  }
+
+  Future<void> _loadStopsAround(ll.LatLng center) async {
+    final radius = _radiusForVisibleArea();
+    // Skip refetching if we've barely moved relative to the last fetch.
+    if (_lastFetchCenter != null) {
+      final moved = _distance.as(ll.LengthUnit.Meter, _lastFetchCenter!, center);
+      if (moved < _lastFetchRadius * 0.35 && (radius - _lastFetchRadius).abs() < _lastFetchRadius * 0.5) {
+        return;
+      }
+    }
+    final seq = ++_stopsRequestSeq;
+    _lastFetchCenter = center;
+    _lastFetchRadius = radius;
+    try {
+      final stops = await ref
+          .read(stopsRepositoryProvider)
+          .nearby(lat: center.latitude, lon: center.longitude, radiusMeters: radius);
+      if (!mounted || seq != _stopsRequestSeq) return; // a newer request won
+      setState(() => _areaStops = stops);
+    } catch (_) {
+      // Leave whatever stops are already shown; transient failures shouldn't
+      // wipe the map.
+    }
+  }
+
+  // ---- Search ---------------------------------------------------------------
 
   void _onSearchChanged(String query) {
     _debounce?.cancel();
@@ -145,15 +256,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
 
   Future<void> _openPlace(GeocodeResult place) async {
     final center = ll.LatLng(place.lat, place.lon);
-    final stops = await ref.read(stopsRepositoryProvider).nearby(lat: place.lat, lon: place.lon);
     if (!mounted) return;
     _clearSearch();
     setState(() {
       _pinnedPlace = center;
       _pinnedPlaceLabel = place.displayName;
-      _nearbyStops = stops;
     });
-    _mapController.move(center, 16);
+    // Centering fires onPositionChanged, which loads the stops there.
+    _centerOn(center, 16);
   }
 
   void _openFavorites() {
@@ -172,7 +282,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
         children: [
           FlutterMap(
             mapController: _mapController,
-            options: MapOptions(initialCenter: _myPosition ?? _belgradeCenter, initialZoom: _myPosition != null ? 15 : 12),
+            options: MapOptions(
+              initialCenter: _belgradeCenter,
+              initialZoom: 14,
+              minZoom: 10,
+              maxZoom: 18,
+              onMapReady: _onMapReady,
+              onPositionChanged: _onPositionChanged,
+            ),
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -180,6 +297,22 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
               ),
               MarkerLayer(
                 markers: [
+                  for (final stop in _areaStops)
+                    _stopMarker(context, stop, isFavorite: favoriteIds.contains(stop.stopId)),
+                  for (final stop in _resultStops)
+                    if (!_areaStops.any((s) => s.stopId == stop.stopId))
+                      _stopMarker(context, stop, isFavorite: favoriteIds.contains(stop.stopId)),
+                  for (final fav in favoriteStops)
+                    if (!_areaStops.any((s) => s.stopId == fav.stopId) &&
+                        !_resultStops.any((s) => s.stopId == fav.stopId))
+                      _stopMarker(context, fav, isFavorite: true),
+                  if (_pinnedPlace != null)
+                    Marker(
+                      point: _pinnedPlace!,
+                      width: 40,
+                      height: 40,
+                      child: const Icon(Icons.place, color: Colors.redAccent, size: 36),
+                    ),
                   if (_myPosition != null)
                     Marker(
                       point: _myPosition!,
@@ -193,22 +326,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
                         ),
                       ),
                     ),
-                  if (_pinnedPlace != null)
-                    Marker(
-                      point: _pinnedPlace!,
-                      width: 40,
-                      height: 40,
-                      child: const Icon(Icons.place, color: Colors.redAccent, size: 36),
-                    ),
-                  for (final stop in _nearbyStops)
-                    _stopMarker(context, stop, isFavorite: favoriteIds.contains(stop.stopId)),
-                  for (final stop in _resultStops)
-                    if (!_nearbyStops.any((s) => s.stopId == stop.stopId))
-                      _stopMarker(context, stop, isFavorite: favoriteIds.contains(stop.stopId)),
-                  for (final fav in favoriteStops)
-                    if (!_nearbyStops.any((s) => s.stopId == fav.stopId) &&
-                        !_resultStops.any((s) => s.stopId == fav.stopId))
-                      _stopMarker(context, fav, isFavorite: true),
                 ],
               ),
               const SimpleAttributionWidget(source: Text('© OpenStreetMap contributors')),
