@@ -148,7 +148,7 @@ class _VehicleDetailSheet extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(vehicleIconFor(type), color: Colors.white, size: 16),
+          vehicleGlyph(type, size: 16, color: Colors.white),
           const SizedBox(width: 4),
           Text(
             line,

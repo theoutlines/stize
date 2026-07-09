@@ -26,7 +26,11 @@ class ArrivalTile extends StatelessWidget {
       // as its marker on the map (bus blue, trolley orange, tram red).
       leading: CircleAvatar(
         backgroundColor: vehicleColor(arrival.vehicleType),
-        child: Icon(vehicleIconFor(arrival.vehicleType), color: Colors.white),
+        child: vehicleGlyph(
+          arrival.vehicleType,
+          size: 22,
+          color: Colors.white,
+        ),
       ),
       title: Text(arrival.line, style: theme.textTheme.titleMedium),
       subtitle: arrival.stopsRemaining != null

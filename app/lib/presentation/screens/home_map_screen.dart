@@ -1117,7 +1117,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           ),
         for (final line in _resultLines)
           ListTile(
-            leading: Icon(vehicleIconFor(line.vehicleType)),
+            leading: vehicleGlyph(
+              line.vehicleType,
+              size: 24,
+              color: vehicleColor(line.vehicleType),
+            ),
             title: Text(line.line),
             subtitle: Text('${line.origin} → ${line.destination}'),
             trailing: IconButton(
