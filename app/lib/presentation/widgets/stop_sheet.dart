@@ -157,7 +157,12 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
                         title: l10n.loadingArrivals,
                       ),
                       error: (err, _) => _errorState(l10n, err),
-                      data: (b) => _boardBody(context, l10n, b),
+                      data: (b) => _boardBody(
+                        context,
+                        l10n,
+                        b,
+                        stopLocation?.lines ?? const [],
+                      ),
                     ),
                   ],
                 ),
@@ -242,6 +247,7 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
     BuildContext context,
     AppLocalizations l10n,
     ArrivalsBoard board,
+    List<String> stopLines,
   ) {
     if (board.serviceStatus == ServiceStatus.unavailable) {
       return EmptyState(
@@ -258,10 +264,22 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
       );
     }
 
-    final lines = board.arrivals.map((a) => a.line).toSet().toList()..sort();
-    final visibleArrivals = _lineFilter == null
+    // Lines currently arriving are "active"; the filter still lists *every*
+    // line the stop serves (union with the stop's route list), so an inactive
+    // line shows as a muted, disabled chip rather than disappearing.
+    final arrivingLines = board.arrivals.map((a) => a.line).toSet();
+    final allLines = {...stopLines, ...arrivingLines}.toList()
+      ..sort(_compareLines);
+
+    // If a filtered line stops arriving, fall back to "all" without mutating
+    // state during build.
+    final effectiveFilter =
+        (_lineFilter != null && arrivingLines.contains(_lineFilter))
+        ? _lineFilter
+        : null;
+    final visibleArrivals = effectiveFilter == null
         ? board.arrivals
-        : board.arrivals.where((a) => a.line == _lineFilter).toList();
+        : board.arrivals.where((a) => a.line == effectiveFilter).toList();
 
     final ageSeconds = DateTime.now()
         .toUtc()
@@ -283,7 +301,7 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
             ),
           ),
         ),
-        if (lines.length > 1)
+        if (allLines.length > 1)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Wrap(
@@ -291,15 +309,26 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
               children: [
                 ChoiceChip(
                   label: Text(l10n.lineFilterAll),
-                  selected: _lineFilter == null,
+                  selected: effectiveFilter == null,
                   onSelected: (_) => setState(() => _lineFilter = null),
                 ),
-                for (final line in lines)
-                  ChoiceChip(
-                    label: Text(line),
-                    selected: _lineFilter == line,
-                    onSelected: (_) => setState(() => _lineFilter = line),
-                  ),
+                for (final line in allLines)
+                  if (arrivingLines.contains(line))
+                    ChoiceChip(
+                      label: Text(line),
+                      selected: effectiveFilter == line,
+                      onSelected: (_) => setState(() => _lineFilter = line),
+                    )
+                  else
+                    // Inactive: no arrivals right now — muted and non-clickable.
+                    Opacity(
+                      opacity: 0.4,
+                      child: ChoiceChip(
+                        label: Text(line),
+                        selected: false,
+                        onSelected: null,
+                      ),
+                    ),
               ],
             ),
           ),
@@ -311,6 +340,17 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
         const SizedBox(height: 12),
       ],
     );
+  }
+
+  // Sort lines naturally: numeric lines by value (3 before 29), lettered lines
+  // (EKO2, etc.) after the numbers.
+  static int _compareLines(String a, String b) {
+    final na = int.tryParse(RegExp(r'^\d+').firstMatch(a)?.group(0) ?? '');
+    final nb = int.tryParse(RegExp(r'^\d+').firstMatch(b)?.group(0) ?? '');
+    if (na != null && nb != null && na != nb) return na.compareTo(nb);
+    if (na != null && nb == null) return -1;
+    if (na == null && nb != null) return 1;
+    return a.compareTo(b);
   }
 
   String _freshnessLabel(AppLocalizations l10n, DateTime updatedAt) {

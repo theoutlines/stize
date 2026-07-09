@@ -131,11 +131,6 @@ class _StopScreenState extends ConsumerState<StopScreen> {
       );
     }
 
-    final lines = board.arrivals.map((a) => a.line).toSet().toList()..sort();
-    final visibleArrivals = _lineFilter == null
-        ? board.arrivals
-        : board.arrivals.where((a) => a.line == _lineFilter).toList();
-
     if (board.arrivals.isEmpty) {
       return EmptyState(
         icon: Icons.nightlight_outlined,
@@ -143,6 +138,19 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         subtitle: l10n.emptyArrivalsSubtitle,
       );
     }
+
+    // The filter lists every line the stop serves; lines with no current
+    // arrival are shown as muted, disabled chips ("inactive"). See stop_sheet.
+    final arrivingLines = board.arrivals.map((a) => a.line).toSet();
+    final allLines = {...?stopLocation?.lines, ...arrivingLines}.toList()
+      ..sort(_compareLines);
+    final effectiveFilter =
+        (_lineFilter != null && arrivingLines.contains(_lineFilter))
+        ? _lineFilter
+        : null;
+    final visibleArrivals = effectiveFilter == null
+        ? board.arrivals
+        : board.arrivals.where((a) => a.line == effectiveFilter).toList();
 
     final vehiclesWithGps = board.arrivals.where((a) => a.gps != null).toList();
     final ageSeconds = DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
@@ -167,7 +175,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
                 ),
           ),
         ),
-        if (lines.length > 1)
+        if (allLines.length > 1)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Wrap(
@@ -175,21 +183,41 @@ class _StopScreenState extends ConsumerState<StopScreen> {
               children: [
                 ChoiceChip(
                   label: Text(l10n.lineFilterAll),
-                  selected: _lineFilter == null,
+                  selected: effectiveFilter == null,
                   onSelected: (_) => setState(() => _lineFilter = null),
                 ),
-                for (final line in lines)
-                  ChoiceChip(
-                    label: Text(line),
-                    selected: _lineFilter == line,
-                    onSelected: (_) => setState(() => _lineFilter = line),
-                  ),
+                for (final line in allLines)
+                  if (arrivingLines.contains(line))
+                    ChoiceChip(
+                      label: Text(line),
+                      selected: effectiveFilter == line,
+                      onSelected: (_) => setState(() => _lineFilter = line),
+                    )
+                  else
+                    Opacity(
+                      opacity: 0.4,
+                      child: ChoiceChip(
+                        label: Text(line),
+                        selected: false,
+                        onSelected: null,
+                      ),
+                    ),
               ],
             ),
           ),
         for (final arrival in visibleArrivals) ArrivalTile(arrival: arrival),
       ],
     );
+  }
+
+  // Natural line sort: numeric lines by value (3 before 29), lettered after.
+  static int _compareLines(String a, String b) {
+    final na = int.tryParse(RegExp(r'^\d+').firstMatch(a)?.group(0) ?? '');
+    final nb = int.tryParse(RegExp(r'^\d+').firstMatch(b)?.group(0) ?? '');
+    if (na != null && nb != null && na != nb) return na.compareTo(nb);
+    if (na != null && nb == null) return -1;
+    if (na == null && nb != null) return 1;
+    return a.compareTo(b);
   }
 
   String _freshnessLabel(AppLocalizations l10n, DateTime updatedAt) {
