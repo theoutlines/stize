@@ -15,7 +15,9 @@ export interface RouteAlert {
   validFrom: string | null; // ISO date
   validUntil: string | null; // ISO date
   confidence: "line" | "stop";
-  summary: string;
+  summary: string; // Serbian (source language)
+  summaryEn: string | null;
+  summaryRu: string | null;
 }
 
 interface NewsListEntry {
@@ -119,6 +121,8 @@ interface ParsedAnnouncement {
   valid_until: string | null;
   confidence: "line" | "stop";
   summary: string;
+  summary_en: string;
+  summary_ru: string;
 }
 
 /**
@@ -167,8 +171,16 @@ async function parseAnnouncementWithLLM(
           type: "string",
           description: "One short plain-language sentence (in Serbian) summarizing the change for a rider.",
         },
+        summary_en: {
+          type: "string",
+          description: "The same one-sentence summary, translated into natural English.",
+        },
+        summary_ru: {
+          type: "string",
+          description: "The same one-sentence summary, translated into natural Russian.",
+        },
       },
-      required: ["lines", "stops", "valid_from", "valid_until", "confidence", "summary"],
+      required: ["lines", "stops", "valid_from", "valid_until", "confidence", "summary", "summary_en", "summary_ru"],
     },
   };
 
@@ -231,6 +243,8 @@ export async function refreshAlerts(env: Env): Promise<{ added: number; total: n
         validUntil: parsed.valid_until,
         confidence: parsed.confidence,
         summary: parsed.summary,
+        summaryEn: parsed.summary_en,
+        summaryRu: parsed.summary_ru,
       });
     } catch (err) {
       console.error(`Failed to process announcement ${entry.url}`, err);

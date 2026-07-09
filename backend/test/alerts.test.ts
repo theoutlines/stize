@@ -31,6 +31,8 @@ describe("listAlerts", () => {
         validUntil: null,
         confidence: "line",
         summary: "A test alert.",
+        summaryEn: "A test alert.",
+        summaryRu: "Тестовое оповещение.",
       },
     ];
     await env.STIGLA_KV.put("route_alerts_v1", JSON.stringify(sample));

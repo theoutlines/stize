@@ -77,6 +77,19 @@ describe("headingFromRoute", () => {
     expect(h).toBeCloseTo(90, 0);
   });
 
+  it("uses the segment the vehicle is on, not the nearest station's next hop", () => {
+    // L-shaped route: A->B goes east, B->C turns north. The vehicle is still on
+    // the A->B leg but nearer to station B than to A. Snapping to the nearest
+    // station (B) would have taken the B->C bearing (north); projecting onto the
+    // segment keeps it heading east along the leg it's actually on.
+    const h = headingFromRoute({ lat: 44.8, lon: 20.5085 }, [
+      { lat: 44.8, lon: 20.5 }, // A
+      { lat: 44.8, lon: 20.51 }, // B (east of A)
+      { lat: 44.81, lon: 20.51 }, // C (north of B)
+    ]);
+    expect(h).toBeCloseTo(90, 0);
+  });
+
   it("returns null with fewer than two stations", () => {
     expect(headingFromRoute({ lat: 44.8, lon: 20.5 }, [])).toBeNull();
     expect(headingFromRoute({ lat: 44.8, lon: 20.5 }, [{ lat: 44.8, lon: 20.5 }])).toBeNull();

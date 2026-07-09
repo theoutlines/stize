@@ -1,5 +1,5 @@
 import type { Env } from "../env";
-import { bearingDegrees, haversineDistanceMeters } from "./haversine";
+import { bearingDegrees, distanceToSegmentMeters } from "./haversine";
 
 export interface RawArrival {
   lineNumber: string;
@@ -96,20 +96,22 @@ export function headingFromRoute(
   routeStations: { lat: number; lon: number }[],
 ): number | null {
   if (routeStations.length < 2) return null;
-  let nearestIdx = 0;
-  let nearestDist = Infinity;
-  for (let i = 0; i < routeStations.length; i++) {
-    const d = haversineDistanceMeters(gps, routeStations[i]);
-    if (d < nearestDist) {
-      nearestDist = d;
-      nearestIdx = i;
+  // Pick the route *segment* the vehicle is actually on — the one it sits
+  // closest to — and take that segment's forward bearing (origin→destination).
+  // Projecting onto segments (not snapping to the nearest station) keeps the
+  // arrow pointing along the direction of travel even mid-block, and avoids the
+  // failure where the nearest station is the one just passed, which would flip
+  // the arrow onto the next segment.
+  let bestIdx = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < routeStations.length - 1; i++) {
+    const { distance } = distanceToSegmentMeters(gps, routeStations[i], routeStations[i + 1]);
+    if (distance < bestDist) {
+      bestDist = distance;
+      bestIdx = i;
     }
   }
-  // Forward is toward the next station along the route; at the very end, reuse
-  // the last segment's bearing.
-  const from = nearestIdx < routeStations.length - 1 ? routeStations[nearestIdx] : routeStations[nearestIdx - 1];
-  const to = nearestIdx < routeStations.length - 1 ? routeStations[nearestIdx + 1] : routeStations[nearestIdx];
-  return bearingDegrees(from, to);
+  return bearingDegrees(routeStations[bestIdx], routeStations[bestIdx + 1]);
 }
 
 function generateClientId(): string {
