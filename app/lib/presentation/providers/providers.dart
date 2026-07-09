@@ -13,6 +13,7 @@ import '../../data/repositories/geocode_repository_impl.dart';
 import '../../data/repositories/ideas_repository_impl.dart';
 import '../../data/repositories/lines_repository_impl.dart';
 import '../../data/repositories/stops_repository_impl.dart';
+import '../../data/repositories/vehicles_repository_impl.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/idea.dart';
@@ -25,6 +26,7 @@ import '../../domain/repositories/geocode_repository.dart';
 import '../../domain/repositories/ideas_repository.dart';
 import '../../domain/repositories/lines_repository.dart';
 import '../../domain/repositories/stops_repository.dart';
+import '../../domain/repositories/vehicles_repository.dart';
 
 final apiClientProvider = Provider<StiglaApiClient>((ref) => StiglaApiClient());
 
@@ -54,6 +56,10 @@ final arrivalsRepositoryProvider = Provider<ArrivalsRepository>(
 
 final stopsRepositoryProvider = Provider<StopsRepository>(
   (ref) => StopsRepositoryImpl(ref.watch(apiClientProvider), ref.watch(gtfsOfflineCacheProvider)),
+);
+
+final vehiclesRepositoryProvider = Provider<VehiclesRepository>(
+  (ref) => VehiclesRepositoryImpl(ref.watch(apiClientProvider)),
 );
 
 final linesRepositoryProvider = Provider<LinesRepository>(

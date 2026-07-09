@@ -20,6 +20,7 @@ class Arrival {
     required this.routeId,
     required this.gps,
     required this.garageNo,
+    this.heading,
   });
 
   final String line;
@@ -30,6 +31,9 @@ class Arrival {
   final LatLon? gps;
   final String? garageNo;
 
+  /// Travel direction in degrees (0 = north, clockwise), or null if unknown.
+  final double? heading;
+
   factory Arrival.fromJson(Map<String, dynamic> json) {
     return Arrival(
       line: json['line'] as String,
@@ -39,6 +43,7 @@ class Arrival {
       routeId: json['route_id'] as String,
       gps: json['gps'] == null ? null : LatLon.fromJson(json['gps'] as Map<String, dynamic>),
       garageNo: json['garage_no'] as String?,
+      heading: (json['heading'] as num?)?.toDouble(),
     );
   }
 }

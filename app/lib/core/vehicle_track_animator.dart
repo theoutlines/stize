@@ -4,7 +4,7 @@ import '../domain/models/arrival.dart';
 import '../domain/models/vehicle_type.dart';
 
 class VehicleTrack {
-  VehicleTrack(this.to, {required this.line, required this.type})
+  VehicleTrack(this.to, {required this.line, required this.type, this.heading})
     : from = to;
   ll.LatLng from;
   ll.LatLng to;
@@ -14,10 +14,30 @@ class VehicleTrack {
   final String line;
   final VehicleType type;
 
+  /// Travel direction in degrees (0 = north, clockwise), or null if unknown.
+  double? heading;
+
   /// How many *consecutive* provider updates have landed with the vehicle at
   /// (essentially) the same real position. Movement resets it to 0. This is a
   /// soft "looks stuck" heuristic, not a hard traffic signal.
   int staleCount = 0;
+}
+
+/// One vehicle position update fed into [VehicleTrackAnimator.syncSamples].
+class VehicleSample {
+  const VehicleSample({
+    required this.key,
+    required this.position,
+    required this.line,
+    required this.type,
+    this.heading,
+  });
+
+  final String key;
+  final ll.LatLng position;
+  final String line;
+  final VehicleType type;
+  final double? heading;
 }
 
 /// Pure interpolation logic behind the live-tracking map, kept separate from
@@ -45,30 +65,44 @@ class VehicleTrackAnimator {
   /// controller's value (0..1) *before* it gets reset, so an in-flight
   /// vehicle's current interpolated spot becomes its new starting point.
   void sync(List<Arrival> arrivals, double currentT) {
+    syncSamples([
+      for (final a in arrivals)
+        if (a.gps != null)
+          VehicleSample(
+            key: keyFor(a),
+            position: ll.LatLng(a.gps!.lat, a.gps!.lon),
+            line: a.line,
+            type: a.vehicleType,
+            heading: a.heading,
+          ),
+    ], currentT);
+  }
+
+  /// Generic form of [sync] for any moving-vehicle source (e.g. the map-wide
+  /// "vehicles in the visible area" feed). Same conservative-easing rule.
+  void syncSamples(Iterable<VehicleSample> samples, double currentT) {
     final seen = <String>{};
-    for (final a in arrivals) {
-      final gps = a.gps;
-      if (gps == null) continue;
-      final key = keyFor(a);
-      seen.add(key);
-      final newPos = ll.LatLng(gps.lat, gps.lon);
-      final existing = _tracks[key];
+    for (final s in samples) {
+      seen.add(s.key);
+      final existing = _tracks[s.key];
       if (existing == null) {
-        _tracks[key] = VehicleTrack(
-          newPos,
-          line: a.line,
-          type: a.vehicleType,
+        _tracks[s.key] = VehicleTrack(
+          s.position,
+          line: s.line,
+          type: s.type,
+          heading: s.heading,
         );
       } else {
         // Movement heuristic compares the new *real* fix against the previous
         // one (existing.to), before we overwrite it.
-        if (_isSamePlace(existing.to, newPos)) {
+        if (_isSamePlace(existing.to, s.position)) {
           existing.staleCount++;
         } else {
           existing.staleCount = 0;
         }
         existing.from = _interpolate(existing.from, existing.to, currentT);
-        existing.to = newPos;
+        existing.to = s.position;
+        if (s.heading != null) existing.heading = s.heading;
       }
     }
     _tracks.removeWhere((key, _) => !seen.contains(key));

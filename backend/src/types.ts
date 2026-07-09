@@ -9,6 +9,23 @@ export interface ArrivalDto {
   route_id: string;
   gps: { lat: number; lon: number } | null;
   garage_no: string | null;
+  heading: number | null;
+}
+
+// A single moving vehicle for the "all transport in the visible area" map view,
+// reconstructed from per-stop arrivals and deduplicated by garage number.
+export interface VehicleDto {
+  line: string;
+  vehicle_type: VehicleType;
+  garage_no: string | null;
+  lat: number;
+  lon: number;
+  heading: number | null;
+}
+
+export interface VehiclesResponse {
+  vehicles: VehicleDto[];
+  updated_at: string;
 }
 
 export interface ArrivalsResponse {

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:maplibre/maplibre.dart';
 
@@ -293,6 +295,7 @@ class VehicleMarker extends StatefulWidget {
     required this.line,
     required this.type,
     required this.color,
+    this.heading,
     this.stuck = false,
     this.selected = false,
     this.onTap,
@@ -301,12 +304,18 @@ class VehicleMarker extends StatefulWidget {
   final String line;
   final VehicleType type;
   final Color color;
+
+  /// Travel direction in degrees (0 = north, clockwise). When set, a small
+  /// arrow orbits the pill pointing where the vehicle is heading.
+  final double? heading;
+
   final bool stuck;
   final bool selected;
   final VoidCallback? onTap;
 
-  /// The fixed box a [WidgetLayer] `Marker` must reserve for this widget.
-  static const Size markerSize = Size(120, 56);
+  /// The fixed box a [WidgetLayer] `Marker` must reserve for this widget. Tall
+  /// enough to give the orbiting direction arrow clearance around the pill.
+  static const Size markerSize = Size(120, 96);
 
   @override
   State<VehicleMarker> createState() => _VehicleMarkerState();
@@ -346,13 +355,29 @@ class _VehicleMarkerState extends State<VehicleMarker>
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final haloColor = widget.stuck ? _stuckColor : widget.color;
+    final heading = widget.heading;
     return SizedBox.fromSize(
       size: VehicleMarker.markerSize,
-      child: Center(
-        child: GestureDetector(
-          onTap: widget.onTap,
-          behavior: HitTestBehavior.opaque,
-          child: AnimatedBuilder(
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (heading != null)
+            // Rotating this full-box layer orbits the arrow around the pill's
+            // centre to the heading bearing; the arrow glyph (points up when
+            // unrotated) ends up pointing outward along the direction of travel.
+            Positioned.fill(
+              child: Transform.rotate(
+                angle: heading * (math.pi / 180),
+                child: Align(
+                  alignment: const Alignment(0, -0.5),
+                  child: _directionArrow(widget.color),
+                ),
+              ),
+            ),
+          GestureDetector(
+            onTap: widget.onTap,
+            behavior: HitTestBehavior.opaque,
+            child: AnimatedBuilder(
             animation: _pulse,
             builder: (context, child) {
               // Breathing glow: spread pulses out while fading. Stuck vehicles
@@ -376,7 +401,23 @@ class _VehicleMarkerState extends State<VehicleMarker>
             },
             child: _pill(scheme, haloColor),
           ),
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A white-outlined navigation arrow, pointing up (north) when unrotated.
+  Widget _directionArrow(Color color) {
+    return SizedBox(
+      width: 22,
+      height: 22,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Icon(Icons.navigation, size: 20, color: Colors.white),
+          Icon(Icons.navigation, size: 14, color: color),
+        ],
       ),
     );
   }
