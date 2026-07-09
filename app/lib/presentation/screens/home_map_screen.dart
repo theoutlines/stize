@@ -23,7 +23,6 @@ import '../widgets/favorites_carousel.dart';
 import '../widgets/stop_sheet.dart';
 import '../widgets/vehicle_icon.dart';
 import 'map_screen_args.dart';
-import 'my_stops_screen.dart';
 
 const _belgradeCenter = Geographic(lon: 20.4612, lat: 44.8125);
 const _distance = ll.Distance();
@@ -685,11 +684,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     await _controller?.animateCamera(center: center, zoom: 16);
   }
 
-  void _openFavorites() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const MyStopsScreen()));
-  }
 
   // ---- Build ----------------------------------------------------------------
 
@@ -1089,11 +1083,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                         onPressed: _clearSearch,
                       )
                     else
-                      IconButton(
-                        icon: const Icon(Icons.star_outline),
-                        tooltip: l10n.navMyStops,
-                        onPressed: _openFavorites,
-                      ),
+                      const SizedBox(width: 8),
                   ],
                 ),
               ),

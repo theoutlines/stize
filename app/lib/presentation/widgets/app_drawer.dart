@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../screens/my_stops_screen.dart';
 
 /// The app's primary navigation, moved from a bottom tab bar into a left
 /// drawer. Nav items sit at the top (and scroll if the list ever grows); the
@@ -65,6 +66,20 @@ class AppDrawer extends StatelessWidget {
                     label: l10n.navIdeas,
                     selected: currentIndex == 1,
                     onTap: () => select(1),
+                  ),
+                  _NavTile(
+                    icon: Icons.star_outline,
+                    selectedIcon: Icons.star,
+                    label: l10n.navMyStops,
+                    selected: false,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const MyStopsScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _NavTile(
                     icon: Icons.settings_outlined,

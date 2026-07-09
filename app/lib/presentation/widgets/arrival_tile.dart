@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/map_support.dart';
 import '../../domain/models/arrival.dart';
 import '../../l10n/app_localizations.dart';
 import 'vehicle_icon.dart';
@@ -21,9 +22,11 @@ class ArrivalTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     return ListTile(
+      // Match the map's transport palette so a line reads the same colour here
+      // as its marker on the map (bus blue, trolley orange, tram red).
       leading: CircleAvatar(
-        backgroundColor: theme.colorScheme.secondaryContainer,
-        child: Icon(vehicleIconFor(arrival.vehicleType), color: theme.colorScheme.onSecondaryContainer),
+        backgroundColor: vehicleColor(arrival.vehicleType),
+        child: Icon(vehicleIconFor(arrival.vehicleType), color: Colors.white),
       ),
       title: Text(arrival.line, style: theme.textTheme.titleMedium),
       subtitle: arrival.stopsRemaining != null
