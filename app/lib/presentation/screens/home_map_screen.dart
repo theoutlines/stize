@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -496,7 +497,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
                 child: MapLibreMap(
                   options: MapOptions(
                     initCenter: _belgradeCenter,
-                    initZoom: 14,
+                    initZoom: 15,
                     minZoom: 10,
                     maxZoom: 18,
                     initStyle: MapStyle.forBrightness(brightness),
@@ -521,11 +522,37 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
     );
   }
 
+  // Zoom +/- buttons make sense only with a mouse: show them on desktop
+  // browsers. On the native mobile apps and mobile web, pinch/double-tap
+  // gestures handle zoom, so they'd just be clutter.
+  bool get _showZoomControls {
+    if (!kIsWeb) return false;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  void _zoomBy(double delta) {
+    final controller = _controller;
+    if (controller == null) return;
+    final camera = controller.getCamera();
+    controller.animateCamera(
+      center: camera.center,
+      zoom: (camera.zoom + delta).clamp(10.0, 18.0),
+    );
+  }
+
   Widget _topButtons(ThemeData theme) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _roundButton(
@@ -534,9 +561,41 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
               tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
               onTap: widget.onOpenDrawer,
             ),
-            _roundButton(theme, icon: Icons.my_location, onTap: _recenterOnMe),
+            Column(
+              children: [
+                _roundButton(
+                  theme,
+                  icon: Icons.my_location,
+                  onTap: _recenterOnMe,
+                ),
+                if (_showZoomControls) ...[
+                  const SizedBox(height: 10),
+                  _zoomControl(theme),
+                ],
+              ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _zoomControl(ThemeData theme) {
+    return Material(
+      color: theme.colorScheme.surface,
+      elevation: 3,
+      borderRadius: BorderRadius.circular(24),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(icon: const Icon(Icons.add), onPressed: () => _zoomBy(1)),
+          Divider(height: 1, thickness: 1, color: theme.dividerColor),
+          IconButton(
+            icon: const Icon(Icons.remove),
+            onPressed: () => _zoomBy(-1),
+          ),
+        ],
       ),
     );
   }
