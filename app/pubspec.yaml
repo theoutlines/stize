@@ -45,6 +45,9 @@ dependencies:
   maplibre: ^0.3.5
   latlong2: ^0.9.1
   geolocator: ^13.0.2
+  # Endorsed web implementation, pulled in transitively already — referenced
+  # directly for WebSettings (maximumAge) via a conditional import.
+  geolocator_web: ^4.1.4
   url_launcher: ^6.3.1
 
 dev_dependencies:

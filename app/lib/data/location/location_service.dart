@@ -1,5 +1,7 @@
 import 'package:geolocator/geolocator.dart';
 
+import 'location_settings.dart';
+
 enum LocationUnavailableReason {
   serviceDisabled,
   permissionDenied,
@@ -63,10 +65,7 @@ class LocationService {
     }
 
     return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.medium,
-        timeLimit: Duration(seconds: 12),
-      ),
+      locationSettings: buildLocationSettings(),
     );
   }
 }
