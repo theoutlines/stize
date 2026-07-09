@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/vehicle_route.dart';
 import '../../domain/models/route_shape.dart';
@@ -58,7 +59,8 @@ class _VehicleDetailSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
-    return SafeArea(
+    return PointerInterceptor(
+      child: SafeArea(
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.7,
@@ -134,6 +136,7 @@ class _VehicleDetailSheet extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

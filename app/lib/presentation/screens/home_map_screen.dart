@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:maplibre/maplibre.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
@@ -616,7 +617,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _clearSearch();
     // Seamless (A1): overlay the arrivals on the same map instead of pushing a
     // whole new screen with its own map.
-    showStopSheet(context, stopId: stop.stopId, stopName: stop.name);
+    showStopSheet(
+      context,
+      stopId: stop.stopId,
+      stopName: stop.name,
+      // Tapping a vehicle row pans the map to it (zoom in past the dot→pill
+      // threshold so its marker is visible).
+      onFocusVehicle: (lat, lon) => _controller?.animateCamera(
+        center: Geographic(lon: lon, lat: lat),
+        zoom: 16.5,
+      ),
+    );
   }
 
   bool _isLinePinned(String line) {
@@ -825,7 +836,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   }
 
   Widget _zoomControl(ThemeData theme) {
-    return Material(
+    return PointerInterceptor(
+      child: Material(
       color: theme.colorScheme.surface,
       elevation: 3,
       borderRadius: BorderRadius.circular(24),
@@ -841,6 +853,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -850,12 +863,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     String? tooltip,
     VoidCallback? onTap,
   }) {
-    return Material(
-      color: theme.colorScheme.surface,
-      elevation: 3,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: IconButton(icon: Icon(icon), tooltip: tooltip, onPressed: onTap),
+    return PointerInterceptor(
+      child: Material(
+        color: theme.colorScheme.surface,
+        elevation: 3,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: IconButton(icon: Icon(icon), tooltip: tooltip, onPressed: onTap),
+      ),
     );
   }
 
@@ -992,7 +1007,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             children: [
               // Results / pinned place sit ABOVE the bar since it's at the bottom.
               if (_searching)
-                ConstrainedBox(
+                PointerInterceptor(
+                  child: ConstrainedBox(
                   constraints: BoxConstraints(maxHeight: maxResultsHeight),
                   child: Material(
                     elevation: 4,
@@ -1004,9 +1020,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                       child: _searchResultsList(l10n),
                     ),
                   ),
+                  ),
                 )
               else if (_pinnedPlaceLabel != null)
-                Material(
+                PointerInterceptor(
+                  child: Material(
                   elevation: 2,
                   borderRadius: BorderRadius.circular(20),
                   color: theme.colorScheme.surface,
@@ -1040,6 +1058,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                       ],
                     ),
                   ),
+                  ),
                 ),
               if (_searching || _pinnedPlaceLabel != null)
                 const SizedBox(height: 8),
@@ -1050,7 +1069,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   onOpenStop: _openStop,
                   onOpenLine: (line) => _openVehicleLine(line.line),
                 ),
-              Material(
+              PointerInterceptor(
+                child: Material(
                 elevation: 4,
                 borderRadius: BorderRadius.circular(28),
                 color: theme.colorScheme.surface,
@@ -1086,6 +1106,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                       const SizedBox(width: 8),
                   ],
                 ),
+              ),
               ),
             ],
           ),

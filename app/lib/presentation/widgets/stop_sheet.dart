@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
@@ -25,6 +26,7 @@ Future<void> showStopSheet(
   BuildContext context, {
   required String stopId,
   String? stopName,
+  void Function(double lat, double lon)? onFocusVehicle,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -33,15 +35,27 @@ Future<void> showStopSheet(
     // A faint scrim so the map behind stays legible — this reads as an overlay
     // on the same map, not a new screen.
     barrierColor: Colors.black.withValues(alpha: 0.08),
-    builder: (_) => _StopSheet(stopId: stopId, initialStopName: stopName),
+    builder: (_) => _StopSheet(
+      stopId: stopId,
+      initialStopName: stopName,
+      onFocusVehicle: onFocusVehicle,
+    ),
   );
 }
 
 class _StopSheet extends ConsumerStatefulWidget {
-  const _StopSheet({required this.stopId, this.initialStopName});
+  const _StopSheet({
+    required this.stopId,
+    this.initialStopName,
+    this.onFocusVehicle,
+  });
 
   final String stopId;
   final String? initialStopName;
+
+  /// Called with a vehicle's position when its arrival row is tapped, so the
+  /// caller (the map) can pan to it. The sheet closes itself first.
+  final void Function(double lat, double lon)? onFocusVehicle;
 
   @override
   ConsumerState<_StopSheet> createState() => _StopSheetState();
@@ -134,7 +148,11 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
       maxChildSize: 0.92,
       expand: false,
       builder: (context, scrollController) {
-        return Container(
+        // PointerInterceptor stops taps/double-taps on the sheet from falling
+        // through to the MapLibre platform view underneath (which would zoom the
+        // map) on web. No-op on mobile.
+        return PointerInterceptor(
+          child: Container(
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -168,6 +186,7 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
                 ),
               ),
             ],
+          ),
           ),
         );
       },
@@ -336,6 +355,14 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
           ArrivalTile(
             arrival: arrival,
             etaDeltaMinutes: _etaDelta[_vehKey(arrival)],
+            // Tap a vehicle row → close the sheet and pan the map to it.
+            onTap: (arrival.gps == null || widget.onFocusVehicle == null)
+                ? null
+                : () {
+                    final gps = arrival.gps!;
+                    Navigator.of(context).maybePop();
+                    widget.onFocusVehicle!.call(gps.lat, gps.lon);
+                  },
           ),
         const SizedBox(height: 12),
       ],

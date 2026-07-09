@@ -6,9 +6,17 @@ import '../../l10n/app_localizations.dart';
 import 'vehicle_icon.dart';
 
 class ArrivalTile extends StatelessWidget {
-  const ArrivalTile({super.key, required this.arrival, this.etaDeltaMinutes});
+  const ArrivalTile({
+    super.key,
+    required this.arrival,
+    this.etaDeltaMinutes,
+    this.onTap,
+  });
 
   final Arrival arrival;
+
+  /// Optional row tap — e.g. to focus this vehicle on the map.
+  final VoidCallback? onTap;
 
   /// How this line's ETA changed since the previous refresh, in minutes
   /// (positive = now arriving *later*, negative = *sooner*), or null when
@@ -22,6 +30,7 @@ class ArrivalTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     return ListTile(
+      onTap: onTap,
       // Match the map's transport palette so a line reads the same colour here
       // as its marker on the map (bus blue, trolley orange, tram red).
       leading: CircleAvatar(
