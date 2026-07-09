@@ -226,6 +226,7 @@ class _LiveVehiclesMapState extends ConsumerState<LiveVehiclesMap>
             line: track.line,
             type: track.type,
             color: vehicleColor(track.type),
+            heading: track.heading,
             stuck: _animator.isStuck(key),
             selected: key == _selectedKey,
             onTap: () => _onVehicleTap(key),

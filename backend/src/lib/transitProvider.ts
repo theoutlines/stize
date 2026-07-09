@@ -1,4 +1,5 @@
 import type { Env } from "../env";
+import { bearingDegrees, haversineDistanceMeters } from "./haversine";
 
 export interface RawArrival {
   lineNumber: string;
@@ -6,6 +7,9 @@ export interface RawArrival {
   stopsRemaining: number | null;
   garageNo: string | null;
   gps: { lat: number; lon: number } | null;
+  // Travel direction in degrees (0 = north, clockwise), derived from the
+  // vehicle's own route geometry, or null when it can't be determined.
+  heading: number | null;
 }
 
 // Abstracts the upstream live-arrivals source. The concrete endpoint and its
@@ -53,18 +57,59 @@ export function parseRawArrival(item: unknown): RawArrival {
   const r = item as Record<string, unknown>;
   const vehicles = Array.isArray(r.vehicles) ? (r.vehicles as Record<string, unknown>[]) : [];
   const firstVehicle = vehicles[0];
-  const gps =
+  const rawGps =
     firstVehicle && typeof firstVehicle.lat === "string" && typeof firstVehicle.lng === "string"
       ? { lat: parseFloat(firstVehicle.lat), lon: parseFloat(firstVehicle.lng) }
       : null;
+  const gps = rawGps && !Number.isNaN(rawGps.lat) && !Number.isNaN(rawGps.lon) ? rawGps : null;
 
   return {
     lineNumber: String(r.line_number ?? ""),
     etaSeconds: typeof r.seconds_left === "number" ? r.seconds_left : 0,
     stopsRemaining: typeof r.stations_between === "number" ? r.stations_between : null,
     garageNo: typeof r.garage_no === "string" ? r.garage_no : null,
-    gps: gps && !Number.isNaN(gps.lat) && !Number.isNaN(gps.lon) ? gps : null,
+    gps,
+    heading: gps ? headingFromRoute(gps, parseRouteStations(r.all_stations)) : null,
   };
+}
+
+// `all_stations` is the vehicle's own full trip, ordered origin -> destination,
+// each entry `{ coordinates: { latitude, longitude } }`.
+function parseRouteStations(value: unknown): { lat: number; lon: number }[] {
+  if (!Array.isArray(value)) return [];
+  const out: { lat: number; lon: number }[] = [];
+  for (const s of value as Record<string, unknown>[]) {
+    const c = s?.coordinates as Record<string, unknown> | undefined;
+    if (!c) continue;
+    const lat = parseFloat(String(c.latitude));
+    const lon = parseFloat(String(c.longitude));
+    if (!Number.isNaN(lat) && !Number.isNaN(lon)) out.push({ lat, lon });
+  }
+  return out;
+}
+
+// Travel direction at the vehicle's position: the bearing of the route segment
+// it currently sits on, oriented origin -> destination (the direction of
+// travel). Route-geometry based, so it doesn't jitter like a GPS-delta would.
+export function headingFromRoute(
+  gps: { lat: number; lon: number },
+  routeStations: { lat: number; lon: number }[],
+): number | null {
+  if (routeStations.length < 2) return null;
+  let nearestIdx = 0;
+  let nearestDist = Infinity;
+  for (let i = 0; i < routeStations.length; i++) {
+    const d = haversineDistanceMeters(gps, routeStations[i]);
+    if (d < nearestDist) {
+      nearestDist = d;
+      nearestIdx = i;
+    }
+  }
+  // Forward is toward the next station along the route; at the very end, reuse
+  // the last segment's bearing.
+  const from = nearestIdx < routeStations.length - 1 ? routeStations[nearestIdx] : routeStations[nearestIdx - 1];
+  const to = nearestIdx < routeStations.length - 1 ? routeStations[nearestIdx + 1] : routeStations[nearestIdx];
+  return bearingDegrees(from, to);
 }
 
 function generateClientId(): string {

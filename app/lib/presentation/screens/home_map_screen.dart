@@ -9,6 +9,7 @@ import 'package:maplibre/maplibre.dart';
 
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
+import '../../core/vehicle_track_animator.dart';
 import '../../data/location/location_service.dart';
 import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
@@ -29,6 +30,15 @@ const _distance = ll.Distance();
 const _minStopsZoom = 12.0;
 const _individualZoom = 15.0;
 
+// Live vehicles are only fetched/shown from this zoom up — below it the area is
+// too big, which would both flood the map and fan the source out too widely.
+// Positions refresh on this cadence (and on camera-idle). It matches the
+// backend's ~30s per-stop cache: polling faster just re-reads the same cached
+// positions, which the movement heuristic would misread as "stuck".
+const _minVehiclesZoom = 14.0;
+const _vehiclesRefreshInterval = Duration(seconds: 30);
+const _vehiclesMaxRadius = 1000.0;
+
 /// Full-screen MapLibre + MapTiler vector map with a floating universal-search
 /// bar. Stops load for the visible viewport (independent of geolocation) and
 /// are clustered when zoomed out; on entry the map recenters on the user.
@@ -42,11 +52,22 @@ class HomeMapScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeMapScreen> createState() => _HomeMapScreenState();
 }
 
-class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
+class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
+    with SingleTickerProviderStateMixin {
   MapController? _controller;
   ColorScheme _scheme = const ColorScheme.light();
   Brightness? _styleBrightness;
   bool _imagesReady = false;
+
+  // Live vehicles in the viewport: eased between refreshes by the animator, so
+  // markers glide instead of teleporting. Only the vehicle WidgetLayer repaints
+  // per tick (via an AnimatedBuilder), not the whole map.
+  late final AnimationController _vehAnim;
+  final _vehAnimator = VehicleTrackAnimator();
+  Timer? _vehiclesTimer;
+  int _vehiclesRequestSeq = 0;
+  bool _hasVehicles = false;
+  ll.LatLng? _lastVehiclesCenter;
 
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
@@ -80,6 +101,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
   @override
   void initState() {
     super.initState();
+    _vehAnim = AnimationController(
+      vsync: this,
+      duration: _vehiclesRefreshInterval,
+    );
+    // Refresh vehicle positions on a steady cadence even if the user isn't
+    // panning; the fetch itself is zoom-gated and viewport-bounded.
+    _vehiclesTimer = Timer.periodic(
+      _vehiclesRefreshInterval,
+      (_) => _loadVehiclesForVisibleArea(force: true),
+    );
     // Start locating immediately, in parallel with the map creating itself, so
     // an already-granted user is centered the moment either finishes.
     _startLocation();
@@ -88,6 +119,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _vehiclesTimer?.cancel();
+    _vehAnim.dispose();
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -109,13 +142,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
     await registerStigmaImages(style, _scheme);
     if (!mounted) return;
     setState(() => _imagesReady = true);
-    // Show stops for wherever the map currently sits, even before a fix.
+    // Show stops and live vehicles for wherever the map currently sits, even
+    // before a location fix — transport shows up right away.
     _loadStopsForVisibleArea();
+    _loadVehiclesForVisibleArea(force: true);
   }
 
   void _onEvent(MapEvent event) {
     if (event is MapEventCameraIdle) {
       _loadStopsForVisibleArea();
+      _loadVehiclesForVisibleArea();
     } else if (event is MapEventClick) {
       _handleTap(event.point);
     }
@@ -327,6 +363,87 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
           .map((s) => s.stopId)
           .toSet();
 
+  // ---- Live vehicles in the viewport ---------------------------------------
+
+  /// Loads vehicles for the viewport. [force] bypasses the "viewport hasn't
+  /// moved" guard — used by the periodic timer (to refresh positions in place)
+  /// and the first load; camera-idle events pass it false so merely re-emitted
+  /// idles don't hammer the source.
+  Future<void> _loadVehiclesForVisibleArea({bool force = false}) async {
+    final controller = _controller;
+    if (controller == null || !mounted) return;
+    final camera = controller.getCamera();
+    // Zoom-gated: clear vehicles when zoomed too far out (declutter + spare the
+    // source a wide fan-out).
+    if (camera.zoom < _minVehiclesZoom) {
+      if (_hasVehicles) {
+        _vehAnimator.syncSamples(const [], _vehAnim.value);
+        _lastVehiclesCenter = null;
+        setState(() => _hasVehicles = false);
+      }
+      return;
+    }
+    final center = ll.LatLng(camera.center.lat, camera.center.lon);
+    final radius = _radiusForVisibleArea(camera).clamp(400.0, _vehiclesMaxRadius);
+    if (!force && _lastVehiclesCenter != null) {
+      final moved = _distance.as(ll.LengthUnit.Meter, _lastVehiclesCenter!, center);
+      if (moved < radius * 0.3) return; // viewport barely changed — skip refetch
+    }
+    final seq = ++_vehiclesRequestSeq;
+    _lastVehiclesCenter = center;
+    try {
+      final vehicles = await ref
+          .read(vehiclesRepositoryProvider)
+          .nearby(lat: center.latitude, lon: center.longitude, radiusMeters: radius);
+      if (!mounted || seq != _vehiclesRequestSeq) return;
+      _vehAnimator.syncSamples([
+        for (final v in vehicles)
+          VehicleSample(
+            key: v.key,
+            position: ll.LatLng(v.lat, v.lon),
+            line: v.line,
+            type: v.vehicleType,
+            heading: v.heading,
+          ),
+      ], _vehAnim.value);
+      _vehAnim.forward(from: 0);
+      setState(() => _hasVehicles = vehicles.isNotEmpty);
+    } catch (_) {
+      // Keep whatever is shown on a transient failure.
+    }
+  }
+
+  Future<void> _openVehicleLine(String line) async {
+    try {
+      final shape = await ref
+          .read(linesRepositoryProvider)
+          .getShapeByLineNumber(line);
+      if (!mounted) return;
+      final routeStops = shape.stops
+          .map(
+            (s) => Stop(
+              stopId: s.stopId,
+              name: s.name,
+              lat: s.lat,
+              lon: s.lon,
+              lines: [line],
+            ),
+          )
+          .toList();
+      context.push(
+        '/map',
+        extra: MapScreenArgs(
+          stops: routeStops,
+          polyline: shape.polyline,
+          title: '$line: ${shape.origin} → ${shape.destination}',
+          lineNumber: line,
+        ),
+      );
+    } catch (_) {
+      // Best-effort: a failed shape lookup just doesn't open the route.
+    }
+  }
+
   // ---- Taps -----------------------------------------------------------------
 
   void _handleTap(Geographic point) {
@@ -506,7 +623,18 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
                   onStyleLoaded: _onStyleLoaded,
                   onEvent: _onEvent,
                   layers: _buildLayers(favoriteStops),
-                  children: const [SourceAttribution()],
+                  children: [
+                    const SourceAttribution(),
+                    // Live vehicles, rebuilt each animation tick so their eased
+                    // positions update; only this subtree repaints.
+                    AnimatedBuilder(
+                      animation: _vehAnim,
+                      builder: (context, _) => WidgetLayer(
+                        markers: _vehicleMarkers(),
+                        allowInteraction: true,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             )
@@ -613,6 +741,33 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen> {
       clipBehavior: Clip.antiAlias,
       child: IconButton(icon: Icon(icon), tooltip: tooltip, onPressed: onTap),
     );
+  }
+
+  List<Marker> _vehicleMarkers() {
+    if (!_hasVehicles) return const [];
+    final markers = <Marker>[];
+    for (final entry in _vehAnimator.currentPositions(_vehAnim.value)) {
+      final key = entry.key;
+      final track = _vehAnimator.trackFor(key);
+      if (track == null) continue;
+      final pos = entry.value;
+      markers.add(
+        Marker(
+          point: Geographic(lon: pos.longitude, lat: pos.latitude),
+          size: VehicleMarker.markerSize,
+          child: VehicleMarker(
+            key: ValueKey(key),
+            line: track.line,
+            type: track.type,
+            color: vehicleColor(track.type),
+            heading: track.heading,
+            stuck: _vehAnimator.isStuck(key),
+            onTap: () => _openVehicleLine(track.line),
+          ),
+        ),
+      );
+    }
+    return markers;
   }
 
   List<Layer> _buildLayers(List<Stop> favoriteStops) {

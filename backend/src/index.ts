@@ -6,9 +6,11 @@ import type {
   LinesResponse,
   RouteShapeResponse,
   StopsResponse,
+  VehiclesResponse,
 } from "./types";
 import { isServiceKilled, setServiceKilled } from "./lib/killswitch";
 import { getArrivals } from "./lib/arrivals";
+import { getNearbyVehicles } from "./lib/vehicles";
 import {
   getAllLines,
   getAllStops,
@@ -108,6 +110,33 @@ app.get("/api/v1/stops/nearby", async (c) => {
   const stops = await nearbyStops(c.env, lat, lon, Number.isNaN(radius) ? 500 : radius);
   const body: StopsResponse = { stops };
   return c.json(body);
+});
+
+// Live vehicles physically inside the given area, for the map's "see transport
+// right away" view. Reconstructed from per-stop arrivals (see getNearbyVehicles)
+// with the fan-out bounded and rate-limited by the shared per-stop cache.
+app.get("/api/v1/vehicles/nearby", async (c) => {
+  const lat = parseFloat(c.req.query("lat") ?? "");
+  const lon = parseFloat(c.req.query("lon") ?? "");
+  const radius = parseFloat(c.req.query("radius") ?? "800");
+  if (Number.isNaN(lat) || Number.isNaN(lon)) {
+    return c.json({ error: "missing/invalid 'lat'/'lon' query params" }, 400);
+  }
+  const empty: VehiclesResponse = { vehicles: [], updated_at: new Date().toISOString() };
+  if (await isServiceKilled(c.env)) return c.json(empty);
+  try {
+    const body = await getNearbyVehicles(
+      c.env,
+      c.executionCtx,
+      lat,
+      lon,
+      Number.isNaN(radius) ? 800 : radius,
+    );
+    return c.json(body);
+  } catch (err) {
+    console.error("vehicles fetch failed", err);
+    return c.json(empty);
+  }
 });
 
 app.get("/api/v1/lines", async (c) => {

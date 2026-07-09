@@ -35,6 +35,7 @@ export async function getArrivals(
       route_id: lineMeta?.route_id ?? raw.lineNumber,
       gps: raw.gps,
       garage_no: raw.garageNo,
+      heading: raw.heading,
     });
   }
   arrivals.sort((a, b) => a.eta_minutes - b.eta_minutes);
