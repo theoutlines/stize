@@ -6,11 +6,16 @@ import 'presentation/app.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // Warm the trolleybus SVG into the flutter_svg cache before the map rasterizes
-  // its stop pins (via addImageFromWidget), so the trolley pin never captures a
-  // half-loaded icon.
-  const loader = SvgAssetLoader('assets/icons/trolleybus.svg');
-  svg.cache.putIfAbsent(loader.cacheKey(null), () => loader.loadBytes(null));
+  // Warm the custom stop-pin SVGs into the flutter_svg cache before the map
+  // rasterizes its stop pins (via addImageFromWidget), so a pin never captures
+  // a half-loaded icon.
+  for (final asset in const [
+    'assets/icons/trolleybus.svg',
+    'assets/icons/bus_multiple.svg',
+  ]) {
+    final loader = SvgAssetLoader(asset);
+    svg.cache.putIfAbsent(loader.cacheKey(null), () => loader.loadBytes(null));
+  }
 
   runApp(const ProviderScope(child: StiglaApp()));
 }

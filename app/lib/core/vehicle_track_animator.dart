@@ -41,9 +41,10 @@ class VehicleTrack {
   double fromDist = 0;
   double toDist = 0;
 
-  /// How many *consecutive* provider updates have landed with the vehicle at
-  /// (essentially) the same real position. Movement resets it to 0.
-  int staleCount = 0;
+  /// Wall-clock time of the last update in which the vehicle actually moved.
+  /// "Looks stuck" is derived from how long ago this was (time-based, so a burst
+  /// of extra refreshes from panning can't make a vehicle read stuck early).
+  late DateTime lastMovedAt;
 
   /// How many consecutive updates the vehicle has been *absent* from the feed.
   /// A short absence is a data blip, not the end of a trip, so the marker is
@@ -88,6 +89,12 @@ class VehicleSample {
 ///    updates is held on its last known position (and faded) for a grace period
 ///    before its marker is removed.
 class VehicleTrackAnimator {
+  VehicleTrackAnimator({DateTime Function()? clock})
+    : _clock = clock ?? DateTime.now;
+
+  /// Wall clock, injectable for tests.
+  final DateTime Function() _clock;
+
   final Map<String, VehicleTrack> _tracks = {};
 
   Map<String, VehicleTrack> get tracks => _tracks;
@@ -97,22 +104,36 @@ class VehicleTrackAnimator {
   static const _stillEpsilon = 1e-4; // degrees, straight-line fallback
   static const _stillMeters = 12.0; // path mode
 
-  // Consecutive no-move updates before we call a vehicle "looks stuck" (E4).
-  // Updates land ~every 30s, and a vehicle legitimately dwells at a stop or a
-  // red light, so a single or double no-move read is normal — only from the
-  // 3rd (~90s of no real movement, past normal dwell) do we flag it.
-  static const _stuckThreshold = 3;
+  // How long a vehicle must sit still before it reads as "looks stuck" and its
+  // marker turns red (E4). Kept generous — a bus legitimately dwells at a stop,
+  // a terminus, or a long red light — so we only flag a genuine multi-minute
+  // stall, and it's time-based so extra refreshes (panning) can't trip it early.
+  static const _stuckAfter = Duration(minutes: 2);
 
   // Keep a vanished vehicle on its last position for this many missing updates
-  // before dropping it (X6 grace period).
-  static const _graceThreshold = 2;
+  // before dropping it (X6 grace period). At ~30s/update this holds a blinked-
+  // out vehicle ~2 min, faded, rather than popping it off the instant the
+  // reconstruction drops it from one fan-out.
+  static const _graceThreshold = 4;
+
+  // Never let a marker jump more than this toward a new fix in a single update:
+  // excess distance is deferred to later updates so the marker eases at a
+  // plausible speed and always *lags* reality instead of teleporting or racing
+  // ahead (#6). ~500 m/update ≈ 60 km/h at a 30s cadence — above any real city
+  // transit speed, so genuine movement is untouched; only data jumps are tamed.
+  static const _maxAdvanceMeters = 500.0;
+
+  // Beyond this the backlog is so large the track is almost certainly wrong
+  // (route re-match, long feed gap): snap to the real fix rather than crawl for
+  // minutes.
+  static const _snapMeters = 2000.0;
 
   static String keyFor(Arrival a) => a.garageNo ?? '${a.line}-${a.routeId}';
 
   /// Call when new arrivals data lands. [currentT] is the animation
   /// controller's value (0..1) *before* it gets reset, so an in-flight
   /// vehicle's current interpolated spot becomes its new starting point.
-  void sync(List<Arrival> arrivals, double currentT) {
+  void sync(List<Arrival> arrivals, double currentT, {DateTime? now}) {
     syncSamples([
       for (final a in arrivals)
         if (a.gps != null)
@@ -123,12 +144,17 @@ class VehicleTrackAnimator {
             type: a.vehicleType,
             heading: a.heading,
           ),
-    ], currentT);
+    ], currentT, now: now);
   }
 
   /// Generic form of [sync] for any moving-vehicle source (e.g. the map-wide
   /// "vehicles in the visible area" feed). Same conservative-easing rule.
-  void syncSamples(Iterable<VehicleSample> samples, double currentT) {
+  void syncSamples(
+    Iterable<VehicleSample> samples,
+    double currentT, {
+    DateTime? now,
+  }) {
+    final at = now ?? _clock();
     final seen = <String>{};
     for (final s in samples) {
       seen.add(s.key);
@@ -140,7 +166,7 @@ class VehicleTrackAnimator {
           type: s.type,
           heading: s.heading,
           path: s.path,
-        );
+        )..lastMovedAt = at;
         continue;
       }
 
@@ -153,20 +179,26 @@ class VehicleTrackAnimator {
       if (path != null && path.isUsable) {
         final newDist = path.project(s.position);
         final curDist = _lerpD(existing.fromDist, existing.toDist, currentT);
-        if ((newDist - existing.toDist).abs() < _stillMeters) {
-          existing.staleCount++;
-        } else {
-          existing.staleCount = 0;
+        if ((newDist - existing.toDist).abs() >= _stillMeters) {
+          existing.lastMovedAt = at;
+        }
+        // Cap how far the marker advances toward the new fix this update so it
+        // never teleports or races; the leftover is picked up next update, so
+        // it catches up gradually and stays behind reality (#6).
+        final advance = newDist - curDist;
+        var target = newDist;
+        if (advance > _snapMeters) {
+          target = newDist; // backlog too large to be real — snap.
+        } else if (advance > _maxAdvanceMeters) {
+          target = curDist + _maxAdvanceMeters;
         }
         existing.fromDist = curDist;
-        existing.toDist = newDist;
+        existing.toDist = target;
         existing.from = path.pointAt(curDist);
         existing.to = s.position;
       } else {
-        if (_isSamePlace(existing.to, s.position)) {
-          existing.staleCount++;
-        } else {
-          existing.staleCount = 0;
+        if (!_isSamePlace(existing.to, s.position)) {
+          existing.lastMovedAt = at;
         }
         existing.from = _interpolate(existing.from, existing.to, currentT);
         existing.to = s.position;
@@ -183,17 +215,22 @@ class VehicleTrackAnimator {
     );
   }
 
-  /// Whether a vehicle currently reads as stuck (hasn't moved across the last
-  /// [_stuckThreshold] updates). Unknown keys are treated as moving.
-  bool isStuck(String key) =>
-      (_tracks[key]?.staleCount ?? 0) >= _stuckThreshold;
+  /// Whether a vehicle currently reads as stuck (hasn't actually moved for at
+  /// least [_stuckAfter]). Unknown keys are treated as moving.
+  bool isStuck(String key) {
+    final t = _tracks[key];
+    if (t == null) return false;
+    return _clock().difference(t.lastMovedAt) >= _stuckAfter;
+  }
 
-  /// Display opacity for a vehicle: fully opaque while present, fading out over
-  /// the grace period once it goes missing (X6).
+  /// Display opacity for a vehicle: fully opaque while present, then fading
+  /// gently over the grace period once it goes missing rather than vanishing
+  /// abruptly (X6).
   double opacityFor(String key) {
     final missing = _tracks[key]?.missingCount ?? 0;
     if (missing <= 0) return 1.0;
-    return missing == 1 ? 0.5 : 0.3;
+    const fade = <int, double>{1: 0.7, 2: 0.55, 3: 0.4};
+    return fade[missing] ?? 0.28;
   }
 
   VehicleTrack? trackFor(String key) => _tracks[key];

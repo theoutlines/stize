@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
@@ -72,6 +73,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   late final AnimationController _vehAnim;
   final _vehAnimator = VehicleTrackAnimator();
   Timer? _vehiclesTimer;
+  // The marker layer is heavy to re-lay-out (each vehicle is a platform-tracked
+  // widget), so instead of rebuilding it every animation frame (~60fps) we
+  // sample the eased positions on a slower cadence — smooth enough for a slow
+  // vehicle, far cheaper, and it stops starving map pan/zoom gestures.
+  Timer? _vehRepaintTimer;
+  final ValueNotifier<double> _vehTick = ValueNotifier<double>(1);
   int _vehiclesRequestSeq = 0;
   bool _hasVehicles = false;
   ll.LatLng? _lastVehiclesCenter;
@@ -116,6 +123,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   Geographic? _pinnedPlace;
   String? _pinnedPlaceLabel;
 
+  // When a vehicle (or a favourite line) is tapped, its route is highlighted on
+  // this same map and everything else is hidden, instead of pushing a separate
+  // screen. Null = normal browsing.
+  _LineFocus? _focus;
+
   @override
   void initState() {
     super.initState();
@@ -123,6 +135,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       vsync: this,
       duration: _vehiclesRefreshInterval,
     );
+    // Push the current eased position into the marker layer ~15×/s (not every
+    // frame) — see [_vehTick].
+    _vehRepaintTimer = Timer.periodic(const Duration(milliseconds: 66), (_) {
+      if (_vehTick.value != _vehAnim.value) _vehTick.value = _vehAnim.value;
+    });
     // Refresh vehicle positions on a steady cadence even if the user isn't
     // panning; the fetch itself is zoom-gated and viewport-bounded.
     _vehiclesTimer = Timer.periodic(
@@ -138,6 +155,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void dispose() {
     _searchDebounce?.cancel();
     _vehiclesTimer?.cancel();
+    _vehRepaintTimer?.cancel();
+    _vehTick.dispose();
     _vehAnim.dispose();
     _searchController.dispose();
     _focusNode.dispose();
@@ -456,7 +475,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             key: v.key,
             position: ll.LatLng(v.lat, v.lon),
             line: v.line,
-            type: v.vehicleType,
+            // Classify by the well-known Belgrade tram/trolley line sets rather
+            // than the feed's per-vehicle type, which mislabels some lines (e.g.
+            // trolley 40/40L as a bus). Keeps moving vehicles consistent with
+            // how the same line's stops are coloured.
+            type: classifyLine(v.line),
             heading: v.heading,
             path: _shapeCache[v.line],
           ),
@@ -492,7 +515,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
   }
 
+  /// Highlight a line's route on this same map (hiding the rest) instead of
+  /// pushing a separate screen — driven by a vehicle tap or a favourite-line
+  /// tap. Closing the focus panel restores normal browsing.
   Future<void> _openVehicleLine(String line) async {
+    _clearSearch();
     try {
       final shape = await ref
           .read(linesRepositoryProvider)
@@ -509,18 +536,66 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             ),
           )
           .toList();
-      context.push(
-        '/map',
-        extra: MapScreenArgs(
-          stops: routeStops,
+      // Cache the geometry so the focused line's vehicles ease along the road.
+      if (shape.polyline.length >= 2) {
+        _shapeCache[line] = RoutePath.fromLatLon(shape.polyline);
+      }
+      setState(() {
+        _focus = _LineFocus(
+          line: line,
+          type: classifyLine(line),
+          origin: shape.origin,
+          destination: shape.destination,
           polyline: shape.polyline,
-          title: '$line: ${shape.origin} → ${shape.destination}',
-          lineNumber: line,
-        ),
-      );
+          stops: routeStops,
+        );
+      });
+      _fitToPolyline(shape.polyline);
+      // Refresh the vehicle set so the focused line's buses show right away.
+      _loadVehiclesForVisibleArea(force: true);
     } catch (_) {
       // Best-effort: a failed shape lookup just doesn't open the route.
     }
+  }
+
+  void _clearFocus() {
+    if (_focus == null) return;
+    setState(() => _focus = null);
+  }
+
+  /// Frame the camera on a route's bounding box (rough web-mercator fit for the
+  /// current viewport), so focusing a line shows the whole trace.
+  void _fitToPolyline(List<List<double>> poly) {
+    final controller = _controller;
+    if (controller == null || poly.isEmpty) return;
+    var minLat = poly.first[0], maxLat = poly.first[0];
+    var minLon = poly.first[1], maxLon = poly.first[1];
+    for (final p in poly) {
+      minLat = math.min(minLat, p[0]);
+      maxLat = math.max(maxLat, p[0]);
+      minLon = math.min(minLon, p[1]);
+      maxLon = math.max(maxLon, p[1]);
+    }
+    final centerLat = (minLat + maxLat) / 2;
+    final centerLon = (minLon + maxLon) / 2;
+    final cosLat = math.cos(centerLat * math.pi / 180).abs().clamp(0.1, 1.0);
+    // Screen-equivalent degree span: latitude is mercator-stretched by 1/cos.
+    final span = math.max(
+      (maxLon - minLon).abs(),
+      (maxLat - minLat).abs() / cosLat,
+    );
+    final width = MediaQuery.of(context).size.width;
+    double zoom;
+    if (span <= 1e-6) {
+      zoom = 15;
+    } else {
+      // Fit `span` degrees across the viewport, then pad out a little.
+      zoom = (math.log(360 * width / (256 * span)) / math.ln2) - 0.4;
+    }
+    controller.animateCamera(
+      center: Geographic(lon: centerLon, lat: centerLat),
+      zoom: zoom.clamp(kCityMinZoom, 16.0),
+    );
   }
 
   // ---- Taps -----------------------------------------------------------------
@@ -555,6 +630,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   Stop? _stopById(String id) {
     for (final s in _areaStops) {
+      if (s.stopId == id) return s;
+    }
+    // While a line is focused, its own stops are the ones on screen.
+    for (final s in _focus?.stops ?? const <Stop>[]) {
       if (s.stopId == id) return s;
     }
     final favs =
@@ -717,7 +796,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final favoriteStops =
         ref.watch(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
 
-    return Scaffold(
+    return PopScope(
+      // While a line is focused, Android back closes the focus overlay instead
+      // of leaving the map.
+      canPop: _focus == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _clearFocus();
+      },
+      child: Scaffold(
       body: Stack(
         children: [
           if (kMapRenderingEnabled)
@@ -752,12 +838,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                           ),
                         ],
                       ),
-                    // Live vehicles, rebuilt each animation tick so their eased
+                    // Live vehicles, rebuilt on the throttled tick so their eased
                     // positions update; only this subtree repaints.
-                    AnimatedBuilder(
-                      animation: _vehAnim,
-                      builder: (context, _) => WidgetLayer(
-                        markers: _vehicleMarkers(),
+                    ValueListenableBuilder<double>(
+                      valueListenable: _vehTick,
+                      builder: (context, t, _) => WidgetLayer(
+                        markers: _vehicleMarkers(t),
                         allowInteraction: true,
                       ),
                     ),
@@ -769,10 +855,83 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             const SizedBox.expand(),
           // Round action buttons at the top: menu (left), recenter (right).
           _topButtons(theme),
-          // Search + favourites, anchored to the bottom (thumb-reachable);
-          // results grow upward from the bar.
-          _bottomSearch(l10n, theme),
+          // Bottom UI: normally the search + favourites bar; while a line is
+          // focused, a compact line panel with a close button instead.
+          if (_focus == null)
+            _bottomSearch(l10n, theme)
+          else
+            _focusPanel(theme),
         ],
+      ),
+      ),
+    );
+  }
+
+  Widget _focusPanel(ThemeData theme) {
+    final focus = _focus!;
+    final color = vehicleColor(focus.type);
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: PointerInterceptor(
+          child: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      vehicleGlyph(focus.type, size: 16, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        focus.line,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '${focus.origin} → ${focus.destination}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _clearFocus,
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -874,15 +1033,18 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     );
   }
 
-  List<Marker> _vehicleMarkers() {
+  List<Marker> _vehicleMarkers(double t) {
     if (!_hasVehicles) return const [];
     final zoom = _controller?.getCamera().zoom ?? 15.0;
     final compact = zoom < _vehicleDetailZoom;
+    final focusLine = _focus?.line;
     final markers = <Marker>[];
-    for (final entry in _vehAnimator.currentPositions(_vehAnim.value)) {
+    for (final entry in _vehAnimator.currentPositions(t)) {
       final key = entry.key;
       final track = _vehAnimator.trackFor(key);
       if (track == null) continue;
+      // When a line is focused, show only that line's vehicles.
+      if (focusLine != null && track.line != focusLine) continue;
       final pos = entry.value;
       final opacity = _vehAnimator.opacityFor(key);
       final marker = VehicleMarker(
@@ -891,7 +1053,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         type: track.type,
         color: vehicleColor(track.type),
         // Heading follows the route tangent so the arrow matches the motion.
-        heading: compact ? null : _vehAnimator.headingAt(key, _vehAnim.value),
+        heading: compact ? null : _vehAnimator.headingAt(key, t),
         stuck: _vehAnimator.isStuck(key),
         compact: compact,
         onTap: () => _openVehicleLine(track.line),
@@ -900,9 +1062,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         Marker(
           point: Geographic(lon: pos.longitude, lat: pos.latitude),
           size: VehicleMarker.markerSize,
-          child: opacity >= 1.0
-              ? marker
-              : Opacity(opacity: opacity, child: marker),
+          // Isolate each pill's breathing-halo repaints from the layer.
+          child: RepaintBoundary(
+            child: opacity >= 1.0
+                ? marker
+                : Opacity(opacity: opacity, child: marker),
+          ),
         ),
       );
     }
@@ -911,6 +1076,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   List<Layer> _buildLayers(List<Stop> favoriteStops) {
     if (!_imagesReady) return const [];
+    final focus = _focus;
+    if (focus != null) return _focusLayers(focus);
     return [
       // Tram rails, under everything (C2).
       if (_tramRails.isNotEmpty)
@@ -988,6 +1155,38 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         ),
       // NB: "my position" is intentionally *not* here — it's a WidgetLayer
       // marker (see build) so it can't be culled at low zoom (X2).
+    ];
+  }
+
+  /// Layers for the focused-line view: just that route (highlighted in its type
+  /// colour) and its own stops — every other stop/cluster is hidden so the line
+  /// reads cleanly, like tapping a vehicle in Yandex/Google transit.
+  List<Layer> _focusLayers(_LineFocus focus) {
+    return [
+      if (focus.polyline.length >= 2)
+        PolylineLayer(
+          polylines: [
+            Feature<LineString>(
+              geometry: LineString.from([
+                for (final p in focus.polyline) Geographic(lon: p[1], lat: p[0]),
+              ]),
+            ),
+          ],
+          color: vehicleColor(focus.type),
+          width: 5,
+        ),
+      MarkerLayer(
+        points: [
+          for (final s in focus.stops)
+            Feature<Point>(
+              geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
+              properties: {'stopId': s.stopId, 'name': s.name},
+            ),
+        ],
+        iconImage: MapImages.forStop(focus.type),
+        iconSize: _iconSize,
+        iconAllowOverlap: true,
+      ),
     ];
   }
 
@@ -1165,4 +1364,24 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       ],
     );
   }
+}
+
+/// A line whose route is currently highlighted on the home map (the inline
+/// alternative to pushing a separate route screen).
+class _LineFocus {
+  const _LineFocus({
+    required this.line,
+    required this.type,
+    required this.origin,
+    required this.destination,
+    required this.polyline,
+    required this.stops,
+  });
+
+  final String line;
+  final VehicleType type;
+  final String origin;
+  final String destination;
+  final List<List<double>> polyline; // [[lat, lon], ...]
+  final List<Stop> stops;
 }

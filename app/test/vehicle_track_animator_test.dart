@@ -75,9 +75,11 @@ void main() {
     expect(animator.tracks.containsKey('P1'), isTrue);
     expect(animator.opacityFor('P1'), lessThan(1.0));
 
-    // Still missing on the next — still within grace.
-    animator.sync([], 1.0);
-    expect(animator.tracks.containsKey('P1'), isTrue);
+    // Held (and fading further) across the whole grace window.
+    for (var i = 0; i < 3; i++) {
+      animator.sync([], 1.0);
+      expect(animator.tracks.containsKey('P1'), isTrue);
+    }
 
     // Missing beyond the grace period — now dropped.
     animator.sync([], 1.0);
@@ -129,27 +131,71 @@ void main() {
     expect(h, closeTo(90, 5));
   });
 
-  test('flags a vehicle as stuck after repeated no-move updates', () {
-    final animator = VehicleTrackAnimator();
-    // First fix: brand new, moving by default.
+  test('flags a vehicle as stuck only after it sits still for a couple of minutes', () {
+    var now = DateTime(2026, 1, 1, 12, 0, 0);
+    final animator = VehicleTrackAnimator(clock: () => now);
+    // First fix: brand new, moving.
     animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
     expect(animator.isStuck('P1'), isFalse);
 
-    // Same position again — one stale update, still normal dwell (below thr).
+    // 90s later, still at the same spot — a long dwell, not yet stuck.
+    now = now.add(const Duration(seconds: 90));
     animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
     expect(animator.isStuck('P1'), isFalse);
 
-    // Second consecutive no-move update — still within normal dwell.
-    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
-    expect(animator.isStuck('P1'), isFalse);
-
-    // Third consecutive no-move update (~90s) — now it reads as stuck.
-    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
+    // Past two minutes without real movement — now it reads as stuck.
+    now = now.add(const Duration(seconds: 60));
     expect(animator.isStuck('P1'), isTrue);
 
     // It moves again → back to moving.
     animator.sync([_arrival(garageNo: 'P1', lat: 44.82, lon: 20.52)], 1.0);
     expect(animator.isStuck('P1'), isFalse);
+  });
+
+  test('a burst of extra refreshes does not make a still vehicle read as stuck early', () {
+    var now = DateTime(2026, 1, 1, 12, 0, 0);
+    final animator = VehicleTrackAnimator(clock: () => now);
+    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
+    // Ten quick refreshes over 20s (e.g. from panning) at the same spot.
+    for (var i = 0; i < 10; i++) {
+      now = now.add(const Duration(seconds: 2));
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
+    }
+    // Only ~20s of stillness — must not be flagged stuck.
+    expect(animator.isStuck('P1'), isFalse);
+  });
+
+  test('caps a teleport-sized jump so the marker never races past a plausible speed', () {
+    // A straight ~4 km west-east route.
+    final path = RoutePath.fromLatLon([
+      [44.80, 20.50],
+      [44.80, 20.55],
+    ]);
+    final animator = VehicleTrackAnimator();
+    animator.syncSamples([
+      VehicleSample(
+        key: 'P1',
+        position: const ll.LatLng(44.80, 20.50),
+        line: '2',
+        type: VehicleType.tram,
+        path: path,
+      ),
+    ], 0);
+    // Next fix jumps ~1.5 km along the route in one update — implausible for 30s.
+    animator.syncSamples([
+      VehicleSample(
+        key: 'P1',
+        position: const ll.LatLng(44.80, 20.52),
+        line: '2',
+        type: VehicleType.tram,
+        path: path,
+      ),
+    ], 1.0);
+    // The displayed target is capped ~500 m along, well short of the ~1.5 km fix,
+    // so the marker lags rather than teleporting.
+    final track = animator.trackFor('P1')!;
+    expect(track.toDist, lessThan(700));
+    expect(track.toDist, greaterThan(300));
   });
 
   test('carries the line and type onto the track', () {

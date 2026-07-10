@@ -198,25 +198,30 @@ class MapImages {
   };
 }
 
-/// A clean circular stop pin: a white disc with a thin colored ring and the
-/// transport-type glyph inside — deliberately not a default map balloon.
+/// A stop pin, styled to stand out from the base map so it's clearly the
+/// tappable thing on screen: a **white** disc (lifts off both the light and the
+/// dark map style — a theme-`surface` disc blended into its matching map) with
+/// a bold coloured ring, the transport-type glyph, and a soft drop shadow.
+/// Deliberately hollow (white-filled), keeping it distinct from the solid
+/// moving-vehicle markers.
 Widget _stopPin(Widget glyph, Color color, ColorScheme scheme) {
   return SizedBox(
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     child: Center(
       child: Container(
-        width: 32,
-        height: 32,
+        width: 38,
+        height: 38,
         decoration: BoxDecoration(
-          color: scheme.surface,
+          color: Colors.white,
           shape: BoxShape.circle,
-          border: Border.all(color: color, width: 2.5),
+          border: Border.all(color: color, width: 3.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
-              blurRadius: 3,
-              offset: const Offset(0, 1),
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 5,
+              spreadRadius: 0.5,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -334,7 +339,7 @@ Future<void> registerStigmaImages(
     style.addImageFromWidget(
       id: MapImages.bus,
       widget: _stopPin(
-        vehicleGlyph(VehicleType.bus, size: 18, color: _busColor),
+        vehicleGlyph(VehicleType.bus, size: 20, color: _busColor),
         _busColor,
         scheme,
       ),
@@ -342,7 +347,7 @@ Future<void> registerStigmaImages(
     style.addImageFromWidget(
       id: MapImages.tram,
       widget: _stopPin(
-        vehicleGlyph(VehicleType.tram, size: 18, color: _tramColor),
+        vehicleGlyph(VehicleType.tram, size: 20, color: _tramColor),
         _tramColor,
         scheme,
       ),
@@ -350,7 +355,7 @@ Future<void> registerStigmaImages(
     style.addImageFromWidget(
       id: MapImages.trolley,
       widget: _stopPin(
-        vehicleGlyph(VehicleType.trolleybus, size: 18, color: _trolleyColor),
+        vehicleGlyph(VehicleType.trolleybus, size: 20, color: _trolleyColor),
         _trolleyColor,
         scheme,
       ),
@@ -358,11 +363,7 @@ Future<void> registerStigmaImages(
     style.addImageFromWidget(
       id: MapImages.mixedStop,
       widget: _stopPin(
-        const Icon(
-          Icons.directions_transit_rounded,
-          size: 18,
-          color: _mixedStopColor,
-        ),
+        mixedStopGlyph(size: 20, color: _mixedStopColor),
         _mixedStopColor,
         scheme,
       ),
@@ -370,7 +371,7 @@ Future<void> registerStigmaImages(
     style.addImageFromWidget(
       id: MapImages.favorite,
       widget: _stopPin(
-        const Icon(Icons.star_rounded, size: 18, color: Color(0xFFF6A609)),
+        const Icon(Icons.star_rounded, size: 20, color: Color(0xFFF6A609)),
         const Color(0xFFF6A609),
         scheme,
       ),
@@ -378,7 +379,7 @@ Future<void> registerStigmaImages(
     style.addImageFromWidget(
       id: MapImages.place,
       widget: _stopPin(
-        const Icon(Icons.place, size: 18, color: Color(0xFFE5484D)),
+        const Icon(Icons.place, size: 20, color: Color(0xFFE5484D)),
         const Color(0xFFE5484D),
         scheme,
       ),
