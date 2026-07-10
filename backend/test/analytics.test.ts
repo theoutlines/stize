@@ -104,4 +104,30 @@ describe("analytics.aggregate + getLineAnalytics", () => {
     expect(a.total_samples).toBe(0);
     expect(a.by_hour.every((b) => b.samples === 0)).toBe(true);
   });
+
+  it("builds per-vehicle × line (+ dow) aggregates, excluding junk & no-garage", async () => {
+    await seed([
+      ["V1", "S1", 3, BASE],
+      ["V1", "S1", 1, BASE + 120],
+      ["V1", "S1", 0, BASE + 180],
+      ["V2", "S1", 0, BASE + 480],
+      ["P7", "S1", 0, BASE + 300], // junk — excluded
+      [null, "S1", 5, BASE + 60], // no garage — excluded
+    ]);
+    await aggregate(env);
+
+    const pairs = await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT vehicle_id, samples, arrivals, first_seen, last_seen FROM agg_vehicle_line ORDER BY vehicle_id",
+    ).all<{ vehicle_id: string; samples: number; arrivals: number; first_seen: number; last_seen: number }>();
+    // Only the real vehicles — never P7 or the no-garage row.
+    expect(pairs.results.map((r) => r.vehicle_id)).toEqual(["V1", "V2"]);
+    const v1 = pairs.results[0];
+    expect(v1).toMatchObject({ samples: 3, arrivals: 1, first_seen: BASE, last_seen: BASE + 180 });
+
+    const dow = await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT dow, samples, speed_count FROM agg_vehicle_line_dow WHERE vehicle_id = 'V1'",
+    ).all<{ dow: number; samples: number; speed_count: number }>();
+    expect(dow.results).toHaveLength(1);
+    expect(dow.results[0]).toMatchObject({ dow: DOW, samples: 3, speed_count: 2 });
+  });
 });

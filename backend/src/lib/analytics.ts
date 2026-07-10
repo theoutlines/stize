@@ -163,10 +163,9 @@ export async function aggregate(env: Env): Promise<{ buckets: number }> {
 
   // Rewrite the aggregate table from the freshly computed buckets.
   await db.prepare("DELETE FROM agg_line_time").run();
-  const entries = [...map.entries()];
-  for (let i = 0; i < entries.length; i += INSERT_CHUNK) {
-    const chunk = entries.slice(i, i + INSERT_CHUNK);
-    const stmts = chunk.map(([key, b]) => {
+  await chunkedBatch(
+    db,
+    [...map.entries()].map(([key, b]) => {
       const [line, dow, hour] = key.split("|");
       return db
         .prepare(
@@ -187,9 +186,11 @@ export async function aggregate(env: Env): Promise<{ buckets: number }> {
           b.speed_stops_per_min_sum,
           now,
         );
-    });
-    if (stmts.length) await db.batch(stmts);
-  }
+    }),
+  );
+
+  // Per-vehicle aggregates — computed BEFORE pruning the raw rows they read.
+  await aggregateVehicles(db, now);
 
   await db
     .prepare("DELETE FROM raw_observations WHERE observed_at < ?")
@@ -201,6 +202,121 @@ export async function aggregate(env: Env): Promise<{ buckets: number }> {
     .run();
 
   return { buckets: map.size };
+}
+
+async function chunkedBatch(db: D1Database, stmts: D1PreparedStatement[]): Promise<void> {
+  for (let i = 0; i < stmts.length; i += INSERT_CHUNK) {
+    const chunk = stmts.slice(i, i + INSERT_CHUNK);
+    if (chunk.length) await db.batch(chunk);
+  }
+}
+
+/**
+ * Roll raw observations up into the per-vehicle tables: `agg_vehicle_line`
+ * (totals + first/last seen per vehicle×line) and `agg_vehicle_line_dow` (the
+ * same by day-of-week, plus speed). Real vehicles only — rows with a NULL
+ * vehicle_id (junk/placeholder or missing garage number) are excluded here,
+ * though they still count for the line-level activity above.
+ */
+async function aggregateVehicles(db: D1Database, now: number): Promise<void> {
+  const pairs = await db
+    .prepare(
+      `SELECT vehicle_id, line, COUNT(*) AS samples,
+          SUM(CASE WHEN stops_remaining = 0 THEN 1 ELSE 0 END) AS arrivals,
+          MIN(observed_at) AS first_seen, MAX(observed_at) AS last_seen
+       FROM raw_observations WHERE vehicle_id IS NOT NULL
+       GROUP BY vehicle_id, line`,
+    )
+    .all<{
+      vehicle_id: string;
+      line: string;
+      samples: number;
+      arrivals: number;
+      first_seen: number;
+      last_seen: number;
+    }>();
+
+  const dowActivity = await db
+    .prepare(
+      `SELECT vehicle_id, line,
+          CAST(strftime('%w', observed_at, 'unixepoch') AS INTEGER) AS dow,
+          COUNT(*) AS samples,
+          SUM(CASE WHEN stops_remaining = 0 THEN 1 ELSE 0 END) AS arrivals
+       FROM raw_observations WHERE vehicle_id IS NOT NULL
+       GROUP BY vehicle_id, line, dow`,
+    )
+    .all<{ vehicle_id: string; line: string; dow: number; samples: number; arrivals: number }>();
+
+  const dowSpeed = await db
+    .prepare(
+      `SELECT vehicle_id, line, dow, COUNT(*) AS n, SUM(sp) AS s FROM (
+         SELECT vehicle_id, line,
+           CAST(strftime('%w', observed_at, 'unixepoch') AS INTEGER) AS dow,
+           (LAG(stops_remaining) OVER w - stops_remaining) * 60.0
+             / (observed_at - LAG(observed_at) OVER w) AS sp,
+           (observed_at - LAG(observed_at) OVER w) AS dt,
+           (LAG(stops_remaining) OVER w - stops_remaining) AS dstops
+         FROM raw_observations
+         WHERE stops_remaining IS NOT NULL AND vehicle_id IS NOT NULL
+         WINDOW w AS (PARTITION BY line, vehicle_id, stop_id ORDER BY observed_at)
+       )
+       WHERE dt > 20 AND dt < 1800 AND dstops > 0
+       GROUP BY vehicle_id, line, dow`,
+    )
+    .all<{ vehicle_id: string; line: string; dow: number; n: number; s: number }>();
+
+  const dowMap = new Map<
+    string,
+    { vehicle_id: string; line: string; dow: number; samples: number; arrivals: number; speedCount: number; speedSum: number }
+  >();
+  const key = (v: string, l: string, d: number) => `${v}|${l}|${d}`;
+  for (const r of dowActivity.results) {
+    dowMap.set(key(r.vehicle_id, r.line, r.dow), {
+      vehicle_id: r.vehicle_id,
+      line: r.line,
+      dow: r.dow,
+      samples: r.samples,
+      arrivals: r.arrivals ?? 0,
+      speedCount: 0,
+      speedSum: 0,
+    });
+  }
+  for (const r of dowSpeed.results) {
+    const b = dowMap.get(key(r.vehicle_id, r.line, r.dow));
+    if (b) {
+      b.speedCount += r.n;
+      b.speedSum += r.s ?? 0;
+    }
+  }
+
+  await db.prepare("DELETE FROM agg_vehicle_line").run();
+  await db.prepare("DELETE FROM agg_vehicle_line_dow").run();
+
+  await chunkedBatch(
+    db,
+    pairs.results.map((p) =>
+      db
+        .prepare(
+          `INSERT INTO agg_vehicle_line
+             (vehicle_id, line, samples, arrivals, first_seen, last_seen, updated_at)
+           VALUES (?,?,?,?,?,?,?)`,
+        )
+        .bind(p.vehicle_id, p.line, p.samples, p.arrivals ?? 0, p.first_seen, p.last_seen, now),
+    ),
+  );
+
+  await chunkedBatch(
+    db,
+    [...dowMap.values()].map((b) =>
+      db
+        .prepare(
+          `INSERT INTO agg_vehicle_line_dow
+             (vehicle_id, line, dow, samples, arrivals, speed_count, speed_stops_per_min_sum, updated_at)
+           VALUES (?,?,?,?,?,?,?,?)`,
+        )
+        .bind(b.vehicle_id, b.line, b.dow, b.samples, b.arrivals, b.speedCount, b.speedSum, now),
+    ),
+  );
 }
 
 interface AggRow {
