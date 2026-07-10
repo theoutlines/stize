@@ -20,6 +20,14 @@ binding = "STIGLA_IDEAS_DB"
 database_name = "stigla-ideas"
 database_id = "fdd98e75-c0a7-4641-90c8-2706d6e70506"
 
+# Transport-analytics history: raw arrival observations + rolled-up per-line
+# metrics. Separate DB from ideas for clean rotation and blast-radius isolation.
+[[d1_databases]]
+binding = "STIGLA_ANALYTICS_DB"
+database_name = "stigla-analytics"
+database_id = "ddefde2f-57f2-429f-ace3-87d140e50020"
+migrations_dir = "migrations-analytics"
+
 [triggers]
 crons = ["0 6 * * *"]
 

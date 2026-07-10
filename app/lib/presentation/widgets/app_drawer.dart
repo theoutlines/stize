@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/adaptive.dart';
 import '../../l10n/app_localizations.dart';
+import '../providers/providers.dart';
 import '../screens/my_stops_screen.dart';
 
 /// The app's primary navigation, moved from a bottom tab bar into a left
@@ -77,6 +79,25 @@ class AppDrawer extends StatelessWidget {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
                         adaptiveRoute((_) => const MyStopsScreen()),
+                      );
+                    },
+                  ),
+                  // Draft transport-analytics — shown only when the remote
+                  // `analytics_show` flag is on (hidden from users otherwise).
+                  Consumer(
+                    builder: (context, ref, _) {
+                      if (!ref.watch(analyticsEnabledProvider)) {
+                        return const SizedBox.shrink();
+                      }
+                      return _NavTile(
+                        icon: Icons.query_stats_outlined,
+                        selectedIcon: Icons.query_stats,
+                        label: 'Аналитика',
+                        selected: false,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          context.push('/analytics');
+                        },
                       );
                     },
                   ),

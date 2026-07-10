@@ -2,6 +2,8 @@ import 'package:go_router/go_router.dart';
 
 import '../core/adaptive.dart';
 import 'screens/about_screen.dart';
+import 'screens/analytics_home_screen.dart';
+import 'screens/analytics_line_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/map_screen_args.dart';
 import 'screens/root_screen.dart';
@@ -48,6 +50,20 @@ final appRouter = GoRouter(
       path: '/about',
       pageBuilder: (context, state) =>
           adaptivePage(key: state.pageKey, child: const AboutScreen()),
+    ),
+    // Transport analytics (draft) — reachable only via the drawer entry, which
+    // is itself gated on the remote `analytics_show` flag.
+    GoRoute(
+      path: '/analytics',
+      pageBuilder: (context, state) =>
+          adaptivePage(key: state.pageKey, child: const AnalyticsHomeScreen()),
+    ),
+    GoRoute(
+      path: '/analytics/:line',
+      pageBuilder: (context, state) => adaptivePage(
+        key: state.pageKey,
+        child: AnalyticsLineScreen(line: state.pathParameters['line']!),
+      ),
     ),
   ],
 );

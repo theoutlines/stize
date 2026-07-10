@@ -3,6 +3,7 @@ import type { ArrivalDto, ArrivalsResponse } from "../types";
 import { getWithStaleWhileRevalidate, type WaitUntilCtx } from "./swrCache";
 import { BgnaplataTransitProvider, type RawArrival } from "./transitProvider";
 import { getStopById, getLineByNumber } from "./gtfsData";
+import { logObservations } from "./analytics";
 
 const ARRIVALS_TTL_SECONDS = 30;
 
@@ -21,7 +22,18 @@ export async function getArrivals(
     cacheKeyUrl,
     ARRIVALS_TTL_SECONDS,
     ctx,
-    () => provider.fetchArrivals(stopId),
+    // Wrap the fresh upstream fetch so analytics logs exactly what we just
+    // pulled — this runs only on a real refresh (not cache hits), so it adds no
+    // extra load on the source. Fire-and-forget; never blocks the response.
+    () =>
+      provider.fetchArrivals(stopId).then((raw) => {
+        ctx.waitUntil(
+          logObservations(env, stopId, raw).catch((e) =>
+            console.error("analytics log failed", e),
+          ),
+        );
+        return raw;
+      }),
   );
 
   const arrivals: ArrivalDto[] = [];

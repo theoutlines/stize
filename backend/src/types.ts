@@ -90,6 +90,27 @@ export interface ConfigResponse {
   flags: Record<string, boolean>;
 }
 
+// One time-bucket of a line's rolled-up analytics (by hour-of-day or day-of-
+// week). Means are null when there weren't enough samples to measure them.
+export interface AnalyticsBucket {
+  key: number; // hour 0..23, or dow 0..6 (0=Sun)
+  samples: number;
+  arrivals: number;
+  mean_headway_secs: number | null; // real interval between vehicles
+  mean_speed_stops_per_min: number | null; // route progress rate
+}
+
+export interface LineAnalyticsResponse {
+  line: string;
+  total_samples: number;
+  by_hour: AnalyticsBucket[]; // 24 buckets
+  by_dow: AnalyticsBucket[]; // 7 buckets
+  updated_at: number | null; // last aggregation run (unix secs)
+  // Punctuality (delay vs GTFS schedule) is scaffolded but not yet computed —
+  // it needs per-trip scheduled times; null means "not available yet".
+  punctuality: null;
+}
+
 export interface IdeaDto {
   id: number;
   text: string;

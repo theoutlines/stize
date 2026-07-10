@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import { isServiceKilled, setServiceKilled } from "./lib/killswitch";
 import { FEATURE_FLAGS, getAllFlags, isFeatureFlag, setFlag } from "./lib/featureFlags";
+import { aggregate, getLineAnalytics } from "./lib/analytics";
 import { getArrivals } from "./lib/arrivals";
 import { getNearbyVehicles } from "./lib/vehicles";
 import {
@@ -312,6 +313,26 @@ app.post("/api/v1/admin/flags", async (c) => {
   return c.json({ flags: await getAllFlags(c.env) });
 });
 
+// Transport analytics: rolled-up metrics for one line, served from the
+// pre-aggregated table (fast; no raw scan on the request path). Behind the
+// `analytics_show` flag on the client — the endpoint itself is harmless/empty
+// until history accumulates.
+app.get("/api/v1/analytics/lines/:line", async (c) => {
+  const line = c.req.param("line");
+  const data = await getLineAnalytics(c.env, line);
+  return c.json(data);
+});
+
+// Run the aggregation on demand (same as the daily cron) — for testing.
+app.post("/api/v1/admin/analytics/aggregate", async (c) => {
+  const token = c.req.header("X-Admin-Token");
+  if (!token || token !== c.env.ADMIN_TOKEN) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  const result = await aggregate(c.env);
+  return c.json(result);
+});
+
 export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
@@ -319,6 +340,13 @@ export default {
       refreshAlerts(env).then(
         (result) => console.log(`alerts refresh: +${result.added}, total ${result.total}`),
         (err) => console.error("alerts refresh failed", err),
+      ),
+    );
+    // Roll raw observations into per-line metrics and prune old raw.
+    ctx.waitUntil(
+      aggregate(env).then(
+        (result) => console.log(`analytics aggregate: ${result.buckets} buckets`),
+        (err) => console.error("analytics aggregate failed", err),
       ),
     );
   },

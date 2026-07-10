@@ -18,6 +18,7 @@ import '../../data/repositories/vehicles_repository_impl.dart';
 import '../../domain/models/app_config.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
+import '../../domain/models/line_analytics.dart';
 import '../../domain/models/idea.dart';
 import '../../domain/models/pinned_line.dart';
 import '../../domain/models/route_alert.dart';
@@ -51,6 +52,17 @@ final appConfigProvider = FutureProvider<AppConfig>((ref) async {
 final analyticsEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.analyticsShow ?? false,
 );
+
+/// Rolled-up analytics for one line number (draft transport-analytics feature).
+final lineAnalyticsProvider = FutureProvider.family<LineAnalytics, String>((
+  ref,
+  line,
+) async {
+  final json = await ref
+      .watch(apiClientProvider)
+      .getJson('/api/v1/analytics/lines/$line');
+  return LineAnalytics.fromJson(json);
+});
 
 final deviceIdServiceProvider = Provider<DeviceIdService>((ref) => DeviceIdService());
 
