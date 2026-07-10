@@ -120,6 +120,10 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #6b7a72;
       font-size: 15px;
+      /* The Flutter view paints over this splash, but it must never intercept
+         input — otherwise this full-screen overlay silently eats every tap on
+         the map underneath. Removed entirely once Flutter's first frame lands. */
+      pointer-events: none;
     }
     @media (prefers-color-scheme: dark) {
       #stigla-loading { color: #8a9992; }
@@ -128,6 +132,14 @@
 </head>
 <body>
   <div id="stigla-loading">Loading Stigla…</div>
+  <script>
+    // Drop the loading splash once Flutter paints its first frame, so it never
+    // lingers over the app.
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('stigla-loading');
+      if (el) el.remove();
+    });
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
