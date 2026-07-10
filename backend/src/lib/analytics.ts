@@ -242,6 +242,16 @@ export async function getLineAnalytics(env: Env, line: string): Promise<LineAnal
     total_samples: results.reduce((a, r) => a + r.samples, 0),
     by_hour: fold(24, (r) => r.hour),
     by_dow: fold(7, (r) => r.dow),
+    grid: results.map((r) => ({
+      dow: r.dow,
+      hour: r.hour,
+      samples: r.samples,
+      arrivals: r.arrivals,
+      mean_headway_secs: r.headway_count ? Math.round(r.headway_secs_sum / r.headway_count) : null,
+      mean_speed_stops_per_min: r.speed_count
+        ? Number((r.speed_stops_per_min_sum / r.speed_count).toFixed(3))
+        : null,
+    })),
     updated_at: lastRun ? Number(lastRun.value) : null,
     punctuality: null,
   };

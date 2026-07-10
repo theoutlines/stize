@@ -24,6 +24,35 @@ class AnalyticsBucket {
   );
 }
 
+/// One (day-of-week, hour) cell of the full grid — the 2D shape the heatmap and
+/// the distribution dot-plot need.
+class AnalyticsCell {
+  const AnalyticsCell({
+    required this.dow,
+    required this.hour,
+    required this.samples,
+    required this.arrivals,
+    required this.meanHeadwaySecs,
+    required this.meanSpeedStopsPerMin,
+  });
+
+  final int dow;
+  final int hour;
+  final int samples;
+  final int arrivals;
+  final double? meanHeadwaySecs;
+  final double? meanSpeedStopsPerMin;
+
+  factory AnalyticsCell.fromJson(Map<String, dynamic> j) => AnalyticsCell(
+    dow: (j['dow'] as num).toInt(),
+    hour: (j['hour'] as num).toInt(),
+    samples: (j['samples'] as num?)?.toInt() ?? 0,
+    arrivals: (j['arrivals'] as num?)?.toInt() ?? 0,
+    meanHeadwaySecs: (j['mean_headway_secs'] as num?)?.toDouble(),
+    meanSpeedStopsPerMin: (j['mean_speed_stops_per_min'] as num?)?.toDouble(),
+  );
+}
+
 /// A line's analytics as served by `/api/v1/analytics/lines/:line`.
 class LineAnalytics {
   const LineAnalytics({
@@ -31,6 +60,7 @@ class LineAnalytics {
     required this.totalSamples,
     required this.byHour,
     required this.byDow,
+    required this.grid,
     required this.updatedAt,
   });
 
@@ -38,6 +68,7 @@ class LineAnalytics {
   final int totalSamples;
   final List<AnalyticsBucket> byHour;
   final List<AnalyticsBucket> byDow;
+  final List<AnalyticsCell> grid;
   final DateTime? updatedAt;
 
   /// Whether there's enough history to show anything meaningful yet.
@@ -53,6 +84,9 @@ class LineAnalytics {
       totalSamples: (j['total_samples'] as num?)?.toInt() ?? 0,
       byHour: buckets('by_hour'),
       byDow: buckets('by_dow'),
+      grid: ((j['grid'] as List?) ?? const [])
+          .map((e) => AnalyticsCell.fromJson(e as Map<String, dynamic>))
+          .toList(),
       updatedAt: ts is num
           ? DateTime.fromMillisecondsSinceEpoch(ts.toInt() * 1000)
           : null,

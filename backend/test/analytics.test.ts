@@ -83,6 +83,11 @@ describe("analytics.aggregate + getLineAnalytics", () => {
     // Bucketed onto the right day-of-week.
     expect(a.by_dow[DOW].samples).toBe(4);
 
+    // The 2D grid (for heatmap / dot-plot) has the single populated cell.
+    expect(a.grid).toHaveLength(1);
+    expect(a.grid[0]).toMatchObject({ dow: DOW, hour: HOUR, samples: 4, arrivals: 2 });
+    expect(a.grid[0].mean_headway_secs).toBe(300);
+
     // Punctuality is scaffolded but not yet computed.
     expect(a.punctuality).toBeNull();
     expect(a.updated_at).not.toBeNull();
