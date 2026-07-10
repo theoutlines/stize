@@ -45,3 +45,7 @@ Thumbs.db
 # MapTiler key (client key, kept out of the repo; passed via --dart-define-from-file)
 app/dart_defines.json
 dart_defines.json
+
+# Fleet garage-number research (local-only collection scripts + accumulated data)
+/scripts/
+/data/
