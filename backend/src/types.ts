@@ -82,6 +82,14 @@ export interface HealthResponse {
   version: string;
 }
 
+// Runtime config the app fetches at startup: the API version plus remotely
+// togglable feature flags (see lib/featureFlags.ts). Kept tiny and no-store so a
+// flag flip reaches clients without a rebuild.
+export interface ConfigResponse {
+  version: string;
+  flags: Record<string, boolean>;
+}
+
 export interface IdeaDto {
   id: number;
   text: string;

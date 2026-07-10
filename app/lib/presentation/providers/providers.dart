@@ -15,6 +15,7 @@ import '../../data/repositories/lines_repository_impl.dart';
 import '../../data/repositories/pinned_favorites_repository_impl.dart';
 import '../../data/repositories/stops_repository_impl.dart';
 import '../../data/repositories/vehicles_repository_impl.dart';
+import '../../domain/models/app_config.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/idea.dart';
@@ -32,6 +33,24 @@ import '../../domain/repositories/stops_repository.dart';
 import '../../domain/repositories/vehicles_repository.dart';
 
 final apiClientProvider = Provider<StiglaApiClient>((ref) => StiglaApiClient());
+
+/// Runtime config + feature flags from the backend. Fetched once at startup;
+/// on any failure it falls back to [AppConfig.empty] (all flags off), so a
+/// dormant feature never leaks if config can't be reached.
+final appConfigProvider = FutureProvider<AppConfig>((ref) async {
+  try {
+    final json = await ref.watch(apiClientProvider).getJson('/api/v1/config');
+    return AppConfig.fromJson(json);
+  } catch (_) {
+    return AppConfig.empty;
+  }
+});
+
+/// Whether the transport-analytics screens are enabled for this user (remote
+/// `analytics_show` flag). Defaults to false until config resolves.
+final analyticsEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.analyticsShow ?? false,
+);
 
 final deviceIdServiceProvider = Provider<DeviceIdService>((ref) => DeviceIdService());
 
