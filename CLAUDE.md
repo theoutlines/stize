@@ -130,3 +130,36 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
   installs.
 - Code and comments are English; the app UI is localized EN/RU/SR via
   `lib/l10n/*.arb` (edit all three, then `flutter gen-l10n`).
+
+## Процесс
+
+### Истина — в файлах, не в чатах
+Всё важное живёт в репозитории: спеки, промпты задач, отчёты, бэклог.
+Чат-сессии одноразовые; любая новая сессия должна восстанавливать контекст
+из CLAUDE.md и docs/, а не из истории переписки.
+
+### Карта документов
+- `CLAUDE.md` — конституция проекта (этот файл).
+- `docs/BACKLOG.md` — продуктовый бэклог и роадмап. Единственный источник приоритетов.
+- `docs/*.md` — спеки фич (`FLEET_INTEGRATION.md` и др.).
+- `docs/prompts/` — постановки задач (промпты), по одной на файл.
+- `docs/reports/` — отчёты по выполненным задачам: `YYYY-MM-DD-<task>.md`, на русском.
+- `assets/data/` — данные приложения (`fleet_models.json` и др.) — это НЕ документация.
+
+### Ветки и worktrees
+- `main` всегда стабильная и релизится в любой момент. Недоделанное попадает
+  в main только выключенным за фиче-флагом.
+- Каждая задача — своя ветка: `feature/<имя>` или `fix/<имя>`.
+- Одна сессия Claude Code = одна ветка = один git worktree (отдельная папка).
+  Соглашение: `../stigla-<имя>` для `feature/<имя>`.
+- Новый worktree: `git worktree add ../stigla-<имя> -b feature/<имя>`
+  Удалить после merge: `git worktree remove ../stigla-<имя>` + `git branch -d feature/<имя>`
+
+### Завершение задачи (definition of done сессии)
+1. Код закоммичен в ветку задачи, тесты проходят.
+2. Отчёт написан в `docs/reports/YYYY-MM-DD-<task>.md` (RU).
+3. Если задача меняет приоритеты/статусы — отметить в `docs/BACKLOG.md`.
+4. Merge в main — только по явной команде владельца.
+
+### Язык
+Код и комментарии — EN. Отчёты, документация, коммуникация — RU.
