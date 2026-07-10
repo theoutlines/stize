@@ -49,3 +49,6 @@ dart_defines.json
 # Fleet garage-number research (local-only collection scripts + accumulated data)
 /scripts/
 /data/
+
+# Handoff package — local copies for upload to the product chat, not repo content
+/handoff/
