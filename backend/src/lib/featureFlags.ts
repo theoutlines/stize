@@ -1,0 +1,36 @@
+import type { Env } from "../env";
+
+// Feature flags live in KV — the same remote, no-redeploy mechanism as the kill
+// switch (see killswitch.ts). Flipping a flag is a single KV write; every worker
+// isolate reads the new value on its next request. This lets us ship dormant
+// code to `main` and turn it on later without a rebuild.
+//
+// Two independent analytics flags (see the transport-analytics feature):
+//   analytics_collect — the worker logs arrival observations to build history.
+//                       Turn this on EARLY so data accumulates while the screens
+//                       are still hidden.
+//   analytics_show    — the app reveals the (draft) analytics screens to users.
+//                       Turn this on only once the screens are ready.
+export const FEATURE_FLAGS = ["analytics_collect", "analytics_show"] as const;
+export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
+
+export function isFeatureFlag(name: string): name is FeatureFlag {
+  return (FEATURE_FLAGS as readonly string[]).includes(name);
+}
+
+const kvKey = (flag: FeatureFlag) => `flag:${flag}`;
+
+export async function getFlag(env: Env, flag: FeatureFlag): Promise<boolean> {
+  return (await env.STIGLA_KV.get(kvKey(flag))) === "1";
+}
+
+export async function setFlag(env: Env, flag: FeatureFlag, on: boolean): Promise<void> {
+  await env.STIGLA_KV.put(kvKey(flag), on ? "1" : "0");
+}
+
+export async function getAllFlags(env: Env): Promise<Record<FeatureFlag, boolean>> {
+  const entries = await Promise.all(
+    FEATURE_FLAGS.map(async (f) => [f, await getFlag(env, f)] as const),
+  );
+  return Object.fromEntries(entries) as Record<FeatureFlag, boolean>;
+}

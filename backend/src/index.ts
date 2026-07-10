@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Env } from "./env";
 import type {
+  ConfigResponse,
   HealthResponse,
   LinesResponse,
   RouteShapeResponse,
@@ -9,6 +10,7 @@ import type {
   VehiclesResponse,
 } from "./types";
 import { isServiceKilled, setServiceKilled } from "./lib/killswitch";
+import { FEATURE_FLAGS, getAllFlags, isFeatureFlag, setFlag } from "./lib/featureFlags";
 import { getArrivals } from "./lib/arrivals";
 import { getNearbyVehicles } from "./lib/vehicles";
 import {
@@ -44,6 +46,14 @@ app.use("*", cors({ origin: "*", allowHeaders: ["Content-Type", "X-Admin-Token",
 app.get("/api/v1/health", async (c) => {
   const killed = await isServiceKilled(c.env);
   const body: HealthResponse = { status: killed ? "killed" : "ok", version: c.env.API_VERSION };
+  return c.json(body);
+});
+
+// Runtime config + feature flags the app reads at startup. no-store so a remote
+// flag flip (via /admin/flags) reaches clients on their next fetch, no rebuild.
+app.get("/api/v1/config", async (c) => {
+  const body: ConfigResponse = { version: c.env.API_VERSION, flags: await getAllFlags(c.env) };
+  c.header("cache-control", "no-store");
   return c.json(body);
 });
 
@@ -279,6 +289,27 @@ app.post("/api/v1/admin/killswitch", async (c) => {
   }
   await setServiceKilled(c.env, body.killed);
   return c.json({ status: body.killed ? "killed" : "ok" });
+});
+
+// Flip a feature flag remotely (no redeploy). Same admin-token auth as above.
+//   curl -X POST .../api/v1/admin/flags -H "X-Admin-Token: $T" \
+//        -d '{"flag":"analytics_collect","value":true}'
+app.post("/api/v1/admin/flags", async (c) => {
+  const token = c.req.header("X-Admin-Token");
+  if (!token || token !== c.env.ADMIN_TOKEN) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  const body = await c.req
+    .json<{ flag?: string; value?: boolean }>()
+    .catch(() => ({ flag: undefined, value: undefined }));
+  if (!body.flag || !isFeatureFlag(body.flag) || typeof body.value !== "boolean") {
+    return c.json(
+      { error: `body must be { "flag": one of [${FEATURE_FLAGS.join(", ")}], "value": boolean }` },
+      400,
+    );
+  }
+  await setFlag(c.env, body.flag, body.value);
+  return c.json({ flags: await getAllFlags(c.env) });
 });
 
 export default {
