@@ -100,11 +100,23 @@ export interface AnalyticsBucket {
   mean_speed_stops_per_min: number | null; // route progress rate
 }
 
+// One (day-of-week, hour) cell of the full grid — the 2D shape a heatmap and a
+// distribution dot-plot need (the folded by_hour/by_dow lose it).
+export interface AnalyticsCell {
+  dow: number; // 0=Sun..6=Sat
+  hour: number; // 0..23
+  samples: number;
+  arrivals: number;
+  mean_headway_secs: number | null;
+  mean_speed_stops_per_min: number | null;
+}
+
 export interface LineAnalyticsResponse {
   line: string;
   total_samples: number;
   by_hour: AnalyticsBucket[]; // 24 buckets
   by_dow: AnalyticsBucket[]; // 7 buckets
+  grid: AnalyticsCell[]; // sparse: only populated (dow,hour) cells
   updated_at: number | null; // last aggregation run (unix secs)
   // Punctuality (delay vs GTFS schedule) is scaffolded but not yet computed —
   // it needs per-trip scheduled times; null means "not available yet".
