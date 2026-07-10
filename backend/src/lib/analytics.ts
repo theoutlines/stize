@@ -11,34 +11,49 @@ const RAW_RETENTION_DAYS = 30;
 const INSERT_CHUNK = 40;
 
 /**
+ * Normalised vehicle id, or null when the garage number doesn't identify a real
+ * vehicle. The source emits placeholder ids `P1..P999` (recycled across
+ * vehicles); those are junk for per-vehicle reasoning. Anything else (real
+ * `P#####` ids) is trusted as-is. Mirrors the SQL in 0002_vehicle_id.sql.
+ */
+export function vehicleIdOf(garageNo: string | null): string | null {
+  if (!garageNo) return null;
+  const m = /^P(\d+)$/.exec(garageNo);
+  if (m && Number(m[1]) < 1000) return null;
+  return garageNo;
+}
+
+/**
  * Log the arrivals we just fetched from the source into the analytics history.
  *
  * Flag-gated (`analytics_collect`) and meant to be called inside
  * `ctx.waitUntil` from the *fresh-fetch* path only — so it records exactly the
  * data we already pulled to serve the user, adding **zero** load on the source.
- * Only vehicles with a garage number are kept (the id is needed to derive
- * per-vehicle speed and headways).
+ *
+ * Every arrival is logged (a missing garage number is fine — the observation is
+ * still valid for line-level metrics). `garage_no` is stored raw; `vehicle_id`
+ * is the normalised id (null for missing/junk) used for all per-vehicle work.
  */
 export async function logObservations(env: Env, stopId: string, raw: RawArrival[]): Promise<void> {
   if (!(await getFlag(env, "analytics_collect"))) return;
-  const rows = raw.filter((r) => r.garageNo);
-  if (rows.length === 0) return;
+  if (raw.length === 0) return;
 
   const now = Math.floor(Date.now() / 1000);
-  const placeholders = rows.map(() => "(?,?,?,?,?,?)").join(",");
+  const placeholders = raw.map(() => "(?,?,?,?,?,?,?)").join(",");
   const binds: (string | number | null)[] = [];
-  for (const r of rows) {
+  for (const r of raw) {
     binds.push(
       r.lineNumber,
       stopId,
       r.garageNo,
+      vehicleIdOf(r.garageNo),
       r.etaSeconds != null ? Math.round(r.etaSeconds / 60) : null,
       r.stopsRemaining,
       now,
     );
   }
   await env.STIGLA_ANALYTICS_DB.prepare(
-    `INSERT INTO raw_observations (line, stop_id, garage_no, eta_minutes, stops_remaining, observed_at)
+    `INSERT INTO raw_observations (line, stop_id, garage_no, vehicle_id, eta_minutes, stops_remaining, observed_at)
      VALUES ${placeholders}`,
   )
     .bind(...binds)
@@ -111,8 +126,8 @@ export async function aggregate(env: Env): Promise<{ buckets: number }> {
            (observed_at - LAG(observed_at) OVER w) AS dt,
            (LAG(stops_remaining) OVER w - stops_remaining) AS dstops
          FROM raw_observations
-         WHERE stops_remaining IS NOT NULL
-         WINDOW w AS (PARTITION BY line, garage_no, stop_id ORDER BY observed_at)
+         WHERE stops_remaining IS NOT NULL AND vehicle_id IS NOT NULL
+         WINDOW w AS (PARTITION BY line, vehicle_id, stop_id ORDER BY observed_at)
        )
        WHERE dt > 20 AND dt < 1800 AND dstops > 0
        GROUP BY line, dow, hour`,
@@ -131,12 +146,12 @@ export async function aggregate(env: Env): Promise<{ buckets: number }> {
            CAST(strftime('%w', observed_at, 'unixepoch') AS INTEGER) AS dow,
            CAST(strftime('%H', observed_at, 'unixepoch') AS INTEGER) AS hour,
            observed_at - LAG(observed_at) OVER w AS gap,
-           garage_no, LAG(garage_no) OVER w AS prev_g
+           vehicle_id, LAG(vehicle_id) OVER w AS prev_g
          FROM raw_observations
-         WHERE stops_remaining = 0
+         WHERE stops_remaining = 0 AND vehicle_id IS NOT NULL
          WINDOW w AS (PARTITION BY line, stop_id ORDER BY observed_at)
        )
-       WHERE gap > 60 AND gap < 7200 AND garage_no <> prev_g
+       WHERE gap > 60 AND gap < 7200 AND vehicle_id <> prev_g
        GROUP BY line, dow, hour`,
     )
     .all<{ line: string; dow: number; hour: number; n: number; s: number }>();
