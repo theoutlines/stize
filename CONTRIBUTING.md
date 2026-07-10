@@ -43,6 +43,12 @@ flag) so releases can ship before the feature is finished.
 Remotely-togglable flags live in Cloudflare KV (same mechanism as the kill
 switch) and flip **without a redeploy**. See `docs/feature-flags.md`.
 
+## Environments
+
+Production (`main`, flags off) and a separate **staging** web contour (dev flags
+on, isolated KV/D1, STAGING badge) for testing unreleased features. Addresses,
+data isolation and the promote-to-prod steps are in `docs/staging.md`.
+
 ## Code style
 
 - Code and comments: English.

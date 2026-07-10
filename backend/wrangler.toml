@@ -33,3 +33,45 @@ crons = ["0 6 * * *"]
 
 [vars]
 API_VERSION = "v1"
+ENVIRONMENT = "production"
+
+# --- Staging environment ----------------------------------------------------
+# Deployed on demand from a feature branch (`npm run deploy:staging`). A fully
+# isolated worker with its OWN KV + D1s, so it never touches production data.
+# In-development feature flags default ON here (ENVIRONMENT=staging). Named
+# environments don't inherit top-level bindings — everything is redefined below.
+# No cron on staging (aggregation via the admin endpoint) to avoid extra alert
+# scraping / model calls.
+[env.staging]
+name = "stigla-backend-staging"
+routes = [
+  { pattern = "stigla-api-staging.theoutlines.xyz", custom_domain = true }
+]
+
+[env.staging.vars]
+API_VERSION = "v1"
+ENVIRONMENT = "staging"
+
+[env.staging.assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[env.staging.kv_namespaces]]
+binding = "STIGLA_KV"
+id = "ea2452f1112243c9a205ff616289e3e5"
+
+[[env.staging.d1_databases]]
+binding = "STIGLA_IDEAS_DB"
+database_name = "stigla-ideas-staging"
+database_id = "c28922ce-6233-41ea-b878-ad212723c5c6"
+
+[[env.staging.d1_databases]]
+binding = "STIGLA_ANALYTICS_DB"
+database_name = "stigla-analytics-staging"
+database_id = "f19648bb-8539-49af-befa-a67e54885a3b"
+migrations_dir = "migrations-analytics"
+
+# No scheduled cron on staging (override the inherited one) — avoids extra alert
+# scraping / model calls. Aggregate analytics on demand via the admin endpoint.
+[env.staging.triggers]
+crons = []

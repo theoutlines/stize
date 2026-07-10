@@ -20,8 +20,18 @@ export function isFeatureFlag(name: string): name is FeatureFlag {
 
 const kvKey = (flag: FeatureFlag) => `flag:${flag}`;
 
+// Default value for a flag whose KV key hasn't been set. On **staging** every
+// in-development flag defaults ON so the whole app can be exercised there; on
+// **production** they default OFF until explicitly enabled. An explicit KV
+// value always wins over this (so either env can be overridden per flag).
+function defaultFor(env: Env): boolean {
+  return env.ENVIRONMENT === "staging";
+}
+
 export async function getFlag(env: Env, flag: FeatureFlag): Promise<boolean> {
-  return (await env.STIGLA_KV.get(kvKey(flag))) === "1";
+  const value = await env.STIGLA_KV.get(kvKey(flag));
+  if (value === null) return defaultFor(env);
+  return value === "1";
 }
 
 export async function setFlag(env: Env, flag: FeatureFlag, on: boolean): Promise<void> {

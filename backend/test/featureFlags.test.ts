@@ -27,4 +27,18 @@ describe("featureFlags", () => {
     expect(isFeatureFlag("analytics_show")).toBe(true);
     expect(isFeatureFlag("nope")).toBe(false);
   });
+
+  it("defaults unset flags ON on staging, OFF on production, but an explicit value wins", async () => {
+    const staging = { ...env, ENVIRONMENT: "staging" };
+    const prod = { ...env, ENVIRONMENT: "production" };
+    await env.STIGLA_KV.delete("flag:analytics_show");
+
+    expect(await getFlag(staging, "analytics_show")).toBe(true);
+    expect(await getFlag(prod, "analytics_show")).toBe(false);
+
+    // An explicit KV value overrides the env default in both.
+    await setFlag(env, "analytics_show", false);
+    expect(await getFlag(staging, "analytics_show")).toBe(false);
+    await env.STIGLA_KV.delete("flag:analytics_show");
+  });
 });

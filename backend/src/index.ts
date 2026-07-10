@@ -53,7 +53,11 @@ app.get("/api/v1/health", async (c) => {
 // Runtime config + feature flags the app reads at startup. no-store so a remote
 // flag flip (via /admin/flags) reaches clients on their next fetch, no rebuild.
 app.get("/api/v1/config", async (c) => {
-  const body: ConfigResponse = { version: c.env.API_VERSION, flags: await getAllFlags(c.env) };
+  const body: ConfigResponse = {
+    version: c.env.API_VERSION,
+    environment: c.env.ENVIRONMENT ?? "production",
+    flags: await getAllFlags(c.env),
+  };
   c.header("cache-control", "no-store");
   return c.json(body);
 });

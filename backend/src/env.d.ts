@@ -5,6 +5,8 @@ export interface Env {
   ASSETS: Fetcher;
 
   API_VERSION: string;
+  // "production" | "staging" — selects per-environment feature-flag defaults.
+  ENVIRONMENT: string;
 
   TRANSIT_SOURCE_BASE_URL: string;
   TRANSIT_SOURCE_API_KEY?: string;

@@ -87,6 +87,7 @@ export interface HealthResponse {
 // flag flip reaches clients without a rebuild.
 export interface ConfigResponse {
   version: string;
+  environment: string; // "production" | "staging"
   flags: Record<string, boolean>;
 }
 
