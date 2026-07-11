@@ -76,8 +76,6 @@
   "settingsThemeSystem": "Как в системе",
   "settingsThemeLight": "Светлая",
   "settingsThemeDark": "Тёмная",
-  "settingsRefreshInterval": "Интервал обновления",
-  "settingsRefreshIntervalSeconds": "{seconds} сек",
 
   "aboutTitle": "О Stigla",
   "aboutDisclaimer": "Неофициальное приложение. Не связано с JKP Upravljanje javnim prevozom Beograd.",

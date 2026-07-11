@@ -83,9 +83,6 @@
   "settingsThemeSystem": "Match system",
   "settingsThemeLight": "Light",
   "settingsThemeDark": "Dark",
-  "settingsRefreshInterval": "Refresh interval",
-  "settingsRefreshIntervalSeconds": "{seconds}s",
-  "@settingsRefreshIntervalSeconds": {"placeholders": {"seconds": {"type": "int"}}},
 
   "aboutTitle": "About Stigla",
   "aboutDisclaimer": "Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.",

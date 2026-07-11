@@ -227,14 +227,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsThemeDark => 'Dark';
 
   @override
-  String get settingsRefreshInterval => 'Refresh interval';
-
-  @override
-  String settingsRefreshIntervalSeconds(int seconds) {
-    return '${seconds}s';
-  }
-
-  @override
   String get aboutTitle => 'About Stigla';
 
   @override

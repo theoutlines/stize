@@ -229,14 +229,6 @@ class AppLocalizationsSr extends AppLocalizations {
   String get settingsThemeDark => 'Tamna';
 
   @override
-  String get settingsRefreshInterval => 'Interval osvežavanja';
-
-  @override
-  String settingsRefreshIntervalSeconds(int seconds) {
-    return '$seconds sek';
-  }
-
-  @override
   String get aboutTitle => 'O Stigla aplikaciji';
 
   @override

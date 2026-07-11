@@ -4,19 +4,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// null locale means "follow system", matching the app-wide system-by-default
 /// rule for both theme and language.
 class AppSettings {
-  const AppSettings({required this.themeMode, required this.localeCode, required this.refreshIntervalSeconds});
+  const AppSettings({required this.themeMode, required this.localeCode});
 
   final ThemeMode themeMode;
   final String? localeCode; // 'en' | 'ru' | 'sr' | null (system)
-  final int refreshIntervalSeconds;
 
-  static const defaults = AppSettings(themeMode: ThemeMode.system, localeCode: null, refreshIntervalSeconds: 30);
+  static const defaults = AppSettings(themeMode: ThemeMode.system, localeCode: null);
 
-  AppSettings copyWith({ThemeMode? themeMode, String? Function()? localeCode, int? refreshIntervalSeconds}) {
+  AppSettings copyWith({ThemeMode? themeMode, String? Function()? localeCode}) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
       localeCode: localeCode != null ? localeCode() : this.localeCode,
-      refreshIntervalSeconds: refreshIntervalSeconds ?? this.refreshIntervalSeconds,
     );
   }
 }
@@ -24,10 +22,16 @@ class AppSettings {
 class SettingsStore {
   static const _themeKey = 'settings_theme_mode';
   static const _localeKey = 'settings_locale_code';
-  static const _refreshKey = 'settings_refresh_interval_seconds';
+  // Removed setting (F9): the poll interval is now a fixed 30s constant. Kept
+  // only to clean any previously-stored value out on load.
+  static const _legacyRefreshKey = 'settings_refresh_interval_seconds';
 
   Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
+    // Migrate away the dropped refresh-interval preference.
+    if (prefs.containsKey(_legacyRefreshKey)) {
+      await prefs.remove(_legacyRefreshKey);
+    }
     final themeString = prefs.getString(_themeKey);
     final theme = ThemeMode.values.firstWhere(
       (m) => m.name == themeString,
@@ -36,7 +40,6 @@ class SettingsStore {
     return AppSettings(
       themeMode: theme,
       localeCode: prefs.getString(_localeKey),
-      refreshIntervalSeconds: prefs.getInt(_refreshKey) ?? AppSettings.defaults.refreshIntervalSeconds,
     );
   }
 
@@ -52,10 +55,5 @@ class SettingsStore {
     } else {
       await prefs.setString(_localeKey, code);
     }
-  }
-
-  Future<void> saveRefreshIntervalSeconds(int seconds) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_refreshKey, seconds);
   }
 }

@@ -142,11 +142,6 @@ class SettingsController extends AsyncNotifier<AppSettings> {
     await ref.read(settingsStoreProvider).saveLocaleCode(code);
     state = AsyncData((state.valueOrNull ?? AppSettings.defaults).copyWith(localeCode: () => code));
   }
-
-  Future<void> setRefreshIntervalSeconds(int seconds) async {
-    await ref.read(settingsStoreProvider).saveRefreshIntervalSeconds(seconds);
-    state = AsyncData((state.valueOrNull ?? AppSettings.defaults).copyWith(refreshIntervalSeconds: seconds));
-  }
 }
 
 final settingsControllerProvider = AsyncNotifierProvider<SettingsController, AppSettings>(SettingsController.new);

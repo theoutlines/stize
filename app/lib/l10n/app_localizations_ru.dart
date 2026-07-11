@@ -232,14 +232,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsThemeDark => 'Тёмная';
 
   @override
-  String get settingsRefreshInterval => 'Интервал обновления';
-
-  @override
-  String settingsRefreshIntervalSeconds(int seconds) {
-    return '$seconds сек';
-  }
-
-  @override
   String get aboutTitle => 'О Stigla';
 
   @override

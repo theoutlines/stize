@@ -466,18 +466,6 @@ abstract class AppLocalizations {
   /// **'Dark'**
   String get settingsThemeDark;
 
-  /// No description provided for @settingsRefreshInterval.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh interval'**
-  String get settingsRefreshInterval;
-
-  /// No description provided for @settingsRefreshIntervalSeconds.
-  ///
-  /// In en, this message translates to:
-  /// **'{seconds}s'**
-  String settingsRefreshIntervalSeconds(int seconds);
-
   /// No description provided for @aboutTitle.
   ///
   /// In en, this message translates to:

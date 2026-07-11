@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart' as ll;
 import 'package:maplibre/maplibre.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
+import '../../core/api_config.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
 import '../../core/route_path.dart';
@@ -44,7 +45,8 @@ const _minVehiclesZoom = 14.0;
 // At/above this zoom vehicles show as full number pills; between [_minVehiclesZoom,
 // this) they render as simple coloured dots (progressive detail, B2).
 const _vehicleDetailZoom = 15.5;
-const _vehiclesRefreshInterval = Duration(seconds: 30);
+// Fixed 30s cadence, shared with the stop views, matched to the backend cache.
+const _vehiclesRefreshInterval = kLiveRefreshInterval;
 const _vehiclesMaxRadius = 1000.0;
 
 /// Full-screen MapLibre + MapTiler vector map with a floating universal-search

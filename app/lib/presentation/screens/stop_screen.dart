@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:latlong2/latlong.dart' as ll;
 
+import '../../core/api_config.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
@@ -39,8 +40,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
 
   void _scheduleRefresh() {
     _refreshTimer?.cancel();
-    final seconds = ref.read(settingsControllerProvider).valueOrNull?.refreshIntervalSeconds ?? 30;
-    _refreshTimer = Timer.periodic(Duration(seconds: seconds), (_) {
+    _refreshTimer = Timer.periodic(kLiveRefreshInterval, (_) {
       ref.invalidate(arrivalsProvider(widget.stopId));
     });
   }

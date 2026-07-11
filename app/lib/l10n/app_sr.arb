@@ -76,8 +76,6 @@
   "settingsThemeSystem": "Prati sistem",
   "settingsThemeLight": "Svetla",
   "settingsThemeDark": "Tamna",
-  "settingsRefreshInterval": "Interval osvežavanja",
-  "settingsRefreshIntervalSeconds": "{seconds} sek",
 
   "aboutTitle": "O Stigla aplikaciji",
   "aboutDisclaimer": "Nezvanična aplikacija. Nije povezana sa JKP Upravljanje javnim prevozom Beograd.",
