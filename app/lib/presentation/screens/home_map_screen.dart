@@ -36,14 +36,16 @@ const _distance = ll.Distance();
 const _minStopsZoom = 12.0;
 const _individualZoom = 15.0;
 
-// Live vehicles are only fetched/shown from this zoom up — below it the area is
-// too big, which would both flood the map and fan the source out too widely.
-// Positions refresh on this cadence (and on camera-idle). It matches the
+// Below this zoom the bounded (≤1 km) vehicle fetch covers only a small part of
+// the visible city, so when it comes back empty we show a "zoom in" hint (F5)
+// rather than a blank map. Vehicles are still fetched and shown at every zoom —
+// the fetch is always bounded, so it never fans the source out wider.
+// Positions refresh on a fixed 30s cadence (and on camera-idle), matched to the
 // backend's ~30s per-stop cache: polling faster just re-reads the same cached
 // positions, which the movement heuristic would misread as "stuck".
 const _minVehiclesZoom = 14.0;
-// At/above this zoom vehicles show as full number pills; between [_minVehiclesZoom,
-// this) they render as simple coloured dots (progressive detail, B2).
+// At/above this zoom vehicles show as full number pills; below it they render as
+// simple coloured dots (progressive detail, B2) — including the far-out overview.
 const _vehicleDetailZoom = 15.5;
 // Fixed 30s cadence, shared with the stop views, matched to the backend cache.
 const _vehiclesRefreshInterval = kLiveRefreshInterval;
@@ -84,6 +86,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   int _vehiclesRequestSeq = 0;
   bool _hasVehicles = false;
   ll.LatLng? _lastVehiclesCenter;
+  // Last settled camera zoom, tracked so the build can show the "zoom in to see
+  // transport" hint at far-out zoom when the bounded area has no vehicles (F5).
+  double _currentZoom = 15;
 
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
@@ -457,16 +462,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final controller = _controller;
     if (controller == null || !mounted) return;
     final camera = controller.getCamera();
-    // Zoom-gated: clear vehicles when zoomed too far out (declutter + spare the
-    // source a wide fan-out).
-    if (camera.zoom < _minVehiclesZoom) {
-      if (_hasVehicles) {
-        _vehAnimator.clear(); // hard reset — no grace period on a zoom-out
-        _lastVehiclesCenter = null;
-        setState(() => _hasVehicles = false);
-      }
-      return;
+    if (_currentZoom != camera.zoom) {
+      setState(() => _currentZoom = camera.zoom);
     }
+    // No zoom gate on fetching (F5): the request is always bounded to ≤1 km /
+    // ≤12 stops (see _vehiclesMaxRadius and the backend fan-out cap) regardless
+    // of zoom, so a zoomed-out view never fans the source out wider. Keeping it
+    // live means the city overview still shows the (sparse) vehicles already
+    // around the viewport as dots instead of a blank map; the marker layer
+    // degrades pills → dots below _vehicleDetailZoom on its own. When even the
+    // bounded area is empty, a hint tells the user to zoom in (see _zoomHint).
     final center = ll.LatLng(camera.center.lat, camera.center.lon);
     final radius = _radiusForVisibleArea(camera).clamp(400.0, _vehiclesMaxRadius);
     if (!force && _lastVehiclesCenter != null) {
@@ -866,6 +871,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             const SizedBox.expand(),
           // Round action buttons at the top: menu (left), recenter (right).
           _topButtons(theme),
+          // Far-out zoom with no vehicles in the bounded area: nudge the user to
+          // zoom in rather than leaving them staring at a blank map (F5).
+          if (_focus == null && _currentZoom < _minVehiclesZoom && !_hasVehicles)
+            _zoomHint(l10n, theme),
           // Bottom UI: normally the search + favourites bar; while a line is
           // focused, a compact line panel with a close button instead.
           if (_focus == null)
@@ -874,6 +883,45 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             _focusPanel(theme),
         ],
       ),
+      ),
+    );
+  }
+
+  /// A small top-centered hint shown at far-out zoom when no live vehicles are
+  /// in the bounded fetch area — the "zoom in to see transport" nudge (F5).
+  Widget _zoomHint(AppLocalizations l10n, ThemeData theme) {
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          // Clear of the top buttons.
+          padding: const EdgeInsets.only(top: 72),
+          child: PointerInterceptor(
+            child: Material(
+              elevation: 2,
+              borderRadius: BorderRadius.circular(20),
+              color: theme.colorScheme.surface.withValues(alpha: 0.92),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.zoom_in,
+                      size: 18,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.mapZoomInForVehicles,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

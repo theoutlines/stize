@@ -100,6 +100,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Turn on location, or search for a stop, street, or line above.';
 
   @override
+  String get mapZoomInForVehicles => 'Zoom in to see live transport';
+
+  @override
   String get stopUpdatedJustNow => 'Updated just now';
 
   @override

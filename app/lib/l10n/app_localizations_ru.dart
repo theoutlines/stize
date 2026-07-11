@@ -103,6 +103,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Включи геолокацию или поищи остановку, улицу или линию выше.';
 
   @override
+  String get mapZoomInForVehicles =>
+      'Приблизьте карту, чтобы увидеть транспорт';
+
+  @override
   String get stopUpdatedJustNow => 'Обновлено только что';
 
   @override

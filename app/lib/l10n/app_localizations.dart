@@ -250,6 +250,12 @@ abstract class AppLocalizations {
   /// **'Turn on location, or search for a stop, street, or line above.'**
   String get nearbyStopsEmpty;
 
+  /// No description provided for @mapZoomInForVehicles.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in to see live transport'**
+  String get mapZoomInForVehicles;
+
   /// No description provided for @stopUpdatedJustNow.
   ///
   /// In en, this message translates to:

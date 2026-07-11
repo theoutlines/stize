@@ -30,6 +30,7 @@
   "locationUnavailable": "Местоположение сейчас недоступно. Попробуйте через минуту.",
   "nearbyStopsTitle": "Остановки рядом",
   "nearbyStopsEmpty": "Включи геолокацию или поищи остановку, улицу или линию выше.",
+  "mapZoomInForVehicles": "Приблизьте карту, чтобы увидеть транспорт",
 
   "stopUpdatedJustNow": "Обновлено только что",
   "stopUpdatedSecondsAgo": "Обновлено {seconds} сек назад",

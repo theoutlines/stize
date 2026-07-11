@@ -101,6 +101,9 @@ class AppLocalizationsSr extends AppLocalizations {
       'Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.';
 
   @override
+  String get mapZoomInForVehicles => 'Uvećaj mapu da vidiš prevoz uživo';
+
+  @override
   String get stopUpdatedJustNow => 'Ažurirano upravo sada';
 
   @override
