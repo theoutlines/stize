@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
@@ -518,7 +517,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// Highlight a line's route on this same map (hiding the rest) instead of
   /// pushing a separate screen — driven by a vehicle tap or a favourite-line
   /// tap. Closing the focus panel restores normal browsing.
-  Future<void> _openVehicleLine(String line) async {
+  ///
+  /// The camera deliberately stays where the user left it (F2): tapping a
+  /// vehicle must not yank them out to a whole-route fitBounds. The route is
+  /// drawn as a highlighted layer, so panning/zooming out reveals all of it;
+  /// [focusOn] (the tapped vehicle's position) only triggers a gentle pan when
+  /// the vehicle sits at/off the viewport edge, never a zoom change.
+  Future<void> _openVehicleLine(String line, {ll.LatLng? focusOn}) async {
     _clearSearch();
     try {
       final shape = await ref
@@ -550,7 +555,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           stops: routeStops,
         );
       });
-      _fitToPolyline(shape.polyline);
+      if (focusOn != null) _nudgeIntoView(focusOn);
       // Refresh the vehicle set so the focused line's buses show right away.
       _loadVehiclesForVisibleArea(force: true);
     } catch (_) {
@@ -558,44 +563,33 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
   }
 
+  /// Gently pan the camera (keeping the current zoom) so [point] is comfortably
+  /// on screen, but only when it's near/off the viewport edge — a selected
+  /// vehicle that's already well within view isn't moved at all (F2).
+  void _nudgeIntoView(ll.LatLng point) {
+    final controller = _controller;
+    if (controller == null) return;
+    final geo = Geographic(lon: point.longitude, lat: point.latitude);
+    final size = MediaQuery.of(context).size;
+    // Keep clear of the top buttons and the bottom line panel.
+    const margin = 96.0;
+    try {
+      final screen = controller.toScreenLocation(geo);
+      final inside =
+          screen.dx >= margin &&
+          screen.dx <= size.width - margin &&
+          screen.dy >= margin &&
+          screen.dy <= size.height - margin;
+      if (inside) return;
+    } catch (_) {
+      // If the projection isn't available, fall through and recenter.
+    }
+    controller.animateCamera(center: geo, zoom: controller.getCamera().zoom);
+  }
+
   void _clearFocus() {
     if (_focus == null) return;
     setState(() => _focus = null);
-  }
-
-  /// Frame the camera on a route's bounding box (rough web-mercator fit for the
-  /// current viewport), so focusing a line shows the whole trace.
-  void _fitToPolyline(List<List<double>> poly) {
-    final controller = _controller;
-    if (controller == null || poly.isEmpty) return;
-    var minLat = poly.first[0], maxLat = poly.first[0];
-    var minLon = poly.first[1], maxLon = poly.first[1];
-    for (final p in poly) {
-      minLat = math.min(minLat, p[0]);
-      maxLat = math.max(maxLat, p[0]);
-      minLon = math.min(minLon, p[1]);
-      maxLon = math.max(maxLon, p[1]);
-    }
-    final centerLat = (minLat + maxLat) / 2;
-    final centerLon = (minLon + maxLon) / 2;
-    final cosLat = math.cos(centerLat * math.pi / 180).abs().clamp(0.1, 1.0);
-    // Screen-equivalent degree span: latitude is mercator-stretched by 1/cos.
-    final span = math.max(
-      (maxLon - minLon).abs(),
-      (maxLat - minLat).abs() / cosLat,
-    );
-    final width = MediaQuery.of(context).size.width;
-    double zoom;
-    if (span <= 1e-6) {
-      zoom = 15;
-    } else {
-      // Fit `span` degrees across the viewport, then pad out a little.
-      zoom = (math.log(360 * width / (256 * span)) / math.ln2) - 0.4;
-    }
-    controller.animateCamera(
-      center: Geographic(lon: centerLon, lat: centerLat),
-      zoom: zoom.clamp(kCityMinZoom, 16.0),
-    );
   }
 
   // ---- Taps -----------------------------------------------------------------
@@ -1056,7 +1050,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         heading: compact ? null : _vehAnimator.headingAt(key, t),
         stuck: _vehAnimator.isStuck(key),
         compact: compact,
-        onTap: () => _openVehicleLine(track.line),
+        onTap: () => _openVehicleLine(track.line, focusOn: pos),
       );
       markers.add(
         Marker(
