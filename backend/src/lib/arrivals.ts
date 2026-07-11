@@ -38,9 +38,20 @@ export async function getArrivals(
 
   const arrivals: ArrivalDto[] = [];
   for (const raw of rawArrivals) {
-    const lineMeta = await getLineByNumber(env, raw.lineNumber);
+    // Upstream occasionally emits a junk row with no line number. It can't be
+    // rendered (a bus icon + "Now" with no line/direction) and can't be
+    // filtered client-side, so drop it at the source (F6).
+    const lineNumber = raw.lineNumber?.trim();
+    if (!lineNumber) {
+      console.warn("dropping arrival with empty line number", {
+        stopId,
+        garageNo: raw.garageNo,
+      });
+      continue;
+    }
+    const lineMeta = await getLineByNumber(env, lineNumber);
     arrivals.push({
-      line: raw.lineNumber,
+      line: lineNumber,
       vehicle_type: lineMeta?.vehicle_type ?? "bus",
       eta_minutes: Math.round(raw.etaSeconds / 60),
       stops_remaining: raw.stopsRemaining,

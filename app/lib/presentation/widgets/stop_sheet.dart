@@ -287,7 +287,10 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
     // line the stop serves (union with the stop's route list), so an inactive
     // line shows as a muted, disabled chip rather than disappearing.
     final arrivingLines = board.arrivals.map((a) => a.line).toSet();
-    final allLines = {...stopLines, ...arrivingLines}.toList()
+    // Only chip non-empty lines — a blank value would render an empty chip (F6).
+    final allLines = {...stopLines, ...arrivingLines}
+        .where((l) => l.trim().isNotEmpty)
+        .toList()
       ..sort(_compareLines);
 
     // If a filtered line stops arriving, fall back to "all" without mutating

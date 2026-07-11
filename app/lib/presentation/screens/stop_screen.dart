@@ -142,7 +142,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     // The filter lists every line the stop serves; lines with no current
     // arrival are shown as muted, disabled chips ("inactive"). See stop_sheet.
     final arrivingLines = board.arrivals.map((a) => a.line).toSet();
-    final allLines = {...?stopLocation?.lines, ...arrivingLines}.toList()
+    // Only chip non-empty lines — a blank value would render an empty chip (F6).
+    final allLines = {...?stopLocation?.lines, ...arrivingLines}
+        .where((l) => l.trim().isNotEmpty)
+        .toList()
       ..sort(_compareLines);
     final effectiveFilter =
         (_lineFilter != null && arrivingLines.contains(_lineFilter))

@@ -77,8 +77,13 @@ class ArrivalsBoard {
       stopId: json['stop_id'] as String,
       stopName: json['stop_name'] as String,
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      // Defensively drop any arrival with a blank line number (upstream junk):
+      // it renders as a phantom row — a bus icon and "Now" with no line or
+      // direction — and pollutes the line filter with an empty chip (F6). The
+      // backend already filters these; this guards older caches/other paths.
       arrivals: (json['arrivals'] as List<dynamic>)
           .map((e) => Arrival.fromJson(e as Map<String, dynamic>))
+          .where((a) => a.line.trim().isNotEmpty)
           .toList(),
       serviceStatus: ServiceStatus.fromApi(json['service_status'] as String),
     );
