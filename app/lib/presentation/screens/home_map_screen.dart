@@ -745,9 +745,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   }
 
   Future<void> _openLine(LineInfo line) async {
+    // Fetch by the entry's route/direction key, not by number, so the exact
+    // direction the user tapped in the results opens (F8).
     final shape = await ref
         .read(linesRepositoryProvider)
-        .getShapeByLineNumber(line.line);
+        .getShapeByRouteId(line.routeId);
     if (!mounted) return;
     _clearSearch();
     final routeStops = shape.stops
