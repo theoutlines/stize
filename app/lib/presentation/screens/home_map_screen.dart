@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
@@ -1044,14 +1045,31 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final zoom = _controller?.getCamera().zoom ?? 15.0;
     final compact = zoom < _vehicleDetailZoom;
     final focusLine = _focus?.line;
-    final markers = <Marker>[];
+
+    // Collect the visible vehicles first so we can detect and spread any that
+    // land on (nearly) the same spot.
+    final keys = <String>[];
+    final tracks = <VehicleTrack>[];
+    final positions = <ll.LatLng>[];
     for (final entry in _vehAnimator.currentPositions(t)) {
-      final key = entry.key;
-      final track = _vehAnimator.trackFor(key);
+      final track = _vehAnimator.trackFor(entry.key);
       if (track == null) continue;
       // When a line is focused, show only that line's vehicles.
       if (focusLine != null && track.line != focusLine) continue;
-      final pos = entry.value;
+      keys.add(entry.key);
+      tracks.add(track);
+      positions.add(entry.value);
+    }
+
+    // Spiderfy coincident vehicles so several at one point read as several,
+    // not one blob of overlapping pills and crossed arrows (F4).
+    final placed = _spiderfy(positions, zoom);
+
+    final markers = <Marker>[];
+    for (var i = 0; i < keys.length; i++) {
+      final key = keys[i];
+      final track = tracks[i];
+      final pos = placed[i];
       final opacity = _vehAnimator.opacityFor(key);
       final marker = VehicleMarker(
         key: ValueKey(key),
@@ -1078,6 +1096,43 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       );
     }
     return markers;
+  }
+
+  /// Fans out markers that share (almost) the same coordinate onto a small
+  /// circle so co-located vehicles are each visible, instead of being drawn on
+  /// top of one another (F4). Non-coincident markers are returned unchanged.
+  List<ll.LatLng> _spiderfy(List<ll.LatLng> positions, double zoom) {
+    if (positions.length < 2) return positions;
+    // Group by a ~1 m grid so only genuinely-coincident vehicles are spread.
+    final groups = <String, List<int>>{};
+    for (var i = 0; i < positions.length; i++) {
+      final p = positions[i];
+      final key =
+          '${p.latitude.toStringAsFixed(5)}:${p.longitude.toStringAsFixed(5)}';
+      groups.putIfAbsent(key, () => []).add(i);
+    }
+    final out = List<ll.LatLng>.of(positions);
+    // Screen-space spread turned into metres at the current zoom, so the fan is
+    // a constant on-screen size regardless of how far in/out the user is.
+    const spreadPx = 20.0;
+    final metersPerPixel =
+        156543.03392 * math.cos(_belgradeCenter.lat * math.pi / 180) /
+        math.pow(2, zoom);
+    final radiusM = spreadPx * metersPerPixel;
+    for (final idxs in groups.values) {
+      if (idxs.length < 2) continue;
+      for (var j = 0; j < idxs.length; j++) {
+        final base = positions[idxs[j]];
+        final angle = 2 * math.pi * j / idxs.length;
+        final dLat = radiusM * math.sin(angle) / 111320.0;
+        final dLon =
+            radiusM *
+            math.cos(angle) /
+            (111320.0 * math.cos(base.latitude * math.pi / 180));
+        out[idxs[j]] = ll.LatLng(base.latitude + dLat, base.longitude + dLon);
+      }
+    }
+    return out;
   }
 
   List<Layer> _buildLayers(List<Stop> favoriteStops) {

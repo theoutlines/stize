@@ -509,17 +509,18 @@ class _VehicleMarkerState extends State<VehicleMarker>
         alignment: Alignment.center,
         children: [
           if (heading != null && !widget.compact)
-            // The direction "beak": a bubble tail that reads as part of the
-            // marker (X4), not a triangle floating beside it. It sits flush on
-            // the pill's edge and the whole layer rotates to the heading, so the
-            // beak points outward along the direction of travel while the pill's
+            // The direction "beak": a small arrow that orbits the pill pointing
+            // where the vehicle is heading. It's offset well clear of the pill
+            // so it reads as a distinct direction indicator, not fused into the
+            // bubble as one lopsided blob (F4). The whole layer rotates to the
+            // heading, so the beak points outward along travel while the pill's
             // number stays upright.
             Positioned.fill(
               child: Transform.rotate(
                 angle: heading * (math.pi / 180),
                 child: Center(
                   child: Transform.translate(
-                    offset: const Offset(0, -18),
+                    offset: const Offset(0, -30),
                     child: _beak(widget.stuck ? _stuckColor : widget.color),
                   ),
                 ),
