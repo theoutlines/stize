@@ -131,6 +131,48 @@ void main() {
     expect(h, closeTo(90, 5));
   });
 
+  test('stays on the correct leg of a fold-back route instead of snapping to the parallel one (F1)', () {
+    // Out-and-back: east along lat 44.8000, then back west along lat 44.8003
+    // (~33 m north). The legs run parallel and close, so a fix on the return
+    // leg is geometrically near the outbound leg too.
+    final path = RoutePath.fromLatLon([
+      [44.8000, 20.5000],
+      [44.8000, 20.5200],
+      [44.8003, 20.5200],
+      [44.8003, 20.5000],
+    ]);
+    final animator = VehicleTrackAnimator();
+    // Vehicle starts on the outbound leg, mid-way.
+    animator.syncSamples([
+      VehicleSample(
+        key: 'P1',
+        position: const ll.LatLng(44.8000, 20.5100),
+        line: '79',
+        type: VehicleType.bus,
+        path: path,
+      ),
+    ], 0);
+    final outboundDist = animator.trackFor('P1')!.toDist;
+
+    // It reaches the far end and starts back west on the return leg. Each return
+    // fix is geometrically as close to the outbound leg as to the return leg,
+    // but must be matched to the return leg (monotonically increasing distance).
+    for (final lon in [20.5200, 20.5150, 20.5100, 20.5050]) {
+      animator.syncSamples([
+        VehicleSample(
+          key: 'P1',
+          position: ll.LatLng(44.8003, lon),
+          line: '79',
+          type: VehicleType.bus,
+          path: path,
+        ),
+      ], 1.0);
+    }
+    // On the return leg the distance-along is well past the outbound midpoint —
+    // it did NOT snap back onto the outbound leg.
+    expect(animator.trackFor('P1')!.toDist, greaterThan(outboundDist * 2));
+  });
+
   test('flags a vehicle as stuck only after it sits still for a couple of minutes', () {
     var now = DateTime(2026, 1, 1, 12, 0, 0);
     final animator = VehicleTrackAnimator(clock: () => now);
