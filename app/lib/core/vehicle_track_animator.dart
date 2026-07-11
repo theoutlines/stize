@@ -171,13 +171,31 @@ class VehicleTrackAnimator {
       }
 
       existing.missingCount = 0;
-      // A path may only have become available on a later update.
+      // A path may only have become available on a later update; when it does,
+      // there's no prior distance-along to anchor the projection to yet.
+      final justAdoptedPath = existing.path == null && s.path != null;
       existing.path ??= s.path;
       if (s.heading != null) existing.heading = s.heading;
 
       final path = existing.path;
       if (path != null && path.isUsable) {
-        final newDist = path.project(s.position);
+        // Project near where the vehicle was last, so a fix doesn't snap onto a
+        // parallel/looped leg of the route a few metres away (F1). On the very
+        // first path-tracked fix we have no such anchor, so project globally.
+        final newDist = path.project(
+          s.position,
+          near: justAdoptedPath ? null : existing.toDist,
+        );
+        if (justAdoptedPath) {
+          // Snap onto the route where the vehicle actually is instead of
+          // sweeping the marker along the whole path from its origin.
+          existing.fromDist = newDist;
+          existing.toDist = newDist;
+          existing.from = path.pointAt(newDist);
+          existing.to = s.position;
+          existing.lastMovedAt = at;
+          continue;
+        }
         final curDist = _lerpD(existing.fromDist, existing.toDist, currentT);
         if ((newDist - existing.toDist).abs() >= _stillMeters) {
           existing.lastMovedAt = at;
