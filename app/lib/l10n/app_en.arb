@@ -26,7 +26,10 @@
 
   "searchHint": "Search stops, streets, or lines…",
   "searchNoResults": "Nothing found. Try a different spelling?",
-  "locationDenied": "Location is off. Allow location access to see where you are.",
+  "locationDenied": "Location access is denied. Allow it in your browser or settings to see where you are.",
+  "locationServicesOff": "Location services are off. Turn them on in your device settings.",
+  "locationTimeout": "Couldn't get your location in time. Check your connection and try again.",
+  "locationUnavailable": "Your location is unavailable right now. Try again in a moment.",
   "nearbyStopsTitle": "Nearby stops",
   "nearbyStopsEmpty": "Turn on location, or search for a stop, street, or line above.",
 

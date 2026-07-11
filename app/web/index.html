@@ -108,6 +108,19 @@
       margin: 0;
       background: #eef3f1;
     }
+    /* Pin the app to the full visual viewport on iOS Safari (F3b). Without this
+       the page can scroll/rubber-band and leave a strip of body background
+       under the status bar, and the map doesn't fill edge-to-edge. `position:
+       fixed; inset: 0` fills the viewport *including* the safe areas exposed by
+       viewport-fit=cover; disabling scroll/overscroll stops the strip and the
+       bounce. The map (and Flutter SafeArea for the controls) handle insets. */
+    body {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
     @media (prefers-color-scheme: dark) {
       html, body { background: #10140f; }
     }

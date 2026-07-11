@@ -78,7 +78,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get locationDenied =>
-      'Location is off. Allow location access to see where you are.';
+      'Location access is denied. Allow it in your browser or settings to see where you are.';
+
+  @override
+  String get locationServicesOff =>
+      'Location services are off. Turn them on in your device settings.';
+
+  @override
+  String get locationTimeout =>
+      'Couldn\'t get your location in time. Check your connection and try again.';
+
+  @override
+  String get locationUnavailable =>
+      'Your location is unavailable right now. Try again in a moment.';
 
   @override
   String get nearbyStopsTitle => 'Nearby stops';

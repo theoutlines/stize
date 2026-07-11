@@ -242,19 +242,31 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         Geographic(lon: fresh.longitude, lat: fresh.latitude),
         animate: cached != null,
       );
-    } on LocationUnavailable {
-      if (requestPermission) _showLocationDenied();
+    } on LocationUnavailable catch (e) {
+      if (requestPermission) _showLocationMessage(e.reason);
     } catch (_) {
-      if (requestPermission) _showLocationDenied();
+      // An unclassified failure: report it as "unavailable", never as "off".
+      if (requestPermission) {
+        _showLocationMessage(LocationUnavailableReason.positionUnavailable);
+      }
     }
   }
 
-  void _showLocationDenied() {
+  /// Surface the *real* reason a fix failed, so a timeout or a momentary
+  /// unavailability isn't mislabelled as "location is off / access denied" (F3a).
+  void _showLocationMessage(LocationUnavailableReason reason) {
     if (!mounted) return;
     final l10n = AppLocalizations.of(context);
+    final message = switch (reason) {
+      LocationUnavailableReason.serviceDisabled => l10n.locationServicesOff,
+      LocationUnavailableReason.permissionDenied ||
+      LocationUnavailableReason.permissionDeniedForever => l10n.locationDenied,
+      LocationUnavailableReason.timeout => l10n.locationTimeout,
+      LocationUnavailableReason.positionUnavailable => l10n.locationUnavailable,
+    };
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.locationDenied)));
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _centerOnMe(Geographic point, {required bool animate}) {

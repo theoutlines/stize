@@ -81,7 +81,19 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get locationDenied =>
-      'Геолокация выключена. Разрешите доступ, чтобы видеть себя на карте.';
+      'Доступ к геолокации запрещён. Разрешите его в браузере или настройках, чтобы видеть себя на карте.';
+
+  @override
+  String get locationServicesOff =>
+      'Службы геолокации выключены. Включите их в настройках устройства.';
+
+  @override
+  String get locationTimeout =>
+      'Не удалось определить местоположение вовремя. Проверьте связь и попробуйте снова.';
+
+  @override
+  String get locationUnavailable =>
+      'Местоположение сейчас недоступно. Попробуйте через минуту.';
 
   @override
   String get nearbyStopsTitle => 'Остановки рядом';

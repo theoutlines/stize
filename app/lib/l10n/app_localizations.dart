@@ -217,8 +217,26 @@ abstract class AppLocalizations {
   /// No description provided for @locationDenied.
   ///
   /// In en, this message translates to:
-  /// **'Location is off. Allow location access to see where you are.'**
+  /// **'Location access is denied. Allow it in your browser or settings to see where you are.'**
   String get locationDenied;
+
+  /// No description provided for @locationServicesOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Location services are off. Turn them on in your device settings.'**
+  String get locationServicesOff;
+
+  /// No description provided for @locationTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t get your location in time. Check your connection and try again.'**
+  String get locationTimeout;
+
+  /// No description provided for @locationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Your location is unavailable right now. Try again in a moment.'**
+  String get locationUnavailable;
 
   /// No description provided for @nearbyStopsTitle.
   ///
