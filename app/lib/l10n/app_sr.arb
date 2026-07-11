@@ -24,7 +24,10 @@
 
   "searchHint": "Stajalište, ulica ili linija…",
   "searchNoResults": "Ništa nije pronađeno. Probaj drugačiji unos.",
-  "locationDenied": "Lokacija je isključena. Dozvoli pristup da vidiš gde se nalaziš.",
+  "locationDenied": "Pristup lokaciji je odbijen. Dozvoli ga u pregledaču ili podešavanjima da vidiš gde se nalaziš.",
+  "locationServicesOff": "Usluge lokacije su isključene. Uključi ih u podešavanjima uređaja.",
+  "locationTimeout": "Nije uspelo određivanje lokacije na vreme. Proveri vezu i pokušaj ponovo.",
+  "locationUnavailable": "Lokacija trenutno nije dostupna. Pokušaj za trenutak.",
   "nearbyStopsTitle": "Stajališta u blizini",
   "nearbyStopsEmpty": "Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.",
 

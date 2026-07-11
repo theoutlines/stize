@@ -79,7 +79,19 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get locationDenied =>
-      'Lokacija je isključena. Dozvoli pristup da vidiš gde se nalaziš.';
+      'Pristup lokaciji je odbijen. Dozvoli ga u pregledaču ili podešavanjima da vidiš gde se nalaziš.';
+
+  @override
+  String get locationServicesOff =>
+      'Usluge lokacije su isključene. Uključi ih u podešavanjima uređaja.';
+
+  @override
+  String get locationTimeout =>
+      'Nije uspelo određivanje lokacije na vreme. Proveri vezu i pokušaj ponovo.';
+
+  @override
+  String get locationUnavailable =>
+      'Lokacija trenutno nije dostupna. Pokušaj za trenutak.';
 
   @override
   String get nearbyStopsTitle => 'Stajališta u blizini';

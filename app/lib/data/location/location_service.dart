@@ -1,11 +1,27 @@
+import 'dart:async';
+
 import 'package:geolocator/geolocator.dart';
 
 import 'location_settings.dart';
 
+/// Why a location fix couldn't be obtained. Kept distinct so the UI can tell
+/// the user the *truth* (F3a): a fix that merely timed out or is momentarily
+/// unavailable must not be reported as "location is off / access denied".
 enum LocationUnavailableReason {
+  /// OS-level location services are switched off.
   serviceDisabled,
+
+  /// The app/site was refused permission (this session).
   permissionDenied,
+
+  /// Permission was refused permanently (must be re-enabled in settings).
   permissionDeniedForever,
+
+  /// The fix took too long — common on iOS Safari even with access granted.
+  timeout,
+
+  /// The device couldn't determine a position right now (no signal, etc.).
+  positionUnavailable,
 }
 
 class LocationUnavailable implements Exception {
@@ -64,8 +80,32 @@ class LocationService {
       );
     }
 
-    return Geolocator.getCurrentPosition(
-      locationSettings: buildLocationSettings(),
-    );
+    // Access is granted at this point, so any failure here is a *fetch*
+    // problem, not a permission one — classify it honestly (F3a). On iOS Safari
+    // the fix routinely times out even with permission, which previously fell
+    // through to the generic "location is off" banner.
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: buildLocationSettings(),
+      );
+    } on LocationUnavailable {
+      rethrow;
+    } on TimeoutException {
+      throw const LocationUnavailable(LocationUnavailableReason.timeout);
+    } on LocationServiceDisabledException {
+      throw const LocationUnavailable(
+        LocationUnavailableReason.serviceDisabled,
+      );
+    } on PermissionDeniedException {
+      throw const LocationUnavailable(
+        LocationUnavailableReason.permissionDenied,
+      );
+    } catch (_) {
+      // PositionUpdateException and anything else the platform throws: the
+      // position simply isn't available right now.
+      throw const LocationUnavailable(
+        LocationUnavailableReason.positionUnavailable,
+      );
+    }
   }
 }
