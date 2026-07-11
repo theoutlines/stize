@@ -32,6 +32,7 @@
   "locationUnavailable": "Your location is unavailable right now. Try again in a moment.",
   "nearbyStopsTitle": "Nearby stops",
   "nearbyStopsEmpty": "Turn on location, or search for a stop, street, or line above.",
+  "mapZoomInForVehicles": "Zoom in to see live transport",
 
   "stopUpdatedJustNow": "Updated just now",
   "stopUpdatedSecondsAgo": "Updated {seconds}s ago",

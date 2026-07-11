@@ -30,6 +30,7 @@
   "locationUnavailable": "Lokacija trenutno nije dostupna. Pokušaj za trenutak.",
   "nearbyStopsTitle": "Stajališta u blizini",
   "nearbyStopsEmpty": "Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.",
+  "mapZoomInForVehicles": "Uvećaj mapu da vidiš prevoz uživo",
 
   "stopUpdatedJustNow": "Ažurirano upravo sada",
   "stopUpdatedSecondsAgo": "Ažurirano pre {seconds} sek",
