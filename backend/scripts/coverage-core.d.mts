@@ -44,18 +44,18 @@ export function buildCoverage(
   opts?: BuildCoverageOptions,
 ): CoverageFeatureCollection;
 
-export interface CoverageLineFeature {
+export interface CoveragePointFeature {
   type: "Feature";
-  properties: { type: string; line: string };
-  geometry: { type: "LineString"; coordinates: number[][] };
+  properties: { type: string };
+  geometry: { type: "Point"; coordinates: number[] };
 }
 
-export interface CoverageLineFeatureCollection {
+export interface CoveragePointFeatureCollection {
   type: "FeatureCollection";
-  features: CoverageLineFeature[];
+  features: CoveragePointFeature[];
 }
 
-export function buildCoverageLines(
+export function buildCoveragePoints(
   shapes: CoverageShape[],
-  opts?: { simplifyEpsilon?: number; coordPrecision?: number },
-): CoverageLineFeatureCollection;
+  opts?: { stepMetres?: number; coordPrecision?: number },
+): CoveragePointFeatureCollection;

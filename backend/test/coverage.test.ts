@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accumulateSegments, buildCoverage, buildCoverageLines } from "../scripts/coverage-core.mjs";
+import { accumulateSegments, buildCoverage, buildCoveragePoints } from "../scripts/coverage-core.mjs";
 
 // A straight west→east run of points along one latitude, spaced ~1 grid cell
 // apart at grid=0.001 so each pair lands in a distinct cell.
@@ -155,62 +155,73 @@ describe("coverage-core", () => {
   });
 });
 
-describe("buildCoverageLines (render layer: raw shapes)", () => {
-  it("keeps one feature per shape with raw geometry and type/line props", () => {
-    const poly = [
-      [44.8, 20.4],
-      [44.801, 20.402],
-      [44.803, 20.401],
-    ];
-    const gj = buildCoverageLines([
-      { line: "25", vehicleType: "bus", polyline: poly },
-    ]);
+describe("buildCoveragePoints (render layer: heatmap points)", () => {
+  // ~0.001° of longitude at 44.8° ≈ 79 m; a west→east run one step long.
+  const eastRun = (n: number) => {
+    const pts: number[][] = [];
+    for (let i = 0; i <= n; i++) pts.push([44.8, 20.4 + i * 0.001]);
+    return pts;
+  };
+
+  it("emits Point features spaced ~stepMetres apart, tagged by type", () => {
+    // ~790 m run, 100 m step → ~8-9 points.
+    const gj = buildCoveragePoints([{ line: "25", vehicleType: "bus", polyline: eastRun(10) }], {
+      stepMetres: 100,
+    });
     expect(gj.type).toBe("FeatureCollection");
-    expect(gj.features).toHaveLength(1);
-    const f = gj.features[0];
-    expect(f.properties).toEqual({ type: "bus", line: "25" });
-    // Raw geometry preserved (no collapsing/snapping), as [lon, lat].
-    expect(f.geometry.coordinates).toEqual([
-      [20.4, 44.8],
-      [20.402, 44.801],
-      [20.401, 44.803],
-    ]);
+    expect(gj.features.length).toBeGreaterThanOrEqual(7);
+    expect(gj.features.length).toBeLessThanOrEqual(10);
+    for (const f of gj.features) {
+      expect(f.geometry.type).toBe("Point");
+      expect(f.properties).toEqual({ type: "bus" });
+    }
+    // First sample sits at the polyline start, coords as [lon, lat].
+    expect(gj.features[0].geometry.coordinates[0]).toBeCloseTo(20.4, 5);
+    expect(gj.features[0].geometry.coordinates[1]).toBeCloseTo(44.8, 5);
   });
 
-  it("does NOT collapse overlapping routes — one feature each", () => {
-    const geom = [
-      [44.8, 20.4],
-      [44.81, 20.41],
-    ];
-    const gj = buildCoverageLines([
-      { line: "2", vehicleType: "tram", polyline: geom },
-      { line: "5", vehicleType: "tram", polyline: geom },
-    ]);
-    // Overlap is drawn by stacking, not merged — both features are kept.
-    expect(gj.features).toHaveLength(2);
+  it("finer spacing yields more points (density scales with sampling)", () => {
+    const coarse = buildCoveragePoints([{ line: "1", vehicleType: "bus", polyline: eastRun(20) }], {
+      stepMetres: 150,
+    });
+    const fine = buildCoveragePoints([{ line: "1", vehicleType: "bus", polyline: eastRun(20) }], {
+      stepMetres: 50,
+    });
+    expect(fine.features.length).toBeGreaterThan(coarse.features.length);
+  });
+
+  it("overlapping routes stack their points (density = overlap)", () => {
+    const one = buildCoveragePoints([{ line: "2", vehicleType: "tram", polyline: eastRun(10) }], {
+      stepMetres: 100,
+    });
+    const two = buildCoveragePoints(
+      [
+        { line: "2", vehicleType: "tram", polyline: eastRun(10) },
+        { line: "5", vehicleType: "tram", polyline: eastRun(10) },
+      ],
+      { stepMetres: 100 },
+    );
+    // Two routes over the same corridor produce ~twice the points there.
+    expect(two.features.length).toBeCloseTo(one.features.length * 2, -1);
+  });
+
+  it("carries the vehicle type for the heatmap's per-type filter", () => {
+    const gj = buildCoveragePoints(
+      [
+        { line: "2", vehicleType: "tram", polyline: eastRun(3) },
+        { line: "28", vehicleType: "trolleybus", polyline: eastRun(3) },
+      ],
+      { stepMetres: 100 },
+    );
+    const types = new Set(gj.features.map((f: any) => f.properties.type));
+    expect([...types].sort()).toEqual(["tram", "trolleybus"]);
   });
 
   it("skips shapes with fewer than two points", () => {
-    const gj = buildCoverageLines([
+    const gj = buildCoveragePoints([
       { line: "1", vehicleType: "bus", polyline: [[44.8, 20.4]] },
       { line: "2", vehicleType: "bus", polyline: [] },
     ]);
     expect(gj.features).toHaveLength(0);
-  });
-
-  it("simplifies only when asked, preserving endpoints", () => {
-    // A near-straight line with a tiny mid jog; a small epsilon drops the jog.
-    const poly = [
-      [44.8, 20.4],
-      [44.8000001, 20.4005],
-      [44.8, 20.401],
-    ];
-    const gj = buildCoverageLines([{ line: "1", vehicleType: "bus", polyline: poly }], {
-      simplifyEpsilon: 0.00002,
-    });
-    const coords = gj.features[0].geometry.coordinates;
-    expect(coords).toHaveLength(2); // mid point removed
-    expect(coords[0]).toEqual([20.4, 44.8]);
-    expect(coords[1]).toEqual([20.401, 44.8]);
   });
 });

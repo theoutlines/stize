@@ -257,25 +257,60 @@ export function buildCoverage(shapes, opts = {}) {
   return { type: "FeatureCollection", features };
 }
 
+// Metres per degree of latitude (roughly constant). Longitude is scaled by
+// cos(lat) at Belgrade's latitude. Good enough for ~tens-of-metres resampling.
+const M_PER_DEG_LAT = 110540;
+const metresPerDegLon = (lat) => 111320 * Math.cos((lat * Math.PI) / 180);
+
+// Planar distance in metres between two [lat, lon] points (equirectangular).
+function metresBetween(a, b) {
+  const latMid = (a[0] + b[0]) / 2;
+  const dx = (b[1] - a[1]) * metresPerDegLon(latMid);
+  const dy = (b[0] - a[0]) * M_PER_DEG_LAT;
+  return Math.hypot(dx, dy);
+}
+
 /**
- * Build the *render* GeoJSON: the raw route shapes as-is (one LineString per
- * route direction), no segment collapsing, no grid snapping. The client draws
- * these as many semi-transparent lines so overlapping routes accumulate
- * brightness — a Strava-heatmap-style density map where corridors bleed into
- * glow zones at far zoom. Keeping the real geometry also means zero staircase.
+ * Resample a [lat, lon] polyline to a point roughly every `stepMetres` along its
+ * length (plus the first vertex), interpolating within segments. Returns
+ * [lat, lon] points.
+ */
+function resample(poly, stepMetres) {
+  const out = [poly[0]];
+  let prev = poly[0];
+  let need = stepMetres; // distance remaining until the next emitted point
+  for (let i = 1; i < poly.length; i++) {
+    const cur = poly[i];
+    let seg = metresBetween(prev, cur);
+    while (seg >= need && seg > 0) {
+      const t = need / seg;
+      const np = [prev[0] + (cur[0] - prev[0]) * t, prev[1] + (cur[1] - prev[1]) * t];
+      out.push(np);
+      prev = np;
+      seg = metresBetween(prev, cur);
+      need = stepMetres;
+    }
+    need -= seg;
+    prev = cur;
+  }
+  return out;
+}
+
+/**
+ * Build the *render* GeoJSON for the heatmap: every route's shape resampled to
+ * evenly-spaced points. Each route contributes its own points, so where routes
+ * overlap the local point density is higher — which a MapLibre heatmap layer
+ * turns into brightness (Strava-global-heatmap style). No separate route
+ * counting is needed; density *is* the weight.
  *
- * Only geometry-preserving simplification is applied (small epsilon), purely to
- * keep the file light; it must not change the visible shape.
- *
- * Properties per feature:
- *   type: vehicle type (tram/trolleybus/bus) — drives the type filter + colour
- *   line: line number — carried for future use (not required by the renderer)
+ * Emits one Point feature per sample (the canonical, guaranteed heatmap input),
+ * each carrying its `type` so the type filter works on the same layer.
  *
  * @param {Array<{line:string, vehicleType:string, polyline:number[][]}>} shapes
- * @param {{simplifyEpsilon?:number, coordPrecision?:number}} opts
+ * @param {{stepMetres?:number, coordPrecision?:number}} opts
  */
-export function buildCoverageLines(shapes, opts = {}) {
-  const simplifyEpsilon = opts.simplifyEpsilon ?? 0;
+export function buildCoveragePoints(shapes, opts = {}) {
+  const stepMetres = opts.stepMetres ?? 90;
   const coordPrecision = opts.coordPrecision ?? 5;
   const round = (v) => Number(v.toFixed(coordPrecision));
 
@@ -283,15 +318,14 @@ export function buildCoverageLines(shapes, opts = {}) {
   for (const shape of shapes) {
     const poly = shape.polyline;
     if (!Array.isArray(poly) || poly.length < 2) continue;
-    const simplified = simplifyEpsilon > 0 ? simplify(poly, simplifyEpsilon) : poly;
-    if (simplified.length < 2) continue;
-    // Source polyline is [lat, lon] → GeoJSON [lon, lat].
-    const coordinates = simplified.map(([lat, lon]) => [round(lon), round(lat)]);
-    features.push({
-      type: "Feature",
-      properties: { type: shape.vehicleType, line: shape.line },
-      geometry: { type: "LineString", coordinates },
-    });
+    const type = shape.vehicleType;
+    for (const [lat, lon] of resample(poly, stepMetres)) {
+      features.push({
+        type: "Feature",
+        properties: { type },
+        geometry: { type: "Point", coordinates: [round(lon), round(lat)] },
+      });
+    }
   }
   return { type: "FeatureCollection", features };
 }

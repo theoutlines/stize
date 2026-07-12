@@ -13,13 +13,29 @@ const _belgradeCenter = Geographic(lon: 20.46, lat: 44.81);
 const _overviewZoom = 11.2;
 
 const _sourceId = 'coverage-src';
-const _layerId = 'coverage-lines';
+const _layerId = 'coverage-heat';
 
-/// Warm (dark theme) / blue (light theme) base line colour. Density isn't drawn
-/// by a per-feature weight — it emerges from many semi-transparent lines
-/// stacking (Strava-heatmap style), so overlapping routes read as brighter.
-const _darkColor = '#f0842a'; // warm orange, glows on the dark base
-const _lightColor = '#1f66b5'; // readable blue on the light base
+/// Heatmap colour ramp over `heatmap-density` (0 = transparent). Dark theme:
+/// transparent → dark-orange → orange → white-hot (Strava neon on the dark
+/// base). Light theme: transparent → blue → deep navy, so density reads on a
+/// light base. Density comes from overlapping routes' point clouds, not a
+/// per-feature weight.
+const _darkRamp = <Object>[
+  0.0, 'rgba(0,0,0,0)',
+  0.1, 'rgba(80,35,8,0.35)',
+  0.35, '#7a3d12',
+  0.6, '#ef7b22',
+  0.85, '#ffce8a',
+  1.0, '#ffffff',
+];
+const _lightRamp = <Object>[
+  0.0, 'rgba(255,255,255,0)',
+  0.1, 'rgba(158,202,225,0.4)',
+  0.35, '#6baed6',
+  0.6, '#2171b5',
+  0.85, '#08519c',
+  1.0, '#08306b',
+];
 
 /// The three filterable vehicle types, in display order. String values match
 /// the `type` property in the coverage GeoJSON.
@@ -29,13 +45,14 @@ const _types = <(VehicleType, String)>[
   (VehicleType.bus, 'bus'),
 ];
 
-/// Coverage map: a Strava-heatmap-style density view. The raw GTFS route shapes
-/// are drawn as many semi-transparent lines over the theme-synced base map, so
+/// Coverage map: a Strava-heatmap-style density view. The GTFS route shapes are
+/// resampled to points (server-side) and drawn as a MapLibre heatmap, so
 /// overlapping corridors accumulate brightness — showing where transit is dense
-/// and where it thins out, rather than a clean line schematic. Line width + blur
-/// interpolate with zoom (far: thick and soft, corridors bleed into glow zones;
-/// near: thin and crisp). A vehicle-type filter and a density legend sit on top.
-/// Not part of the "what's coming to my stop" flow — a standalone infographic.
+/// and where it thins out, rather than a clean line schematic. Radius + intensity
+/// interpolate with zoom (far: large radius, corridors bleed into glowing zones
+/// ≈ walking reach; near: tighter and crisper). A vehicle-type filter and a
+/// density legend sit on top. Not part of the "what's coming to my stop" flow —
+/// a standalone infographic.
 class CoverageScreen extends ConsumerStatefulWidget {
   const CoverageScreen({super.key, this.onOpenDrawer});
 
@@ -58,13 +75,14 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
     await _addCoverageLayer(style);
   }
 
-  /// (Re)creates the source + line layer on a freshly (re)loaded style. Called
-  /// on first load and again after every theme flip (setStyle drops layers).
+  /// (Re)creates the source + heatmap layer on a freshly (re)loaded style.
+  /// Called on first load and again after every theme flip (setStyle drops
+  /// layers).
   Future<void> _addCoverageLayer(StyleController style) async {
     await style.addSource(
       // `?rev=` busts any longer-lived CDN/browser cache entry when the data
       // model changes — bump it whenever the coverage.geojson shape changes.
-      const GeoJsonSource(id: _sourceId, data: '$apiBaseUrl/api/v1/coverage?rev=2'),
+      const GeoJsonSource(id: _sourceId, data: '$apiBaseUrl/api/v1/coverage?rev=3'),
     );
     await style.addLayer(_buildLayer());
   }
@@ -82,42 +100,40 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
     await style.addLayer(_buildLayer());
   }
 
-  LineStyleLayer _buildLayer() {
+  HeatmapStyleLayer _buildLayer() {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return LineStyleLayer(
+    return HeatmapStyleLayer(
       id: _layerId,
       sourceId: _sourceId,
       filter: _filterExpression(),
-      layout: const {'line-cap': 'round', 'line-join': 'round'},
       paint: {
-        'line-color': _color(dark),
-        // Low, zoom-graded opacity is the whole trick: at any one spot a single
-        // route is faint, but where many routes overlap the alpha stacks up into
-        // a bright corridor. Kept lower at far zoom (more overlap ⇒ avoid
-        // blowing the dense core out to mud), higher when zoomed in so lone
-        // routes stay visible.
-        'line-opacity': [
+        'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
+          ...(dark ? _darkRamp : _lightRamp)],
+        // Far zoom: large radius so corridors bleed into glowing zones (≈ walking
+        // reach). Near zoom: tighter, so individual streets stay legible.
+        'heatmap-radius': [
           'interpolate', ['linear'], ['zoom'],
-          11, 0.14,
-          14, 0.22,
-          16, 0.30,
-          18, 0.40,
+          11, 22,
+          13, 16,
+          15, 11,
+          18, 7,
         ],
-        // Far zoom: thick + soft, so corridors bleed together into glow zones.
-        // Near zoom: thin + crisp lines.
-        'line-width': [
+        // Intensity rises with zoom to counter the point cloud thinning out per
+        // pixel — the dense core still burns to white up close, while sparse
+        // outskirt lines stay dim (contrast between "lots" and "little").
+        'heatmap-intensity': [
           'interpolate', ['linear'], ['zoom'],
-          11, 3.4,
-          13, 2.4,
-          15, 1.6,
-          18, 1.1,
+          11, 0.5,
+          14, 1.0,
+          16, 2.0,
+          18, 3.2,
         ],
-        'line-blur': [
+        // Slight fade when zoomed right in so the base map shows through.
+        'heatmap-opacity': [
           'interpolate', ['linear'], ['zoom'],
-          11, 3.5,
-          13, 2.0,
-          15, 0.8,
-          18, 0.3,
+          11, 0.9,
+          16, 0.85,
+          18, 0.65,
         ],
       },
     );
@@ -125,7 +141,7 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
 
   // ---- Style expressions ----------------------------------------------------
 
-  /// Only features whose vehicle type is selected. Empty selection shows all.
+  /// Only points whose vehicle type is selected. Empty selection shows all.
   List<Object>? _filterExpression() {
     if (_selected.isEmpty) return null;
     return [
@@ -134,20 +150,6 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
         ['==', ['get', 'type'], t],
     ];
   }
-
-  /// Base colour: theme-driven warm/blue by default; when exactly one type is
-  /// filtered, that type's brand colour (from map_support) so the filter reads
-  /// by hue. Density still comes from opacity stacking, not the colour.
-  String _color(bool dark) {
-    if (_selected.length == 1) {
-      final type = _types.firstWhere((e) => e.$2 == _selected.first).$1;
-      return _hex(vehicleColor(type));
-    }
-    return dark ? _darkColor : _lightColor;
-  }
-
-  static String _hex(Color c) =>
-      '#${((c.r * 255).round() << 16 | (c.g * 255).round() << 8 | (c.b * 255).round()).toRadixString(16).padLeft(6, '0')}';
 
   // ---- Filter chips ---------------------------------------------------------
 
@@ -291,9 +293,10 @@ class _DensityLegend extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     // Dim (one faint route) → bright (many stacked), matching the on-map buildup
     // of the base hue over the theme background.
+    // Mirror the heatmap-color ramp: dim → hot.
     final ramp = dark
-        ? const [Color(0xFF3A2410), Color(0xFFA85A1E), Color(0xFFF0842A), Color(0xFFFFC98A)]
-        : const [Color(0xFFDCE9F5), Color(0xFF6BA3D6), Color(0xFF2E74BE), Color(0xFF0B3D82)];
+        ? const [Color(0xFF5A2308), Color(0xFFEF7B22), Color(0xFFFFCE8A), Color(0xFFFFFFFF)]
+        : const [Color(0xFF9ECAE1), Color(0xFF4292C6), Color(0xFF2171B5), Color(0xFF08306B)];
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
