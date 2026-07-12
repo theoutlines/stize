@@ -20,20 +20,25 @@ const _layerId = 'coverage-heat';
 /// base). Light theme: transparent → blue → deep navy, so density reads on a
 /// light base. Density comes from overlapping routes' point clouds, not a
 /// per-feature weight.
+// Stretched ramp: transparent below ~0.08, then a long dark-orange → orange
+// band, with white only in the top ~7% of density — so a single route stays a
+// dim dark-orange and only the densest corridors (centre, bridges) burn white.
 const _darkRamp = <Object>[
   0.0, 'rgba(0,0,0,0)',
-  0.1, 'rgba(80,35,8,0.35)',
-  0.35, '#7a3d12',
-  0.6, '#ef7b22',
-  0.85, '#ffce8a',
+  0.08, 'rgba(60,24,4,0.5)',
+  0.4, '#8c370c',
+  0.7, '#d65a1a',
+  0.85, '#ef7b22',
+  0.93, '#ffb860',
   1.0, '#ffffff',
 ];
 const _lightRamp = <Object>[
   0.0, 'rgba(255,255,255,0)',
-  0.1, 'rgba(158,202,225,0.4)',
-  0.35, '#6baed6',
-  0.6, '#2171b5',
-  0.85, '#08519c',
+  0.08, 'rgba(120,170,214,0.45)',
+  0.4, '#6baed6',
+  0.7, '#3182bd',
+  0.85, '#2171b5',
+  0.93, '#0b4083',
   1.0, '#08306b',
 ];
 
@@ -109,24 +114,26 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
       paint: {
         'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
           ...(dark ? _darkRamp : _lightRamp)],
-        // Far zoom: large radius so corridors bleed into glowing zones (≈ walking
-        // reach). Near zoom: tighter, so individual streets stay legible.
+        // Modest radius so corridors don't blob together where routes don't
+        // actually cross; a touch larger far out, tighter zoomed in. Tuned
+        // against an offline render of the whole-Belgrade view.
         'heatmap-radius': [
           'interpolate', ['linear'], ['zoom'],
-          11, 22,
-          13, 16,
-          15, 11,
-          18, 7,
+          11, 9,
+          13, 8,
+          15, 7,
+          18, 6,
         ],
-        // Intensity rises with zoom to counter the point cloud thinning out per
-        // pixel — the dense core still burns to white up close, while sparse
-        // outskirt lines stay dim (contrast between "lots" and "little").
+        // Intensity is low at the overview so only the densest corridors reach
+        // white, then rises ~2× per zoom level to counter the point cloud
+        // thinning out per pixel as you zoom in (so corridors stay lit and the
+        // gradation — dim single lines → orange corridors → white core — holds).
         'heatmap-intensity': [
           'interpolate', ['linear'], ['zoom'],
-          11, 0.5,
-          14, 1.0,
-          16, 2.0,
-          18, 3.2,
+          11, 0.018,
+          13, 0.07,
+          15, 0.28,
+          18, 1.0,
         ],
         // Slight fade when zoomed right in so the base map shows through.
         'heatmap-opacity': [
