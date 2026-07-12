@@ -7,6 +7,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "deploy:staging": "wrangler deploy --env staging",
+    "staging:version": "node scripts/staging-version.mjs",
     "test": "vitest run",
     "gtfs:build": "node scripts/build-gtfs.mjs"
   },
