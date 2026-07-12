@@ -14,7 +14,17 @@ import type { Env } from "../env";
 //   coverage_map_show — the app reveals the coverage-map tab (a static
 //                       infographic layer). OFF on prod, ON on staging until
 //                       it's ready to ship.
-export const FEATURE_FLAGS = ["analytics_collect", "analytics_show", "coverage_map_show"] as const;
+//   coverage_on_main_map — the app shows the coverage heatmap as a passive
+//                       background on the *main* map when zoomed out (instead of
+//                       stop clusters). Independent of coverage_map_show: the
+//                       tab can be off while the overlay is on, and vice-versa.
+//                       OFF on prod, ON on staging.
+export const FEATURE_FLAGS = [
+  "analytics_collect",
+  "analytics_show",
+  "coverage_map_show",
+  "coverage_on_main_map",
+] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
 export function isFeatureFlag(name: string): name is FeatureFlag {

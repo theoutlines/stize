@@ -61,6 +61,13 @@ final coverageEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.coverageMapShow ?? false,
 );
 
+/// Whether the main map shows the coverage heatmap overlay when zoomed out
+/// (remote `coverage_on_main_map` flag). Independent of [coverageEnabledProvider].
+/// Defaults to false until config resolves.
+final coverageOnMainMapEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.coverageOnMainMap ?? false,
+);
+
 /// Rolled-up analytics for one line number (draft transport-analytics feature).
 final lineAnalyticsProvider = FutureProvider.family<LineAnalytics, String>((
   ref,
