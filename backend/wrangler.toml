@@ -44,6 +44,11 @@ ENVIRONMENT = "production"
 # scraping / model calls.
 [env.staging]
 name = "stigla-backend-staging"
+# Per-branch preview versions (`npm run staging:version`) need Version Preview
+# URLs on. Pin it in config so an upload doesn't reset the dashboard toggle and
+# 404 the branch preview (this bit us on feature/coverage-on-main-map). Live
+# staging is served via the custom domain route below.
+preview_urls = true
 routes = [
   { pattern = "stigla-api-staging.theoutlines.xyz", custom_domain = true }
 ]

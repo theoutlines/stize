@@ -124,10 +124,42 @@ on the open internet.
 > the preview URL.
 
 > Enabling this once (already done): Preview URLs must be **on** for
-> `stigla-backend-staging` (Cloudflare dashboard → the worker → Settings →
-> Domains & Routes → Preview URLs). The main workers.dev route stays **off** so
-> the active `stigla-api-staging.theoutlines.xyz` deploy is untouched. If
-> `npm run staging:version` prints no URL, that toggle got turned back off.
+> `stigla-backend-staging` (Cloudflare dashboard → the worker → **Domains** tab →
+> **Worker URL** → the **Preview** row `*-stigla-backend-staging.theoutlines.workers.dev`,
+> toggle on; it defaults to **Public**, which is fine — the staging API is
+> already public). The **Production** row (`stigla-backend-staging.theoutlines.workers.dev`)
+> stays **off** so the active `stigla-api-staging.theoutlines.xyz` deploy is
+> untouched. If `npm run staging:version` prints no URL, that toggle got turned
+> back off.
+>
+> Re-enabled on 2026-07-12 (was off) to stand up the `feature/coverage-on-main-map`
+> preview. Effect: any branch's `versions upload` now gets a public
+> `<prefix>-stigla-backend-staging.theoutlines.workers.dev` preview URL again;
+> nothing about live staging traffic or bindings changes. In the current UI the
+> setting moved from *Settings → Domains & Routes* to the worker's dedicated
+> **Domains** tab (Worker URL → **Preview** row; leave the **Production** row off).
+>
+> **Gotcha found 2026-07-12:** `wrangler versions upload` (i.e. `npm run
+> staging:version`) can leave this toggle **off**, so a printed URL 404s — and
+> because the toggle is shared, that takes down *every* branch's preview stand.
+> Three practical consequences:
+> - `preview_urls = true` is pinned in `wrangler.toml` under `[env.staging]` so a
+>   full `wrangler deploy --env staging` keeps it on — but `versions upload` does
+>   **not** apply that config, so the dashboard toggle is still the live switch
+>   for the versions-upload flow.
+> - `npm run staging:version` now **actively checks and shouts**: if wrangler
+>   prints no preview URL, or prints one that then 404s, the script exits
+>   non-zero with a loud message (the toggle is off; other branches' stands are
+>   down too; here's how to re-enable). On success it still prints a heads-up
+>   that the toggle is shared and fragile. `wrangler` can't flip it back itself
+>   (only `wrangler deploy` applies the config, which we must not run from a
+>   feature branch), so re-enabling stays a manual dashboard step — but it's no
+>   longer a *silent* mine.
+> - Workflow that works: enable the toggle once, upload **one** version, then
+>   build the frontend and deploy Pages **without** running another
+>   `versions upload`. The preview-URL prefix = the **first 8 chars of the
+>   Version ID** (`wrangler versions list --env staging`), so you can target a
+>   specific already-uploaded version without re-uploading.
 
 ## Promoting a feature
 

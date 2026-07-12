@@ -11,6 +11,7 @@ import 'package:maplibre/maplibre.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
+import '../../core/coverage_heatmap.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
 import '../../core/route_path.dart';
@@ -84,9 +85,18 @@ class HomeMapScreen extends ConsumerStatefulWidget {
 class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   MapController? _controller;
+  StyleController? _style;
   ColorScheme _scheme = const ColorScheme.light();
   Brightness? _styleBrightness;
   bool _imagesReady = false;
+
+  // Coverage heatmap overlay (feature-flagged): a passive background shown when
+  // zoomed out, in place of the stop clusters. The GeoJSON is added lazily on
+  // the first zoom-out past the threshold (never fetched if the user stays
+  // zoomed in). See core/coverage_heatmap.dart for the shared source/style.
+  bool _coverageEnabled = false; // remote flag, read in build
+  bool _coverageAdded = false; // source+layer present in the current style
+  bool _coverageActive = false; // hysteresis state for the mount decision
 
   // Live vehicles in the viewport: eased between refreshes by the animator, so
   // markers glide instead of teleporting. Only the vehicle WidgetLayer repaints
@@ -322,6 +332,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   }
 
   Future<void> _onStyleLoaded(StyleController style) async {
+    _style = style;
+    // A fresh style (first load or after a theme flip) has none of our layers;
+    // the heatmap must be (re)added if it should currently be visible.
+    _coverageAdded = false;
     await registerStigmaImages(style, _scheme);
     if (!mounted) return;
     setState(() => _imagesReady = true);
@@ -330,6 +344,37 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _loadStopsForVisibleArea();
     _loadVehiclesForVisibleArea(force: true);
     _loadTramRails();
+    _reconcileCoverageLayer();
+  }
+
+  /// Adds the coverage heatmap source + layer the first time the map is zoomed
+  /// out past the threshold (and re-adds it after a theme flip while it's
+  /// visible). The layer is never removed once added — its zoom-driven opacity
+  /// hides it when zoomed in — so this only ever mounts, guarded by hysteresis
+  /// so a zoom hovering at the threshold doesn't churn. No-op when the flag is
+  /// off or the style/controller isn't ready yet.
+  Future<void> _reconcileCoverageLayer() async {
+    if (!_coverageEnabled) return;
+    final style = _style;
+    final controller = _controller;
+    if (style == null || controller == null) return;
+    final zoom = controller.getCamera().zoom;
+    _coverageActive = coverageMainHeatmapActive(
+      zoom: zoom,
+      wasActive: _coverageActive,
+    );
+    if (!_coverageActive || _coverageAdded) return;
+    // Claim the slot before the first await so a burst of idle events can't
+    // race two adds of the same source/layer.
+    _coverageAdded = true;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    try {
+      await style.addSource(coverageSource());
+      await style.addLayer(coverageMainLayer(dark: dark));
+    } catch (_) {
+      // Failed (e.g. style torn down mid-add) — allow a later retry.
+      _coverageAdded = false;
+    }
   }
 
   /// Fetches the tram lines' route shapes once and keeps them as thin rail
@@ -357,6 +402,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (event is MapEventCameraIdle) {
       _loadStopsForVisibleArea();
       _loadVehiclesForVisibleArea();
+      _reconcileCoverageLayer();
     } else if (event is MapEventClick) {
       _handleTap(event.point);
     }
@@ -1044,6 +1090,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final favoriteStops =
         ref.watch(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
 
+    // Coverage overlay flag: usually flips false→true once the remote config
+    // resolves. When it turns on, reconcile after this frame so the layer is
+    // added if the map is already zoomed out.
+    final coverageEnabled = ref.watch(coverageOnMainMapEnabledProvider);
+    if (coverageEnabled != _coverageEnabled) {
+      _coverageEnabled = coverageEnabled;
+      if (coverageEnabled) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _reconcileCoverageLayer(),
+        );
+      }
+    }
+
     return PopScope(
       // While a line is focused, Android back closes the focus overlay instead
       // of leaving the map.
@@ -1438,6 +1497,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (!_imagesReady) return const [];
     final focus = _focus;
     if (focus != null) return _focusLayers(focus);
+    // While the coverage overlay is on, the stop clusters crossfade with the
+    // heatmap over a zoom band: hidden far out (heatmap stands in for them),
+    // full once zoomed in. The heatmap's own opacity is a GPU zoom expression
+    // (smooth during a pinch); the markers rebuild on camera-idle, so they
+    // settle to this opacity at each rest. Flag off ⇒ 1.0, unchanged behaviour.
+    final zoom = _controller?.getCamera().zoom ?? 15.0;
+    final stopsOpacity = _coverageEnabled
+        ? coverageMainStopsOpacity(zoom)
+        : 1.0;
+    // Fully faded out ⇒ don't build the stop layers at all (heatmap-only view).
+    final showStops = stopsOpacity > 0.01;
     return [
       // Tram rails, under everything (C2).
       if (_tramRails.isNotEmpty)
@@ -1453,43 +1523,48 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           color: tramRailColor,
           width: 2,
         ),
-      if (_clusterPts.isNotEmpty)
+      if (showStops && _clusterPts.isNotEmpty)
         MarkerLayer(
           points: _clusterPts,
           iconImage: MapImages.cluster,
           iconSize: _iconSize,
+          iconOpacity: stopsOpacity,
           iconAllowOverlap: true,
           textField: '{point_count}',
           textColor: _scheme.onPrimary,
           textSize: 13,
           textAllowOverlap: true,
         ),
-      if (_busPts.isNotEmpty)
+      if (showStops && _busPts.isNotEmpty)
         MarkerLayer(
           points: _busPts,
           iconImage: MapImages.bus,
           iconSize: _iconSize,
+          iconOpacity: stopsOpacity,
           iconAllowOverlap: true,
         ),
-      if (_tramPts.isNotEmpty)
+      if (showStops && _tramPts.isNotEmpty)
         MarkerLayer(
           points: _tramPts,
           iconImage: MapImages.tram,
           iconSize: _iconSize,
+          iconOpacity: stopsOpacity,
           iconAllowOverlap: true,
         ),
-      if (_trolleyPts.isNotEmpty)
+      if (showStops && _trolleyPts.isNotEmpty)
         MarkerLayer(
           points: _trolleyPts,
           iconImage: MapImages.trolley,
           iconSize: _iconSize,
+          iconOpacity: stopsOpacity,
           iconAllowOverlap: true,
         ),
-      if (_mixedPts.isNotEmpty)
+      if (showStops && _mixedPts.isNotEmpty)
         MarkerLayer(
           points: _mixedPts,
           iconImage: MapImages.mixedStop,
           iconSize: _iconSize,
+          iconOpacity: stopsOpacity,
           iconAllowOverlap: true,
         ),
       if (favoriteStops.isNotEmpty)

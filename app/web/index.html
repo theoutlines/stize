@@ -56,6 +56,17 @@
         function Patched(opts) {
           var m = new Orig(opts);
           window.__stiglaMap = m;
+          // A map created when its container is ALREADY sized (e.g. the SECOND
+          // map in the app — the Coverage tab, created after the home map) gets
+          // no size change from resize(), so maplibre never kicks its initial
+          // render: it stays blank and never fires 'load' (so the Flutter
+          // plugin's onStyleLoaded, and every layer added from it, is missed).
+          // Force the render loop to run until the map has loaded + settled,
+          // then drop back to on-demand rendering.
+          m.repaint = true;
+          var stopRepaint = function () { try { m.repaint = false; } catch (e) {} };
+          m.once('idle', stopRepaint);
+          setTimeout(stopRepaint, 25000); // fallback: never repaint forever
           // Flutter web settles the platform-view layout over a variable window
           // (sometimes several seconds), and until then GL JS won't request
           // tiles or repaint. Nudge resize() periodically until well past that
