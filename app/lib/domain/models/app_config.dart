@@ -13,6 +13,10 @@ class AppConfig {
   /// user. Gated remotely so screens can ship dormant and be revealed later.
   bool get analyticsShow => flag('analytics_show');
 
+  /// Whether the coverage-map tab should be shown to the user. Gated remotely so
+  /// the (static infographic) screen can ship dormant and be revealed later.
+  bool get coverageMapShow => flag('coverage_map_show');
+
   static const empty = AppConfig(version: '', flags: {});
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {

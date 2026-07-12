@@ -537,6 +537,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Trolleybus'**
   String get vehicleTypeTrolleybus;
+
+  /// No description provided for @navCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Coverage'**
+  String get navCoverage;
+
+  /// No description provided for @coverageFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get coverageFilterAll;
+
+  /// No description provided for @coverageLegendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Transit density'**
+  String get coverageLegendTitle;
+
+  /// No description provided for @coverageLegendLow.
+  ///
+  /// In en, this message translates to:
+  /// **'rarer'**
+  String get coverageLegendLow;
+
+  /// No description provided for @coverageLegendHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'busier'**
+  String get coverageLegendHigh;
+
+  /// No description provided for @coverageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Coverage map is unavailable right now.'**
+  String get coverageUnavailable;
 }
 
 class _AppLocalizationsDelegate

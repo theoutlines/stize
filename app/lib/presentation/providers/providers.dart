@@ -53,6 +53,12 @@ final analyticsEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.analyticsShow ?? false,
 );
 
+/// Whether the coverage-map tab is enabled for this user (remote
+/// `coverage_map_show` flag). Defaults to false until config resolves.
+final coverageEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.coverageMapShow ?? false,
+);
+
 /// Rolled-up analytics for one line number (draft transport-analytics feature).
 final lineAnalyticsProvider = FutureProvider.family<LineAnalytics, String>((
   ref,

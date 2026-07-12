@@ -91,5 +91,12 @@
 
   "vehicleTypeBus": "Autobus",
   "vehicleTypeTram": "Tramvaj",
-  "vehicleTypeTrolleybus": "Trolejbus"
+  "vehicleTypeTrolleybus": "Trolejbus",
+
+  "navCoverage": "Pokrivenost",
+  "coverageFilterAll": "Sve",
+  "coverageLegendTitle": "Gustina prevoza",
+  "coverageLegendLow": "ređe",
+  "coverageLegendHigh": "češće",
+  "coverageUnavailable": "Mapa pokrivenosti trenutno nije dostupna."
 }

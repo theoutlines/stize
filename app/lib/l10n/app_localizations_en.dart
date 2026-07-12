@@ -263,4 +263,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vehicleTypeTrolleybus => 'Trolleybus';
+
+  @override
+  String get navCoverage => 'Coverage';
+
+  @override
+  String get coverageFilterAll => 'All';
+
+  @override
+  String get coverageLegendTitle => 'Transit density';
+
+  @override
+  String get coverageLegendLow => 'rarer';
+
+  @override
+  String get coverageLegendHigh => 'busier';
+
+  @override
+  String get coverageUnavailable => 'Coverage map is unavailable right now.';
 }

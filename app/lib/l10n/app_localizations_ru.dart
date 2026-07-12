@@ -269,4 +269,22 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get vehicleTypeTrolleybus => 'Троллейбус';
+
+  @override
+  String get navCoverage => 'Покрытие';
+
+  @override
+  String get coverageFilterAll => 'Все';
+
+  @override
+  String get coverageLegendTitle => 'Плотность транспорта';
+
+  @override
+  String get coverageLegendLow => 'реже';
+
+  @override
+  String get coverageLegendHigh => 'чаще';
+
+  @override
+  String get coverageUnavailable => 'Карта покрытия сейчас недоступна.';
 }

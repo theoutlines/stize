@@ -98,5 +98,12 @@
 
   "vehicleTypeBus": "Bus",
   "vehicleTypeTram": "Tram",
-  "vehicleTypeTrolleybus": "Trolleybus"
+  "vehicleTypeTrolleybus": "Trolleybus",
+
+  "navCoverage": "Coverage",
+  "coverageFilterAll": "All",
+  "coverageLegendTitle": "Transit density",
+  "coverageLegendLow": "rarer",
+  "coverageLegendHigh": "busier",
+  "coverageUnavailable": "Coverage map is unavailable right now."
 }
