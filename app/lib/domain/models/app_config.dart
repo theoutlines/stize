@@ -17,6 +17,11 @@ class AppConfig {
   /// the (static infographic) screen can ship dormant and be revealed later.
   bool get coverageMapShow => flag('coverage_map_show');
 
+  /// Whether the main map shows the coverage heatmap as a passive background
+  /// when zoomed out (in place of stop clusters). Independent of
+  /// [coverageMapShow] — the tab and the overlay gate separately.
+  bool get coverageOnMainMap => flag('coverage_on_main_map');
+
   static const empty = AppConfig(version: '', flags: {});
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {
