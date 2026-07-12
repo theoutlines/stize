@@ -553,19 +553,19 @@ abstract class AppLocalizations {
   /// No description provided for @coverageLegendTitle.
   ///
   /// In en, this message translates to:
-  /// **'Lines per corridor'**
+  /// **'Transit density'**
   String get coverageLegendTitle;
 
   /// No description provided for @coverageLegendLow.
   ///
   /// In en, this message translates to:
-  /// **'fewer'**
+  /// **'rarer'**
   String get coverageLegendLow;
 
   /// No description provided for @coverageLegendHigh.
   ///
   /// In en, this message translates to:
-  /// **'more'**
+  /// **'busier'**
   String get coverageLegendHigh;
 
   /// No description provided for @coverageUnavailable.

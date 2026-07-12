@@ -277,13 +277,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get coverageFilterAll => 'Все';
 
   @override
-  String get coverageLegendTitle => 'Маршрутов в коридоре';
+  String get coverageLegendTitle => 'Плотность транспорта';
 
   @override
-  String get coverageLegendLow => 'меньше';
+  String get coverageLegendLow => 'реже';
 
   @override
-  String get coverageLegendHigh => 'больше';
+  String get coverageLegendHigh => 'чаще';
 
   @override
   String get coverageUnavailable => 'Карта покрытия сейчас недоступна.';

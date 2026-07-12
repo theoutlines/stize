@@ -15,27 +15,27 @@ const _overviewZoom = 11.2;
 const _sourceId = 'coverage-src';
 const _layerId = 'coverage-lines';
 
-/// The weight (V0 = number of distinct lines along a corridor) is read from a
-/// single named property, so a future frequency-/intensity-based weight only
-/// needs a new property here + a rebuilt data file — the rest is unchanged.
-const _weightProperty = 'routes_count';
-
-/// Weight breakpoints the width/colour ramps are anchored on. Chosen from the
-/// built data's distribution (routes_count runs 1…~33).
-const _wStops = [1, 3, 6, 12, 20, 33];
+/// Warm (dark theme) / blue (light theme) base line colour. Density isn't drawn
+/// by a per-feature weight — it emerges from many semi-transparent lines
+/// stacking (Strava-heatmap style), so overlapping routes read as brighter.
+const _darkColor = '#f0842a'; // warm orange, glows on the dark base
+const _lightColor = '#1f66b5'; // readable blue on the light base
 
 /// The three filterable vehicle types, in display order. String values match
-/// the `types` array in the coverage GeoJSON.
+/// the `type` property in the coverage GeoJSON.
 const _types = <(VehicleType, String)>[
   (VehicleType.tram, 'tram'),
   (VehicleType.trolleybus, 'trolleybus'),
   (VehicleType.bus, 'bus'),
 ];
 
-/// Coverage map: glowing route corridors over the theme-synced base map. A
-/// static, precomputed line layer (from GTFS shapes) styled data-driven by
-/// segment weight; a vehicle-type filter and a weight legend sit on top. Not
-/// part of the "what's coming to my stop" flow — a standalone infographic tab.
+/// Coverage map: a Strava-heatmap-style density view. The raw GTFS route shapes
+/// are drawn as many semi-transparent lines over the theme-synced base map, so
+/// overlapping corridors accumulate brightness — showing where transit is dense
+/// and where it thins out, rather than a clean line schematic. Line width + blur
+/// interpolate with zoom (far: thick and soft, corridors bleed into glow zones;
+/// near: thin and crisp). A vehicle-type filter and a density legend sit on top.
+/// Not part of the "what's coming to my stop" flow — a standalone infographic.
 class CoverageScreen extends ConsumerStatefulWidget {
   const CoverageScreen({super.key, this.onOpenDrawer});
 
@@ -62,7 +62,9 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
   /// on first load and again after every theme flip (setStyle drops layers).
   Future<void> _addCoverageLayer(StyleController style) async {
     await style.addSource(
-      const GeoJsonSource(id: _sourceId, data: '$apiBaseUrl/api/v1/coverage'),
+      // `?rev=` busts any longer-lived CDN/browser cache entry when the data
+      // model changes — bump it whenever the coverage.geojson shape changes.
+      const GeoJsonSource(id: _sourceId, data: '$apiBaseUrl/api/v1/coverage?rev=2'),
     );
     await style.addLayer(_buildLayer());
   }
@@ -88,90 +90,64 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
       filter: _filterExpression(),
       layout: const {'line-cap': 'round', 'line-join': 'round'},
       paint: {
-        'line-width': _widthExpression(),
-        'line-color': _colorExpression(dark),
-        'line-opacity': _opacityExpression(),
-        // A hair of blur softens the corridors into a subtle glow — still a
-        // line-layer property, not a raster blur pass (kept per the spec).
-        'line-blur': 0.4,
+        'line-color': _color(dark),
+        // Low, zoom-graded opacity is the whole trick: at any one spot a single
+        // route is faint, but where many routes overlap the alpha stacks up into
+        // a bright corridor. Kept lower at far zoom (more overlap ⇒ avoid
+        // blowing the dense core out to mud), higher when zoomed in so lone
+        // routes stay visible.
+        'line-opacity': [
+          'interpolate', ['linear'], ['zoom'],
+          11, 0.14,
+          14, 0.22,
+          16, 0.30,
+          18, 0.40,
+        ],
+        // Far zoom: thick + soft, so corridors bleed together into glow zones.
+        // Near zoom: thin + crisp lines.
+        'line-width': [
+          'interpolate', ['linear'], ['zoom'],
+          11, 3.4,
+          13, 2.4,
+          15, 1.6,
+          18, 1.1,
+        ],
+        'line-blur': [
+          'interpolate', ['linear'], ['zoom'],
+          11, 3.5,
+          13, 2.0,
+          15, 0.8,
+          18, 0.3,
+        ],
       },
     );
   }
 
   // ---- Style expressions ----------------------------------------------------
 
-  /// Only features carrying at least one selected type. Empty selection shows
-  /// everything (no filter).
+  /// Only features whose vehicle type is selected. Empty selection shows all.
   List<Object>? _filterExpression() {
     if (_selected.isEmpty) return null;
     return [
       'any',
       for (final t in _selected)
-        ['in', t, ['get', 'types']],
+        ['==', ['get', 'type'], t],
     ];
   }
 
-  /// Thicker where more lines share the corridor.
-  List<Object> _widthExpression() => [
-    'interpolate',
-    ['linear'],
-    ['get', _weightProperty],
-    _wStops[0], 0.6,
-    _wStops[1], 1.3,
-    _wStops[2], 2.3,
-    _wStops[3], 3.6,
-    _wStops[4], 5.4,
-    _wStops[5], 8.0,
-  ];
-
-  /// Lower-weight corridors recede a little so the busy ones read as brighter.
-  List<Object> _opacityExpression() => [
-    'interpolate',
-    ['linear'],
-    ['get', _weightProperty],
-    _wStops[0], 0.55,
-    _wStops[2], 0.8,
-    _wStops[5], 1.0,
-  ];
-
-  /// Colour ramp. With no filter (or several types) it's weight-driven: a warm
-  /// ember→white ramp on dark, a light→deep blue ramp on light — high weight
-  /// obviously "hotter". With exactly one type selected, the corridor takes that
-  /// type's brand colour (from map_support) so the filter reads by hue, and
-  /// weight still shows through width + opacity.
-  Object _colorExpression(bool dark) {
+  /// Base colour: theme-driven warm/blue by default; when exactly one type is
+  /// filtered, that type's brand colour (from map_support) so the filter reads
+  /// by hue. Density still comes from opacity stacking, not the colour.
+  String _color(bool dark) {
     if (_selected.length == 1) {
       final type = _types.firstWhere((e) => e.$2 == _selected.first).$1;
       return _hex(vehicleColor(type));
     }
-    final ramp = dark ? _warmRamp : _blueRamp;
-    return [
-      'interpolate',
-      ['linear'],
-      ['get', _weightProperty],
-      for (var i = 0; i < _wStops.length; i++) ...[_wStops[i], ramp[i]],
-    ];
+    return dark ? _darkColor : _lightColor;
   }
 
-  static const _warmRamp = [
-    '#7a3d12', // dim ember
-    '#c25a1a',
-    '#ef7b22', // orange
-    '#ffae4d',
-    '#ffd9a0',
-    '#ffffff', // hottest → white
-  ];
-  static const _blueRamp = [
-    '#9ecae1', // light blue
-    '#6baed6',
-    '#4292c6',
-    '#2171b5',
-    '#08519c',
-    '#08306b', // deepest navy
-  ];
-
   static String _hex(Color c) =>
-      '#${((c.a * 255).round() << 24 | (c.r * 255).round() << 16 | (c.g * 255).round() << 8 | (c.b * 255).round()).toRadixString(16).padLeft(8, '0').substring(2)}';
+      '#${((c.r * 255).round() << 16 | (c.g * 255).round() << 8 | (c.b * 255).round()).toRadixString(16).padLeft(6, '0')}';
 
   // ---- Filter chips ---------------------------------------------------------
 
@@ -247,7 +223,7 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
                 const Spacer(),
                 Padding(
                   padding: const EdgeInsets.all(12),
-                  child: _WeightLegend(dark: brightness == Brightness.dark),
+                  child: _DensityLegend(dark: brightness == Brightness.dark),
                 ),
               ],
             ),
@@ -301,10 +277,11 @@ class _FilterChips extends StatelessWidget {
   }
 }
 
-/// A compact legend for the weight ramp: a thin→thick, dim→bright bar with
-/// "fewer … more" captions (Citi Bike-style density key).
-class _WeightLegend extends StatelessWidget {
-  const _WeightLegend({required this.dark});
+/// A compact density key: a flat dim→bright gradient bar with "rarer … busier"
+/// captions. It mirrors what the map shows — a faint line is one route, a bright
+/// corridor is many overlapping — so there are no absolute numbers.
+class _DensityLegend extends StatelessWidget {
+  const _DensityLegend({required this.dark});
 
   final bool dark;
 
@@ -312,9 +289,11 @@ class _WeightLegend extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    // Dim (one faint route) → bright (many stacked), matching the on-map buildup
+    // of the base hue over the theme background.
     final ramp = dark
-        ? const [Color(0xFF7A3D12), Color(0xFFEF7B22), Color(0xFFFFD9A0), Color(0xFFFFFFFF)]
-        : const [Color(0xFF9ECAE1), Color(0xFF4292C6), Color(0xFF2171B5), Color(0xFF08306B)];
+        ? const [Color(0xFF3A2410), Color(0xFFA85A1E), Color(0xFFF0842A), Color(0xFFFFC98A)]
+        : const [Color(0xFFDCE9F5), Color(0xFF6BA3D6), Color(0xFF2E74BE), Color(0xFF0B3D82)];
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -340,12 +319,18 @@ class _WeightLegend extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // A tapering bar: gradient fill, growing height, to read as
-          // "few/thin/dim → many/thick/bright".
-          SizedBox(
-            width: 168,
-            height: 14,
-            child: CustomPaint(painter: _LegendBarPainter(ramp)),
+          // A flat gradient bar: dim → bright, reading as "rare → dense".
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: SizedBox(
+              width: 168,
+              height: 10,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: ramp),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 4),
           SizedBox(
@@ -362,27 +347,4 @@ class _WeightLegend extends StatelessWidget {
       ),
     );
   }
-}
-
-class _LegendBarPainter extends CustomPainter {
-  const _LegendBarPainter(this.ramp);
-
-  final List<Color> ramp;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final gradient = LinearGradient(colors: ramp).createShader(rect);
-    // A wedge: thin at the left (few lines), full height at the right (many).
-    final path = Path()
-      ..moveTo(0, size.height * 0.5 - 1)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height * 0.5 + 1)
-      ..close();
-    canvas.drawPath(path, Paint()..shader = gradient);
-  }
-
-  @override
-  bool shouldRepaint(_LegendBarPainter oldDelegate) => oldDelegate.ramp != ramp;
 }

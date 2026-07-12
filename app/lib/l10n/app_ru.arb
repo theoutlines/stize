@@ -95,8 +95,8 @@
 
   "navCoverage": "Покрытие",
   "coverageFilterAll": "Все",
-  "coverageLegendTitle": "Маршрутов в коридоре",
-  "coverageLegendLow": "меньше",
-  "coverageLegendHigh": "больше",
+  "coverageLegendTitle": "Плотность транспорта",
+  "coverageLegendLow": "реже",
+  "coverageLegendHigh": "чаще",
   "coverageUnavailable": "Карта покрытия сейчас недоступна."
 }

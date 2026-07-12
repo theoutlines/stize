@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accumulateSegments, buildCoverage } from "../scripts/coverage-core.mjs";
+import { accumulateSegments, buildCoverage, buildCoverageLines } from "../scripts/coverage-core.mjs";
 
 // A straight west→east run of points along one latitude, spaced ~1 grid cell
 // apart at grid=0.001 so each pair lands in a distinct cell.
@@ -152,5 +152,65 @@ describe("coverage-core", () => {
     const [lon, lat] = gj.features[0].geometry.coordinates[0];
     expect(lon).toBeCloseTo(20.4, 2);
     expect(lat).toBeCloseTo(44.8, 2);
+  });
+});
+
+describe("buildCoverageLines (render layer: raw shapes)", () => {
+  it("keeps one feature per shape with raw geometry and type/line props", () => {
+    const poly = [
+      [44.8, 20.4],
+      [44.801, 20.402],
+      [44.803, 20.401],
+    ];
+    const gj = buildCoverageLines([
+      { line: "25", vehicleType: "bus", polyline: poly },
+    ]);
+    expect(gj.type).toBe("FeatureCollection");
+    expect(gj.features).toHaveLength(1);
+    const f = gj.features[0];
+    expect(f.properties).toEqual({ type: "bus", line: "25" });
+    // Raw geometry preserved (no collapsing/snapping), as [lon, lat].
+    expect(f.geometry.coordinates).toEqual([
+      [20.4, 44.8],
+      [20.402, 44.801],
+      [20.401, 44.803],
+    ]);
+  });
+
+  it("does NOT collapse overlapping routes — one feature each", () => {
+    const geom = [
+      [44.8, 20.4],
+      [44.81, 20.41],
+    ];
+    const gj = buildCoverageLines([
+      { line: "2", vehicleType: "tram", polyline: geom },
+      { line: "5", vehicleType: "tram", polyline: geom },
+    ]);
+    // Overlap is drawn by stacking, not merged — both features are kept.
+    expect(gj.features).toHaveLength(2);
+  });
+
+  it("skips shapes with fewer than two points", () => {
+    const gj = buildCoverageLines([
+      { line: "1", vehicleType: "bus", polyline: [[44.8, 20.4]] },
+      { line: "2", vehicleType: "bus", polyline: [] },
+    ]);
+    expect(gj.features).toHaveLength(0);
+  });
+
+  it("simplifies only when asked, preserving endpoints", () => {
+    // A near-straight line with a tiny mid jog; a small epsilon drops the jog.
+    const poly = [
+      [44.8, 20.4],
+      [44.8000001, 20.4005],
+      [44.8, 20.401],
+    ];
+    const gj = buildCoverageLines([{ line: "1", vehicleType: "bus", polyline: poly }], {
+      simplifyEpsilon: 0.00002,
+    });
+    const coords = gj.features[0].geometry.coordinates;
+    expect(coords).toHaveLength(2); // mid point removed
+    expect(coords[0]).toEqual([20.4, 44.8]);
+    expect(coords[1]).toEqual([20.401, 44.8]);
   });
 });
