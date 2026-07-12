@@ -14,9 +14,10 @@
 // carriageways of a boulevard and digitisation offsets between routes' shapes
 // into one clean corridor (no doubled lines), without fusing genuinely separate
 // parallel streets. It also keeps the precomputed file light (~2.7 MB raw /
-// ~180 KB gzip city-wide). The trade-off is visible "staircase" blockiness at
-// deep zoom, which reads fine for a city-scale infographic; a finer grid (down
-// to ~0.00025) trades size and some corridor doubling for smoother geometry.
+// ~180 KB gzip city-wide). The grid is used only for segment *identity*; the
+// output geometry uses each cell's real-point centroid (see accumulate), so the
+// cell size no longer causes "staircase" blockiness — a coarser grid just merges
+// more aggressively, a finer one keeps more distinct corridors (bigger file).
 export const DEFAULT_GRID_DEG = 0.0005;
 
 // Stable output order for the `types` array so the file is reproducible.
@@ -48,15 +49,47 @@ function sortTypes(types) {
  * @returns {Map<string,{a:number[],b:number[],lines:Set<string>,types:Set<string>}>}
  */
 export function accumulateSegments(shapes, grid = DEFAULT_GRID_DEG) {
+  return accumulate(shapes, grid).segments;
+}
+
+/**
+ * Core pass: builds the shared-segment map *and* a per-grid-node centroid of the
+ * real (unsnapped) points that fell in each cell.
+ *
+ * The centroid is what kills the "staircase": we snap to the grid only to decide
+ * segment *identity* (so shared corridors collapse), but the output geometry uses
+ * each node's centroid — which lies on the actual road, not at the grid-lattice
+ * cell centre. All routes through a cell share the same centroid, so shared
+ * corridors still coincide exactly (no doubling) while diagonal roads render as
+ * smooth diagonals instead of right-angle jogs.
+ *
+ * @returns {{segments: Map, nodeCoord: Map<string, number[]>}} nodeCoord maps a
+ *   node key to its centroid [lat, lon].
+ */
+function accumulate(shapes, grid) {
   const segments = new Map();
+  const nodeSum = new Map(); // nodeKey -> [sumLat, sumLon, count]
+  const addPoint = (key, lat, lon) => {
+    const s = nodeSum.get(key);
+    if (s) {
+      s[0] += lat;
+      s[1] += lon;
+      s[2] += 1;
+    } else {
+      nodeSum.set(key, [lat, lon, 1]);
+    }
+  };
+
   for (const shape of shapes) {
     const poly = shape.polyline;
     if (!Array.isArray(poly) || poly.length < 2) continue;
     let prev = null;
     let prevKey = null;
     for (const point of poly) {
-      const node = snap(point[0], point[1], grid);
+      const [lat, lon] = point;
+      const node = snap(lat, lon, grid);
       const key = nodeKey(node);
+      addPoint(key, lat, lon); // feed the centroid, duplicates in a cell included
       if (prevKey === null) {
         prev = node;
         prevKey = key;
@@ -75,7 +108,12 @@ export function accumulateSegments(shapes, grid = DEFAULT_GRID_DEG) {
       prevKey = key;
     }
   }
-  return segments;
+
+  const nodeCoord = new Map();
+  for (const [key, [sumLat, sumLon, count]] of nodeSum) {
+    nodeCoord.set(key, [sumLat / count, sumLon / count]);
+  }
+  return { segments, nodeCoord };
 }
 
 // Signature groups segments that carry the *same* set of lines, so they can be
@@ -134,9 +172,9 @@ function chainEdges(edges) {
   return polylines;
 }
 
-// Perpendicular-distance simplification (Ramer–Douglas–Peucker) over grid nodes,
-// dropping near-collinear midpoints so straight runs don't carry a vertex per
-// grid cell. Epsilon is in grid units; ~0.5 keeps sub-cell detail out.
+// Perpendicular-distance simplification (Ramer–Douglas–Peucker), dropping
+// near-collinear midpoints so straight runs don't carry a vertex per grid cell.
+// Points are [lat, lon] and epsilon is in degrees.
 function simplify(points, epsilon) {
   if (points.length <= 2 || epsilon <= 0) return points;
   let maxDist = 0;
@@ -174,10 +212,12 @@ function simplify(points, epsilon) {
  */
 export function buildCoverage(shapes, opts = {}) {
   const grid = opts.grid ?? DEFAULT_GRID_DEG;
-  const simplifyEpsilon = opts.simplifyEpsilon ?? 1.0;
+  // Default epsilon ~0.4 cell in degrees: trims collinear midpoints without
+  // visibly moving the smoothed (centroid) geometry.
+  const simplifyEpsilon = opts.simplifyEpsilon ?? grid * 0.4;
   const coordPrecision = opts.coordPrecision ?? 5;
 
-  const segments = accumulateSegments(shapes, grid);
+  const { segments, nodeCoord } = accumulate(shapes, grid);
 
   // Group segments by their line-set signature.
   const groups = new Map(); // signature -> { edges:[], lines:Set, types:Set }
@@ -197,12 +237,12 @@ export function buildCoverage(shapes, opts = {}) {
     const routesCount = group.lines.size;
     const types = sortTypes(group.types);
     for (const chain of chainEdges(group.edges)) {
-      const simplified = simplify(chain, simplifyEpsilon);
-      // Grid nodes [iy, ix] → GeoJSON [lon, lat].
-      const coordinates = simplified.map(([iy, ix]) => [
-        round(ix * grid),
-        round(iy * grid),
-      ]);
+      // Grid nodes [iy, ix] → their real-point centroid [lat, lon] (smooth,
+      // on-road geometry), then simplify in degree space.
+      const latLon = chain.map((node) => nodeCoord.get(nodeKey(node)));
+      const simplified = simplify(latLon, simplifyEpsilon);
+      // [lat, lon] → GeoJSON [lon, lat].
+      const coordinates = simplified.map(([lat, lon]) => [round(lon), round(lat)]);
       features.push({
         type: "Feature",
         properties: { routes_count: routesCount, types },

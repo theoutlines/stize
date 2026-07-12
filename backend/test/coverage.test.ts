@@ -96,6 +96,54 @@ describe("coverage-core", () => {
     expect(gj.features).toHaveLength(0);
   });
 
+  it("emits real-point centroids, not grid-cell centres (anti-staircase)", () => {
+    // A point offset well inside its cell: cell centre would be (44.800, 20.400),
+    // but the output must be the real point since it's the only one in the cell.
+    const gj = buildCoverage(
+      [
+        {
+          line: "1",
+          vehicleType: "bus",
+          polyline: [
+            [44.80042, 20.40042],
+            [44.80142, 20.40142],
+          ],
+        },
+      ],
+      { grid: 0.001, simplifyEpsilon: 0, coordPrecision: 5 },
+    );
+    const [lon, lat] = gj.features[0].geometry.coordinates[0];
+    expect(lat).toBeCloseTo(44.80042, 5); // real coord, not 44.800 cell centre
+    expect(lon).toBeCloseTo(20.40042, 5);
+  });
+
+  it("keeps two routes' shared corridor coincident after smoothing", () => {
+    // Two routes with slightly different real geometry that snaps to the same
+    // cells must still produce identical (centroid) coordinates — no doubling.
+    const a = [
+      [44.8001, 20.4001],
+      [44.8011, 20.4011],
+    ];
+    const b = [
+      [44.8003, 20.4003],
+      [44.8013, 20.4013],
+    ];
+    const gj = buildCoverage(
+      [
+        { line: "2", vehicleType: "tram", polyline: a },
+        { line: "5", vehicleType: "tram", polyline: b },
+      ],
+      { grid: 0.001, simplifyEpsilon: 0 },
+    );
+    // One shared corridor (routes_count 2), single feature.
+    expect(gj.features).toHaveLength(1);
+    expect(gj.features[0].properties.routes_count).toBe(2);
+    // Its coords are the per-cell centroid of both routes' points.
+    const [lon, lat] = gj.features[0].geometry.coordinates[0];
+    expect(lat).toBeCloseTo((44.8001 + 44.8003) / 2, 5);
+    expect(lon).toBeCloseTo((20.4001 + 20.4003) / 2, 5);
+  });
+
   it("emits GeoJSON coordinates as [lon, lat]", () => {
     const gj = buildCoverage(
       [{ line: "9", vehicleType: "tram", polyline: horizontalLine(44.8, 20.4, 1) }],
