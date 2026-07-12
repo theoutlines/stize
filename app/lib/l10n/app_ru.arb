@@ -91,5 +91,12 @@
 
   "vehicleTypeBus": "Автобус",
   "vehicleTypeTram": "Трамвай",
-  "vehicleTypeTrolleybus": "Троллейбус"
+  "vehicleTypeTrolleybus": "Троллейбус",
+
+  "navCoverage": "Покрытие",
+  "coverageFilterAll": "Все",
+  "coverageLegendTitle": "Маршрутов в коридоре",
+  "coverageLegendLow": "меньше",
+  "coverageLegendHigh": "больше",
+  "coverageUnavailable": "Карта покрытия сейчас недоступна."
 }

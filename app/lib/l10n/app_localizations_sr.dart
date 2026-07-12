@@ -265,4 +265,22 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get vehicleTypeTrolleybus => 'Trolejbus';
+
+  @override
+  String get navCoverage => 'Pokrivenost';
+
+  @override
+  String get coverageFilterAll => 'Sve';
+
+  @override
+  String get coverageLegendTitle => 'Linija po koridoru';
+
+  @override
+  String get coverageLegendLow => 'manje';
+
+  @override
+  String get coverageLegendHigh => 'više';
+
+  @override
+  String get coverageUnavailable => 'Mapa pokrivenosti trenutno nije dostupna.';
 }

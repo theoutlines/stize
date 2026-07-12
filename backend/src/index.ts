@@ -169,6 +169,20 @@ app.get("/api/v1/lines/:routeId/shape", async (c) => {
   return c.json(body);
 });
 
+// Precomputed coverage-map layer (scripts/build-coverage.mjs → static asset).
+// Served through an explicit Hono route so it gets the CORS headers the web
+// build needs cross-origin — the raw /gtfs/* static-asset path bypasses the
+// cors() middleware (see CLAUDE.md). The file only changes on redeploy, so it's
+// safe to cache hard on clients.
+app.get("/api/v1/coverage", async (c) => {
+  const res = await c.env.ASSETS.fetch(new URL("/gtfs/coverage.geojson", "https://assets.internal"));
+  if (!res.ok) return c.json({ error: "coverage data unavailable" }, 404);
+  return c.newResponse(res.body, 200, {
+    "content-type": "application/json",
+    "cache-control": "public, max-age=86400",
+  });
+});
+
 // Convenience alias: look a line up by its number directly (e.g. "79", "7L").
 app.get("/api/v1/lines/by-number/:line/shape", async (c) => {
   const line = c.req.param("line");

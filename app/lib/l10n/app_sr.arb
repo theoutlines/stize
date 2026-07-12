@@ -91,5 +91,12 @@
 
   "vehicleTypeBus": "Autobus",
   "vehicleTypeTram": "Tramvaj",
-  "vehicleTypeTrolleybus": "Trolejbus"
+  "vehicleTypeTrolleybus": "Trolejbus",
+
+  "navCoverage": "Pokrivenost",
+  "coverageFilterAll": "Sve",
+  "coverageLegendTitle": "Linija po koridoru",
+  "coverageLegendLow": "manje",
+  "coverageLegendHigh": "više",
+  "coverageUnavailable": "Mapa pokrivenosti trenutno nije dostupna."
 }
