@@ -256,6 +256,54 @@ abstract class AppLocalizations {
   /// **'Zoom in to see live transport'**
   String get mapZoomInForVehicles;
 
+  /// No description provided for @nearbySearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter lines nearby…'**
+  String get nearbySearchHint;
+
+  /// No description provided for @nearbyDistanceMeters.
+  ///
+  /// In en, this message translates to:
+  /// **'{meters} m'**
+  String nearbyDistanceMeters(int meters);
+
+  /// No description provided for @nearbyNeedsLocationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'See what\'s nearby'**
+  String get nearbyNeedsLocationTitle;
+
+  /// No description provided for @nearbyNeedsLocationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on location to list the lines you can catch around you.'**
+  String get nearbyNeedsLocationSubtitle;
+
+  /// No description provided for @nearbyEnableLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Use my location'**
+  String get nearbyEnableLocation;
+
+  /// No description provided for @nearbyLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding lines around you…'**
+  String get nearbyLoading;
+
+  /// No description provided for @nearbyEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No stops nearby'**
+  String get nearbyEmptyTitle;
+
+  /// No description provided for @nearbyEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no stops within walking distance of you right now.'**
+  String get nearbyEmptySubtitle;
+
   /// No description provided for @stopUpdatedJustNow.
   ///
   /// In en, this message translates to:

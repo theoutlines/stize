@@ -12,6 +12,7 @@ import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/geocode_repository_impl.dart';
 import '../../data/repositories/ideas_repository_impl.dart';
 import '../../data/repositories/lines_repository_impl.dart';
+import '../../data/repositories/nearby_arrivals_repository_impl.dart';
 import '../../data/repositories/pinned_favorites_repository_impl.dart';
 import '../../data/repositories/stops_repository_impl.dart';
 import '../../data/repositories/vehicles_repository_impl.dart';
@@ -30,6 +31,7 @@ import '../../domain/repositories/pinned_favorites_repository.dart';
 import '../../domain/repositories/geocode_repository.dart';
 import '../../domain/repositories/ideas_repository.dart';
 import '../../domain/repositories/lines_repository.dart';
+import '../../domain/repositories/nearby_arrivals_repository.dart';
 import '../../domain/repositories/stops_repository.dart';
 import '../../domain/repositories/vehicles_repository.dart';
 
@@ -51,6 +53,13 @@ final appConfigProvider = FutureProvider<AppConfig>((ref) async {
 /// `analytics_show` flag). Defaults to false until config resolves.
 final analyticsEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.analyticsShow ?? false,
+);
+
+/// Whether the experimental "Nearby" list is enabled for this user (remote
+/// `nearby_list` flag). Defaults to false until config resolves, so the feature
+/// stays hidden if config can't be reached.
+final nearbyEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.nearbyList ?? false,
 );
 
 /// Rolled-up analytics for one line number (draft transport-analytics feature).
@@ -94,6 +103,10 @@ final stopsRepositoryProvider = Provider<StopsRepository>(
 
 final vehiclesRepositoryProvider = Provider<VehiclesRepository>(
   (ref) => VehiclesRepositoryImpl(ref.watch(apiClientProvider)),
+);
+
+final nearbyArrivalsRepositoryProvider = Provider<NearbyArrivalsRepository>(
+  (ref) => NearbyArrivalsRepositoryImpl(ref.watch(apiClientProvider)),
 );
 
 final linesRepositoryProvider = Provider<LinesRepository>(

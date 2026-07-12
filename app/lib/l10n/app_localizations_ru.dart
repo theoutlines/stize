@@ -107,6 +107,34 @@ class AppLocalizationsRu extends AppLocalizations {
       'Приблизьте карту, чтобы увидеть транспорт';
 
   @override
+  String get nearbySearchHint => 'Фильтр линий рядом…';
+
+  @override
+  String nearbyDistanceMeters(int meters) {
+    return '$meters м';
+  }
+
+  @override
+  String get nearbyNeedsLocationTitle => 'Что ходит рядом';
+
+  @override
+  String get nearbyNeedsLocationSubtitle =>
+      'Включите геолокацию, чтобы увидеть линии, на которые можно сесть поблизости.';
+
+  @override
+  String get nearbyEnableLocation => 'Моё местоположение';
+
+  @override
+  String get nearbyLoading => 'Ищем линии вокруг вас…';
+
+  @override
+  String get nearbyEmptyTitle => 'Рядом остановок нет';
+
+  @override
+  String get nearbyEmptySubtitle =>
+      'Сейчас в пешей доступности от вас нет остановок.';
+
+  @override
   String get stopUpdatedJustNow => 'Обновлено только что';
 
   @override

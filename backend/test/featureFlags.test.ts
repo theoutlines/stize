@@ -20,7 +20,7 @@ describe("featureFlags", () => {
 
   it("getAllFlags returns every known flag", async () => {
     const flags = await getAllFlags(env);
-    expect(Object.keys(flags).sort()).toEqual(["analytics_collect", "analytics_show"]);
+    expect(Object.keys(flags).sort()).toEqual(["analytics_collect", "analytics_show", "nearby_list"]);
   });
 
   it("guards against unknown flag names", () => {

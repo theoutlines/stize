@@ -10,6 +10,12 @@ export interface ArrivalDto {
   gps: { lat: number; lon: number } | null;
   garage_no: string | null;
   heading: number | null;
+  // The vehicle's trip terminus (direction), resolved from its own route
+  // geometry (`all_stations` last station → nearest GTFS stop name). Null when
+  // the upstream item carries no route geometry. `direction_id` is a best-effort
+  // GTFS match ("0"/"1") when the terminus name lines up with a known direction.
+  destination: string | null;
+  direction_id: string | null;
 }
 
 // A single moving vehicle for the "all transport in the visible area" map view,
@@ -33,6 +39,35 @@ export interface ArrivalsResponse {
   stop_name: string;
   updated_at: string;
   arrivals: ArrivalDto[];
+  service_status: ServiceStatus;
+}
+
+// One soonest departure within a nearby group (the nearest stop of a
+// line+direction). Trimmed to what the "Nearby" list row renders.
+export interface NearbyArrivalEta {
+  eta_minutes: number;
+  garage_no: string | null;
+  stops_remaining: number | null;
+}
+
+// A single row of the "Nearby" list: one line in one direction, anchored to the
+// nearest stop that serves it, with its soonest departures. Reconstructed by
+// fanning out to nearby stops' arrivals (see getNearbyArrivals), grouped by
+// line + direction, and deduplicated to the closest stop.
+export interface NearbyArrivalGroup {
+  line: string;
+  vehicle_type: VehicleType;
+  destination: string | null; // terminus name = travel direction
+  direction_id: string | null;
+  stop_id: string;
+  stop_name: string;
+  distance_meters: number; // nearest serving stop → user
+  arrivals: NearbyArrivalEta[]; // 1–2 soonest at that stop
+}
+
+export interface NearbyArrivalsResponse {
+  groups: NearbyArrivalGroup[];
+  updated_at: string;
   service_status: ServiceStatus;
 }
 

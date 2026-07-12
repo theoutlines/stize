@@ -32,6 +32,16 @@
   "nearbyStopsEmpty": "Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.",
   "mapZoomInForVehicles": "Uvećaj mapu da vidiš prevoz uživo",
 
+  "nearbySearchHint": "Filtriraj linije u blizini…",
+  "nearbyDistanceMeters": "{meters} m",
+  "@nearbyDistanceMeters": {"placeholders": {"meters": {"type": "int"}}},
+  "nearbyNeedsLocationTitle": "Šta ide u blizini",
+  "nearbyNeedsLocationSubtitle": "Uključi lokaciju da vidiš linije koje možeš uhvatiti u blizini.",
+  "nearbyEnableLocation": "Moja lokacija",
+  "nearbyLoading": "Tražimo linije oko tebe…",
+  "nearbyEmptyTitle": "Nema stajališta u blizini",
+  "nearbyEmptySubtitle": "Trenutno nema stajališta na pešačkoj udaljenosti od tebe.",
+
   "stopUpdatedJustNow": "Ažurirano upravo sada",
   "stopUpdatedSecondsAgo": "Ažurirano pre {seconds} sek",
   "stopUpdatedMinutesAgo": "Ažurirano pre {minutes} min",

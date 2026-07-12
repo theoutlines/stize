@@ -104,6 +104,34 @@ class AppLocalizationsSr extends AppLocalizations {
   String get mapZoomInForVehicles => 'Uvećaj mapu da vidiš prevoz uživo';
 
   @override
+  String get nearbySearchHint => 'Filtriraj linije u blizini…';
+
+  @override
+  String nearbyDistanceMeters(int meters) {
+    return '$meters m';
+  }
+
+  @override
+  String get nearbyNeedsLocationTitle => 'Šta ide u blizini';
+
+  @override
+  String get nearbyNeedsLocationSubtitle =>
+      'Uključi lokaciju da vidiš linije koje možeš uhvatiti u blizini.';
+
+  @override
+  String get nearbyEnableLocation => 'Moja lokacija';
+
+  @override
+  String get nearbyLoading => 'Tražimo linije oko tebe…';
+
+  @override
+  String get nearbyEmptyTitle => 'Nema stajališta u blizini';
+
+  @override
+  String get nearbyEmptySubtitle =>
+      'Trenutno nema stajališta na pešačkoj udaljenosti od tebe.';
+
+  @override
   String get stopUpdatedJustNow => 'Ažurirano upravo sada';
 
   @override
