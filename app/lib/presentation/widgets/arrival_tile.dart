@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../core/fleet_matcher.dart';
 import '../../core/map_support.dart';
 import '../../domain/models/arrival.dart';
 import '../../l10n/app_localizations.dart';
+import 'fleet_badges.dart';
 import 'vehicle_icon.dart';
 
 class ArrivalTile extends StatelessWidget {
@@ -10,6 +12,8 @@ class ArrivalTile extends StatelessWidget {
     super.key,
     required this.arrival,
     this.etaDeltaMinutes,
+    this.fleet,
+    this.onOpenFleetCard,
     this.onTap,
   });
 
@@ -17,6 +21,13 @@ class ArrivalTile extends StatelessWidget {
 
   /// Optional row tap — e.g. to focus this vehicle on the map.
   final VoidCallback? onTap;
+
+  /// Resolved Fleet-ID for this arrival's vehicle, or null when the feature is
+  /// off (asset missing/invalid — B5). Drives the compact badges (B2).
+  final FleetVehicle? fleet;
+
+  /// Opens the model card (B3). Only wired when [fleet] carries model info.
+  final VoidCallback? onOpenFleetCard;
 
   /// How this line's ETA changed since the previous refresh, in minutes
   /// (positive = now arriving *later*, negative = *sooner*), or null when
@@ -42,9 +53,7 @@ class ArrivalTile extends StatelessWidget {
         ),
       ),
       title: Text(arrival.line, style: theme.textTheme.titleMedium),
-      subtitle: arrival.stopsRemaining != null
-          ? Text(l10n.arrivalStopsAway(arrival.stopsRemaining!))
-          : null,
+      subtitle: _subtitle(context, l10n),
       trailing: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -57,6 +66,33 @@ class ArrivalTile extends StatelessWidget {
             _EtaChangeBadge(deltaMinutes: etaDeltaMinutes!),
         ],
       ),
+    );
+  }
+
+  /// Second line of the tile: the "N stops away" text and the Fleet-ID badge
+  /// strip, kept on a single row so a badge never turns one row into two (B2).
+  Widget? _subtitle(BuildContext context, AppLocalizations l10n) {
+    final stops = arrival.stopsRemaining;
+    final strip = fleet == null
+        ? null
+        : FleetBadgeStrip(
+            fleet: fleet!,
+            garageNo: arrival.garageNo,
+            onTap: fleet!.hasInfo ? onOpenFleetCard : null,
+          );
+    if (stops == null && strip == null) return null;
+    return Row(
+      children: [
+        if (stops != null)
+          Flexible(
+            child: Text(
+              l10n.arrivalStopsAway(stops),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        if (stops != null && strip != null) const SizedBox(width: 10),
+        ?strip,
+      ],
     );
   }
 }

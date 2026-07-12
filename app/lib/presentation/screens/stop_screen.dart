@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:latlong2/latlong.dart' as ll;
 
+import '../../core/fleet_matcher.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
@@ -14,6 +15,7 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/arrival_tile.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/fleet_model_card.dart';
 import '../widgets/live_vehicles_map.dart';
 import '../widgets/route_alerts_strip.dart';
 
@@ -30,6 +32,10 @@ class StopScreen extends ConsumerStatefulWidget {
 class _StopScreenState extends ConsumerState<StopScreen> {
   Timer? _refreshTimer;
   String? _lineFilter;
+
+  /// B4: optional "sort by comfort" instead of the default time order. Only
+  /// offered when ≥2 arriving vehicles of different classes are identified.
+  bool _sortByComfort = false;
 
   @override
   void initState() {
@@ -152,6 +158,34 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         ? board.arrivals
         : board.arrivals.where((a) => a.line == effectiveFilter).toList();
 
+    // Fleet-ID (B1–B5): resolve each visible arrival's vehicle. Null catalog
+    // (asset missing/invalid) silently disables every Fleet-ID surface.
+    final catalog = ref.watch(fleetCatalogProvider).valueOrNull;
+    final fleetByIndex = <FleetVehicle?>[
+      for (final a in visibleArrivals) catalog?.resolve(a.garageNo),
+    ];
+
+    // B4 gate: offer the comfort sort only when the identified vehicles span
+    // ≥2 distinct classes (a toggle with no effect is worse than none).
+    final distinctClasses = <String>{
+      for (final f in fleetByIndex)
+        if (f != null && f.hasInfo && f.comfortScore != null) f.id ?? '',
+    }..remove('');
+    final canSortByComfort = distinctClasses.length >= 2;
+    final sortByComfort = canSortByComfort && _sortByComfort;
+
+    // Pair arrivals with their fleet info, then (optionally) reorder by comfort.
+    final order = [for (var i = 0; i < visibleArrivals.length; i++) i];
+    if (sortByComfort) {
+      order.sort((a, b) {
+        final ca = fleetByIndex[a]?.comfortScore ?? -1;
+        final cb = fleetByIndex[b]?.comfortScore ?? -1;
+        if (ca != cb) return cb.compareTo(ca); // higher comfort first
+        return visibleArrivals[a].etaMinutes
+            .compareTo(visibleArrivals[b].etaMinutes); // tie-break by time
+      });
+    }
+
     final vehiclesWithGps = board.arrivals.where((a) => a.gps != null).toList();
     final ageSeconds = DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
     final isStale = ageSeconds > 90; // well past the ~30s refresh cadence — likely a stuck cache
@@ -205,7 +239,43 @@ class _StopScreenState extends ConsumerState<StopScreen> {
               ],
             ),
           ),
-        for (final arrival in visibleArrivals) ArrivalTile(arrival: arrival),
+        if (canSortByComfort)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(
+              children: [
+                ChoiceChip(
+                  label: Text(l10n.fleetSortByTime),
+                  selected: !_sortByComfort,
+                  onSelected: (_) => setState(() => _sortByComfort = false),
+                ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  avatar: Icon(Icons.chair_outlined,
+                      size: 18,
+                      color: _sortByComfort
+                          ? Theme.of(context).colorScheme.onSecondaryContainer
+                          : Theme.of(context).colorScheme.outline),
+                  label: Text(l10n.fleetSortByComfort),
+                  selected: _sortByComfort,
+                  onSelected: (_) => setState(() => _sortByComfort = true),
+                ),
+              ],
+            ),
+          ),
+        for (final i in order)
+          ArrivalTile(
+            arrival: visibleArrivals[i],
+            fleet: fleetByIndex[i],
+            onOpenFleetCard: fleetByIndex[i] != null && fleetByIndex[i]!.hasInfo
+                ? () => showFleetModelCard(
+                      context,
+                      fleet: fleetByIndex[i]!,
+                      fallbackType: visibleArrivals[i].vehicleType,
+                      garageNo: visibleArrivals[i].garageNo,
+                    )
+                : null,
+          ),
       ],
     );
   }

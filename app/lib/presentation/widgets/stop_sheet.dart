@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
+import '../../core/fleet_matcher.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
@@ -12,6 +13,7 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'arrival_tile.dart';
 import 'empty_state.dart';
+import 'fleet_model_card.dart';
 import 'route_alerts_strip.dart';
 
 /// Opens a stop's live arrivals as a bottom sheet *over the current map*, with
@@ -64,6 +66,10 @@ class _StopSheet extends ConsumerStatefulWidget {
 class _StopSheetState extends ConsumerState<_StopSheet> {
   Timer? _refreshTimer;
   String? _lineFilter;
+
+  /// B4: optional "sort by comfort" instead of the default time order. Only
+  /// offered when ≥2 arriving vehicles of different classes are identified.
+  bool _sortByComfort = false;
 
   // ETA-change tracking (G1): the last ETA we showed per vehicle, and the
   // signed delta from the most recent refresh, so a shifting arrival time is
@@ -300,6 +306,34 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
         ? board.arrivals
         : board.arrivals.where((a) => a.line == effectiveFilter).toList();
 
+    // Fleet-ID (B1–B5): resolve each visible arrival's vehicle. A null catalog
+    // (asset missing/invalid) silently disables every Fleet-ID surface.
+    final catalog = ref.watch(fleetCatalogProvider).valueOrNull;
+    final fleetByIndex = <FleetVehicle?>[
+      for (final a in visibleArrivals) catalog?.resolve(a.garageNo),
+    ];
+
+    // B4 gate: offer the comfort sort only when the identified vehicles span
+    // ≥2 distinct classes (a toggle with no effect is worse than none).
+    final distinctClasses = <String>{
+      for (final f in fleetByIndex)
+        if (f != null && f.hasInfo && f.comfortScore != null) f.id ?? '',
+    }..remove('');
+    final canSortByComfort = distinctClasses.length >= 2;
+    final sortByComfort = canSortByComfort && _sortByComfort;
+
+    final order = [for (var i = 0; i < visibleArrivals.length; i++) i];
+    if (sortByComfort) {
+      order.sort((a, b) {
+        final ca = fleetByIndex[a]?.comfortScore ?? -1;
+        final cb = fleetByIndex[b]?.comfortScore ?? -1;
+        if (ca != cb) return cb.compareTo(ca); // higher comfort first
+        return visibleArrivals[a]
+            .etaMinutes
+            .compareTo(visibleArrivals[b].etaMinutes); // tie-break by time
+      });
+    }
+
     final ageSeconds = DateTime.now()
         .toUtc()
         .difference(board.updatedAt.toUtc())
@@ -351,15 +385,50 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
               ],
             ),
           ),
-        for (final arrival in visibleArrivals)
+        if (canSortByComfort)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(
+              children: [
+                ChoiceChip(
+                  label: Text(l10n.fleetSortByTime),
+                  selected: !_sortByComfort,
+                  onSelected: (_) => setState(() => _sortByComfort = false),
+                ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  avatar: Icon(Icons.chair_outlined,
+                      size: 18,
+                      color: _sortByComfort
+                          ? Theme.of(context).colorScheme.onSecondaryContainer
+                          : Theme.of(context).colorScheme.outline),
+                  label: Text(l10n.fleetSortByComfort),
+                  selected: _sortByComfort,
+                  onSelected: (_) => setState(() => _sortByComfort = true),
+                ),
+              ],
+            ),
+          ),
+        for (final i in order)
           ArrivalTile(
-            arrival: arrival,
-            etaDeltaMinutes: _etaDelta[_vehKey(arrival)],
+            arrival: visibleArrivals[i],
+            etaDeltaMinutes: _etaDelta[_vehKey(visibleArrivals[i])],
+            fleet: fleetByIndex[i],
+            onOpenFleetCard:
+                fleetByIndex[i] != null && fleetByIndex[i]!.hasInfo
+                    ? () => showFleetModelCard(
+                          context,
+                          fleet: fleetByIndex[i]!,
+                          fallbackType: visibleArrivals[i].vehicleType,
+                          garageNo: visibleArrivals[i].garageNo,
+                        )
+                    : null,
             // Tap a vehicle row → close the sheet and pan the map to it.
-            onTap: (arrival.gps == null || widget.onFocusVehicle == null)
+            onTap: (visibleArrivals[i].gps == null ||
+                    widget.onFocusVehicle == null)
                 ? null
                 : () {
-                    final gps = arrival.gps!;
+                    final gps = visibleArrivals[i].gps!;
                     Navigator.of(context).maybePop();
                     widget.onFocusVehicle!.call(gps.lat, gps.lon);
                   },
