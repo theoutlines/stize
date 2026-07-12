@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { groupNearbyArrivals, type StopBoard } from "../src/lib/nearbyArrivals";
+import {
+  groupNearbyArrivals,
+  timeToBoardMinutes,
+  type StopBoard,
+} from "../src/lib/nearbyArrivals";
 import type { ArrivalDto, StopDto, VehicleType } from "../src/types";
 
 function arrival(
@@ -103,5 +107,52 @@ describe("groupNearbyArrivals", () => {
 
   it("returns nothing for stops with no arrivals", () => {
     expect(groupNearbyArrivals([board("A", "Stop A", 100, [])])).toEqual([]);
+  });
+});
+
+describe("timeToBoardMinutes", () => {
+  it("returns the soonest departure you can still catch", () => {
+    // 43 m ≈ 0.5 min walk; the 5-min bus is easily reachable.
+    expect(timeToBoardMinutes(43, [5, 23])).toBe(5);
+  });
+
+  it("skips a departure you can't walk to in time, taking the next reachable one", () => {
+    // 300 m ≈ 3.75 min walk: the 2-min bus is missed, the 10-min one is caught.
+    expect(timeToBoardMinutes(300, [2, 10])).toBe(10);
+  });
+
+  it("penalises a stop whose only listed departure is unreachable", () => {
+    // 294 m ≈ 3.68 min walk, only a 2-min bus listed → missed → walk + penalty.
+    const t = timeToBoardMinutes(294, [2]);
+    expect(t).toBeGreaterThan(5); // sorts below a reachable 5-min bus
+  });
+
+  it("allows a one-minute hustle to just catch a departure", () => {
+    // 150 m ≈ 1.875 min walk vs a 1-min bus: within the 1-min grace → catch it.
+    expect(timeToBoardMinutes(150, [1])).toBe(1);
+  });
+});
+
+describe("groupNearbyArrivals — board sort", () => {
+  it('by "board", a close later bus outranks a far sooner-but-unreachable one', () => {
+    // Mirrors the reported case: line 62 is 2 min away but 294 m off (you'd miss
+    // it), line 79 is 5 min away but 43 m off (you make it). By ETA, 62 sorts
+    // first; by time-to-board, 79 should.
+    const groups = groupNearbyArrivals(
+      [
+        board("near", "Batutova", 43, [arrival("79", "Dorćol", 5)]),
+        board("far", "Škola", 294, [arrival("62", "Zvezdara", 2)]),
+      ],
+      "board",
+    );
+    expect(groups.map((g) => g.line)).toEqual(["79", "62"]);
+  });
+
+  it('by "eta" (default), the sooner bus still sorts first regardless of distance', () => {
+    const groups = groupNearbyArrivals([
+      board("near", "Batutova", 43, [arrival("79", "Dorćol", 5)]),
+      board("far", "Škola", 294, [arrival("62", "Zvezdara", 2)]),
+    ]);
+    expect(groups.map((g) => g.line)).toEqual(["62", "79"]);
   });
 });

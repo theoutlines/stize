@@ -15,13 +15,22 @@ isolate reads the new value on its next request. **No rebuild, no redeploy.**
 
 Defined in `backend/src/lib/featureFlags.ts`:
 
-| flag | effect | default |
+| flag | effect | default (prod / staging) |
 |---|---|---|
-| `analytics_collect` | the worker logs arrival observations to build history | off |
-| `analytics_show` | the app reveals the (draft) analytics screens | off |
+| `analytics_collect` | the worker logs arrival observations to build history | off / on |
+| `analytics_show` | the app reveals the (draft) analytics screens | off / on |
+| `nearby_list` | the app shows the experimental "Nearby" list (a draggable sheet over the map) | off / on |
+| `nearby_sort_board` | the "Nearby" list is ordered by **time-to-board** (walk to the stop + wait for the soonest catchable departure) instead of bare ETA | off / on |
 
-The two are independent on purpose: turn **collect** on early to accumulate
-history while **show** stays off, then flip **show** once the screens are ready.
+In-development flags default **off on production** and **on on staging** (keyed on
+`ENVIRONMENT`, see `defaultFor` in `featureFlags.ts`); an explicit KV value always
+overrides the default.
+
+The two analytics flags are independent on purpose: turn **collect** on early to
+accumulate history while **show** stays off, then flip **show** once the screens
+are ready. `nearby_sort_board` only matters when `nearby_list` is on — it swaps
+the list's sort order (see `backend/src/lib/nearbyArrivals.ts`,
+`timeToBoardMinutes`).
 
 ## Endpoints
 
