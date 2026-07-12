@@ -24,9 +24,13 @@
 
   "searchHint": "Остановка, улица или линия…",
   "searchNoResults": "Ничего не нашлось. Может, стоит попробовать иначе написать?",
-  "locationDenied": "Геолокация выключена. Разрешите доступ, чтобы видеть себя на карте.",
+  "locationDenied": "Доступ к геолокации запрещён. Разрешите его в браузере или настройках, чтобы видеть себя на карте.",
+  "locationServicesOff": "Службы геолокации выключены. Включите их в настройках устройства.",
+  "locationTimeout": "Не удалось определить местоположение вовремя. Проверьте связь и попробуйте снова.",
+  "locationUnavailable": "Местоположение сейчас недоступно. Попробуйте через минуту.",
   "nearbyStopsTitle": "Остановки рядом",
   "nearbyStopsEmpty": "Включи геолокацию или поищи остановку, улицу или линию выше.",
+  "mapZoomInForVehicles": "Приблизьте карту, чтобы увидеть транспорт",
 
   "stopUpdatedJustNow": "Обновлено только что",
   "stopUpdatedSecondsAgo": "Обновлено {seconds} сек назад",
@@ -73,8 +77,6 @@
   "settingsThemeSystem": "Как в системе",
   "settingsThemeLight": "Светлая",
   "settingsThemeDark": "Тёмная",
-  "settingsRefreshInterval": "Интервал обновления",
-  "settingsRefreshIntervalSeconds": "{seconds} сек",
 
   "aboutTitle": "О Stigla",
   "aboutDisclaimer": "Неофициальное приложение. Не связано с JKP Upravljanje javnim prevozom Beograd.",
@@ -127,5 +129,10 @@
   "fleetComfortRetro": "ретро",
   "fleetComfortOk": "норм",
   "fleetComfortComfy": "комфорт",
-  "fleetApproxNote": "«~» — значения оценены по перевозчику, а не подтверждены для этой конкретной машины."
-}
+  "fleetApproxNote": "«~» — значения оценены по перевозчику, а не подтверждены для этой конкретной машины.",
+  "navCoverage": "Покрытие",
+  "coverageFilterAll": "Все",
+  "coverageLegendTitle": "Плотность транспорта",
+  "coverageLegendLow": "реже",
+  "coverageLegendHigh": "чаще",
+  "coverageUnavailable": "Карта покрытия сейчас недоступна."}

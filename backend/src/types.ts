@@ -51,7 +51,12 @@ export interface StopsResponse {
 export interface LineDto {
   line: string;
   vehicle_type: VehicleType;
+  // Per-direction shape key: the canonical direction keeps the bare GTFS
+  // route_id; the other direction is "{route_id}-{direction_id}" (F8).
   route_id: string;
+  // GTFS direction_id ("0"/"1"). Both directions of a line are separate
+  // entries, so a search surfaces the line both ways.
+  direction_id?: string;
   origin: string;
   destination: string;
 }

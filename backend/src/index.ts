@@ -169,6 +169,24 @@ app.get("/api/v1/lines/:routeId/shape", async (c) => {
   return c.json(body);
 });
 
+// Coverage-map *render* layer: the raw route shapes (build-coverage-lines.mjs →
+// public/gtfs/coverage.geojson). Served through an explicit Hono route so it
+// gets the CORS headers the web build needs cross-origin — the raw /gtfs/*
+// static-asset path bypasses the cors() middleware (see CLAUDE.md).
+//
+// Cache: a short shared (edge) TTL so a redeploy of the data reflects within a
+// minute, with a longer browser TTL since the file only changes on redeploy.
+// The client also appends a `?rev=` cache-buster it bumps on data-model changes,
+// which sidesteps any longer-lived edge entry from a previous version.
+app.get("/api/v1/coverage", async (c) => {
+  const res = await c.env.ASSETS.fetch(new URL("/gtfs/coverage.geojson", "https://assets.internal"));
+  if (!res.ok) return c.json({ error: "coverage data unavailable" }, 404);
+  return c.newResponse(res.body, 200, {
+    "content-type": "application/json",
+    "cache-control": "public, max-age=3600, s-maxage=60",
+  });
+});
+
 // Convenience alias: look a line up by its number directly (e.g. "79", "7L").
 app.get("/api/v1/lines/by-number/:line/shape", async (c) => {
   const line = c.req.param("line");

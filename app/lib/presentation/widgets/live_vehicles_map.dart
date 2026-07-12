@@ -53,7 +53,7 @@ class _LiveVehiclesMapState extends ConsumerState<LiveVehiclesMap>
     super.initState();
     _anim = AnimationController(vsync: this, duration: widget.animationDuration);
     _syncArrivals();
-    _anim.forward(from: 0);
+    _playEase();
   }
 
   @override
@@ -61,7 +61,19 @@ class _LiveVehiclesMapState extends ConsumerState<LiveVehiclesMap>
     super.didUpdateWidget(oldWidget);
     if (!identical(oldWidget.arrivals, widget.arrivals)) {
       _syncArrivals();
+      _playEase();
+    }
+  }
+
+  /// Ease toward the new fixes only when there's actual motion to show; a set of
+  /// stationary vehicles settles instantly so the map holds at zero frames
+  /// instead of running the controller (and every marker's halo) for the whole
+  /// interval (thermal — "idle = 0 frames").
+  void _playEase() {
+    if (_animator.hasPendingMotion) {
       _anim.forward(from: 0);
+    } else {
+      _anim.value = 1;
     }
   }
 
@@ -229,6 +241,8 @@ class _LiveVehiclesMapState extends ConsumerState<LiveVehiclesMap>
             heading: track.heading,
             stuck: _animator.isStuck(key),
             selected: key == _selectedKey,
+            // Halo breathes only while the ease is in flight; rests once settled.
+            animate: _anim.isAnimating,
             onTap: () => _onVehicleTap(key),
           ),
         ),

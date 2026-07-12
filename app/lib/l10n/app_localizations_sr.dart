@@ -79,7 +79,19 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get locationDenied =>
-      'Lokacija je isključena. Dozvoli pristup da vidiš gde se nalaziš.';
+      'Pristup lokaciji je odbijen. Dozvoli ga u pregledaču ili podešavanjima da vidiš gde se nalaziš.';
+
+  @override
+  String get locationServicesOff =>
+      'Usluge lokacije su isključene. Uključi ih u podešavanjima uređaja.';
+
+  @override
+  String get locationTimeout =>
+      'Nije uspelo određivanje lokacije na vreme. Proveri vezu i pokušaj ponovo.';
+
+  @override
+  String get locationUnavailable =>
+      'Lokacija trenutno nije dostupna. Pokušaj za trenutak.';
 
   @override
   String get nearbyStopsTitle => 'Stajališta u blizini';
@@ -87,6 +99,9 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get nearbyStopsEmpty =>
       'Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.';
+
+  @override
+  String get mapZoomInForVehicles => 'Uvećaj mapu da vidiš prevoz uživo';
 
   @override
   String get stopUpdatedJustNow => 'Ažurirano upravo sada';
@@ -215,14 +230,6 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get settingsThemeDark => 'Tamna';
-
-  @override
-  String get settingsRefreshInterval => 'Interval osvežavanja';
-
-  @override
-  String settingsRefreshIntervalSeconds(int seconds) {
-    return '$seconds sek';
-  }
 
   @override
   String get aboutTitle => 'O Stigla aplikaciji';
@@ -363,4 +370,22 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get fleetApproxNote =>
       '„~” označava vrednosti procenjene po prevozniku, ne potvrđene za baš ovo vozilo.';
+
+  @override
+  String get navCoverage => 'Pokrivenost';
+
+  @override
+  String get coverageFilterAll => 'Sve';
+
+  @override
+  String get coverageLegendTitle => 'Gustina prevoza';
+
+  @override
+  String get coverageLegendLow => 'ređe';
+
+  @override
+  String get coverageLegendHigh => 'češće';
+
+  @override
+  String get coverageUnavailable => 'Mapa pokrivenosti trenutno nije dostupna.';
 }

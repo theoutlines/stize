@@ -14,3 +14,10 @@ const String appEnvironment = String.fromEnvironment(
 );
 
 bool get isStaging => appEnvironment == 'staging';
+
+/// How often the client re-polls live data (arrivals, vehicles). Fixed at 30s
+/// to match the backend's per-key SWR cache: polling faster just re-reads the
+/// same cached positions, which the movement heuristic misreads as "stuck", and
+/// slower gives no benefit. Not user-configurable (F9) — keep it here as the
+/// single source of truth, and in sync with the backend cache TTL.
+const Duration kLiveRefreshInterval = Duration(seconds: 30);

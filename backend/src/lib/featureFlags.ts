@@ -11,7 +11,10 @@ import type { Env } from "../env";
 //                       are still hidden.
 //   analytics_show    — the app reveals the (draft) analytics screens to users.
 //                       Turn this on only once the screens are ready.
-export const FEATURE_FLAGS = ["analytics_collect", "analytics_show"] as const;
+//   coverage_map_show — the app reveals the coverage-map tab (a static
+//                       infographic layer). OFF on prod, ON on staging until
+//                       it's ready to ship.
+export const FEATURE_FLAGS = ["analytics_collect", "analytics_show", "coverage_map_show"] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
 export function isFeatureFlag(name: string): name is FeatureFlag {

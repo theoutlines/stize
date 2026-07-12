@@ -55,6 +55,12 @@ final analyticsEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.analyticsShow ?? false,
 );
 
+/// Whether the coverage-map tab is enabled for this user (remote
+/// `coverage_map_show` flag). Defaults to false until config resolves.
+final coverageEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.coverageMapShow ?? false,
+);
+
 /// Rolled-up analytics for one line number (draft transport-analytics feature).
 final lineAnalyticsProvider = FutureProvider.family<LineAnalytics, String>((
   ref,
@@ -158,11 +164,6 @@ class SettingsController extends AsyncNotifier<AppSettings> {
   Future<void> setLocaleCode(String? code) async {
     await ref.read(settingsStoreProvider).saveLocaleCode(code);
     state = AsyncData((state.valueOrNull ?? AppSettings.defaults).copyWith(localeCode: () => code));
-  }
-
-  Future<void> setRefreshIntervalSeconds(int seconds) async {
-    await ref.read(settingsStoreProvider).saveRefreshIntervalSeconds(seconds);
-    state = AsyncData((state.valueOrNull ?? AppSettings.defaults).copyWith(refreshIntervalSeconds: seconds));
   }
 }
 

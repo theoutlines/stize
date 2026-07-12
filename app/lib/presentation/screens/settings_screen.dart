@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 
-const _refreshIntervalOptions = [15, 30, 60];
 const _localeOptions = <String?>[null, 'en', 'ru', 'sr'];
 
 class SettingsScreen extends ConsumerWidget {
@@ -51,15 +50,6 @@ class SettingsScreen extends ConsumerWidget {
               groupValue: settings.themeMode,
               onChanged: (value) => controller.setThemeMode(value!),
             ),
-            const Divider(),
-            ListTile(title: Text(l10n.settingsRefreshInterval)),
-            for (final seconds in _refreshIntervalOptions)
-              RadioListTile<int>.adaptive(
-                title: Text(l10n.settingsRefreshIntervalSeconds(seconds)),
-                value: seconds,
-                groupValue: settings.refreshIntervalSeconds,
-                onChanged: (value) => controller.setRefreshIntervalSeconds(value!),
-              ),
           ],
         ),
       ),

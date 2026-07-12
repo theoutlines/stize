@@ -26,9 +26,13 @@
 
   "searchHint": "Search stops, streets, or lines…",
   "searchNoResults": "Nothing found. Try a different spelling?",
-  "locationDenied": "Location is off. Allow location access to see where you are.",
+  "locationDenied": "Location access is denied. Allow it in your browser or settings to see where you are.",
+  "locationServicesOff": "Location services are off. Turn them on in your device settings.",
+  "locationTimeout": "Couldn't get your location in time. Check your connection and try again.",
+  "locationUnavailable": "Your location is unavailable right now. Try again in a moment.",
   "nearbyStopsTitle": "Nearby stops",
   "nearbyStopsEmpty": "Turn on location, or search for a stop, street, or line above.",
+  "mapZoomInForVehicles": "Zoom in to see live transport",
 
   "stopUpdatedJustNow": "Updated just now",
   "stopUpdatedSecondsAgo": "Updated {seconds}s ago",
@@ -80,9 +84,6 @@
   "settingsThemeSystem": "Match system",
   "settingsThemeLight": "Light",
   "settingsThemeDark": "Dark",
-  "settingsRefreshInterval": "Refresh interval",
-  "settingsRefreshIntervalSeconds": "{seconds}s",
-  "@settingsRefreshIntervalSeconds": {"placeholders": {"seconds": {"type": "int"}}},
 
   "aboutTitle": "About Stigla",
   "aboutDisclaimer": "Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.",
@@ -135,5 +136,10 @@
   "fleetComfortRetro": "retro",
   "fleetComfortOk": "ok",
   "fleetComfortComfy": "comfort",
-  "fleetApproxNote": "“~” marks values estimated for this operator, not confirmed for this exact vehicle."
-}
+  "fleetApproxNote": "“~” marks values estimated for this operator, not confirmed for this exact vehicle.",
+  "navCoverage": "Coverage",
+  "coverageFilterAll": "All",
+  "coverageLegendTitle": "Transit density",
+  "coverageLegendLow": "rarer",
+  "coverageLegendHigh": "busier",
+  "coverageUnavailable": "Coverage map is unavailable right now."}

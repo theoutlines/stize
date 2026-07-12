@@ -37,6 +37,31 @@ describe("gtfsData (against the real built GTFS bundle)", () => {
     expect(shape?.stops.some((s) => s.stop_id === "20529")).toBe(true);
   });
 
+  it("surfaces both directions of a line in search (F8)", async () => {
+    const l79 = (await searchLines(env, "79")).filter((l) => l.line === "79");
+    expect(l79.length).toBe(2);
+    // Opposite directions, distinguished by direction_id and swapped endpoints.
+    expect(new Set(l79.map((l) => l.direction_id))).toEqual(new Set(["0", "1"]));
+    const [a, b] = l79;
+    expect(a.origin).toBe(b.destination);
+    expect(a.destination).toBe(b.origin);
+  });
+
+  it("resolves each direction's own shape by its route key (F8)", async () => {
+    const l79 = (await searchLines(env, "79")).filter((l) => l.line === "79");
+    for (const l of l79) {
+      const shape = await getRouteShape(env, l.route_id);
+      expect(shape?.polyline.length).toBeGreaterThan(0);
+    }
+    // The non-canonical direction is keyed with a suffix, not the bare id.
+    expect(l79.map((l) => l.route_id).sort()).toEqual(["00079", "00079-1"]);
+  });
+
+  it("by-number lookup returns the canonical direction (F8)", async () => {
+    const line = await getLineByNumber(env, "79");
+    expect(line?.route_id).toBe("00079"); // bare id, never a "-1" suffix
+  });
+
   it("returns an empty array for a query that matches nothing", async () => {
     expect(await searchStops(env, "zzzznotarealstopzzzz")).toEqual([]);
     expect(await searchLines(env, "zzzznotarealline")).toEqual([]);

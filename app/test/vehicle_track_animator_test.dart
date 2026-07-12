@@ -131,6 +131,48 @@ void main() {
     expect(h, closeTo(90, 5));
   });
 
+  test('stays on the correct leg of a fold-back route instead of snapping to the parallel one (F1)', () {
+    // Out-and-back: east along lat 44.8000, then back west along lat 44.8003
+    // (~33 m north). The legs run parallel and close, so a fix on the return
+    // leg is geometrically near the outbound leg too.
+    final path = RoutePath.fromLatLon([
+      [44.8000, 20.5000],
+      [44.8000, 20.5200],
+      [44.8003, 20.5200],
+      [44.8003, 20.5000],
+    ]);
+    final animator = VehicleTrackAnimator();
+    // Vehicle starts on the outbound leg, mid-way.
+    animator.syncSamples([
+      VehicleSample(
+        key: 'P1',
+        position: const ll.LatLng(44.8000, 20.5100),
+        line: '79',
+        type: VehicleType.bus,
+        path: path,
+      ),
+    ], 0);
+    final outboundDist = animator.trackFor('P1')!.toDist;
+
+    // It reaches the far end and starts back west on the return leg. Each return
+    // fix is geometrically as close to the outbound leg as to the return leg,
+    // but must be matched to the return leg (monotonically increasing distance).
+    for (final lon in [20.5200, 20.5150, 20.5100, 20.5050]) {
+      animator.syncSamples([
+        VehicleSample(
+          key: 'P1',
+          position: ll.LatLng(44.8003, lon),
+          line: '79',
+          type: VehicleType.bus,
+          path: path,
+        ),
+      ], 1.0);
+    }
+    // On the return leg the distance-along is well past the outbound midpoint —
+    // it did NOT snap back onto the outbound leg.
+    expect(animator.trackFor('P1')!.toDist, greaterThan(outboundDist * 2));
+  });
+
   test('flags a vehicle as stuck only after it sits still for a couple of minutes', () {
     var now = DateTime(2026, 1, 1, 12, 0, 0);
     final animator = VehicleTrackAnimator(clock: () => now);
@@ -204,6 +246,108 @@ void main() {
     final track = animator.trackFor('P1');
     expect(track?.line, '79');
     expect(track?.type, VehicleType.bus);
+  });
+
+  group('hasPendingMotion (idle = zero frames)', () {
+    test('is false for a brand-new, not-yet-moved vehicle', () {
+      final animator = VehicleTrackAnimator();
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
+      // from == to on the first fix — nothing to ease, so nothing to animate.
+      expect(animator.hasPendingMotion, isFalse);
+    });
+
+    test('is false when a fix lands on (essentially) the same spot', () {
+      final animator = VehicleTrackAnimator();
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
+      expect(animator.hasPendingMotion, isFalse);
+    });
+
+    test('is true while a real move is still easing, false once it settles', () {
+      final animator = VehicleTrackAnimator();
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
+      // A fresh fix further along — now there's a leg to play out.
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.81, lon: 20.51)], 0);
+      expect(animator.hasPendingMotion, isTrue);
+
+      // A resync taken at the end of the ease (t=1): current spot == target,
+      // so there's no motion left and the layer can go idle.
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.81, lon: 20.51)], 1.0);
+      expect(animator.hasPendingMotion, isFalse);
+    });
+
+    test('detects motion along a route path', () {
+      final path = RoutePath.fromLatLon([
+        [44.80, 20.50],
+        [44.80, 20.55],
+      ]);
+      final animator = VehicleTrackAnimator();
+      animator.syncSamples([
+        VehicleSample(
+          key: 'P1',
+          position: const ll.LatLng(44.80, 20.50),
+          line: '2',
+          type: VehicleType.tram,
+          path: path,
+        ),
+      ], 0);
+      expect(animator.hasPendingMotion, isFalse);
+
+      // Move ~150 m along the route — a leg to ease, so motion is pending.
+      animator.syncSamples([
+        VehicleSample(
+          key: 'P1',
+          position: const ll.LatLng(44.80, 20.502),
+          line: '2',
+          type: VehicleType.tram,
+          path: path,
+        ),
+      ], 1.0);
+      expect(animator.hasPendingMotion, isTrue);
+    });
+  });
+
+  group('shiftClock (discount time spent backgrounded)', () {
+    test('a dwell spanning a hidden tab does not read as stuck on resume', () {
+      var now = DateTime(2026, 1, 1, 12, 0, 0);
+      final animator = VehicleTrackAnimator(clock: () => now);
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
+      expect(animator.isStuck('P1'), isFalse);
+
+      // The tab is hidden for 10 minutes (no ticks, no polling), then resumes.
+      const hidden = Duration(minutes: 10);
+      now = now.add(hidden);
+      // Without discounting the frozen span the vehicle would now read stuck.
+      expect(animator.isStuck('P1'), isTrue);
+
+      // Resume shifts the "last moved" mark forward by the hidden span, so it's
+      // treated as if no stall-time elapsed while the app was away.
+      animator.shiftClock(hidden);
+      expect(animator.isStuck('P1'), isFalse);
+    });
+
+    test('a genuine stall still trips after the shift', () {
+      var now = DateTime(2026, 1, 1, 12, 0, 0);
+      final animator = VehicleTrackAnimator(clock: () => now);
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
+
+      now = now.add(const Duration(minutes: 5));
+      animator.shiftClock(const Duration(minutes: 5)); // was hidden the whole time
+      expect(animator.isStuck('P1'), isFalse);
+
+      // Now it sits still, foreground, for over two more minutes → stuck.
+      now = now.add(const Duration(minutes: 3));
+      expect(animator.isStuck('P1'), isTrue);
+    });
+
+    test('ignores a non-positive shift', () {
+      var now = DateTime(2026, 1, 1, 12, 0, 0);
+      final animator = VehicleTrackAnimator(clock: () => now);
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
+      final before = animator.trackFor('P1')!.lastMovedAt;
+      animator.shiftClock(Duration.zero);
+      expect(animator.trackFor('P1')!.lastMovedAt, before);
+    });
   });
 
   test('ignores arrivals with no GPS fix', () {

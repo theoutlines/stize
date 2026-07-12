@@ -24,9 +24,13 @@
 
   "searchHint": "Stajalište, ulica ili linija…",
   "searchNoResults": "Ništa nije pronađeno. Probaj drugačiji unos.",
-  "locationDenied": "Lokacija je isključena. Dozvoli pristup da vidiš gde se nalaziš.",
+  "locationDenied": "Pristup lokaciji je odbijen. Dozvoli ga u pregledaču ili podešavanjima da vidiš gde se nalaziš.",
+  "locationServicesOff": "Usluge lokacije su isključene. Uključi ih u podešavanjima uređaja.",
+  "locationTimeout": "Nije uspelo određivanje lokacije na vreme. Proveri vezu i pokušaj ponovo.",
+  "locationUnavailable": "Lokacija trenutno nije dostupna. Pokušaj za trenutak.",
   "nearbyStopsTitle": "Stajališta u blizini",
   "nearbyStopsEmpty": "Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.",
+  "mapZoomInForVehicles": "Uvećaj mapu da vidiš prevoz uživo",
 
   "stopUpdatedJustNow": "Ažurirano upravo sada",
   "stopUpdatedSecondsAgo": "Ažurirano pre {seconds} sek",
@@ -73,8 +77,6 @@
   "settingsThemeSystem": "Prati sistem",
   "settingsThemeLight": "Svetla",
   "settingsThemeDark": "Tamna",
-  "settingsRefreshInterval": "Interval osvežavanja",
-  "settingsRefreshIntervalSeconds": "{seconds} sek",
 
   "aboutTitle": "O Stigla aplikaciji",
   "aboutDisclaimer": "Nezvanična aplikacija. Nije povezana sa JKP Upravljanje javnim prevozom Beograd.",
@@ -127,5 +129,10 @@
   "fleetComfortRetro": "retro",
   "fleetComfortOk": "ok",
   "fleetComfortComfy": "komfor",
-  "fleetApproxNote": "„~” označava vrednosti procenjene po prevozniku, ne potvrđene za baš ovo vozilo."
-}
+  "fleetApproxNote": "„~” označava vrednosti procenjene po prevozniku, ne potvrđene za baš ovo vozilo.",
+  "navCoverage": "Pokrivenost",
+  "coverageFilterAll": "Sve",
+  "coverageLegendTitle": "Gustina prevoza",
+  "coverageLegendLow": "ređe",
+  "coverageLegendHigh": "češće",
+  "coverageUnavailable": "Mapa pokrivenosti trenutno nije dostupna."}

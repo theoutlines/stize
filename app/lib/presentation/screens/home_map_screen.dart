@@ -4,14 +4,17 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart' as geo show Position;
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:maplibre/maplibre.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
+import '../../core/api_config.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
 import '../../core/route_path.dart';
+import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_track_animator.dart';
 import '../../data/location/location_service.dart';
 import '../../domain/models/geocode_result.dart';
@@ -35,33 +38,51 @@ const _distance = ll.Distance();
 const _minStopsZoom = 12.0;
 const _individualZoom = 15.0;
 
-// Live vehicles are only fetched/shown from this zoom up — below it the area is
-// too big, which would both flood the map and fan the source out too widely.
-// Positions refresh on this cadence (and on camera-idle). It matches the
+// Below this zoom the bounded (≤1 km) vehicle fetch covers only a small part of
+// the visible city, so when it comes back empty we show a "zoom in" hint (F5)
+// rather than a blank map. Vehicles are still fetched and shown at every zoom —
+// the fetch is always bounded, so it never fans the source out wider.
+// Positions refresh on a fixed 30s cadence (and on camera-idle), matched to the
 // backend's ~30s per-stop cache: polling faster just re-reads the same cached
 // positions, which the movement heuristic would misread as "stuck".
 const _minVehiclesZoom = 14.0;
-// At/above this zoom vehicles show as full number pills; between [_minVehiclesZoom,
-// this) they render as simple coloured dots (progressive detail, B2).
+// At/above this zoom vehicles show as full number pills; below it they render as
+// simple coloured dots (progressive detail, B2) — including the far-out overview.
 const _vehicleDetailZoom = 15.5;
-const _vehiclesRefreshInterval = Duration(seconds: 30);
+// Fixed 30s cadence, shared with the stop views, matched to the backend cache.
+const _vehiclesRefreshInterval = kLiveRefreshInterval;
 const _vehiclesMaxRadius = 1000.0;
+
+// Short ease so the "my position" marker glides to each fresh GPS fix instead
+// of snapping. Fixes are frequent (distance-filtered ~8 m), so this stays well
+// under the typical gap between them; linear reads as constant travel speed.
+const _meEaseDuration = Duration(milliseconds: 700);
+// If the active screen hasn't seen a fix for this long, the position stream is
+// assumed to have silently stalled (a known web / iOS-Safari quirk after the
+// tab regains visibility) and is recreated. Only applies while active.
+const _meStaleThreshold = Duration(seconds: 15);
 
 /// Full-screen MapLibre + MapTiler vector map with a floating universal-search
 /// bar. Stops load for the visible viewport (independent of geolocation) and
 /// are clustered when zoomed out; on entry the map recenters on the user.
 class HomeMapScreen extends ConsumerStatefulWidget {
-  const HomeMapScreen({super.key, this.onOpenDrawer});
+  const HomeMapScreen({super.key, this.onOpenDrawer, this.active = true});
 
   /// Opens the app's navigation drawer (owned by the root scaffold).
   final VoidCallback? onOpenDrawer;
+
+  /// Whether this screen is the one currently visible in the root
+  /// [IndexedStack]. Both section pages stay mounted, so the map needs this to
+  /// know when to pause the live location stream (don't drain the battery while
+  /// the user is on Ideas).
+  final bool active;
 
   @override
   ConsumerState<HomeMapScreen> createState() => _HomeMapScreenState();
 }
 
 class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   MapController? _controller;
   ColorScheme _scheme = const ColorScheme.light();
   Brightness? _styleBrightness;
@@ -76,18 +97,48 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // The marker layer is heavy to re-lay-out (each vehicle is a platform-tracked
   // widget), so instead of rebuilding it every animation frame (~60fps) we
   // sample the eased positions on a slower cadence — smooth enough for a slow
-  // vehicle, far cheaper, and it stops starving map pan/zoom gestures.
-  Timer? _vehRepaintTimer;
+  // vehicle, far cheaper, and it stops starving map pan/zoom gestures. It runs
+  // *only while the ease is actually in flight* (started when a fix brings
+  // motion, stopped when it settles) so a map of stationary vehicles renders
+  // zero frames instead of ticking forever (thermal fix — "idle = 0 frames").
+  Timer? _vehSampler;
   final ValueNotifier<double> _vehTick = ValueNotifier<double>(1);
+  // Backgrounded (tab hidden / app paused): all animation and polling stop, and
+  // we remember when so the frozen span can be discounted from the "stuck"
+  // heuristic on resume.
+  bool _paused = false;
+  DateTime? _hiddenAt;
   int _vehiclesRequestSeq = 0;
   bool _hasVehicles = false;
   ll.LatLng? _lastVehiclesCenter;
+  // Last settled camera zoom, tracked so the build can show the "zoom in to see
+  // transport" hint at far-out zoom when the bounded area has no vehicles (F5).
+  double _currentZoom = 15;
 
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
   Timer? _searchDebounce;
 
-  Geographic? _myPosition;
+  // ---- User's own live position --------------------------------------------
+  // The marker is driven by a continuous position stream (distance-filtered,
+  // not tied to the transport-polling timer). It eases toward each fresh fix
+  // over [_meEaseDuration]; between fixes the ticker is idle (no repaints).
+  late final AnimationController _meAnim;
+  ll.LatLng? _meFrom; // where the marker eased from
+  ll.LatLng? _meTo; // the latest fix (null = no marker shown)
+  StreamSubscription<geo.Position>? _positionSub;
+  DateTime? _subscribedAt;
+  DateTime? _lastFixAt;
+  // The next fix should recenter the camera on the user (initial locate / the
+  // recenter button). Steady stream fixes only move the marker, never the
+  // camera, so they don't fight the user's panning.
+  bool _pendingRecenter = false;
+  // Permission was refused/revoked this session: hide the marker, stop the
+  // stream, and don't re-prompt on our own — only the recenter button (a real
+  // user gesture) asks again.
+  bool _locationDenied = false;
+  bool _tabActive = true; // is the map the selected IndexedStack child
+
   // A camera target that resolved (e.g. from geolocation) before the map
   // controller was ready; applied in [_onMapCreated].
   Geographic? _pendingCenter;
@@ -131,36 +182,131 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _vehAnim = AnimationController(
       vsync: this,
       duration: _vehiclesRefreshInterval,
     );
-    // Push the current eased position into the marker layer ~15×/s (not every
-    // frame) — see [_vehTick].
-    _vehRepaintTimer = Timer.periodic(const Duration(milliseconds: 66), (_) {
-      if (_vehTick.value != _vehAnim.value) _vehTick.value = _vehAnim.value;
-    });
+    // Stop sampling the eased positions the moment the ease has played out, so
+    // an idle (all-settled) layer renders nothing until the next fix.
+    _vehAnim.addStatusListener(_onVehAnimStatus);
     // Refresh vehicle positions on a steady cadence even if the user isn't
     // panning; the fetch itself is zoom-gated and viewport-bounded.
-    _vehiclesTimer = Timer.periodic(
-      _vehiclesRefreshInterval,
-      (_) => _loadVehiclesForVisibleArea(force: true),
-    );
+    _startVehiclesTimer();
+    _tabActive = widget.active;
+    _meAnim = AnimationController(vsync: this, duration: _meEaseDuration);
     // Start locating immediately, in parallel with the map creating itself, so
     // an already-granted user is centered the moment either finishes.
-    _startLocation();
+    _initLocation();
   }
 
   @override
+  void didUpdateWidget(covariant HomeMapScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The user switched between the map and Ideas in the root IndexedStack:
+    // pause the stream when the map is hidden, resume when it's shown again.
+    if (widget.active != _tabActive) {
+      _tabActive = widget.active;
+      _reconcileLocationStream();
+    }
+  }
+
+  bool _appResumed = true;
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _positionSub?.cancel();
+    _meAnim.dispose();
     _searchDebounce?.cancel();
     _vehiclesTimer?.cancel();
-    _vehRepaintTimer?.cancel();
+    _stopVehSampler();
+    _vehAnim.removeStatusListener(_onVehAnimStatus);
     _vehTick.dispose();
     _vehAnim.dispose();
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  // ---- App lifecycle (thermal: zero work while hidden) ----------------------
+
+  /// Pause every recurring cost when the tab/app goes to the background and
+  /// resume on return. Browsers already throttle the animation ticker when a
+  /// tab is hidden, but the position ease, the marker-layer sampler and the
+  /// 30s poll are all timer-driven and would otherwise keep firing (and, on
+  /// resume, mis-flag every vehicle as "stuck" for the time spent away). The
+  /// user's own live-position stream is paused/resumed on the same signal.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final resumed = state == AppLifecycleState.resumed;
+    if (resumed) {
+      _resumeActivity();
+    } else {
+      _pauseActivity();
+    }
+    // Location stream reconcile — only on an actual resumed-state change.
+    if (resumed != _appResumed) {
+      _appResumed = resumed;
+      _reconcileLocationStream();
+    }
+  }
+
+  void _pauseActivity() {
+    if (_paused) return;
+    _paused = true;
+    _hiddenAt = DateTime.now();
+    _vehAnim.stop();
+    _stopVehSampler();
+    _vehiclesTimer?.cancel();
+    _vehiclesTimer = null;
+  }
+
+  void _resumeActivity() {
+    if (!_paused) return;
+    _paused = false;
+    final hiddenAt = _hiddenAt;
+    if (hiddenAt != null) {
+      // Discount the time spent hidden so a vehicle isn't declared stuck just
+      // because the app was in the background across its dwell.
+      _vehAnimator.shiftClock(DateTime.now().difference(hiddenAt));
+      _hiddenAt = null;
+    }
+    _startVehiclesTimer();
+    _loadVehiclesForVisibleArea(force: true);
+  }
+
+  void _startVehiclesTimer() {
+    _vehiclesTimer?.cancel();
+    _vehiclesTimer = Timer.periodic(
+      _vehiclesRefreshInterval,
+      (_) => _loadVehiclesForVisibleArea(force: true),
+    );
+  }
+
+  // ---- Vehicle-layer ticker (runs only while a position ease is in flight) --
+
+  void _startVehSampler() {
+    // Push the current eased position into the marker layer ~15×/s (not every
+    // frame) — smooth enough for a slow vehicle, far cheaper than 60fps.
+    _vehSampler ??= Timer.periodic(const Duration(milliseconds: 66), (_) {
+      if (_vehTick.value != _vehAnim.value) _vehTick.value = _vehAnim.value;
+    });
+  }
+
+  void _stopVehSampler() {
+    _vehSampler?.cancel();
+    _vehSampler = null;
+  }
+
+  void _onVehAnimStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed ||
+        status == AnimationStatus.dismissed) {
+      _stopVehSampler();
+      // One final rebuild so the layer lands on the settled positions and the
+      // markers' halos drop out of their breathing state (animate == false).
+      if (mounted) setState(() {});
+    }
   }
 
   // ---- Map lifecycle --------------------------------------------------------
@@ -218,58 +364,136 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   // ---- Location -------------------------------------------------------------
 
-  /// Locate the user and recenter on them.
-  ///
-  /// On entry ([requestPermission] false) we never pop the OS prompt — browsers
-  /// block a geolocation request that isn't tied to a user gesture anyway — so
-  /// we only auto-center when access is *already* granted (instantly via the
-  /// last-known fix, then refined). The recenter button passes
-  /// [requestPermission] true so the prompt fires from a real tap, and reports
-  /// back if access is denied instead of failing silently.
-  Future<void> _startLocation({bool requestPermission = false}) async {
+  /// On entry we never pop the OS prompt — browsers block a geolocation request
+  /// that isn't tied to a user gesture anyway — so we only start locating when
+  /// access is *already* granted: center instantly on the last-known fix, then
+  /// let the live stream take over. The recenter button ([_recenterOnMe]) is the
+  /// only place we request permission, from a real tap.
+  Future<void> _initLocation() async {
     final service = ref.read(locationServiceProvider);
-    if (!requestPermission && !await service.isPermissionGranted()) return;
-
+    if (!await service.isPermissionGranted()) return;
+    // The first fix (cached or streamed) recenters the camera on the user.
+    _pendingRecenter = true;
     final cached = await service.lastKnownIfGranted();
-    if (cached != null) {
-      _centerOnMe(
-        Geographic(lon: cached.longitude, lat: cached.latitude),
-        animate: false,
-      );
+    if (cached != null && mounted) {
+      _onFix(ll.LatLng(cached.latitude, cached.longitude), ease: false);
     }
-    try {
-      final fresh = await service.getCurrentPosition();
-      _centerOnMe(
-        Geographic(lon: fresh.longitude, lat: fresh.latitude),
-        animate: cached != null,
-      );
-    } on LocationUnavailable {
-      if (requestPermission) _showLocationDenied();
-    } catch (_) {
-      if (requestPermission) _showLocationDenied();
+    _reconcileLocationStream();
+  }
+
+  /// Applies a fresh position fix: eases the marker toward it (or snaps on the
+  /// first one), records the time (feeds the staleness watchdog), and — only
+  /// when a recenter was requested — moves the camera onto it.
+  void _onFix(ll.LatLng point, {bool ease = true}) {
+    if (!mounted) return;
+    _lastFixAt = DateTime.now();
+    _locationDenied = false;
+    setState(() {
+      if (ease && _meTo != null) {
+        _meFrom = _displayedMe ?? _meTo;
+        _meTo = point;
+        _meAnim.forward(from: 0);
+      } else {
+        // First fix (or an explicit snap): no ease, jump straight there.
+        _meFrom = point;
+        _meTo = point;
+        _meAnim.value = 1;
+      }
+    });
+    if (_pendingRecenter) {
+      _pendingRecenter = false;
+      final geo = Geographic(lon: point.longitude, lat: point.latitude);
+      final controller = _controller;
+      if (controller == null) {
+        _pendingCenter = geo;
+        _pendingZoom = 16;
+      } else {
+        controller.moveCamera(center: geo, zoom: 16);
+      }
     }
   }
 
-  void _showLocationDenied() {
+  /// The marker's currently-drawn position (eased between [_meFrom] and
+  /// [_meTo]); null when there's no fix to show.
+  ll.LatLng? get _displayedMe {
+    final to = _meTo;
+    if (to == null) return null;
+    return lerpLatLng(_meFrom ?? to, to, _meAnim.value);
+  }
+
+  /// Brings the position stream into line with the current lifecycle: run it
+  /// only while the map is the visible tab *and* the app is foregrounded and
+  /// access isn't denied; otherwise pause it. On becoming active again a stream
+  /// that has silently stalled (web / iOS Safari) is recreated.
+  void _reconcileLocationStream() {
+    final shouldStream = _tabActive && _appResumed && !_locationDenied;
+    if (!shouldStream) {
+      _stopLocationStream();
+      return;
+    }
+    if (_positionSub == null) {
+      _startLocationStream();
+    } else if (shouldResubscribe(
+      active: true,
+      lastFixAt: _lastFixAt,
+      subscribedAt: _subscribedAt!,
+      now: DateTime.now(),
+      staleThreshold: _meStaleThreshold,
+    )) {
+      _startLocationStream();
+    }
+  }
+
+  void _startLocationStream() {
+    final service = ref.read(locationServiceProvider);
+    _positionSub?.cancel();
+    _subscribedAt = DateTime.now();
+    _positionSub = service.positionStream().listen(
+      (p) => _onFix(ll.LatLng(p.latitude, p.longitude)),
+      onError: _onLocationStreamError,
+      cancelOnError: false,
+    );
+  }
+
+  void _stopLocationStream() {
+    _positionSub?.cancel();
+    _positionSub = null;
+  }
+
+  void _onLocationStreamError(Object error) {
+    // Permission revoked (or services switched off) mid-stream: hide the marker
+    // quietly and stop. Never re-prompt on our own — the recenter button is the
+    // only place we ask again. Other errors are transient; keep listening.
+    final revoked =
+        error is LocationUnavailable &&
+        (error.reason == LocationUnavailableReason.permissionDenied ||
+            error.reason == LocationUnavailableReason.permissionDeniedForever ||
+            error.reason == LocationUnavailableReason.serviceDisabled);
+    if (!revoked) return;
+    _stopLocationStream();
+    if (!mounted) return;
+    setState(() {
+      _locationDenied = true;
+      _meFrom = null;
+      _meTo = null;
+    });
+  }
+
+  /// Surface the *real* reason a fix failed, so a timeout or a momentary
+  /// unavailability isn't mislabelled as "location is off / access denied" (F3a).
+  void _showLocationMessage(LocationUnavailableReason reason) {
     if (!mounted) return;
     final l10n = AppLocalizations.of(context);
+    final message = switch (reason) {
+      LocationUnavailableReason.serviceDisabled => l10n.locationServicesOff,
+      LocationUnavailableReason.permissionDenied ||
+      LocationUnavailableReason.permissionDeniedForever => l10n.locationDenied,
+      LocationUnavailableReason.timeout => l10n.locationTimeout,
+      LocationUnavailableReason.positionUnavailable => l10n.locationUnavailable,
+    };
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.locationDenied)));
-  }
-
-  void _centerOnMe(Geographic point, {required bool animate}) {
-    if (!mounted) return;
-    setState(() => _myPosition = point);
-    final controller = _controller;
-    if (controller == null) {
-      _pendingCenter = point;
-      _pendingZoom = 16;
-    } else if (animate) {
-      controller.animateCamera(center: point, zoom: 16);
-    } else {
-      controller.moveCamera(center: point, zoom: 16);
-    }
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _recenterOnMe() async {
@@ -278,11 +502,29 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // button reliably moves the camera to the user on every tap, and a stale
     // cached position gets corrected rather than leaving the button feeling
     // dead (X3).
-    final me = _myPosition;
+    final me = _meTo;
     if (me != null) {
-      await _controller?.animateCamera(center: me, zoom: 16);
+      await _controller?.animateCamera(
+        center: Geographic(lon: me.longitude, lat: me.latitude),
+        zoom: 16,
+      );
     }
-    await _startLocation(requestPermission: true);
+    // A real user gesture — allowed to prompt. One fresh fix (also fires the OS
+    // prompt on first use) gives an instant recenter; the live stream then keeps
+    // the marker tracking.
+    final service = ref.read(locationServiceProvider);
+    try {
+      final fresh = await service.getCurrentPosition();
+      _locationDenied = false;
+      _pendingRecenter = true;
+      _onFix(ll.LatLng(fresh.latitude, fresh.longitude), ease: me != null);
+      _reconcileLocationStream();
+    } on LocationUnavailable catch (e) {
+      _showLocationMessage(e.reason);
+    } catch (_) {
+      // An unclassified failure: report it as "unavailable", never as "off".
+      _showLocationMessage(LocationUnavailableReason.positionUnavailable);
+    }
   }
 
   // ---- Stops for the visible area ------------------------------------------
@@ -443,16 +685,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final controller = _controller;
     if (controller == null || !mounted) return;
     final camera = controller.getCamera();
-    // Zoom-gated: clear vehicles when zoomed too far out (declutter + spare the
-    // source a wide fan-out).
-    if (camera.zoom < _minVehiclesZoom) {
-      if (_hasVehicles) {
-        _vehAnimator.clear(); // hard reset — no grace period on a zoom-out
-        _lastVehiclesCenter = null;
-        setState(() => _hasVehicles = false);
-      }
-      return;
+    if (_currentZoom != camera.zoom) {
+      setState(() => _currentZoom = camera.zoom);
     }
+    // No zoom gate on fetching (F5): the request is always bounded to ≤1 km /
+    // ≤12 stops (see _vehiclesMaxRadius and the backend fan-out cap) regardless
+    // of zoom, so a zoomed-out view never fans the source out wider. Keeping it
+    // live means the city overview still shows the (sparse) vehicles already
+    // around the viewport as dots instead of a blank map; the marker layer
+    // degrades pills → dots below _vehicleDetailZoom on its own. When even the
+    // bounded area is empty, a hint tells the user to zoom in (see _zoomHint).
     final center = ll.LatLng(camera.center.lat, camera.center.lon);
     final radius = _radiusForVisibleArea(camera).clamp(400.0, _vehiclesMaxRadius);
     if (!force && _lastVehiclesCenter != null) {
@@ -484,7 +726,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             path: _shapeCache[v.line],
           ),
       ], _vehAnim.value);
-      _vehAnim.forward(from: 0);
+      // Only spin the ease (and the sampler) when a fix actually brings motion
+      // and we're in the foreground; otherwise settle instantly so a screen of
+      // stationary vehicles renders zero frames until the next real move.
+      if (!_paused && _vehAnimator.hasPendingMotion) {
+        _vehAnim.forward(from: 0);
+        _startVehSampler();
+      } else {
+        _stopVehSampler();
+        _vehAnim.value = 1; // land straight on the latest fixes, no per-frame ease
+      }
       // Reflect the animator's set (which may still hold briefly-missing
       // vehicles during their grace period), not just this response (X6).
       setState(() => _hasVehicles = _vehAnimator.tracks.isNotEmpty);
@@ -518,7 +769,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// Highlight a line's route on this same map (hiding the rest) instead of
   /// pushing a separate screen — driven by a vehicle tap or a favourite-line
   /// tap. Closing the focus panel restores normal browsing.
-  Future<void> _openVehicleLine(String line) async {
+  ///
+  /// The camera deliberately stays where the user left it (F2): tapping a
+  /// vehicle must not yank them out to a whole-route fitBounds. The route is
+  /// drawn as a highlighted layer, so panning/zooming out reveals all of it;
+  /// [focusOn] (the tapped vehicle's position) only triggers a gentle pan when
+  /// the vehicle sits at/off the viewport edge, never a zoom change.
+  Future<void> _openVehicleLine(String line, {ll.LatLng? focusOn}) async {
     _clearSearch();
     try {
       final shape = await ref
@@ -550,7 +807,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           stops: routeStops,
         );
       });
-      _fitToPolyline(shape.polyline);
+      if (focusOn != null) _nudgeIntoView(focusOn);
       // Refresh the vehicle set so the focused line's buses show right away.
       _loadVehiclesForVisibleArea(force: true);
     } catch (_) {
@@ -558,44 +815,33 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
   }
 
+  /// Gently pan the camera (keeping the current zoom) so [point] is comfortably
+  /// on screen, but only when it's near/off the viewport edge — a selected
+  /// vehicle that's already well within view isn't moved at all (F2).
+  void _nudgeIntoView(ll.LatLng point) {
+    final controller = _controller;
+    if (controller == null) return;
+    final geo = Geographic(lon: point.longitude, lat: point.latitude);
+    final size = MediaQuery.of(context).size;
+    // Keep clear of the top buttons and the bottom line panel.
+    const margin = 96.0;
+    try {
+      final screen = controller.toScreenLocation(geo);
+      final inside =
+          screen.dx >= margin &&
+          screen.dx <= size.width - margin &&
+          screen.dy >= margin &&
+          screen.dy <= size.height - margin;
+      if (inside) return;
+    } catch (_) {
+      // If the projection isn't available, fall through and recenter.
+    }
+    controller.animateCamera(center: geo, zoom: controller.getCamera().zoom);
+  }
+
   void _clearFocus() {
     if (_focus == null) return;
     setState(() => _focus = null);
-  }
-
-  /// Frame the camera on a route's bounding box (rough web-mercator fit for the
-  /// current viewport), so focusing a line shows the whole trace.
-  void _fitToPolyline(List<List<double>> poly) {
-    final controller = _controller;
-    if (controller == null || poly.isEmpty) return;
-    var minLat = poly.first[0], maxLat = poly.first[0];
-    var minLon = poly.first[1], maxLon = poly.first[1];
-    for (final p in poly) {
-      minLat = math.min(minLat, p[0]);
-      maxLat = math.max(maxLat, p[0]);
-      minLon = math.min(minLon, p[1]);
-      maxLon = math.max(maxLon, p[1]);
-    }
-    final centerLat = (minLat + maxLat) / 2;
-    final centerLon = (minLon + maxLon) / 2;
-    final cosLat = math.cos(centerLat * math.pi / 180).abs().clamp(0.1, 1.0);
-    // Screen-equivalent degree span: latitude is mercator-stretched by 1/cos.
-    final span = math.max(
-      (maxLon - minLon).abs(),
-      (maxLat - minLat).abs() / cosLat,
-    );
-    final width = MediaQuery.of(context).size.width;
-    double zoom;
-    if (span <= 1e-6) {
-      zoom = 15;
-    } else {
-      // Fit `span` degrees across the viewport, then pad out a little.
-      zoom = (math.log(360 * width / (256 * span)) / math.ln2) - 0.4;
-    }
-    controller.animateCamera(
-      center: Geographic(lon: centerLon, lat: centerLat),
-      zoom: zoom.clamp(kCityMinZoom, 16.0),
-    );
   }
 
   // ---- Taps -----------------------------------------------------------------
@@ -736,9 +982,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   }
 
   Future<void> _openLine(LineInfo line) async {
+    // Fetch by the entry's route/direction key, not by number, so the exact
+    // direction the user tapped in the results opens (F8).
     final shape = await ref
         .read(linesRepositoryProvider)
-        .getShapeByLineNumber(line.line);
+        .getShapeByRouteId(line.routeId);
     if (!mounted) return;
     _clearSearch();
     final routeStops = shape.stops
@@ -827,16 +1075,27 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   children: [
                     const CompactAttribution(),
                     // "My position" as a widget marker so it survives every zoom
-                    // level (X2), not a cullable GL symbol.
-                    if (_myPosition != null)
-                      WidgetLayer(
-                        markers: [
-                          Marker(
-                            point: _myPosition!,
-                            size: MeLocationDot.markerSize,
-                            child: const MeLocationDot(),
-                          ),
-                        ],
+                    // level (X2), not a cullable GL symbol. Wrapped in an
+                    // AnimatedBuilder so it eases to each fresh fix; the ticker
+                    // is idle between fixes, so this only repaints while moving.
+                    if (_meTo != null)
+                      AnimatedBuilder(
+                        animation: _meAnim,
+                        builder: (context, _) {
+                          final me = _displayedMe ?? _meTo!;
+                          return WidgetLayer(
+                            markers: [
+                              Marker(
+                                point: Geographic(
+                                  lon: me.longitude,
+                                  lat: me.latitude,
+                                ),
+                                size: MeLocationDot.markerSize,
+                                child: const MeLocationDot(),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     // Live vehicles, rebuilt on the throttled tick so their eased
                     // positions update; only this subtree repaints.
@@ -855,6 +1114,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             const SizedBox.expand(),
           // Round action buttons at the top: menu (left), recenter (right).
           _topButtons(theme),
+          // Far-out zoom with no vehicles in the bounded area: nudge the user to
+          // zoom in rather than leaving them staring at a blank map (F5).
+          if (_focus == null && _currentZoom < _minVehiclesZoom && !_hasVehicles)
+            _zoomHint(l10n, theme),
           // Bottom UI: normally the search + favourites bar; while a line is
           // focused, a compact line panel with a close button instead.
           if (_focus == null)
@@ -863,6 +1126,45 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             _focusPanel(theme),
         ],
       ),
+      ),
+    );
+  }
+
+  /// A small top-centered hint shown at far-out zoom when no live vehicles are
+  /// in the bounded fetch area — the "zoom in to see transport" nudge (F5).
+  Widget _zoomHint(AppLocalizations l10n, ThemeData theme) {
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          // Clear of the top buttons.
+          padding: const EdgeInsets.only(top: 72),
+          child: PointerInterceptor(
+            child: Material(
+              elevation: 2,
+              borderRadius: BorderRadius.circular(20),
+              color: theme.colorScheme.surface.withValues(alpha: 0.92),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.zoom_in,
+                      size: 18,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.mapZoomInForVehicles,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1038,14 +1340,34 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final zoom = _controller?.getCamera().zoom ?? 15.0;
     final compact = zoom < _vehicleDetailZoom;
     final focusLine = _focus?.line;
-    final markers = <Marker>[];
+    // Breathing halos animate only while the layer is live (a fix is easing);
+    // once settled they rest, so an idle map holds at zero frames (thermal).
+    final live = _vehAnim.isAnimating;
+
+    // Collect the visible vehicles first so we can detect and spread any that
+    // land on (nearly) the same spot.
+    final keys = <String>[];
+    final tracks = <VehicleTrack>[];
+    final positions = <ll.LatLng>[];
     for (final entry in _vehAnimator.currentPositions(t)) {
-      final key = entry.key;
-      final track = _vehAnimator.trackFor(key);
+      final track = _vehAnimator.trackFor(entry.key);
       if (track == null) continue;
       // When a line is focused, show only that line's vehicles.
       if (focusLine != null && track.line != focusLine) continue;
-      final pos = entry.value;
+      keys.add(entry.key);
+      tracks.add(track);
+      positions.add(entry.value);
+    }
+
+    // Spiderfy coincident vehicles so several at one point read as several,
+    // not one blob of overlapping pills and crossed arrows (F4).
+    final placed = _spiderfy(positions, zoom);
+
+    final markers = <Marker>[];
+    for (var i = 0; i < keys.length; i++) {
+      final key = keys[i];
+      final track = tracks[i];
+      final pos = placed[i];
       final opacity = _vehAnimator.opacityFor(key);
       final marker = VehicleMarker(
         key: ValueKey(key),
@@ -1056,7 +1378,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         heading: compact ? null : _vehAnimator.headingAt(key, t),
         stuck: _vehAnimator.isStuck(key),
         compact: compact,
-        onTap: () => _openVehicleLine(track.line),
+        animate: live,
+        onTap: () => _openVehicleLine(track.line, focusOn: pos),
       );
       markers.add(
         Marker(
@@ -1072,6 +1395,43 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       );
     }
     return markers;
+  }
+
+  /// Fans out markers that share (almost) the same coordinate onto a small
+  /// circle so co-located vehicles are each visible, instead of being drawn on
+  /// top of one another (F4). Non-coincident markers are returned unchanged.
+  List<ll.LatLng> _spiderfy(List<ll.LatLng> positions, double zoom) {
+    if (positions.length < 2) return positions;
+    // Group by a ~1 m grid so only genuinely-coincident vehicles are spread.
+    final groups = <String, List<int>>{};
+    for (var i = 0; i < positions.length; i++) {
+      final p = positions[i];
+      final key =
+          '${p.latitude.toStringAsFixed(5)}:${p.longitude.toStringAsFixed(5)}';
+      groups.putIfAbsent(key, () => []).add(i);
+    }
+    final out = List<ll.LatLng>.of(positions);
+    // Screen-space spread turned into metres at the current zoom, so the fan is
+    // a constant on-screen size regardless of how far in/out the user is.
+    const spreadPx = 20.0;
+    final metersPerPixel =
+        156543.03392 * math.cos(_belgradeCenter.lat * math.pi / 180) /
+        math.pow(2, zoom);
+    final radiusM = spreadPx * metersPerPixel;
+    for (final idxs in groups.values) {
+      if (idxs.length < 2) continue;
+      for (var j = 0; j < idxs.length; j++) {
+        final base = positions[idxs[j]];
+        final angle = 2 * math.pi * j / idxs.length;
+        final dLat = radiusM * math.sin(angle) / 111320.0;
+        final dLon =
+            radiusM *
+            math.cos(angle) /
+            (111320.0 * math.cos(base.latitude * math.pi / 180));
+        out[idxs[j]] = ll.LatLng(base.latitude + dLat, base.longitude + dLon);
+      }
+    }
+    return out;
   }
 
   List<Layer> _buildLayers(List<Stop> favoriteStops) {

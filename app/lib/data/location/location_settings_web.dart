@@ -10,3 +10,13 @@ LocationSettings buildLocationSettings() => WebSettings(
   maximumAge: const Duration(minutes: 5),
   timeLimit: const Duration(seconds: 12),
 );
+
+/// The live "my position" stream on web: high accuracy, distance-filtered to
+/// ~8 m so `watchPosition` reports genuine movement. `maximumAge` is zero — a
+/// live stream wants fresh fixes, not a cached one — and there is no
+/// `timeLimit`, so a slow-to-move user doesn't abort the stream.
+LocationSettings buildStreamLocationSettings() => WebSettings(
+  accuracy: LocationAccuracy.high,
+  distanceFilter: 8,
+  maximumAge: Duration.zero,
+);

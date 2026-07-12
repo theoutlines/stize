@@ -17,7 +17,8 @@ class AppDrawer extends StatelessWidget {
     required this.onSelect,
   });
 
-  /// 0 = Map, 1 = Ideas. Settings and About are not indexed pages.
+  /// 0 = Map, 1 = Ideas, 2 = Coverage (when its flag is on). Settings and About
+  /// are not indexed pages.
   final int currentIndex;
   final ValueChanged<int> onSelect;
 
@@ -69,6 +70,23 @@ class AppDrawer extends StatelessWidget {
                     label: l10n.navIdeas,
                     selected: currentIndex == 1,
                     onTap: () => select(1),
+                  ),
+                  // Coverage map (infographic) — shown only when the remote
+                  // `coverage_map_show` flag is on. It's the third IndexedStack
+                  // section (index 2), which only exists while the flag is on.
+                  Consumer(
+                    builder: (context, ref, _) {
+                      if (!ref.watch(coverageEnabledProvider)) {
+                        return const SizedBox.shrink();
+                      }
+                      return _NavTile(
+                        icon: Icons.hub_outlined,
+                        selectedIcon: Icons.hub,
+                        label: l10n.navCoverage,
+                        selected: currentIndex == 2,
+                        onTap: () => select(2),
+                      );
+                    },
                   ),
                   _NavTile(
                     icon: Icons.star_outline,
