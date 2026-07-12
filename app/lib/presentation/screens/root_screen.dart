@@ -43,7 +43,7 @@ class _RootScreenState extends ConsumerState<RootScreen> {
       body: IndexedStack(
         index: _index,
         children: [
-          HomeMapScreen(onOpenDrawer: _openDrawer),
+          HomeMapScreen(onOpenDrawer: _openDrawer, active: _index == 0),
           IdeasScreen(onOpenDrawer: _openDrawer),
         ],
       ),

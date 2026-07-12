@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart' as geo show Position;
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:maplibre/maplibre.dart';
@@ -13,6 +14,7 @@ import '../../core/api_config.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
 import '../../core/route_path.dart';
+import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_track_animator.dart';
 import '../../data/location/location_service.dart';
 import '../../domain/models/geocode_result.dart';
@@ -51,21 +53,36 @@ const _vehicleDetailZoom = 15.5;
 const _vehiclesRefreshInterval = kLiveRefreshInterval;
 const _vehiclesMaxRadius = 1000.0;
 
+// Short ease so the "my position" marker glides to each fresh GPS fix instead
+// of snapping. Fixes are frequent (distance-filtered ~8 m), so this stays well
+// under the typical gap between them; linear reads as constant travel speed.
+const _meEaseDuration = Duration(milliseconds: 700);
+// If the active screen hasn't seen a fix for this long, the position stream is
+// assumed to have silently stalled (a known web / iOS-Safari quirk after the
+// tab regains visibility) and is recreated. Only applies while active.
+const _meStaleThreshold = Duration(seconds: 15);
+
 /// Full-screen MapLibre + MapTiler vector map with a floating universal-search
 /// bar. Stops load for the visible viewport (independent of geolocation) and
 /// are clustered when zoomed out; on entry the map recenters on the user.
 class HomeMapScreen extends ConsumerStatefulWidget {
-  const HomeMapScreen({super.key, this.onOpenDrawer});
+  const HomeMapScreen({super.key, this.onOpenDrawer, this.active = true});
 
   /// Opens the app's navigation drawer (owned by the root scaffold).
   final VoidCallback? onOpenDrawer;
+
+  /// Whether this screen is the one currently visible in the root
+  /// [IndexedStack]. Both section pages stay mounted, so the map needs this to
+  /// know when to pause the live location stream (don't drain the battery while
+  /// the user is on Ideas).
+  final bool active;
 
   @override
   ConsumerState<HomeMapScreen> createState() => _HomeMapScreenState();
 }
 
 class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   MapController? _controller;
   ColorScheme _scheme = const ColorScheme.light();
   Brightness? _styleBrightness;
@@ -94,7 +111,26 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   final _focusNode = FocusNode();
   Timer? _searchDebounce;
 
-  Geographic? _myPosition;
+  // ---- User's own live position --------------------------------------------
+  // The marker is driven by a continuous position stream (distance-filtered,
+  // not tied to the transport-polling timer). It eases toward each fresh fix
+  // over [_meEaseDuration]; between fixes the ticker is idle (no repaints).
+  late final AnimationController _meAnim;
+  ll.LatLng? _meFrom; // where the marker eased from
+  ll.LatLng? _meTo; // the latest fix (null = no marker shown)
+  StreamSubscription<geo.Position>? _positionSub;
+  DateTime? _subscribedAt;
+  DateTime? _lastFixAt;
+  // The next fix should recenter the camera on the user (initial locate / the
+  // recenter button). Steady stream fixes only move the marker, never the
+  // camera, so they don't fight the user's panning.
+  bool _pendingRecenter = false;
+  // Permission was refused/revoked this session: hide the marker, stop the
+  // stream, and don't re-prompt on our own — only the recenter button (a real
+  // user gesture) asks again.
+  bool _locationDenied = false;
+  bool _tabActive = true; // is the map the selected IndexedStack child
+
   // A camera target that resolved (e.g. from geolocation) before the map
   // controller was ready; applied in [_onMapCreated].
   Geographic? _pendingCenter;
@@ -153,13 +189,43 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _vehiclesRefreshInterval,
       (_) => _loadVehiclesForVisibleArea(force: true),
     );
+    _tabActive = widget.active;
+    _meAnim = AnimationController(vsync: this, duration: _meEaseDuration);
+    // Pause/resume the position stream with the app lifecycle (background,
+    // tab-hidden). On web this also covers `visibilitychange`, which Flutter
+    // maps to the hidden/inactive lifecycle states.
+    WidgetsBinding.instance.addObserver(this);
     // Start locating immediately, in parallel with the map creating itself, so
     // an already-granted user is centered the moment either finishes.
-    _startLocation();
+    _initLocation();
   }
 
   @override
+  void didUpdateWidget(covariant HomeMapScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The user switched between the map and Ideas in the root IndexedStack:
+    // pause the stream when the map is hidden, resume when it's shown again.
+    if (widget.active != _tabActive) {
+      _tabActive = widget.active;
+      _reconcileLocationStream();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final resumed = state == AppLifecycleState.resumed;
+    if (resumed == _appResumed) return;
+    _appResumed = resumed;
+    _reconcileLocationStream();
+  }
+
+  bool _appResumed = true;
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _positionSub?.cancel();
+    _meAnim.dispose();
     _searchDebounce?.cancel();
     _vehiclesTimer?.cancel();
     _vehRepaintTimer?.cancel();
@@ -225,39 +291,119 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   // ---- Location -------------------------------------------------------------
 
-  /// Locate the user and recenter on them.
-  ///
-  /// On entry ([requestPermission] false) we never pop the OS prompt — browsers
-  /// block a geolocation request that isn't tied to a user gesture anyway — so
-  /// we only auto-center when access is *already* granted (instantly via the
-  /// last-known fix, then refined). The recenter button passes
-  /// [requestPermission] true so the prompt fires from a real tap, and reports
-  /// back if access is denied instead of failing silently.
-  Future<void> _startLocation({bool requestPermission = false}) async {
+  /// On entry we never pop the OS prompt — browsers block a geolocation request
+  /// that isn't tied to a user gesture anyway — so we only start locating when
+  /// access is *already* granted: center instantly on the last-known fix, then
+  /// let the live stream take over. The recenter button ([_recenterOnMe]) is the
+  /// only place we request permission, from a real tap.
+  Future<void> _initLocation() async {
     final service = ref.read(locationServiceProvider);
-    if (!requestPermission && !await service.isPermissionGranted()) return;
-
+    if (!await service.isPermissionGranted()) return;
+    // The first fix (cached or streamed) recenters the camera on the user.
+    _pendingRecenter = true;
     final cached = await service.lastKnownIfGranted();
-    if (cached != null) {
-      _centerOnMe(
-        Geographic(lon: cached.longitude, lat: cached.latitude),
-        animate: false,
-      );
+    if (cached != null && mounted) {
+      _onFix(ll.LatLng(cached.latitude, cached.longitude), ease: false);
     }
-    try {
-      final fresh = await service.getCurrentPosition();
-      _centerOnMe(
-        Geographic(lon: fresh.longitude, lat: fresh.latitude),
-        animate: cached != null,
-      );
-    } on LocationUnavailable catch (e) {
-      if (requestPermission) _showLocationMessage(e.reason);
-    } catch (_) {
-      // An unclassified failure: report it as "unavailable", never as "off".
-      if (requestPermission) {
-        _showLocationMessage(LocationUnavailableReason.positionUnavailable);
+    _reconcileLocationStream();
+  }
+
+  /// Applies a fresh position fix: eases the marker toward it (or snaps on the
+  /// first one), records the time (feeds the staleness watchdog), and — only
+  /// when a recenter was requested — moves the camera onto it.
+  void _onFix(ll.LatLng point, {bool ease = true}) {
+    if (!mounted) return;
+    _lastFixAt = DateTime.now();
+    _locationDenied = false;
+    setState(() {
+      if (ease && _meTo != null) {
+        _meFrom = _displayedMe ?? _meTo;
+        _meTo = point;
+        _meAnim.forward(from: 0);
+      } else {
+        // First fix (or an explicit snap): no ease, jump straight there.
+        _meFrom = point;
+        _meTo = point;
+        _meAnim.value = 1;
+      }
+    });
+    if (_pendingRecenter) {
+      _pendingRecenter = false;
+      final geo = Geographic(lon: point.longitude, lat: point.latitude);
+      final controller = _controller;
+      if (controller == null) {
+        _pendingCenter = geo;
+        _pendingZoom = 16;
+      } else {
+        controller.moveCamera(center: geo, zoom: 16);
       }
     }
+  }
+
+  /// The marker's currently-drawn position (eased between [_meFrom] and
+  /// [_meTo]); null when there's no fix to show.
+  ll.LatLng? get _displayedMe {
+    final to = _meTo;
+    if (to == null) return null;
+    return lerpLatLng(_meFrom ?? to, to, _meAnim.value);
+  }
+
+  /// Brings the position stream into line with the current lifecycle: run it
+  /// only while the map is the visible tab *and* the app is foregrounded and
+  /// access isn't denied; otherwise pause it. On becoming active again a stream
+  /// that has silently stalled (web / iOS Safari) is recreated.
+  void _reconcileLocationStream() {
+    final shouldStream = _tabActive && _appResumed && !_locationDenied;
+    if (!shouldStream) {
+      _stopLocationStream();
+      return;
+    }
+    if (_positionSub == null) {
+      _startLocationStream();
+    } else if (shouldResubscribe(
+      active: true,
+      lastFixAt: _lastFixAt,
+      subscribedAt: _subscribedAt!,
+      now: DateTime.now(),
+      staleThreshold: _meStaleThreshold,
+    )) {
+      _startLocationStream();
+    }
+  }
+
+  void _startLocationStream() {
+    final service = ref.read(locationServiceProvider);
+    _positionSub?.cancel();
+    _subscribedAt = DateTime.now();
+    _positionSub = service.positionStream().listen(
+      (p) => _onFix(ll.LatLng(p.latitude, p.longitude)),
+      onError: _onLocationStreamError,
+      cancelOnError: false,
+    );
+  }
+
+  void _stopLocationStream() {
+    _positionSub?.cancel();
+    _positionSub = null;
+  }
+
+  void _onLocationStreamError(Object error) {
+    // Permission revoked (or services switched off) mid-stream: hide the marker
+    // quietly and stop. Never re-prompt on our own — the recenter button is the
+    // only place we ask again. Other errors are transient; keep listening.
+    final revoked =
+        error is LocationUnavailable &&
+        (error.reason == LocationUnavailableReason.permissionDenied ||
+            error.reason == LocationUnavailableReason.permissionDeniedForever ||
+            error.reason == LocationUnavailableReason.serviceDisabled);
+    if (!revoked) return;
+    _stopLocationStream();
+    if (!mounted) return;
+    setState(() {
+      _locationDenied = true;
+      _meFrom = null;
+      _meTo = null;
+    });
   }
 
   /// Surface the *real* reason a fix failed, so a timeout or a momentary
@@ -277,31 +423,35 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _centerOnMe(Geographic point, {required bool animate}) {
-    if (!mounted) return;
-    setState(() => _myPosition = point);
-    final controller = _controller;
-    if (controller == null) {
-      _pendingCenter = point;
-      _pendingZoom = 16;
-    } else if (animate) {
-      controller.animateCamera(center: point, zoom: 16);
-    } else {
-      controller.moveCamera(center: point, zoom: 16);
-    }
-  }
-
   Future<void> _recenterOnMe() async {
     // Recenter immediately on the best position we already have (instant
     // feedback), then always kick off a fresh fix that recenters again — so the
     // button reliably moves the camera to the user on every tap, and a stale
     // cached position gets corrected rather than leaving the button feeling
     // dead (X3).
-    final me = _myPosition;
+    final me = _meTo;
     if (me != null) {
-      await _controller?.animateCamera(center: me, zoom: 16);
+      await _controller?.animateCamera(
+        center: Geographic(lon: me.longitude, lat: me.latitude),
+        zoom: 16,
+      );
     }
-    await _startLocation(requestPermission: true);
+    // A real user gesture — allowed to prompt. One fresh fix (also fires the OS
+    // prompt on first use) gives an instant recenter; the live stream then keeps
+    // the marker tracking.
+    final service = ref.read(locationServiceProvider);
+    try {
+      final fresh = await service.getCurrentPosition();
+      _locationDenied = false;
+      _pendingRecenter = true;
+      _onFix(ll.LatLng(fresh.latitude, fresh.longitude), ease: me != null);
+      _reconcileLocationStream();
+    } on LocationUnavailable catch (e) {
+      _showLocationMessage(e.reason);
+    } catch (_) {
+      // An unclassified failure: report it as "unavailable", never as "off".
+      _showLocationMessage(LocationUnavailableReason.positionUnavailable);
+    }
   }
 
   // ---- Stops for the visible area ------------------------------------------
@@ -843,16 +993,27 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   children: [
                     const CompactAttribution(),
                     // "My position" as a widget marker so it survives every zoom
-                    // level (X2), not a cullable GL symbol.
-                    if (_myPosition != null)
-                      WidgetLayer(
-                        markers: [
-                          Marker(
-                            point: _myPosition!,
-                            size: MeLocationDot.markerSize,
-                            child: const MeLocationDot(),
-                          ),
-                        ],
+                    // level (X2), not a cullable GL symbol. Wrapped in an
+                    // AnimatedBuilder so it eases to each fresh fix; the ticker
+                    // is idle between fixes, so this only repaints while moving.
+                    if (_meTo != null)
+                      AnimatedBuilder(
+                        animation: _meAnim,
+                        builder: (context, _) {
+                          final me = _displayedMe ?? _meTo!;
+                          return WidgetLayer(
+                            markers: [
+                              Marker(
+                                point: Geographic(
+                                  lon: me.longitude,
+                                  lat: me.latitude,
+                                ),
+                                size: MeLocationDot.markerSize,
+                                child: const MeLocationDot(),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     // Live vehicles, rebuilt on the throttled tick so their eased
                     // positions update; only this subtree repaints.

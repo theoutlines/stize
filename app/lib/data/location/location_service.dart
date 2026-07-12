@@ -57,6 +57,35 @@ class LocationService {
     }
   }
 
+  /// A continuous high-accuracy position stream that emits roughly every few
+  /// metres travelled (distance-filtered, *not* on a timer), so the "my
+  /// position" marker tracks the user smoothly and independently of any API
+  /// polling. Assumes access is already granted — callers gate on
+  /// [isPermissionGranted] or the recenter button's explicit request.
+  ///
+  /// Platform errors are normalised to [LocationUnavailable] so callers never
+  /// have to reach for geolocator's exception types; a permission-revoked event
+  /// surfaces as [LocationUnavailableReason.permissionDenied].
+  Stream<Position> positionStream() {
+    return Geolocator.getPositionStream(
+      locationSettings: buildStreamLocationSettings(),
+    ).handleError((Object error) {
+      if (error is PermissionDeniedException) {
+        throw const LocationUnavailable(
+          LocationUnavailableReason.permissionDenied,
+        );
+      }
+      if (error is LocationServiceDisabledException) {
+        throw const LocationUnavailable(
+          LocationUnavailableReason.serviceDisabled,
+        );
+      }
+      throw const LocationUnavailable(
+        LocationUnavailableReason.positionUnavailable,
+      );
+    });
+  }
+
   Future<Position> getCurrentPosition() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
