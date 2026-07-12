@@ -66,22 +66,84 @@ export async function nearbyStops(
     .map((x) => x.stop);
 }
 
+// Spatial grid over the stops for O(1)-ish nearest-stop lookup. A full linear
+// scan per call was cheap once, but the "Nearby" fan-out resolves a terminus for
+// *every* arrival across up to a dozen stops, so a few thousand-stop scans per
+// call added up and blew the Worker's CPU budget (1102). Bucketing once by a
+// ~0.005° grid (~400 m) turns each lookup into a small local search.
+const GRID_DEG = 0.005;
+let stopGrid: Map<string, StopDto[]> | null = null;
+
+function gridKey(latCell: number, lonCell: number): string {
+  return `${latCell}:${lonCell}`;
+}
+
+async function ensureStopGrid(env: Env): Promise<Map<string, StopDto[]>> {
+  if (stopGrid) return stopGrid;
+  const stops = await loadStops(env);
+  const grid = new Map<string, StopDto[]>();
+  for (const s of stops) {
+    const key = gridKey(Math.floor(s.lat / GRID_DEG), Math.floor(s.lon / GRID_DEG));
+    const bucket = grid.get(key);
+    if (bucket) bucket.push(s);
+    else grid.set(key, [s]);
+  }
+  stopGrid = grid;
+  return grid;
+}
+
 // The single GTFS stop closest to a coordinate. Used to turn a vehicle's route
 // terminus (a bare lat/lon from the live feed) into a human stop name = the
-// arrival's travel direction. The stops array is isolate-cached, so this is an
-// in-memory scan.
+// arrival's travel direction. A terminus IS a stop, so it lands in its own cell;
+// we widen the search ring only if nearby cells are empty, and fall back to a
+// full scan in the (rare) pathological case.
 export async function nearestStop(env: Env, gps: { lat: number; lon: number }): Promise<StopDto | null> {
-  const stops = await loadStops(env);
-  let best: StopDto | null = null;
-  let bestDist = Infinity;
-  for (const s of stops) {
-    const d = haversineDistanceMeters(gps, { lat: s.lat, lon: s.lon });
-    if (d < bestDist) {
-      bestDist = d;
-      best = s;
+  const grid = await ensureStopGrid(env);
+  const latCell = Math.floor(gps.lat / GRID_DEG);
+  const lonCell = Math.floor(gps.lon / GRID_DEG);
+
+  const pick = (candidates: StopDto[]): StopDto | null => {
+    let best: StopDto | null = null;
+    let bestDist = Infinity;
+    for (const s of candidates) {
+      const d = haversineDistanceMeters(gps, { lat: s.lat, lon: s.lon });
+      if (d < bestDist) {
+        bestDist = d;
+        best = s;
+      }
+    }
+    return best;
+  };
+
+  // Grow the search box ring by ring; once any cell in a ring has stops, one
+  // extra ring guarantees the true nearest isn't just outside the box.
+  for (let ring = 0; ring <= 4; ring++) {
+    const candidates: StopDto[] = [];
+    for (let dLat = -ring; dLat <= ring; dLat++) {
+      for (let dLon = -ring; dLon <= ring; dLon++) {
+        // Only the newly-added outer ring (skip the interior we already saw).
+        if (ring > 0 && Math.abs(dLat) !== ring && Math.abs(dLon) !== ring) continue;
+        const bucket = grid.get(gridKey(latCell + dLat, lonCell + dLon));
+        if (bucket) candidates.push(...bucket);
+      }
+    }
+    if (candidates.length > 0) {
+      // Search one more ring for correctness, then decide.
+      const outer: StopDto[] = [];
+      const r2 = ring + 1;
+      for (let dLat = -r2; dLat <= r2; dLat++) {
+        for (let dLon = -r2; dLon <= r2; dLon++) {
+          if (Math.abs(dLat) !== r2 && Math.abs(dLon) !== r2) continue;
+          const bucket = grid.get(gridKey(latCell + dLat, lonCell + dLon));
+          if (bucket) outer.push(...bucket);
+        }
+      }
+      return pick([...candidates, ...outer]);
     }
   }
-  return best;
+
+  // Nothing within the searched box (extremely sparse): fall back to a scan.
+  return pick(await loadStops(env));
 }
 
 // Both GTFS directions of a line number (each direction is its own entry, F8),
