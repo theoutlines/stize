@@ -271,6 +271,111 @@ class AppLocalizationsRu extends AppLocalizations {
   String get vehicleTypeTrolleybus => 'Троллейбус';
 
   @override
+  String fleetAgeYears(int years) {
+    return '$years г';
+  }
+
+  @override
+  String fleetVehicleNumber(String number) {
+    return '№$number';
+  }
+
+  @override
+  String get fleetSortByTime => 'По времени';
+
+  @override
+  String get fleetSortByComfort => 'По комфорту';
+
+  @override
+  String get fleetUnknownModel => 'Модель неизвестна';
+
+  @override
+  String get fleetSectionComfort => 'Комфорт';
+
+  @override
+  String get fleetSectionAmenities => 'В салоне';
+
+  @override
+  String get fleetSectionDetails => 'Подробности';
+
+  @override
+  String get fleetAc => 'Кондиционер';
+
+  @override
+  String get fleetNoAc => 'Без кондиционера';
+
+  @override
+  String get fleetLowFloor => 'Низкий пол';
+
+  @override
+  String get fleetHighFloor => 'Ступеньки на входе';
+
+  @override
+  String get fleetArticulated => 'Гармошка';
+
+  @override
+  String get fleetUsb => 'USB-зарядка';
+
+  @override
+  String get fleetElectric => 'Электро';
+
+  @override
+  String get fleetHybrid => 'Гибрид';
+
+  @override
+  String get fleetCng => 'На газе (CNG)';
+
+  @override
+  String get fleetTrolley => 'Троллейбус';
+
+  @override
+  String get fleetTram => 'Трамвай';
+
+  @override
+  String get fleetDiesel => 'Дизель';
+
+  @override
+  String get fleetAge => 'Возраст';
+
+  @override
+  String fleetAgeApprox(int years, int from, int to) {
+    return '~$years г (выпуск $from–$to)';
+  }
+
+  @override
+  String fleetCapacity(int count) {
+    return 'Вмещает ~$count';
+  }
+
+  @override
+  String fleetLength(String meters) {
+    return 'Длина $meters м';
+  }
+
+  @override
+  String fleetOperator(String name) {
+    return 'Перевозчик: $name';
+  }
+
+  @override
+  String fleetManufacturer(String value) {
+    return 'Производитель: $value';
+  }
+
+  @override
+  String get fleetComfortRetro => 'ретро';
+
+  @override
+  String get fleetComfortOk => 'норм';
+
+  @override
+  String get fleetComfortComfy => 'комфорт';
+
+  @override
+  String get fleetApproxNote =>
+      '«~» — значения оценены по перевозчику, а не подтверждены для этой конкретной машины.';
+
+  @override
   String get navCoverage => 'Покрытие';
 
   @override

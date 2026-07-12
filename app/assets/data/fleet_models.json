@@ -28,6 +28,8 @@
     1990
    ],
    "nickname_sr": "Ката",
+   "nickname_latin": "Kata",
+   "nickname_en": "Kata",
    "fleet_size": 94,
    "low_floor": false,
    "ac": false,
@@ -38,6 +40,8 @@
    "powertrain": "tram",
    "comfort_score": 1,
    "human_note_ru": "Легендарная чешская «Ката» — высокий пол, ступеньки, летом жарко (кондиционера нет). Часто ходят сцепкой по два вагона.",
+   "human_note_en": "The legendary Czech “Kata” — high floor, steps, hot in summer (no AC). Often runs coupled as two cars.",
+   "human_note_sr": "Legendarna češka „Kata“ — visok pod, stepenice, leti vruće (bez klime). Često voze spojene po dva vagona.",
    "confidence": {
     "ranges": "verified",
     "ac": "verified",
@@ -61,6 +65,8 @@
     2001
    ],
    "nickname_sr": "Ката (југословенка)",
+   "nickname_latin": "Kata (jugoslovenka)",
+   "nickname_en": "Kata (jugoslovenka)",
    "fleet_size": 14,
    "low_floor": false,
    "ac": false,
@@ -71,6 +77,8 @@
    "powertrain": "tram",
    "comfort_score": 2,
    "human_note_ru": "Поздние «Каты» югославской сборки — та же машина, но на 15 лет моложе.",
+   "human_note_en": "Late “Katas” of Yugoslav assembly — the same tram, but 15 years younger.",
+   "human_note_sr": "Kasne „Kate“ jugoslovenske montaže — ista mašina, ali 15 godina mlađa.",
    "confidence": {
     "ranges": "verified",
     "ac": "assumed"
@@ -97,6 +105,8 @@
     1972
    ],
    "nickname_sr": "Швајцарац",
+   "nickname_latin": "Švajcarac",
+   "nickname_en": "Svajcarac",
    "fleet_size": 27,
    "low_floor": false,
    "ac": false,
@@ -107,6 +117,8 @@
    "powertrain": "tram",
    "comfort_score": 2,
    "human_note_ru": "Подарок Базеля: старейшие вагоны сети (1967–72), но швейцарское качество — ход мягче «Каты». Обычно с прицепом.",
+   "human_note_en": "A gift from Basel: the oldest cars in the network (1967–72), but Swiss quality — a smoother ride than the “Kata”. Usually with a trailer.",
+   "human_note_sr": "Poklon Bazela: najstariji vagoni u mreži (1967–72), ali švajcarski kvalitet — mekša vožnja od „Kate“. Obično s prikolicom.",
    "confidence": {
     "ranges": "verified",
     "ac": "verified"
@@ -129,6 +141,8 @@
     2013
    ],
    "nickname_sr": "Шпанац",
+   "nickname_latin": "Španac",
+   "nickname_en": "Spanac",
    "fleet_size": 25,
    "low_floor": true,
    "ac": true,
@@ -139,6 +153,8 @@
    "powertrain": "tram",
    "comfort_score": 4,
    "human_note_ru": "«Шпанац»: полностью низкий пол, кондиционер. Самый комфортный трамвай до прихода турков.",
+   "human_note_en": "The “Španac”: fully low floor, air conditioning. The most comfortable tram until the Turks arrived.",
+   "human_note_sr": "„Španac“: potpuno niski pod, klima. Najkomforniji tramvaj do dolaska Turaka.",
    "confidence": {
     "ranges": "verified",
     "ac": "verified"
@@ -161,6 +177,8 @@
     2026
    ],
    "nickname_sr": "Турчин",
+   "nickname_latin": "Turčin",
+   "nickname_en": "Turcin",
    "fleet_size": 25,
    "low_floor": true,
    "ac": true,
@@ -171,6 +189,8 @@
    "powertrain": "tram",
    "comfort_score": 5,
    "human_note_ru": "Новейшие пятисекционные турецкие трамваи (поставка 2025–26): низкий пол, кондиционер, USB-зарядки.",
+   "human_note_en": "The newest five-section Turkish trams (delivered 2025–26): low floor, air conditioning, USB charging.",
+   "human_note_sr": "Najnoviji petodelni turski tramvaji (isporuka 2025–26): niski pod, klima, USB punjenje.",
    "confidence": {
     "ranges": "verified",
     "usb": "assumed"
@@ -193,6 +213,8 @@
     2011
    ],
    "nickname_sr": "трола",
+   "nickname_latin": "trola",
+   "nickname_en": "trola",
    "fleet_size": 69,
    "low_floor": true,
    "ac": false,
@@ -203,6 +225,8 @@
    "powertrain": "trolleybus",
    "comfort_score": 2,
    "human_note_ru": "Основной троллейбус (2010–11): низкий пол есть, кондиционера в салоне нет.",
+   "human_note_en": "The mainstay trolleybus (2010–11): low floor yes, but no cabin air conditioning.",
+   "human_note_sr": "Osnovni trolejbus (2010–11): niski pod da, ali bez klime u kabini.",
    "confidence": {
     "ranges": "verified",
     "ac": "assumed"
@@ -225,6 +249,8 @@
     2005
    ],
    "nickname_sr": "зглобна трола",
+   "nickname_latin": "zglobna trola",
+   "nickname_en": "zglobna trola",
    "fleet_size": 7,
    "low_floor": true,
    "ac": false,
@@ -235,6 +261,8 @@
    "powertrain": "trolleybus",
    "comfort_score": 2,
    "human_note_ru": "Редкая сочленённая «гармошка» (2005) — в будни на линии всего 3–4 штуки.",
+   "human_note_en": "A rare articulated “bendy” (2005) — only 3–4 out on the line on weekdays.",
+   "human_note_sr": "Redak zglobni „harmonika“ (2005) — radnim danima ih na liniji ima svega 3–4.",
    "confidence": {
     "ranges": "verified"
    }
@@ -256,6 +284,8 @@
     2005
    ],
    "nickname_sr": "трола",
+   "nickname_latin": "trola",
+   "nickname_en": "trola",
    "fleet_size": 5,
    "low_floor": true,
    "ac": false,
@@ -266,6 +296,8 @@
    "powertrain": "trolleybus",
    "comfort_score": 1,
    "human_note_ru": "Старейшая партия БКМ (2005) — доживают последние годы.",
+   "human_note_en": "The oldest BKM batch (2005) — living out their last years.",
+   "human_note_sr": "Najstarija serija BKM (2005) — dogorevaju poslednje godine.",
    "confidence": {
     "ranges": "verified"
    }
@@ -287,6 +319,8 @@
     2021
    ],
    "nickname_sr": "ЕКО бус",
+   "nickname_latin": "EKO bus",
+   "nickname_en": "EKO bus",
    "fleet_size": 14,
    "operator": "GSP",
    "low_floor": true,
@@ -298,6 +332,8 @@
    "powertrain": "electric_ultracap",
    "comfort_score": 4,
    "human_note_ru": "Зелёные ультраконденсаторные электробусы линий EKO1/EKO2, заряжаются 10 минут на конечной.",
+   "human_note_en": "Green ultracapacitor e-buses on the EKO1/EKO2 lines, charging in 10 minutes at the terminus.",
+   "human_note_sr": "Zeleni ultrakondenzatorski elektrobusi na linijama EKO1/EKO2, pune se 10 minuta na terminusu.",
    "confidence": {
     "ranges": "verified",
     "ac": "verified"
@@ -330,6 +366,8 @@
    "powertrain": "electric_battery",
    "comfort_score": 4,
    "human_note_ru": "Аккумуляторные Otokar частника Ćurdić (в основном линия 79).",
+   "human_note_en": "Battery Otokars of the private operator Ćurdić (mostly line 79).",
+   "human_note_sr": "Akumulatorski Otokari privatnika Ćurdić (uglavnom linija 79).",
    "confidence": {
     "ranges": "verified",
     "usb": "assumed"
@@ -362,6 +400,8 @@
    "powertrain": "electric_battery",
    "comfort_score": 4,
    "human_note_ru": "Пара электробусов Transprodukt.",
+   "human_note_en": "A pair of Transprodukt e-buses.",
+   "human_note_sr": "Par elektrobusa Transprodukt.",
    "confidence": {
     "ranges": "verified"
    }
@@ -393,6 +433,8 @@
    "powertrain": "electric_battery",
    "comfort_score": 4,
    "human_note_ru": "Единственный Akia у Banbus.",
+   "human_note_en": "Banbus's only Akia.",
+   "human_note_sr": "Jedini Akia kod Banbusa.",
    "confidence": {
     "ranges": "verified"
    }
@@ -424,6 +466,8 @@
    "powertrain": "electric_battery",
    "comfort_score": 5,
    "human_note_ru": "Новые китайские электробусы Strela (Обреновац, 860Е и пригород).",
+   "human_note_en": "New Chinese Strela e-buses (Obrenovac, line 860E and the suburbs).",
+   "human_note_sr": "Novi kineski elektrobusi Strele (Obrenovac, 860E i prigrad).",
    "confidence": {
     "ranges": "verified"
    }
@@ -455,6 +499,8 @@
    "powertrain": "diesel",
    "comfort_score": 3,
    "human_note_ru": "Польские «гармошки» 2013 года — рабочая лошадка магистральных линий.",
+   "human_note_en": "Polish “bendies” from 2013 — the workhorse of the trunk lines.",
+   "human_note_sr": "Poljske „harmonike“ iz 2013 — radni konj magistralnih linija.",
    "confidence": {
     "ranges": "verified",
     "ac": "assumed"
@@ -487,6 +533,8 @@
    "powertrain": "diesel",
    "comfort_score": 3,
    "human_note_ru": "Земунские Икарбусы-соло.",
+   "human_note_en": "Zemun-built Ikarbus solo units.",
+   "human_note_sr": "Zemunski Ikarbusi solo.",
    "confidence": {
     "ranges": "verified",
     "ac": "assumed"
@@ -519,6 +567,8 @@
    "powertrain": "diesel",
    "comfort_score": 3,
    "human_note_ru": "Икарбус-соло посвежее (2016–17).",
+   "human_note_en": "A newer Ikarbus solo (2016–17).",
+   "human_note_sr": "Noviji Ikarbus solo (2016–17).",
    "confidence": {
     "ranges": "verified"
    }
@@ -550,6 +600,8 @@
    "powertrain": "diesel",
    "comfort_score": 3,
    "human_note_ru": "Сербские «гармошки» 2017 года.",
+   "human_note_en": "Serbian “bendies” from 2017.",
+   "human_note_sr": "Srpske „harmonike“ iz 2017.",
    "confidence": {
     "ranges": "verified"
    }
@@ -581,6 +633,8 @@
    "powertrain": "diesel",
    "comfort_score": 4,
    "human_note_ru": "Турецкие BMC 2019 года, соло.",
+   "human_note_en": "Turkish BMCs from 2019, solo.",
+   "human_note_sr": "Turski BMC iz 2019, solo.",
    "confidence": {
     "ranges": "verified"
    }
@@ -612,6 +666,8 @@
    "powertrain": "diesel",
    "comfort_score": 4,
    "human_note_ru": "Большая китайская партия 2019 года — красные соло-Хайгеры.",
+   "human_note_en": "A big Chinese batch from 2019 — the red solo Higers.",
+   "human_note_sr": "Velika kineska serija iz 2019 — crveni solo Higeri.",
    "confidence": {
     "ranges": "verified"
    }
@@ -643,6 +699,8 @@
    "powertrain": "cng",
    "comfort_score": 4,
    "human_note_ru": "Синие газовые «гармошки» новой волны (2022–25) — та самая «плава шема».",
+   "human_note_en": "Blue CNG “bendies” of the new wave (2022–25) — the famous “plava šema”.",
+   "human_note_sr": "Plave gasne „harmonike“ novog talasa (2022–25) — ona čuvena „plava šema“.",
    "confidence": {
     "ranges": "verified",
     "usb": "assumed"
@@ -675,6 +733,8 @@
    "powertrain": "cng",
    "comfort_score": 5,
    "human_note_ru": "Самые свежие газовые Otokar (2025).",
+   "human_note_en": "The freshest CNG Otokars (2025).",
+   "human_note_sr": "Najsvežiji gasni Otokari (2025).",
    "confidence": {
     "ranges": "verified"
    }
@@ -710,6 +770,8 @@
    "powertrain": "diesel",
    "comfort_score": 3,
    "human_note_ru": "Минибусы для коротких/узких линий (24, 62, 87А).",
+   "human_note_en": "Minibuses for short/narrow lines (24, 62, 87A).",
+   "human_note_sr": "Minibusevi za kratke/uske linije (24, 62, 87A).",
    "confidence": {
     "ranges": "verified"
    }
@@ -739,6 +801,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик C&LC-Group — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator C&LC-Group — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik C&LC-Group — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -769,6 +833,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Dumeco — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Dumeco — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Dumeco — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -798,6 +864,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Trans-Jug Obrenovac — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Trans-Jug Obrenovac — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Trans-Jug Obrenovac — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -832,6 +900,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Beobus City — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Beobus City — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Beobus City — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -866,6 +936,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Banbus — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Banbus — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Banbus — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -894,6 +966,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик LDM Group — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator LDM Group — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik LDM Group — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -923,6 +997,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Saga Trans — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Saga Trans — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Saga Trans — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -957,6 +1033,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Transprodukt — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Transprodukt — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Transprodukt — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -986,6 +1064,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Niš-ekspres Beograd — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Niš-ekspres Beograd — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Niš-ekspres Beograd — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -1015,6 +1095,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Presto — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Presto — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Presto — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -1044,6 +1126,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Knežević trans — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Knežević trans — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Knežević trans — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -1073,6 +1157,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Lui travel — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Lui travel — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Lui travel — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -1102,6 +1188,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Ćurdić — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Ćurdić — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Ćurdić — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -1131,6 +1219,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик B&B Linea — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator B&B Linea — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik B&B Linea — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -1160,6 +1250,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик M&M trans — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator M&M trans — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik M&M trans — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -1190,6 +1282,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Частный перевозчик Barbados — парк свежий (2017–2026), точная модель по карте vehicles.",
+   "human_note_en": "Private operator Barbados — a young fleet (2017–2026); exact model per the vehicle map.",
+   "human_note_sr": "Privatni prevoznik Barbados — mlad vozni park (2017–2026); tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -1223,6 +1317,8 @@
    "comfort_score": 4,
    "years_built": null,
    "human_note_ru": "Strela Beograd — крупнейший частник (500+ машин): от гибридных Citaro-гармошек до пригородных Intouro. Точная модель по карте vehicles.",
+   "human_note_en": "Strela Beograd — the largest private operator (500+ vehicles): from hybrid Citaro bendies to suburban Intouros. Exact model per the vehicle map.",
+   "human_note_sr": "Strela Beograd — najveći privatnik (500+ vozila): od hibridnih Citaro harmonika do prigradskih Intouro. Tačan model po mapi vozila.",
    "confidence": {
     "ranges": "verified",
     "attributes": "per-vehicle"
@@ -1293,7 +1389,9 @@
    ],
    "capacity": 150,
    "comfort_score": 4,
-   "note_ru": "гармошка"
+   "note_ru": "гармошка",
+   "note_en": "articulated",
+   "note_sr": "zglobni"
   },
   "bmc18cng": {
    "name": "BMC Procity II 18LF CNG",
@@ -1307,7 +1405,9 @@
    ],
    "capacity": 150,
    "comfort_score": 4,
-   "note_ru": "гармошка"
+   "note_ru": "гармошка",
+   "note_en": "articulated",
+   "note_sr": "zglobni"
   },
   "otokar_kent12": {
    "name": "Otokar Kent C 12",
@@ -1419,7 +1519,9 @@
    ],
    "capacity": 150,
    "comfort_score": 3,
-   "note_ru": "гармошка"
+   "note_ru": "гармошка",
+   "note_en": "articulated",
+   "note_sr": "zglobni"
   },
   "conecto1": {
    "name": "Mercedes Conecto I",
@@ -1475,7 +1577,9 @@
    ],
    "capacity": 150,
    "comfort_score": 4,
-   "note_ru": "гармошка"
+   "note_ru": "гармошка",
+   "note_en": "articulated",
+   "note_sr": "zglobni"
   },
   "conecto3g_h": {
    "name": "Mercedes Conecto III G hybrid",
@@ -1489,7 +1593,9 @@
    ],
    "capacity": 150,
    "comfort_score": 5,
-   "note_ru": "гармошка"
+   "note_ru": "гармошка",
+   "note_en": "articulated",
+   "note_sr": "zglobni"
   },
   "citaro2": {
    "name": "Mercedes Citaro C2",
@@ -1517,7 +1623,9 @@
    ],
    "capacity": 155,
    "comfort_score": 5,
-   "note_ru": "гармошка, топ автобусного парка"
+   "note_ru": "гармошка, топ автобусного парка",
+   "note_en": "articulated, the top of the bus fleet",
+   "note_sr": "zglobni, vrh autobuskog parka"
   },
   "crossway_h": {
    "name": "IVECO Crossway LE City hybrid",
@@ -1545,7 +1653,9 @@
    ],
    "capacity": 95,
    "comfort_score": 3,
-   "note_ru": "пригородный, высокий пол"
+   "note_ru": "пригородный, высокий пол",
+   "note_en": "suburban, high floor",
+   "note_sr": "prigradski, visok pod"
   },
   "intouro3": {
    "name": "Mercedes Intouro III",
@@ -1559,7 +1669,9 @@
    ],
    "capacity": 95,
    "comfort_score": 3,
-   "note_ru": "пригородный, высокий пол"
+   "note_ru": "пригородный, высокий пол",
+   "note_en": "suburban, high floor",
+   "note_sr": "prigradski, visok pod"
   },
   "intouro3_h": {
    "name": "Mercedes Intouro III hybrid",
@@ -1573,7 +1685,9 @@
    ],
    "capacity": 95,
    "comfort_score": 4,
-   "note_ru": "пригородный, высокий пол"
+   "note_ru": "пригородный, высокий пол",
+   "note_en": "suburban, high floor",
+   "note_sr": "prigradski, visok pod"
   },
   "liaz5292": {
    "name": "ЛиАЗ-5292",
@@ -1643,7 +1757,9 @@
    ],
    "capacity": 35,
    "comfort_score": 3,
-   "note_ru": "минибус"
+   "note_ru": "минибус",
+   "note_en": "minibus",
+   "note_sr": "minibus"
   },
   "navigo_midi": {
    "name": "Otokar Navigo (миди)",
@@ -1671,7 +1787,9 @@
    ],
    "capacity": 25,
    "comfort_score": 3,
-   "note_ru": "микроавтобус"
+   "note_ru": "микроавтобус",
+   "note_en": "microbus",
+   "note_sr": "mikrobus"
   },
   "isuzu_citiport": {
    "name": "Anadolu Isuzu Citiport 12",

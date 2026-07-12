@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/fleet_matcher.dart';
 import '../../data/api/stigla_api_client.dart';
 import '../../data/device/device_id_service.dart';
 import '../../data/local/gtfs_offline_cache.dart';
@@ -68,6 +70,21 @@ final lineAnalyticsProvider = FutureProvider.family<LineAnalytics, String>((
       .watch(apiClientProvider)
       .getJson('/api/v1/analytics/lines/$line');
   return LineAnalytics.fromJson(json);
+});
+
+/// Fleet-ID reference data (task B1–B5). Parsed once from the static asset.
+///
+/// Returns null — silently disabling every Fleet-ID surface (badges, model
+/// card, comfort sort) — if the asset is missing, unreadable, unparseable, or
+/// schema-invalid. Transit features are unaffected (spec §5 / B5). No network
+/// request: the catalog is a bundled asset.
+final fleetCatalogProvider = FutureProvider<FleetCatalog?>((ref) async {
+  try {
+    final source = await rootBundle.loadString('assets/data/fleet_models.json');
+    return FleetCatalog.tryParse(source);
+  } catch (_) {
+    return null;
+  }
 });
 
 final deviceIdServiceProvider = Provider<DeviceIdService>((ref) => DeviceIdService());
