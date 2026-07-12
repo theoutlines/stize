@@ -12,10 +12,13 @@ import type { WaitUntilCtx } from "./swrCache";
 
 // The "Nearby" list reconstructs "which lines can I catch from here, and when"
 // by fanning out to the arrivals of each nearby stop and grouping them by line +
-// direction. The same bounds as the vehicles-in-area fan-out apply so a request
-// can't storm the fragile upstream: ≤12 stops, ≤1500 m, each per-stop call
-// riding the shared 30s stale-while-revalidate cache. Do not raise these.
-const MAX_STOPS_FANOUT = 12;
+// direction. Bounds keep the fan-out from storming the fragile upstream, each
+// per-stop call riding the shared 30s stale-while-revalidate cache. The stop cap
+// is deliberately below the vehicles-in-area fan-out's 12: aggregating a dozen
+// cold per-stop boards (each a large upstream parse) in one request overruns the
+// Worker CPU budget (1102), and for a "what can I catch on foot" list the
+// closest 8 stops are plenty. Do not raise these.
+const MAX_STOPS_FANOUT = 8;
 const MAX_RADIUS_METERS = 1500;
 
 // How many soonest departures to keep per row.
