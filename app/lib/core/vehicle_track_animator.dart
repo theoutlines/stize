@@ -253,6 +253,35 @@ class VehicleTrackAnimator {
 
   VehicleTrack? trackFor(String key) => _tracks[key];
 
+  /// Whether any track still has motion left to play out toward its target —
+  /// i.e. the display position differs from the latest real fix it eases toward.
+  /// Drives "idle = zero frames" (thermal): when this is false there is nothing
+  /// to animate, so the caller can leave the ticker stopped instead of spinning
+  /// the marker layer at frame rate over a set of stationary vehicles.
+  bool get hasPendingMotion {
+    for (final t in _tracks.values) {
+      final path = t.path;
+      if (path != null && path.isUsable) {
+        if ((t.toDist - t.fromDist).abs() > _stillMeters) return true;
+      } else if (!_isSamePlace(t.from, t.to)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Shift every track's "last moved" wall-clock time forward by [by]. Called on
+  /// resume from a backgrounded tab: while hidden the app is frozen (no ticks,
+  /// no polling), so that frozen span must not count toward the "looks stuck"
+  /// heuristic — otherwise every vehicle would read stuck the moment the user
+  /// comes back after a couple of minutes away.
+  void shiftClock(Duration by) {
+    if (by <= Duration.zero) return;
+    for (final t in _tracks.values) {
+      t.lastMovedAt = t.lastMovedAt.add(by);
+    }
+  }
+
   /// Drop every track immediately, bypassing the grace period — for a hard
   /// reset like zooming out past the vehicle layer, where holding stale markers
   /// would be wrong.
