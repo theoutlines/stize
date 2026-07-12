@@ -65,7 +65,7 @@ class HomeMapScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   MapController? _controller;
   ColorScheme _scheme = const ColorScheme.light();
   Brightness? _styleBrightness;
@@ -80,9 +80,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // The marker layer is heavy to re-lay-out (each vehicle is a platform-tracked
   // widget), so instead of rebuilding it every animation frame (~60fps) we
   // sample the eased positions on a slower cadence — smooth enough for a slow
-  // vehicle, far cheaper, and it stops starving map pan/zoom gestures.
-  Timer? _vehRepaintTimer;
+  // vehicle, far cheaper, and it stops starving map pan/zoom gestures. It runs
+  // *only while the ease is actually in flight* (started when a fix brings
+  // motion, stopped when it settles) so a map of stationary vehicles renders
+  // zero frames instead of ticking forever (thermal fix — "idle = 0 frames").
+  Timer? _vehSampler;
   final ValueNotifier<double> _vehTick = ValueNotifier<double>(1);
+  // Backgrounded (tab hidden / app paused): all animation and polling stop, and
+  // we remember when so the frozen span can be discounted from the "stuck"
+  // heuristic on resume.
+  bool _paused = false;
+  DateTime? _hiddenAt;
   int _vehiclesRequestSeq = 0;
   bool _hasVehicles = false;
   ll.LatLng? _lastVehiclesCenter;
@@ -138,21 +146,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _vehAnim = AnimationController(
       vsync: this,
       duration: _vehiclesRefreshInterval,
     );
-    // Push the current eased position into the marker layer ~15×/s (not every
-    // frame) — see [_vehTick].
-    _vehRepaintTimer = Timer.periodic(const Duration(milliseconds: 66), (_) {
-      if (_vehTick.value != _vehAnim.value) _vehTick.value = _vehAnim.value;
-    });
+    // Stop sampling the eased positions the moment the ease has played out, so
+    // an idle (all-settled) layer renders nothing until the next fix.
+    _vehAnim.addStatusListener(_onVehAnimStatus);
     // Refresh vehicle positions on a steady cadence even if the user isn't
     // panning; the fetch itself is zoom-gated and viewport-bounded.
-    _vehiclesTimer = Timer.periodic(
-      _vehiclesRefreshInterval,
-      (_) => _loadVehiclesForVisibleArea(force: true),
-    );
+    _startVehiclesTimer();
     // Start locating immediately, in parallel with the map creating itself, so
     // an already-granted user is centered the moment either finishes.
     _startLocation();
@@ -160,14 +164,89 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchDebounce?.cancel();
     _vehiclesTimer?.cancel();
-    _vehRepaintTimer?.cancel();
+    _stopVehSampler();
+    _vehAnim.removeStatusListener(_onVehAnimStatus);
     _vehTick.dispose();
     _vehAnim.dispose();
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  // ---- App lifecycle (thermal: zero work while hidden) ----------------------
+
+  /// Pause every recurring cost when the tab/app goes to the background and
+  /// resume on return. Browsers already throttle the animation ticker when a
+  /// tab is hidden, but the position ease, the marker-layer sampler and the
+  /// 30s poll are all timer-driven and would otherwise keep firing (and, on
+  /// resume, mis-flag every vehicle as "stuck" for the time spent away).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _resumeActivity();
+    } else {
+      _pauseActivity();
+    }
+  }
+
+  void _pauseActivity() {
+    if (_paused) return;
+    _paused = true;
+    _hiddenAt = DateTime.now();
+    _vehAnim.stop();
+    _stopVehSampler();
+    _vehiclesTimer?.cancel();
+    _vehiclesTimer = null;
+  }
+
+  void _resumeActivity() {
+    if (!_paused) return;
+    _paused = false;
+    final hiddenAt = _hiddenAt;
+    if (hiddenAt != null) {
+      // Discount the time spent hidden so a vehicle isn't declared stuck just
+      // because the app was in the background across its dwell.
+      _vehAnimator.shiftClock(DateTime.now().difference(hiddenAt));
+      _hiddenAt = null;
+    }
+    _startVehiclesTimer();
+    _loadVehiclesForVisibleArea(force: true);
+  }
+
+  void _startVehiclesTimer() {
+    _vehiclesTimer?.cancel();
+    _vehiclesTimer = Timer.periodic(
+      _vehiclesRefreshInterval,
+      (_) => _loadVehiclesForVisibleArea(force: true),
+    );
+  }
+
+  // ---- Vehicle-layer ticker (runs only while a position ease is in flight) --
+
+  void _startVehSampler() {
+    // Push the current eased position into the marker layer ~15×/s (not every
+    // frame) — smooth enough for a slow vehicle, far cheaper than 60fps.
+    _vehSampler ??= Timer.periodic(const Duration(milliseconds: 66), (_) {
+      if (_vehTick.value != _vehAnim.value) _vehTick.value = _vehAnim.value;
+    });
+  }
+
+  void _stopVehSampler() {
+    _vehSampler?.cancel();
+    _vehSampler = null;
+  }
+
+  void _onVehAnimStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed ||
+        status == AnimationStatus.dismissed) {
+      _stopVehSampler();
+      // One final rebuild so the layer lands on the settled positions and the
+      // markers' halos drop out of their breathing state (animate == false).
+      if (mounted) setState(() {});
+    }
   }
 
   // ---- Map lifecycle --------------------------------------------------------
@@ -503,7 +582,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             path: _shapeCache[v.line],
           ),
       ], _vehAnim.value);
-      _vehAnim.forward(from: 0);
+      // Only spin the ease (and the sampler) when a fix actually brings motion
+      // and we're in the foreground; otherwise settle instantly so a screen of
+      // stationary vehicles renders zero frames until the next real move.
+      if (!_paused && _vehAnimator.hasPendingMotion) {
+        _vehAnim.forward(from: 0);
+        _startVehSampler();
+      } else {
+        _stopVehSampler();
+        _vehAnim.value = 1; // land straight on the latest fixes, no per-frame ease
+      }
       // Reflect the animator's set (which may still hold briefly-missing
       // vehicles during their grace period), not just this response (X6).
       setState(() => _hasVehicles = _vehAnimator.tracks.isNotEmpty);
@@ -1097,6 +1185,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final zoom = _controller?.getCamera().zoom ?? 15.0;
     final compact = zoom < _vehicleDetailZoom;
     final focusLine = _focus?.line;
+    // Breathing halos animate only while the layer is live (a fix is easing);
+    // once settled they rest, so an idle map holds at zero frames (thermal).
+    final live = _vehAnim.isAnimating;
 
     // Collect the visible vehicles first so we can detect and spread any that
     // land on (nearly) the same spot.
@@ -1132,6 +1223,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         heading: compact ? null : _vehAnimator.headingAt(key, t),
         stuck: _vehAnimator.isStuck(key),
         compact: compact,
+        animate: live,
         onTap: () => _openVehicleLine(track.line, focusOn: pos),
       );
       markers.add(
