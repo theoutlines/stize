@@ -95,8 +95,8 @@
 
   "navCoverage": "Pokrivenost",
   "coverageFilterAll": "Sve",
-  "coverageLegendTitle": "Linija po koridoru",
-  "coverageLegendLow": "manje",
-  "coverageLegendHigh": "više",
+  "coverageLegendTitle": "Gustina prevoza",
+  "coverageLegendLow": "ređe",
+  "coverageLegendHigh": "češće",
   "coverageUnavailable": "Mapa pokrivenosti trenutno nije dostupna."
 }

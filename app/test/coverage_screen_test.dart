@@ -31,10 +31,10 @@ void main() {
     expect(find.text('Tram'), findsOneWidget);
     expect(find.text('Trolleybus'), findsOneWidget);
     expect(find.text('Bus'), findsOneWidget);
-    // The weight legend.
-    expect(find.text('Lines per corridor'), findsOneWidget);
-    expect(find.text('fewer'), findsOneWidget);
-    expect(find.text('more'), findsOneWidget);
+    // The density legend.
+    expect(find.text('Transit density'), findsOneWidget);
+    expect(find.text('rarer'), findsOneWidget);
+    expect(find.text('busier'), findsOneWidget);
   });
 
   testWidgets('starts with "All" selected and toggles a type chip', (tester) async {

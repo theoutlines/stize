@@ -102,8 +102,8 @@
 
   "navCoverage": "Coverage",
   "coverageFilterAll": "All",
-  "coverageLegendTitle": "Lines per corridor",
-  "coverageLegendLow": "fewer",
-  "coverageLegendHigh": "more",
+  "coverageLegendTitle": "Transit density",
+  "coverageLegendLow": "rarer",
+  "coverageLegendHigh": "busier",
   "coverageUnavailable": "Coverage map is unavailable right now."
 }

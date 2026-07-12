@@ -8,8 +8,8 @@
     "deploy": "wrangler deploy",
     "deploy:staging": "wrangler deploy --env staging",
     "test": "vitest run",
-    "gtfs:build": "node scripts/build-gtfs.mjs && node scripts/build-coverage.mjs",
-    "coverage:build": "node scripts/build-coverage.mjs"
+    "gtfs:build": "node scripts/build-gtfs.mjs && node scripts/build-coverage-lines.mjs && node scripts/build-coverage.mjs",
+    "coverage:build": "node scripts/build-coverage-lines.mjs && node scripts/build-coverage.mjs"
   },
   "dependencies": {
     "hono": "^4.6.14"

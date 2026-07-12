@@ -273,13 +273,13 @@ class AppLocalizationsSr extends AppLocalizations {
   String get coverageFilterAll => 'Sve';
 
   @override
-  String get coverageLegendTitle => 'Linija po koridoru';
+  String get coverageLegendTitle => 'Gustina prevoza';
 
   @override
-  String get coverageLegendLow => 'manje';
+  String get coverageLegendLow => 'ređe';
 
   @override
-  String get coverageLegendHigh => 'više';
+  String get coverageLegendHigh => 'češće';
 
   @override
   String get coverageUnavailable => 'Mapa pokrivenosti trenutno nije dostupna.';

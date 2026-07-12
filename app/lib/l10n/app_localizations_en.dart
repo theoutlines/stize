@@ -271,13 +271,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coverageFilterAll => 'All';
 
   @override
-  String get coverageLegendTitle => 'Lines per corridor';
+  String get coverageLegendTitle => 'Transit density';
 
   @override
-  String get coverageLegendLow => 'fewer';
+  String get coverageLegendLow => 'rarer';
 
   @override
-  String get coverageLegendHigh => 'more';
+  String get coverageLegendHigh => 'busier';
 
   @override
   String get coverageUnavailable => 'Coverage map is unavailable right now.';

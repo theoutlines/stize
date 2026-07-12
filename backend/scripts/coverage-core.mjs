@@ -256,3 +256,42 @@ export function buildCoverage(shapes, opts = {}) {
 
   return { type: "FeatureCollection", features };
 }
+
+/**
+ * Build the *render* GeoJSON: the raw route shapes as-is (one LineString per
+ * route direction), no segment collapsing, no grid snapping. The client draws
+ * these as many semi-transparent lines so overlapping routes accumulate
+ * brightness — a Strava-heatmap-style density map where corridors bleed into
+ * glow zones at far zoom. Keeping the real geometry also means zero staircase.
+ *
+ * Only geometry-preserving simplification is applied (small epsilon), purely to
+ * keep the file light; it must not change the visible shape.
+ *
+ * Properties per feature:
+ *   type: vehicle type (tram/trolleybus/bus) — drives the type filter + colour
+ *   line: line number — carried for future use (not required by the renderer)
+ *
+ * @param {Array<{line:string, vehicleType:string, polyline:number[][]}>} shapes
+ * @param {{simplifyEpsilon?:number, coordPrecision?:number}} opts
+ */
+export function buildCoverageLines(shapes, opts = {}) {
+  const simplifyEpsilon = opts.simplifyEpsilon ?? 0;
+  const coordPrecision = opts.coordPrecision ?? 5;
+  const round = (v) => Number(v.toFixed(coordPrecision));
+
+  const features = [];
+  for (const shape of shapes) {
+    const poly = shape.polyline;
+    if (!Array.isArray(poly) || poly.length < 2) continue;
+    const simplified = simplifyEpsilon > 0 ? simplify(poly, simplifyEpsilon) : poly;
+    if (simplified.length < 2) continue;
+    // Source polyline is [lat, lon] → GeoJSON [lon, lat].
+    const coordinates = simplified.map(([lat, lon]) => [round(lon), round(lat)]);
+    features.push({
+      type: "Feature",
+      properties: { type: shape.vehicleType, line: shape.line },
+      geometry: { type: "LineString", coordinates },
+    });
+  }
+  return { type: "FeatureCollection", features };
+}

@@ -1,11 +1,15 @@
 #!/usr/bin/env node
-// Builds public/gtfs/coverage.geojson — the precomputed "coverage map" layer —
-// from the already-built GTFS bundles (public/gtfs/lines.json + shapes/*.json).
+// Builds public/gtfs/coverage-weighted.geojson — the collapsed, route-counted
+// coverage layer — from the built GTFS bundles (public/gtfs/lines.json +
+// shapes/*.json).
 //
-// Run after build-gtfs.mjs (the npm `gtfs:build` script chains both). Output is
-// checked into the repo and served as a static asset like the rest of GTFS; the
-// Worker exposes it via GET /api/v1/coverage (CORS). The collapsing/counting
-// logic lives in coverage-core.mjs so it's unit-testable without file I/O.
+// NOTE: this is NOT the render layer. The map renders raw shapes
+// (build-coverage-lines.mjs → coverage.geojson). This weighted file is kept
+// precomputed for *future* data-driven weights (frequency, observed intensity)
+// per the spec, but nothing serves/draws it yet.
+//
+// Run after build-gtfs.mjs (the npm `gtfs:build` script chains it). The
+// collapsing/counting logic lives in coverage-core.mjs (unit-testable, no I/O).
 import { existsSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { join } from "node:path";
@@ -50,7 +54,7 @@ function main() {
     `  ${geojson.features.length} features from ${shapes.length} shapes (${distinctLines} distinct lines)`,
   );
 
-  const outPath = join(OUT_DIR, "coverage.geojson");
+  const outPath = join(OUT_DIR, "coverage-weighted.geojson");
   const json = JSON.stringify(geojson);
   writeFileSync(outPath, json);
 
