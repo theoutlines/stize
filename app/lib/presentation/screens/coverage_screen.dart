@@ -214,6 +214,10 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
               ),
       ),
       body: Stack(
+        // Expand so the map fills the whole body: without this the Stack sizes
+        // to its non-positioned child (the chips/legend column), leaving the
+        // map only as wide as the chip row on desktop.
+        fit: StackFit.expand,
         children: [
           if (kMapRenderingEnabled)
             Positioned.fill(
