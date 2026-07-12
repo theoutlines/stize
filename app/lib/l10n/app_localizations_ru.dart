@@ -81,7 +81,19 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get locationDenied =>
-      'Геолокация выключена. Разрешите доступ, чтобы видеть себя на карте.';
+      'Доступ к геолокации запрещён. Разрешите его в браузере или настройках, чтобы видеть себя на карте.';
+
+  @override
+  String get locationServicesOff =>
+      'Службы геолокации выключены. Включите их в настройках устройства.';
+
+  @override
+  String get locationTimeout =>
+      'Не удалось определить местоположение вовремя. Проверьте связь и попробуйте снова.';
+
+  @override
+  String get locationUnavailable =>
+      'Местоположение сейчас недоступно. Попробуйте через минуту.';
 
   @override
   String get nearbyStopsTitle => 'Остановки рядом';
@@ -89,6 +101,10 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get nearbyStopsEmpty =>
       'Включи геолокацию или поищи остановку, улицу или линию выше.';
+
+  @override
+  String get mapZoomInForVehicles =>
+      'Приблизьте карту, чтобы увидеть транспорт';
 
   @override
   String get stopUpdatedJustNow => 'Обновлено только что';
@@ -218,14 +234,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get settingsThemeDark => 'Тёмная';
-
-  @override
-  String get settingsRefreshInterval => 'Интервал обновления';
-
-  @override
-  String settingsRefreshIntervalSeconds(int seconds) {
-    return '$seconds сек';
-  }
 
   @override
   String get aboutTitle => 'О Stigla';
@@ -366,4 +374,22 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get fleetApproxNote =>
       '«~» — значения оценены по перевозчику, а не подтверждены для этой конкретной машины.';
+
+  @override
+  String get navCoverage => 'Покрытие';
+
+  @override
+  String get coverageFilterAll => 'Все';
+
+  @override
+  String get coverageLegendTitle => 'Плотность транспорта';
+
+  @override
+  String get coverageLegendLow => 'реже';
+
+  @override
+  String get coverageLegendHigh => 'чаще';
+
+  @override
+  String get coverageUnavailable => 'Карта покрытия сейчас недоступна.';
 }

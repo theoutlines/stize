@@ -78,7 +78,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get locationDenied =>
-      'Location is off. Allow location access to see where you are.';
+      'Location access is denied. Allow it in your browser or settings to see where you are.';
+
+  @override
+  String get locationServicesOff =>
+      'Location services are off. Turn them on in your device settings.';
+
+  @override
+  String get locationTimeout =>
+      'Couldn\'t get your location in time. Check your connection and try again.';
+
+  @override
+  String get locationUnavailable =>
+      'Your location is unavailable right now. Try again in a moment.';
 
   @override
   String get nearbyStopsTitle => 'Nearby stops';
@@ -86,6 +98,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get nearbyStopsEmpty =>
       'Turn on location, or search for a stop, street, or line above.';
+
+  @override
+  String get mapZoomInForVehicles => 'Zoom in to see live transport';
 
   @override
   String get stopUpdatedJustNow => 'Updated just now';
@@ -213,14 +228,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsThemeDark => 'Dark';
-
-  @override
-  String get settingsRefreshInterval => 'Refresh interval';
-
-  @override
-  String settingsRefreshIntervalSeconds(int seconds) {
-    return '${seconds}s';
-  }
 
   @override
   String get aboutTitle => 'About Stigla';
@@ -361,4 +368,22 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get fleetApproxNote =>
       '“~” marks values estimated for this operator, not confirmed for this exact vehicle.';
+
+  @override
+  String get navCoverage => 'Coverage';
+
+  @override
+  String get coverageFilterAll => 'All';
+
+  @override
+  String get coverageLegendTitle => 'Transit density';
+
+  @override
+  String get coverageLegendLow => 'rarer';
+
+  @override
+  String get coverageLegendHigh => 'busier';
+
+  @override
+  String get coverageUnavailable => 'Coverage map is unavailable right now.';
 }

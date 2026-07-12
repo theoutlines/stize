@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:latlong2/latlong.dart' as ll;
 
+import '../../core/api_config.dart';
 import '../../core/fleet_matcher.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
@@ -45,8 +46,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
 
   void _scheduleRefresh() {
     _refreshTimer?.cancel();
-    final seconds = ref.read(settingsControllerProvider).valueOrNull?.refreshIntervalSeconds ?? 30;
-    _refreshTimer = Timer.periodic(Duration(seconds: seconds), (_) {
+    _refreshTimer = Timer.periodic(kLiveRefreshInterval, (_) {
       ref.invalidate(arrivalsProvider(widget.stopId));
     });
   }
@@ -148,7 +148,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     // The filter lists every line the stop serves; lines with no current
     // arrival are shown as muted, disabled chips ("inactive"). See stop_sheet.
     final arrivingLines = board.arrivals.map((a) => a.line).toSet();
-    final allLines = {...?stopLocation?.lines, ...arrivingLines}.toList()
+    // Only chip non-empty lines — a blank value would render an empty chip (F6).
+    final allLines = {...?stopLocation?.lines, ...arrivingLines}
+        .where((l) => l.trim().isNotEmpty)
+        .toList()
       ..sort(_compareLines);
     final effectiveFilter =
         (_lineFilter != null && arrivingLines.contains(_lineFilter))

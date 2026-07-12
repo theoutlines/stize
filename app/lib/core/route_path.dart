@@ -22,6 +22,17 @@ class RoutePath {
   double get length => _cum.isEmpty ? 0 : _cum.last;
   bool get isUsable => points.length >= 2;
 
+  // Windowed-projection tuning (F1). A vehicle can only travel so far along its
+  // route between two ~30s fixes, so when we know roughly where it was last
+  // ([near]) we prefer a match within this window of that distance — this keeps
+  // a fix on the return leg of an out-and-back (or a loop) from snapping onto
+  // the geometrically-close *outbound* leg a few metres away.
+  static const _projectWindow = 800.0; // metres either side of [near]
+  // Only fall back to the global-nearest segment (ignoring [near]) when the
+  // windowed match is this much worse perpendicular-distance — i.e. the vehicle
+  // genuinely jumped (route re-match / long feed gap), not just noisy GPS.
+  static const _localTolerance = 60.0; // metres
+
   /// Builds a path from a `[[lat, lon], ...]` polyline, or null if too short.
   static RoutePath? fromLatLon(List<List<double>>? poly) {
     if (poly == null || poly.length < 2) return null;
@@ -39,17 +50,38 @@ class RoutePath {
   }
 
   /// Distance-along the path (metres) of the closest point to [p].
-  double project(ll.LatLng p) {
-    var bestAlong = 0.0;
-    var bestDist = double.infinity;
+  ///
+  /// [near] disambiguates routes that fold back on themselves (out-and-back
+  /// legs, loops): when supplied, a segment within [_projectWindow] of that
+  /// distance-along is preferred over the raw global-nearest, so a fix on one
+  /// leg doesn't snap onto a parallel leg a few metres away (F1). The global
+  /// nearest is still used when the local match is markedly worse — the mark of
+  /// a genuine jump (route re-match, long feed gap) rather than GPS noise.
+  double project(ll.LatLng p, {double? near}) {
+    var globalAlong = 0.0;
+    var globalDist = double.infinity;
+    var localAlong = 0.0;
+    var localDist = double.infinity;
     for (var i = 0; i < points.length - 1; i++) {
       final seg = _projectOnSegment(p, points[i], points[i + 1]);
-      if (seg.dist < bestDist) {
-        bestDist = seg.dist;
-        bestAlong = _cum[i] + (_cum[i + 1] - _cum[i]) * seg.t;
+      final along = _cum[i] + (_cum[i + 1] - _cum[i]) * seg.t;
+      if (seg.dist < globalDist) {
+        globalDist = seg.dist;
+        globalAlong = along;
+      }
+      if (near != null &&
+          (along - near).abs() <= _projectWindow &&
+          seg.dist < localDist) {
+        localDist = seg.dist;
+        localAlong = along;
       }
     }
-    return bestAlong;
+    if (near != null &&
+        localDist.isFinite &&
+        localDist <= globalDist + _localTolerance) {
+      return localAlong;
+    }
+    return globalAlong;
   }
 
   /// The position at [dist] metres along the path (clamped to its ends).

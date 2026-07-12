@@ -217,8 +217,26 @@ abstract class AppLocalizations {
   /// No description provided for @locationDenied.
   ///
   /// In en, this message translates to:
-  /// **'Location is off. Allow location access to see where you are.'**
+  /// **'Location access is denied. Allow it in your browser or settings to see where you are.'**
   String get locationDenied;
+
+  /// No description provided for @locationServicesOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Location services are off. Turn them on in your device settings.'**
+  String get locationServicesOff;
+
+  /// No description provided for @locationTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t get your location in time. Check your connection and try again.'**
+  String get locationTimeout;
+
+  /// No description provided for @locationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Your location is unavailable right now. Try again in a moment.'**
+  String get locationUnavailable;
 
   /// No description provided for @nearbyStopsTitle.
   ///
@@ -231,6 +249,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Turn on location, or search for a stop, street, or line above.'**
   String get nearbyStopsEmpty;
+
+  /// No description provided for @mapZoomInForVehicles.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in to see live transport'**
+  String get mapZoomInForVehicles;
 
   /// No description provided for @stopUpdatedJustNow.
   ///
@@ -447,18 +471,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dark'**
   String get settingsThemeDark;
-
-  /// No description provided for @settingsRefreshInterval.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh interval'**
-  String get settingsRefreshInterval;
-
-  /// No description provided for @settingsRefreshIntervalSeconds.
-  ///
-  /// In en, this message translates to:
-  /// **'{seconds}s'**
-  String settingsRefreshIntervalSeconds(int seconds);
 
   /// No description provided for @aboutTitle.
   ///
@@ -705,6 +717,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'“~” marks values estimated for this operator, not confirmed for this exact vehicle.'**
   String get fleetApproxNote;
+
+  /// No description provided for @navCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Coverage'**
+  String get navCoverage;
+
+  /// No description provided for @coverageFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get coverageFilterAll;
+
+  /// No description provided for @coverageLegendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Transit density'**
+  String get coverageLegendTitle;
+
+  /// No description provided for @coverageLegendLow.
+  ///
+  /// In en, this message translates to:
+  /// **'rarer'**
+  String get coverageLegendLow;
+
+  /// No description provided for @coverageLegendHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'busier'**
+  String get coverageLegendHigh;
+
+  /// No description provided for @coverageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Coverage map is unavailable right now.'**
+  String get coverageUnavailable;
 }
 
 class _AppLocalizationsDelegate

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
+import '../../core/api_config.dart';
 import '../../core/fleet_matcher.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
@@ -87,10 +88,7 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
 
   void _scheduleRefresh() {
     _refreshTimer?.cancel();
-    final seconds =
-        ref.read(settingsControllerProvider).valueOrNull?.refreshIntervalSeconds ??
-        30;
-    _refreshTimer = Timer.periodic(Duration(seconds: seconds), (_) {
+    _refreshTimer = Timer.periodic(kLiveRefreshInterval, (_) {
       ref.invalidate(arrivalsProvider(widget.stopId));
     });
   }
@@ -293,7 +291,10 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
     // line the stop serves (union with the stop's route list), so an inactive
     // line shows as a muted, disabled chip rather than disappearing.
     final arrivingLines = board.arrivals.map((a) => a.line).toSet();
-    final allLines = {...stopLines, ...arrivingLines}.toList()
+    // Only chip non-empty lines — a blank value would render an empty chip (F6).
+    final allLines = {...stopLines, ...arrivingLines}
+        .where((l) => l.trim().isNotEmpty)
+        .toList()
       ..sort(_compareLines);
 
     // If a filtered line stops arriving, fall back to "all" without mutating

@@ -439,12 +439,20 @@ class VehicleMarker extends StatefulWidget {
     this.stuck = false,
     this.selected = false,
     this.compact = false,
+    this.animate = true,
     this.onTap,
   });
 
   final String line;
   final VehicleType type;
   final Color color;
+
+  /// Whether the "breathing" halo should keep pulsing. False when the vehicle
+  /// layer is idle (no positions easing) so a screen full of stationary markers
+  /// doesn't hold the compositor at 60fps forever — the single biggest source
+  /// of steady CPU/GPU load, and heat, on the web build (thermal fix). When
+  /// false the halo rests on a calm static frame instead of animating.
+  final bool animate;
 
   /// Travel direction in degrees (0 = north, clockwise). When set, a small
   /// arrow orbits the pill pointing where the vehicle is heading.
@@ -472,6 +480,10 @@ class _VehicleMarkerState extends State<VehicleMarker>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse;
 
+  // The halo breathes only for a live, moving vehicle: not when it's flagged
+  // stuck (steady red instead) and not when the layer is idle (thermal).
+  bool get _shouldPulse => widget.animate && !widget.stuck;
+
   @override
   void initState() {
     super.initState();
@@ -479,16 +491,17 @@ class _VehicleMarkerState extends State<VehicleMarker>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    if (!widget.stuck) _pulse.repeat();
+    if (_shouldPulse) _pulse.repeat();
   }
 
   @override
   void didUpdateWidget(covariant VehicleMarker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.stuck && _pulse.isAnimating) {
-      _pulse.stop();
-    } else if (!widget.stuck && !_pulse.isAnimating) {
-      _pulse.repeat();
+    if (_shouldPulse) {
+      if (!_pulse.isAnimating) _pulse.repeat();
+    } else if (_pulse.isAnimating) {
+      // Settle on a calm resting frame (t=0) rather than freezing mid-breath.
+      _pulse.reset();
     }
   }
 
@@ -509,17 +522,18 @@ class _VehicleMarkerState extends State<VehicleMarker>
         alignment: Alignment.center,
         children: [
           if (heading != null && !widget.compact)
-            // The direction "beak": a bubble tail that reads as part of the
-            // marker (X4), not a triangle floating beside it. It sits flush on
-            // the pill's edge and the whole layer rotates to the heading, so the
-            // beak points outward along the direction of travel while the pill's
+            // The direction "beak": a small arrow that orbits the pill pointing
+            // where the vehicle is heading. It's offset well clear of the pill
+            // so it reads as a distinct direction indicator, not fused into the
+            // bubble as one lopsided blob (F4). The whole layer rotates to the
+            // heading, so the beak points outward along travel while the pill's
             // number stays upright.
             Positioned.fill(
               child: Transform.rotate(
                 angle: heading * (math.pi / 180),
                 child: Center(
                   child: Transform.translate(
-                    offset: const Offset(0, -18),
+                    offset: const Offset(0, -30),
                     child: _beak(widget.stuck ? _stuckColor : widget.color),
                   ),
                 ),
