@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stigla — Map — search results</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="stage">
+  <div class="phone">
+    <div class="screen ">
+      <div class="status-bar"><div class="status-bar__time">9:41</div><div class="status-bar__icons"><svg class="icon" width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="4.5" y="5.5" width="3" height="6.5" rx="1"/><rect x="9" y="3" width="3" height="9" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1"/></svg><svg class="icon" width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.5c2.6 0 5 1 6.8 2.6l1.2-1.4A11 11 0 0 0 8 .5 11 11 0 0 0 0 3.7l1.2 1.4A9.4 9.4 0 0 1 8 2.5Z"/><path d="M8 6c1.4 0 2.7.5 3.7 1.4l1.2-1.4A7 7 0 0 0 8 4a7 7 0 0 0-4.9 2l1.2 1.4A5.4 5.4 0 0 1 8 6Z"/><path d="M8 9.5 10.2 7A3.4 3.4 0 0 0 8 6.2 3.4 3.4 0 0 0 5.8 7L8 9.5Z"/></svg><svg class="icon" width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x="0.5" y="0.5" width="22" height="12" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="9" rx="1.5" fill="currentColor"/><rect x="24" y="4" width="2" height="5" rx="1" fill="currentColor" opacity="0.5"/></svg></div></div>
+      
+<div class="map-canvas"></div>
+<div class="top-buttons"><div class="round-button glyph"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1='3' y1='6' x2='21' y2='6'/><line x1='3' y1='12' x2='21' y2='12'/><line x1='3' y1='18' x2='21' y2='18'/></svg></div><div><div class="round-button glyph"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx='12' cy='12' r='4'/><line x1='12' y1='2' x2='12' y2='5'/><line x1='12' y1='19' x2='12' y2='22'/><line x1='2' y1='12' x2='5' y2='12'/><line x1='19' y1='12' x2='22' y2='12'/></svg></div></div></div>
+<div class="bottom-dock">
+  <div class="search-results">
+    <div class="result-row"><span class="result-row__lead glyph"><svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d='M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z'/></svg></span>
+      <div class="result-row__body"><div class="result-row__title">Slavija</div>
+      <div class="result-row__subtitle">2, 9, 10, 19, 29, 48</div></div></div>
+    <div class="result-row"><span class="result-row__lead glyph"><svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d='M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z'/></svg></span>
+      <div class="result-row__body"><div class="result-row__title">Slavija (Beogradska)</div>
+      <div class="result-row__subtitle">22, 24, 65</div></div></div>
+    <div class="divider divider--inset"></div>
+    <div class="result-row"><span class="result-row__glyph glyph" style="color:var(--tram)"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d='M11 2c-3 0-5 .4-5 .4L7 4H6a2 2 0 0 0-2 2v8a3 3 0 0 0 3 3l-1.5 2h2l1.2-1.6h4.6L14.7 19h2L15 17a3 3 0 0 0 3-3V6a2 2 0 0 0-2-2h-1l1-1.6S14 2 11 2Zm-5 6h10v4H6V8Zm2 8a1.1 1.1 0 1 0 0-2.2A1.1 1.1 0 0 0 8 16Zm8 0a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Z'/></svg></span>
+      <div class="result-row__body"><div class="result-row__title">2</div>
+      <div class="result-row__subtitle">Pristanište → Pristanište</div></div>
+      <span class="result-row__trailing glyph"><svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d='M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.2l1.4-6.8L2.2 9.7l6.9-.7L12 2Z'/></svg></span></div>
+    <div class="result-row"><span class="result-row__glyph glyph" style="color:var(--bus)"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d='M6 3h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2v2a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H9v1a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-2a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm0 4v4h12V7H6Zm2 8a1.2 1.2 0 1 0 0-2.4A1.2 1.2 0 0 0 8 15Zm8 0a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4Z'/></svg></span>
+      <div class="result-row__body"><div class="result-row__title">78</div>
+      <div class="result-row__subtitle">Zemun → Blok 44</div></div>
+      <span class="result-row__trailing glyph"><svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d='M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.2l1.4-6.8L2.2 9.7l6.9-.7L12 2Z'/></svg></span></div>
+    <div class="divider divider--inset"></div>
+    <div class="result-row"><span class="result-row__lead glyph"><svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points='2 6 9 3 15 6 22 3 22 18 15 21 9 18 2 21'/><line x1='9' y1='3' x2='9' y2='18'/><line x1='15' y1='6' x2='15' y2='21'/></svg></span>
+      <div class="result-row__body"><div class="result-row__title">Slavija Square, Beograd</div></div></div>
+  </div>
+  <div class="search-bar">
+    <span class="search-bar__icon glyph"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx='11' cy='11' r='7'/><line x1='16.5' y1='16.5' x2='21' y2='21'/></svg></span>
+    <span class="search-bar__input">Slavija</span>
+    <span class="icon-button glyph"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1='5' y1='5' x2='19' y2='19'/><line x1='19' y1='5' x2='5' y2='19'/></svg></span>
+  </div>
+</div>
+
+    </div>
+  </div>
+  <div class="stage__caption">Universal search: stops, lines (with pin toggle), and places above the bar.</div>
+</div>
+</body>
+</html>

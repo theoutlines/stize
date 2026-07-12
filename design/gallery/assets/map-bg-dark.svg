@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" width="390" height="844" preserveAspectRatio="xMidYMid slice">
+  <!-- Neutral dark "map-like" placeholder backdrop for the Stigla gallery.
+       Not a real map: abstract streets, a river, parks and blocks in the app's
+       dark map palette, so DOM markers layered on top read as a transit map. -->
+  <defs>
+    <linearGradient id="water" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#123240"/>
+      <stop offset="1" stop-color="#0e2a35"/>
+    </linearGradient>
+  </defs>
+
+  <!-- base land -->
+  <rect width="390" height="844" fill="#11171a"/>
+
+  <!-- blocks / neighbourhoods (subtle lighter parcels) -->
+  <g fill="#151c20" opacity="0.9">
+    <rect x="18" y="60" width="120" height="90" rx="4"/>
+    <rect x="150" y="48" width="96" height="70" rx="4"/>
+    <rect x="258" y="70" width="110" height="120" rx="4"/>
+    <rect x="30" y="200" width="90" height="120" rx="4"/>
+    <rect x="210" y="230" width="150" height="100" rx="4"/>
+    <rect x="40" y="470" width="130" height="110" rx="4"/>
+    <rect x="220" y="520" width="140" height="150" rx="4"/>
+    <rect x="24" y="640" width="120" height="160" rx="4"/>
+    <rect x="250" y="700" width="120" height="120" rx="4"/>
+  </g>
+
+  <!-- parks / green -->
+  <g fill="#16281d">
+    <path d="M150 150 q60 -20 96 20 q20 60 -30 96 q-70 20 -96 -30 q-10 -60 30 -86 z"/>
+    <rect x="40" y="360" width="120" height="80" rx="26"/>
+    <circle cx="300" cy="430" r="46"/>
+  </g>
+
+  <!-- river (Sava/Danube abstraction), diagonal band -->
+  <path d="M-40 300 C 90 340, 120 470, 260 520 C 330 545, 380 640, 440 700 L 470 900 L -80 900 Z"
+        fill="url(#water)" opacity="0.55"/>
+  <path d="M-40 300 C 90 340, 120 470, 260 520 C 330 545, 380 640, 440 700"
+        fill="none" stroke="#1c4a5b" stroke-width="2" opacity="0.5"/>
+
+  <!-- major roads -->
+  <g stroke="#2b333a" stroke-width="7" fill="none" stroke-linecap="round">
+    <path d="M0 120 H390"/>
+    <path d="M0 250 H390"/>
+    <path d="M0 610 H390"/>
+    <path d="M120 0 V844"/>
+    <path d="M300 0 V844"/>
+    <path d="M20 40 L360 420"/>
+  </g>
+
+  <!-- minor roads / grid -->
+  <g stroke="#1f262b" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M0 70 H390"/><path d="M0 185 H390"/><path d="M0 330 H390"/>
+    <path d="M0 400 H390"/><path d="M0 480 H390"/><path d="M0 540 H390"/>
+    <path d="M0 690 H390"/><path d="M0 770 H390"/>
+    <path d="M60 0 V844"/><path d="M180 0 V844"/><path d="M240 0 V844"/><path d="M350 0 V844"/>
+  </g>
+</svg>
