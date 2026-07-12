@@ -32,6 +32,16 @@
   "nearbyStopsEmpty": "Включи геолокацию или поищи остановку, улицу или линию выше.",
   "mapZoomInForVehicles": "Приблизьте карту, чтобы увидеть транспорт",
 
+  "nearbySearchHint": "Фильтр линий рядом…",
+  "nearbyDistanceMeters": "{meters} м",
+  "@nearbyDistanceMeters": {"placeholders": {"meters": {"type": "int"}}},
+  "nearbyNeedsLocationTitle": "Что ходит рядом",
+  "nearbyNeedsLocationSubtitle": "Включите геолокацию, чтобы увидеть линии, на которые можно сесть поблизости.",
+  "nearbyEnableLocation": "Моё местоположение",
+  "nearbyLoading": "Ищем линии вокруг вас…",
+  "nearbyEmptyTitle": "Рядом остановок нет",
+  "nearbyEmptySubtitle": "Сейчас в пешей доступности от вас нет остановок.",
+
   "stopUpdatedJustNow": "Обновлено только что",
   "stopUpdatedSecondsAgo": "Обновлено {seconds} сек назад",
   "stopUpdatedMinutesAgo": "Обновлено {minutes} мин назад",

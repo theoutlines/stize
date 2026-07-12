@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
 import {
   getLineByNumber,
+  getLineDirections,
   getRouteShape,
   getStopById,
   nearbyStops,
+  nearestStop,
   searchLines,
   searchStops,
 } from "../src/lib/gtfsData";
@@ -60,6 +62,18 @@ describe("gtfsData (against the real built GTFS bundle)", () => {
   it("by-number lookup returns the canonical direction (F8)", async () => {
     const line = await getLineByNumber(env, "79");
     expect(line?.route_id).toBe("00079"); // bare id, never a "-1" suffix
+  });
+
+  it("resolves the nearest stop to a coordinate (terminus → direction name)", async () => {
+    // A point right on the Batutova stop resolves to it.
+    const stop = await nearestStop(env, { lat: 44.795374, lon: 20.499713 });
+    expect(stop?.stop_id).toBe("20091");
+  });
+
+  it("returns both directions of a line for direction matching (F8)", async () => {
+    const directions = await getLineDirections(env, "79");
+    expect(directions.length).toBe(2);
+    expect(new Set(directions.map((d) => d.direction_id))).toEqual(new Set(["0", "1"]));
   });
 
   it("returns an empty array for a query that matches nothing", async () => {

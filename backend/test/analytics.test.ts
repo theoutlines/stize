@@ -40,9 +40,9 @@ describe("vehicleIdOf", () => {
 
 describe("analytics.logObservations", () => {
   const raw: RawArrival[] = [
-    { lineNumber: "79", etaSeconds: 120, stopsRemaining: 2, garageNo: "P93001", gps: null, heading: null },
-    { lineNumber: "79", etaSeconds: 60, stopsRemaining: 1, garageNo: null, gps: null, heading: null },
-    { lineNumber: "79", etaSeconds: 30, stopsRemaining: 0, garageNo: "P5", gps: null, heading: null },
+    { lineNumber: "79", etaSeconds: 120, stopsRemaining: 2, garageNo: "P93001", gps: null, heading: null, terminus: null },
+    { lineNumber: "79", etaSeconds: 60, stopsRemaining: 1, garageNo: null, gps: null, heading: null, terminus: null },
+    { lineNumber: "79", etaSeconds: 30, stopsRemaining: 0, garageNo: "P5", gps: null, heading: null, terminus: null },
   ];
 
   it("writes nothing while analytics_collect is off", async () => {

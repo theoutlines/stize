@@ -11,7 +11,10 @@ import type { Env } from "../env";
 //                       are still hidden.
 //   analytics_show    — the app reveals the (draft) analytics screens to users.
 //                       Turn this on only once the screens are ready.
-export const FEATURE_FLAGS = ["analytics_collect", "analytics_show"] as const;
+//   nearby_list       — the app shows the experimental "Nearby" list (a
+//                       draggable sheet over the map). Off on prod, on on
+//                       staging (like every in-dev flag).
+export const FEATURE_FLAGS = ["analytics_collect", "analytics_show", "nearby_list"] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
 export function isFeatureFlag(name: string): name is FeatureFlag {

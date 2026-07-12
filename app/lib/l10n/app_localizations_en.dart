@@ -103,6 +103,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapZoomInForVehicles => 'Zoom in to see live transport';
 
   @override
+  String get nearbySearchHint => 'Filter lines nearby…';
+
+  @override
+  String nearbyDistanceMeters(int meters) {
+    return '$meters m';
+  }
+
+  @override
+  String get nearbyNeedsLocationTitle => 'See what\'s nearby';
+
+  @override
+  String get nearbyNeedsLocationSubtitle =>
+      'Turn on location to list the lines you can catch around you.';
+
+  @override
+  String get nearbyEnableLocation => 'Use my location';
+
+  @override
+  String get nearbyLoading => 'Finding lines around you…';
+
+  @override
+  String get nearbyEmptyTitle => 'No stops nearby';
+
+  @override
+  String get nearbyEmptySubtitle =>
+      'There are no stops within walking distance of you right now.';
+
+  @override
   String get stopUpdatedJustNow => 'Updated just now';
 
   @override

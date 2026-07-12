@@ -5,6 +5,7 @@ import type {
   ConfigResponse,
   HealthResponse,
   LinesResponse,
+  NearbyArrivalsResponse,
   RouteShapeResponse,
   StopsResponse,
   VehiclesResponse,
@@ -14,6 +15,7 @@ import { FEATURE_FLAGS, getAllFlags, isFeatureFlag, setFlag } from "./lib/featur
 import { aggregate, getLineAnalytics } from "./lib/analytics";
 import { getArrivals } from "./lib/arrivals";
 import { getNearbyVehicles } from "./lib/vehicles";
+import { getNearbyArrivals } from "./lib/nearbyArrivals";
 import {
   getAllLines,
   getAllStops,
@@ -151,6 +153,41 @@ app.get("/api/v1/vehicles/nearby", async (c) => {
   } catch (err) {
     console.error("vehicles fetch failed", err);
     return c.json(empty);
+  }
+});
+
+// Lines you can catch from around a point, grouped by line + direction with the
+// soonest departures at the nearest serving stop — the "Nearby" list. Same
+// bounded, cache-rate-limited fan-out as /vehicles/nearby (see getNearbyArrivals).
+app.get("/api/v1/arrivals/nearby", async (c) => {
+  const lat = parseFloat(c.req.query("lat") ?? "");
+  const lon = parseFloat(c.req.query("lon") ?? "");
+  const radius = parseFloat(c.req.query("radius") ?? "500");
+  if (Number.isNaN(lat) || Number.isNaN(lon)) {
+    return c.json({ error: "missing/invalid 'lat'/'lon' query params" }, 400);
+  }
+  const emptyKilled: NearbyArrivalsResponse = {
+    groups: [],
+    updated_at: new Date().toISOString(),
+    service_status: "unavailable",
+  };
+  if (await isServiceKilled(c.env)) return c.json(emptyKilled);
+  try {
+    const body = await getNearbyArrivals(
+      c.env,
+      c.executionCtx,
+      lat,
+      lon,
+      Number.isNaN(radius) ? 500 : radius,
+    );
+    return c.json(body);
+  } catch (err) {
+    console.error("nearby arrivals fetch failed", err);
+    return c.json({
+      groups: [],
+      updated_at: new Date().toISOString(),
+      service_status: "unavailable",
+    } satisfies NearbyArrivalsResponse);
   }
 });
 

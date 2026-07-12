@@ -24,6 +24,7 @@ describe("parseRawArrival", () => {
       garageNo: "P26624",
       gps: { lat: 44.79091, lon: 20.5405716 },
       heading: null, // no all_stations in this sample
+      terminus: null, // no all_stations in this sample
     });
   });
 
@@ -36,7 +37,21 @@ describe("parseRawArrival", () => {
       garageNo: null,
       gps: null,
       heading: null,
+      terminus: null,
     });
+  });
+
+  it("reads the trip terminus (direction) as the last of all_stations", () => {
+    const result = parseRawArrival({
+      line_number: "79",
+      vehicles: [{ lat: "44.8000", lng: "20.5000" }],
+      all_stations: [
+        { coordinates: { latitude: "44.8000", longitude: "20.5000" } },
+        { coordinates: { latitude: "44.8100", longitude: "20.5200" } },
+        { coordinates: { latitude: "44.8300", longitude: "20.5400" } }, // terminus
+      ],
+    });
+    expect(result.terminus).toEqual({ lat: 44.83, lon: 20.54 });
   });
 
   it("treats a non-numeric gps payload as absent", () => {

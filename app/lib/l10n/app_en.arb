@@ -34,6 +34,16 @@
   "nearbyStopsEmpty": "Turn on location, or search for a stop, street, or line above.",
   "mapZoomInForVehicles": "Zoom in to see live transport",
 
+  "nearbySearchHint": "Filter lines nearby…",
+  "nearbyDistanceMeters": "{meters} m",
+  "@nearbyDistanceMeters": {"placeholders": {"meters": {"type": "int"}}},
+  "nearbyNeedsLocationTitle": "See what's nearby",
+  "nearbyNeedsLocationSubtitle": "Turn on location to list the lines you can catch around you.",
+  "nearbyEnableLocation": "Use my location",
+  "nearbyLoading": "Finding lines around you…",
+  "nearbyEmptyTitle": "No stops nearby",
+  "nearbyEmptySubtitle": "There are no stops within walking distance of you right now.",
+
   "stopUpdatedJustNow": "Updated just now",
   "stopUpdatedSecondsAgo": "Updated {seconds}s ago",
   "@stopUpdatedSecondsAgo": {"placeholders": {"seconds": {"type": "int"}}},

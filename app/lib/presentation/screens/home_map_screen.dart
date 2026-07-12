@@ -25,6 +25,7 @@ import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/favorites_carousel.dart';
+import '../widgets/nearby_sheet.dart';
 import '../widgets/stop_sheet.dart';
 import '../widgets/vehicle_icon.dart';
 import 'map_screen_args.dart';
@@ -938,6 +939,20 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     });
   }
 
+  /// Open a stop's arrivals sheet by id/name — used by the Nearby list, which
+  /// carries only the id and name of each group's nearest stop.
+  void _openStopById(String stopId, String stopName) {
+    showStopSheet(
+      context,
+      stopId: stopId,
+      stopName: stopName,
+      onFocusVehicle: (lat, lon) => _controller?.animateCamera(
+        center: Geographic(lon: lon, lat: lat),
+        zoom: 16.5,
+      ),
+    );
+  }
+
   void _openStop(Stop stop) {
     _clearSearch();
     // Seamless (A1): overlay the arrivals on the same map instead of pushing a
@@ -1043,6 +1058,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
     final favoriteStops =
         ref.watch(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
+    // Experimental "Nearby" list (draggable sheet over the map), gated remotely.
+    final nearbyEnabled = ref.watch(nearbyEnabledProvider);
 
     return PopScope(
       // While a line is focused, Android back closes the focus overlay instead
@@ -1118,12 +1135,22 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // zoom in rather than leaving them staring at a blank map (F5).
           if (_focus == null && _currentZoom < _minVehiclesZoom && !_hasVehicles)
             _zoomHint(l10n, theme),
-          // Bottom UI: normally the search + favourites bar; while a line is
-          // focused, a compact line panel with a close button instead.
-          if (_focus == null)
-            _bottomSearch(l10n, theme)
+          // Bottom UI: while a line is focused, a compact line panel. Otherwise
+          // the experimental Nearby sheet (when its flag is on) *replaces* the
+          // universal search bar + favourites carousel for the experiment; with
+          // the flag off, the normal search + favourites bar.
+          if (_focus != null)
+            _focusPanel(theme)
+          else if (nearbyEnabled)
+            NearbySheet(
+              userLocation: _meTo,
+              locationDenied: _locationDenied,
+              active: _tabActive && _appResumed,
+              onEnableLocation: _recenterOnMe,
+              onTapGroup: (group) => _openStopById(group.stopId, group.stopName),
+            )
           else
-            _focusPanel(theme),
+            _bottomSearch(l10n, theme),
         ],
       ),
       ),

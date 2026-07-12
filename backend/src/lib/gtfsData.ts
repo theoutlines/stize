@@ -66,6 +66,32 @@ export async function nearbyStops(
     .map((x) => x.stop);
 }
 
+// The single GTFS stop closest to a coordinate. Used to turn a vehicle's route
+// terminus (a bare lat/lon from the live feed) into a human stop name = the
+// arrival's travel direction. The stops array is isolate-cached, so this is an
+// in-memory scan.
+export async function nearestStop(env: Env, gps: { lat: number; lon: number }): Promise<StopDto | null> {
+  const stops = await loadStops(env);
+  let best: StopDto | null = null;
+  let bestDist = Infinity;
+  for (const s of stops) {
+    const d = haversineDistanceMeters(gps, { lat: s.lat, lon: s.lon });
+    if (d < bestDist) {
+      bestDist = d;
+      best = s;
+    }
+  }
+  return best;
+}
+
+// Both GTFS directions of a line number (each direction is its own entry, F8),
+// for matching a resolved terminus name back to a direction_id.
+export async function getLineDirections(env: Env, line: string): Promise<LineDto[]> {
+  const lines = await loadLines(env);
+  const q = line.toLowerCase();
+  return lines.filter((l) => l.line.toLowerCase() === q);
+}
+
 export async function searchLines(env: Env, query: string): Promise<LineDto[]> {
   const lines = await loadLines(env);
   const q = query.trim().toLowerCase();

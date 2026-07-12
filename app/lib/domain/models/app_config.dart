@@ -13,6 +13,10 @@ class AppConfig {
   /// user. Gated remotely so screens can ship dormant and be revealed later.
   bool get analyticsShow => flag('analytics_show');
 
+  /// Whether the experimental "Nearby" list (a draggable sheet over the map) is
+  /// shown. Off on prod, on on staging — an experiment, not a redesign.
+  bool get nearbyList => flag('nearby_list');
+
   static const empty = AppConfig(version: '', flags: {});
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {
