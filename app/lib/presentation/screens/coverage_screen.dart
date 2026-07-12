@@ -130,7 +130,7 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
         // gradation — dim single lines → orange corridors → white core — holds).
         'heatmap-intensity': [
           'interpolate', ['linear'], ['zoom'],
-          11, 0.018,
+          11, 0.024,
           13, 0.07,
           15, 0.28,
           18, 1.0,
