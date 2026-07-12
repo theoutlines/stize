@@ -127,6 +127,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   late final AnimationController _meAnim;
   ll.LatLng? _meFrom; // where the marker eased from
   ll.LatLng? _meTo; // the latest fix (null = no marker shown)
+  // The origin for the Nearby list. Anchored to the user's own location ONLY,
+  // and deliberately *not* the same as [_meTo]: it's fed by the continuous
+  // position stream (and the first fix), never by the recenter button's one-shot
+  // fix — so tapping "my location" recentres the camera without disturbing the
+  // list. The map camera never feeds it either. Null until the first fix.
+  ll.LatLng? _nearbyOrigin;
   StreamSubscription<geo.Position>? _positionSub;
   DateTime? _subscribedAt;
   DateTime? _lastFixAt;
@@ -377,7 +383,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _pendingRecenter = true;
     final cached = await service.lastKnownIfGranted();
     if (cached != null && mounted) {
-      _onFix(ll.LatLng(cached.latitude, cached.longitude), ease: false);
+      _onFix(ll.LatLng(cached.latitude, cached.longitude), ease: false, updatesNearby: true);
     }
     _reconcileLocationStream();
   }
@@ -385,11 +391,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// Applies a fresh position fix: eases the marker toward it (or snaps on the
   /// first one), records the time (feeds the staleness watchdog), and — only
   /// when a recenter was requested — moves the camera onto it.
-  void _onFix(ll.LatLng point, {bool ease = true}) {
+  void _onFix(ll.LatLng point, {bool ease = true, bool updatesNearby = false}) {
     if (!mounted) return;
     _lastFixAt = DateTime.now();
     _locationDenied = false;
     setState(() {
+      // Feed the Nearby list only from the stream / first fix. The recenter
+      // button passes updatesNearby:false, so it can only *bootstrap* the origin
+      // when there's no fix yet — never move the list once one exists.
+      if (updatesNearby) {
+        _nearbyOrigin = point;
+      } else {
+        _nearbyOrigin ??= point;
+      }
       if (ease && _meTo != null) {
         _meFrom = _displayedMe ?? _meTo;
         _meTo = point;
@@ -450,7 +464,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _positionSub?.cancel();
     _subscribedAt = DateTime.now();
     _positionSub = service.positionStream().listen(
-      (p) => _onFix(ll.LatLng(p.latitude, p.longitude)),
+      (p) => _onFix(ll.LatLng(p.latitude, p.longitude), updatesNearby: true),
       onError: _onLocationStreamError,
       cancelOnError: false,
     );
@@ -477,6 +491,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _locationDenied = true;
       _meFrom = null;
       _meTo = null;
+      _nearbyOrigin = null;
     });
   }
 
@@ -1143,7 +1158,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             _focusPanel(theme)
           else if (nearbyEnabled)
             NearbySheet(
-              userLocation: _meTo,
+              userLocation: _nearbyOrigin,
               locationDenied: _locationDenied,
               active: _tabActive && _appResumed,
               onEnableLocation: _recenterOnMe,

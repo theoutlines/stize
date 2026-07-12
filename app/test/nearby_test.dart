@@ -47,6 +47,22 @@ class _FakeNearbyRepo implements NearbyArrivalsRepository {
   }
 }
 
+/// Records the coordinates every `/arrivals/nearby` request is made with, so a
+/// test can assert what actually drives the request.
+class _RecordingNearbyRepo implements NearbyArrivalsRepository {
+  final List<({double lat, double lon})> calls = [];
+
+  @override
+  Future<List<NearbyGroup>> nearby({
+    required double lat,
+    required double lon,
+    double radiusMeters = 500,
+  }) async {
+    calls.add((lat: lat, lon: lon));
+    return const [];
+  }
+}
+
 Widget _wrap(Widget child, {NearbyArrivalsRepository? repo}) {
   return ProviderScope(
     overrides: [
@@ -178,6 +194,123 @@ void main() {
       expect(find.text('No stops nearby'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
+    });
+  });
+
+  group('Nearby request is anchored to the user, not the map', () {
+    // The request coordinates come only from the user's location; the map
+    // viewport is not even an input to NearbySheet. A parent rebuild that leaves
+    // [userLocation] unchanged (which is exactly what a map pan/zoom does) must
+    // not issue a new request.
+    testWidgets('a parent rebuild with the same location issues no new request', (tester) async {
+      final repo = _RecordingNearbyRepo();
+      final loc = ll.LatLng(44.8000, 20.4600);
+
+      Widget sheet(ll.LatLng at) => _wrap(
+            NearbySheet(
+              userLocation: at,
+              locationDenied: false,
+              active: true,
+              onEnableLocation: () {},
+            ),
+            repo: repo,
+          );
+
+      await tester.pumpWidget(sheet(loc));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(repo.calls.length, 1);
+      expect(repo.calls.first.lat, closeTo(44.8000, 1e-9));
+      expect(repo.calls.first.lon, closeTo(20.4600, 1e-9));
+
+      // Simulate the map being panned/zoomed: the widget rebuilds but the user's
+      // location is unchanged. A fresh LatLng with identical coords stands in for
+      // "nothing about the user moved".
+      await tester.pumpWidget(sheet(ll.LatLng(44.8000, 20.4600)));
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(repo.calls.length, 1, reason: 'map movement must not refetch');
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a sub-threshold user move does not refetch', (tester) async {
+      final repo = _RecordingNearbyRepo();
+      Widget sheet(ll.LatLng at) => _wrap(
+            NearbySheet(
+              userLocation: at,
+              locationDenied: false,
+              active: true,
+              onEnableLocation: () {},
+            ),
+            repo: repo,
+          );
+
+      await tester.pumpWidget(sheet(ll.LatLng(44.8000, 20.4600)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(repo.calls.length, 1);
+
+      // ~33 m north (< 75 m threshold) — GPS jitter, not a real move.
+      await tester.pumpWidget(sheet(ll.LatLng(44.80030, 20.4600)));
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(repo.calls.length, 1);
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a real user move past the threshold refetches at the new spot', (tester) async {
+      final repo = _RecordingNearbyRepo();
+      Widget sheet(ll.LatLng at) => _wrap(
+            NearbySheet(
+              userLocation: at,
+              locationDenied: false,
+              active: true,
+              onEnableLocation: () {},
+            ),
+            repo: repo,
+          );
+
+      await tester.pumpWidget(sheet(ll.LatLng(44.8000, 20.4600)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(repo.calls.length, 1);
+
+      // ~222 m north (> 75 m threshold).
+      await tester.pumpWidget(sheet(ll.LatLng(44.8020, 20.4600)));
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(repo.calls.length, 2);
+      expect(repo.calls.last.lat, closeTo(44.8020, 1e-9));
+
+      await tester.pumpWidget(const SizedBox());
+    });
+  });
+
+  group('shouldRefetchNearby', () {
+    test('always fetches the first time (no previous fix)', () {
+      expect(
+        shouldRefetchNearby(last: null, current: ll.LatLng(44.8, 20.46)),
+        isTrue,
+      );
+    });
+
+    test('does not refetch for a move under the threshold', () {
+      expect(
+        shouldRefetchNearby(
+          last: ll.LatLng(44.8000, 20.4600),
+          current: ll.LatLng(44.80030, 20.4600), // ~33 m
+        ),
+        isFalse,
+      );
+    });
+
+    test('refetches once the user has moved past the threshold', () {
+      expect(
+        shouldRefetchNearby(
+          last: ll.LatLng(44.8000, 20.4600),
+          current: ll.LatLng(44.8020, 20.4600), // ~222 m
+        ),
+        isTrue,
+      );
     });
   });
 }

@@ -12,6 +12,29 @@ import '../providers/providers.dart';
 import 'empty_state.dart';
 import 'nearby_list.dart';
 
+/// How far the user must move before the Nearby list refetches its set of stops.
+/// Big enough to ignore GPS jitter (and any incidental map movement, which never
+/// feeds in here anyway), inside the 50–100 m band we want.
+const double kNearbyRefetchDistanceMeters = 75.0;
+
+/// Whether the Nearby list should refetch, given the user's position moved from
+/// [last] to [current].
+///
+/// The list is anchored **only** to the user's own location — never the map
+/// viewport/centre — so this is the single gate on issuing a request. The first
+/// fix always fetches; after that we refetch only once the user has actually
+/// walked at least [thresholdMeters]. Panning/zooming the map does not change
+/// [current] (it's the GPS fix, not the camera), so it can never trigger a
+/// request through here.
+bool shouldRefetchNearby({
+  required ll.LatLng? last,
+  required ll.LatLng current,
+  double thresholdMeters = kNearbyRefetchDistanceMeters,
+}) {
+  if (last == null) return true;
+  return const ll.Distance().as(ll.LengthUnit.Meter, last, current) >= thresholdMeters;
+}
+
 /// The experimental "Nearby" surface: a draggable bottom sheet over the map
 /// (Google Maps / Transit pattern). Collapsed, it peeks a search field and the
 /// top of the list; expanded, it's the full line+direction list. Behind the
@@ -60,10 +83,6 @@ class _NearbySheetState extends ConsumerState<NearbySheet> {
 
   final _searchController = TextEditingController();
 
-  // Refetch when the user has moved at least this far from the last fetch point;
-  // small map jitters shouldn't trigger a new fan-out.
-  static const _refetchDistanceMeters = 60.0;
-  static const _distance = ll.Distance();
 
   @override
   void initState() {
@@ -84,8 +103,13 @@ class _NearbySheetState extends ConsumerState<NearbySheet> {
         _timer = null;
       }
     }
+    // Refetch only when the user's own position has moved enough — never on a
+    // bare parent rebuild (e.g. the map camera moved), which leaves
+    // [userLocation] unchanged.
     final loc = widget.userLocation;
-    if (loc != null && _movedEnough(loc)) _fetch();
+    if (loc != null && shouldRefetchNearby(last: _lastFetchLoc, current: loc)) {
+      _fetch();
+    }
   }
 
   @override
@@ -93,12 +117,6 @@ class _NearbySheetState extends ConsumerState<NearbySheet> {
     _timer?.cancel();
     _searchController.dispose();
     super.dispose();
-  }
-
-  bool _movedEnough(ll.LatLng loc) {
-    final last = _lastFetchLoc;
-    if (last == null) return true;
-    return _distance.as(ll.LengthUnit.Meter, last, loc) >= _refetchDistanceMeters;
   }
 
   void _startTimer() {
