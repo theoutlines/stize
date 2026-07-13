@@ -132,6 +132,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get arrivalEtaNow => 'Сейчас';
 
   @override
+  String get arrivalScheduled => 'По расписанию';
+
+  @override
   String arrivalStopsAway(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

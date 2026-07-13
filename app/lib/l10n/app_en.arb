@@ -44,6 +44,7 @@
   "arrivalEtaMinutes": "{minutes} min",
   "@arrivalEtaMinutes": {"placeholders": {"minutes": {"type": "int"}}},
   "arrivalEtaNow": "Now",
+  "arrivalScheduled": "Scheduled",
   "arrivalStopsAway": "{count, plural, =0{here} =1{1 stop away} other{{count} stops away}}",
   "@arrivalStopsAway": {"placeholders": {"count": {"type": "int"}}},
 

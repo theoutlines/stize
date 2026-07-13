@@ -128,6 +128,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get arrivalEtaNow => 'Now';
 
   @override
+  String get arrivalScheduled => 'Scheduled';
+
+  @override
   String arrivalStopsAway(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

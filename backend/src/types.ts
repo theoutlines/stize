@@ -15,6 +15,9 @@ export interface ArrivalDto {
   gps: { lat: number; lon: number } | null;
   garage_no: string | null;
   heading: number | null;
+  // Schedule fallback: "scheduled" for a planned (not live) arrival; omitted /
+  // "live" for real vehicles. Lets the list show live first + a schedule tail.
+  source?: "live" | "scheduled";
 }
 
 // A single moving vehicle for the "all transport in the visible area" map view,

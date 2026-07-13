@@ -21,6 +21,7 @@ class Arrival {
     required this.gps,
     required this.garageNo,
     this.heading,
+    this.scheduled = false,
   });
 
   final String line;
@@ -34,6 +35,10 @@ class Arrival {
   /// Travel direction in degrees (0 = north, clockwise), or null if unknown.
   final double? heading;
 
+  /// Planned (timetable) arrival, not a live vehicle — the schedule fallback
+  /// (`source: "scheduled"`). Shown marked and after live arrivals of the line.
+  final bool scheduled;
+
   factory Arrival.fromJson(Map<String, dynamic> json) {
     return Arrival(
       line: json['line'] as String,
@@ -44,6 +49,7 @@ class Arrival {
       gps: json['gps'] == null ? null : LatLon.fromJson(json['gps'] as Map<String, dynamic>),
       garageNo: json['garage_no'] as String?,
       heading: (json['heading'] as num?)?.toDouble(),
+      scheduled: json['source'] == 'scheduled',
     );
   }
 }

@@ -1,6 +1,7 @@
 import type { Env } from "../env";
 import type { FeedMeta, LineDto, RouteShapeResponse, StopDto } from "../types";
 import type { DirectionEndpoints } from "./direction";
+import type { ScheduleMeta, StopSchedule } from "./schedule";
 import { haversineDistanceMeters } from "./haversine";
 
 // GTFS bundles are static assets built by scripts/build-gtfs.mjs. They only
@@ -121,6 +122,25 @@ export async function getLineDirectionEndpoints(
   }
   lineDirectionsCache.set(key, out);
   return out;
+}
+
+// Schedule fallback (Phase 1): the shared calendar/service metadata (cached for
+// the isolate — it's tiny and changes only on rebuild) and one stop's planned
+// departures (fetched per stop, like shapes). Both return null when absent so
+// callers degrade to live-only.
+let scheduleMetaCache: ScheduleMeta | null = null;
+export async function getScheduleMeta(env: Env): Promise<ScheduleMeta | null> {
+  if (scheduleMetaCache) return scheduleMetaCache;
+  const res = await fetchAsset(env, "/gtfs/schedule/_meta.json");
+  if (!res.ok) return null;
+  scheduleMetaCache = (await res.json()) as ScheduleMeta;
+  return scheduleMetaCache;
+}
+
+export async function getStopSchedule(env: Env, stopId: string): Promise<StopSchedule | null> {
+  const res = await fetchAsset(env, `/gtfs/schedule/${encodeURIComponent(stopId)}.json`);
+  if (!res.ok) return null;
+  return (await res.json()) as StopSchedule;
 }
 
 export async function getRouteShape(env: Env, routeId: string): Promise<RouteShapeResponse | null> {

@@ -156,6 +156,40 @@ void main() {
     );
   });
 
+  testWidgets('renders a scheduled (timetable) arrival marked as such', (tester) async {
+    final board = ArrivalsBoard.fromJson({
+      'stop_id': '20091',
+      'stop_name': 'Batutova',
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      'arrivals': [
+        {
+          'line': '79',
+          'vehicle_type': 'bus',
+          'eta_minutes': 12,
+          'stops_remaining': null,
+          'route_id': '00079',
+          'gps': null,
+          'garage_no': null,
+          'source': 'scheduled',
+        },
+      ],
+      'service_status': 'ok',
+    });
+
+    await tester.pumpWidget(
+      _wrap(
+        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+        arrivals: _FakeArrivalsRepository(board),
+        favorites: _FakeFavoritesRepository(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('79'), findsOneWidget);
+    expect(find.text('12 min'), findsOneWidget);
+    expect(find.text('Scheduled'), findsOneWidget); // planned marker
+  });
+
   testWidgets('shows the human empty state when there are no arrivals', (tester) async {
     final emptyBoard = ArrivalsBoard.fromJson({
       'stop_id': '20091',

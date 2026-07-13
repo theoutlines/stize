@@ -292,6 +292,12 @@ abstract class AppLocalizations {
   /// **'Now'**
   String get arrivalEtaNow;
 
+  /// No description provided for @arrivalScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled'**
+  String get arrivalScheduled;
+
   /// No description provided for @arrivalStopsAway.
   ///
   /// In en, this message translates to:

@@ -39,6 +39,7 @@
 
   "arrivalEtaMinutes": "{minutes} min",
   "arrivalEtaNow": "Sada",
+  "arrivalScheduled": "Po redu vožnje",
   "arrivalStopsAway": "{count, plural, =0{ovde} one{{count} stanica} few{{count} stanice} other{{count} stanica}}",
 
   "vehicleMoving": "U pokretu",

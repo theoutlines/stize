@@ -32,6 +32,11 @@ import type { Env } from "../env";
 //                       canonical direction. Fixes markers drawn on the wrong
 //                       street ("through houses"). Read client-side; the backend
 //                       always sends the resolved route_id. OFF prod, ON staging.
+//   schedule_fallback — fills gaps with the GTFS timetable when live data is
+//                       thin (empty night/inter-peak stops). Phase 1: the stop
+//                       arrivals list gains planned departures (source:
+//                       "scheduled"), deduped against live. Gates backend
+//                       emission; the client reads the same flag. OFF prod.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -39,6 +44,7 @@ export const FEATURE_FLAGS = [
   "coverage_on_main_map",
   "live_position_only",
   "vehicle_direction_shape",
+  "schedule_fallback",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
