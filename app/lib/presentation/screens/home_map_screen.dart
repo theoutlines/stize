@@ -26,6 +26,7 @@ import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/pinned_line.dart';
 import '../../domain/models/stop.dart';
+import '../../domain/models/vehicle_source.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
@@ -525,6 +526,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       final track = _vehAnimator.trackFor(entry.key);
       if (track == null) continue;
       if (focusLine != null && track.line != focusLine) continue;
+      final scheduled = track.source == VehicleSource.scheduled;
       objects.add(
         MovingObject(
           key: entry.key,
@@ -534,15 +536,24 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           heading: _vehAnimator.headingAt(entry.key, t),
           selected: entry.key == _selectedVehicleKey,
           stuck: _vehAnimator.isStuck(entry.key),
-          // Fade a vanishing/stale vehicle over its grace period instead of
-          // holding it standing (X6 fade).
-          opacity: _vehAnimator.opacityFor(entry.key),
+          // Fade a vanishing/stale vehicle over its grace period (X6), and dim a
+          // schedule-predicted object so it reads as "by schedule, not live".
+          opacity: _vehAnimator.opacityFor(entry.key) *
+              (scheduled ? kScheduledBaseOpacity : 1.0),
           moving: _vehAnimator.hasMotion(entry.key),
+          source: track.source,
         ),
       );
     }
     final zoom = _controller?.getCamera().zoom ?? 15.0;
     final placed = _arrangeVehicles(objects, zoom);
+    // Draw scheduled objects first (underneath) so a live vehicle always sits on
+    // top where the two overlap — live is the authoritative position.
+    placed.sort((a, b) {
+      final av = a.source == VehicleSource.scheduled ? 0 : 1;
+      final bv = b.source == VehicleSource.scheduled ? 0 : 1;
+      return av.compareTo(bv);
+    });
     style.updateGeoJsonSource(
       id: movingObjectsSourceId,
       data: movingObjectsGeoJson(placed),
@@ -660,9 +671,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           heading: o.heading,
           selected: o.selected,
           stuck: o.stuck,
-          // Combine the grace fade with the crossing dim.
+          // Combine the grace/scheduled fade with the crossing dim.
           opacity: o.opacity * appliedOpacity,
           moving: o.moving,
+          source: o.source,
         ),
       );
     }
@@ -1085,7 +1097,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // Make sure each visible line's route geometry is (being) fetched so the
       // animator can move markers along the road, not through buildings (X5) —
       // and, in timed mode, project the plan onto it.
-      _ensureShapesFor(vehicles.map((v) => v.line));
+      // Hybrid live+schedule: schedule-predicted vehicles only render when the
+      // `schedule_fallback` flag is on; otherwise drop them here so they never
+      // enter the animator. (The backend already de-dups a scheduled trip that
+      // has a live vehicle; the client's key-prefixing keeps a scheduled and a
+      // live object from ever colliding on the same track.)
+      final scheduleOn =
+          ref.read(appConfigProvider).valueOrNull?.scheduleFallback ?? false;
+      final shown = scheduleOn
+          ? vehicles
+          : [for (final v in vehicles) if (v.source == VehicleSource.live) v];
+      _ensureShapesFor(shown.map((v) => v.line));
       // Timed-trajectory playback is remote-gated (OFF prod, ON staging). When
       // on, hand the animator each vehicle's forward plan + as-of time so it
       // plays them forward by time; when off, plan/as-of are null and the marker
@@ -1093,7 +1115,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       final timedOn =
           ref.read(appConfigProvider).valueOrNull?.timedTrajectory ?? false;
       _vehAnimator.syncSamples([
-        for (final v in vehicles)
+        for (final v in shown)
           VehicleSample(
             key: v.key,
             position: ll.LatLng(v.lat, v.lon),
@@ -1105,8 +1127,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             type: classifyLine(v.line),
             heading: v.heading,
             path: _shapeCache[v.line],
-            trajectory: timedOn ? v.trajectory : null,
-            asOf: timedOn ? v.asOf : null,
+            // A scheduled object always carries a timed plan (its predicted
+            // motion); play it like a live one regardless of the timed flag.
+            trajectory: (timedOn || v.source == VehicleSource.scheduled)
+                ? v.trajectory
+                : null,
+            asOf: (timedOn || v.source == VehicleSource.scheduled) ? v.asOf : null,
+            source: v.source,
           ),
       ], _vehAnim.value);
       // Drive the layer whenever a fix brings motion (foregrounded); otherwise
@@ -1172,7 +1199,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// drawn as a highlighted layer, so panning/zooming out reveals all of it;
   /// [focusOn] (the tapped vehicle's position) only triggers a gentle pan when
   /// the vehicle sits at/off the viewport edge, never a zoom change.
-  Future<void> _openVehicleLine(String line, {ll.LatLng? focusOn}) async {
+  Future<void> _openVehicleLine(
+    String line, {
+    ll.LatLng? focusOn,
+    bool scheduled = false,
+  }) async {
     _clearSearch();
     try {
       final shape = await ref
@@ -1202,6 +1233,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           destination: shape.destination,
           polyline: shape.polyline,
           stops: routeStops,
+          scheduled: scheduled,
         );
       });
       if (focusOn != null) _nudgeIntoView(focusOn);
@@ -1266,9 +1298,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         final line = f.properties['label'];
         if (line is String && line.isNotEmpty) {
           final key = f.properties['key'];
-          setState(() => _selectedVehicleKey = key is String ? key : null);
+          final keyStr = key is String ? key : null;
+          // Honestly mark a schedule-predicted object when its line opens.
+          final scheduled = keyStr != null &&
+              _vehAnimator.trackFor(keyStr)?.source == VehicleSource.scheduled;
+          setState(() => _selectedVehicleKey = keyStr);
           _writeVehiclesToSource();
-          _openVehicleLine(line, focusOn: ll.LatLng(point.lat, point.lon));
+          _openVehicleLine(
+            line,
+            focusOn: ll.LatLng(point.lat, point.lon),
+            scheduled: scheduled,
+          );
           return;
         }
       }
@@ -1678,11 +1718,41 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    '${focus.origin} → ${focus.destination}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${focus.origin} → ${focus.destination}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      // A tapped schedule-predicted object honestly says so — its
+                      // position is a GTFS estimate, not a live fix.
+                      if (focus.scheduled)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.schedule,
+                              size: 13,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                AppLocalizations.of(context).vehicleScheduled,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
                 IconButton(
@@ -2214,6 +2284,7 @@ class _LineFocus {
     required this.destination,
     required this.polyline,
     required this.stops,
+    this.scheduled = false,
   });
 
   final String line;
@@ -2222,4 +2293,7 @@ class _LineFocus {
   final String destination;
   final List<List<double>> polyline; // [[lat, lon], ...]
   final List<Stop> stops;
+
+  /// Opened from a tap on a schedule-predicted object — the panel notes it.
+  final bool scheduled;
 }
