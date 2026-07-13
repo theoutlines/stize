@@ -48,6 +48,13 @@ export async function getNearbyVehicles(
         lat: a.gps.lat,
         lon: a.gps.lon,
         heading: a.heading,
+        // Carry the forward timing plan (timed-trajectory) and the as-of time it
+        // is anchored to (this board's last successful upstream refresh). Both
+        // are absent when the arrivals layer left `trajectory` off (flag off /
+        // no plan), keeping the field additive.
+        ...(a.trajectory
+          ? { trajectory: a.trajectory, as_of: board.updated_at }
+          : {}),
       });
     }
   }

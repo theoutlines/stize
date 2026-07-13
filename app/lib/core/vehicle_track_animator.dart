@@ -1,8 +1,10 @@
 import 'package:latlong2/latlong.dart' as ll;
 
 import '../domain/models/arrival.dart';
+import '../domain/models/trajectory_point.dart';
 import '../domain/models/vehicle_type.dart';
 import 'route_path.dart';
+import 'timed_trajectory.dart';
 
 class VehicleTrack {
   VehicleTrack(
@@ -41,6 +43,13 @@ class VehicleTrack {
   double fromDist = 0;
   double toDist = 0;
 
+  /// Time-driven player over the backend's forward timing plan (timed-trajectory
+  /// feature). When present it *supersedes* the from/to ease: the marker is
+  /// driven forward by wall-clock along the plan instead of easing to the last
+  /// fix and stopping. Null when there's no plan (feature off / none usable), in
+  /// which case the conservative from/to behaviour above applies unchanged.
+  TimedTrajectory? timed;
+
   /// Wall-clock time of the last update in which the vehicle actually moved.
   /// "Looks stuck" is derived from how long ago this was (time-based, so a burst
   /// of extra refreshes from panning can't make a vehicle read stuck early).
@@ -61,6 +70,8 @@ class VehicleSample {
     required this.type,
     this.heading,
     this.path,
+    this.trajectory,
+    this.asOf,
   });
 
   final String key;
@@ -71,6 +82,13 @@ class VehicleSample {
 
   /// The vehicle's route geometry, if the caller could resolve it.
   final RoutePath? path;
+
+  /// The backend's forward timing plan and the as-of time it's anchored to. The
+  /// caller passes these only when the timed-trajectory feature is on and a plan
+  /// is available; the marker then animates by time instead of easing to the
+  /// last fix. Requires [path] to be projected onto the road geometry.
+  final List<TrajectoryPoint>? trajectory;
+  final DateTime? asOf;
 }
 
 /// Pure interpolation logic behind the live-tracking map, kept separate from
@@ -133,7 +151,13 @@ class VehicleTrackAnimator {
   /// Call when new arrivals data lands. [currentT] is the animation
   /// controller's value (0..1) *before* it gets reset, so an in-flight
   /// vehicle's current interpolated spot becomes its new starting point.
-  void sync(List<Arrival> arrivals, double currentT, {DateTime? now}) {
+  void sync(
+    List<Arrival> arrivals,
+    double currentT, {
+    DateTime? now,
+    DateTime? asOf,
+    RoutePath? Function(String line)? pathFor,
+  }) {
     syncSamples([
       for (final a in arrivals)
         if (a.gps != null)
@@ -143,6 +167,12 @@ class VehicleTrackAnimator {
             line: a.line,
             type: a.vehicleType,
             heading: a.heading,
+            // Timed-trajectory playback kicks in only when the caller supplies
+            // the route geometry and the board's as-of time; otherwise these are
+            // null and the marker eases conservatively as before.
+            path: pathFor?.call(a.line),
+            trajectory: a.trajectory,
+            asOf: asOf,
           ),
     ], currentT, now: now);
   }
@@ -160,17 +190,42 @@ class VehicleTrackAnimator {
       seen.add(s.key);
       final existing = _tracks[s.key];
       if (existing == null) {
-        _tracks[s.key] = VehicleTrack(
+        final track = VehicleTrack(
           s.position,
           line: s.line,
           type: s.type,
           heading: s.heading,
           path: s.path,
         )..lastMovedAt = at;
+        _applyTimedPlan(track, s, at);
+        _tracks[s.key] = track;
         continue;
       }
 
       existing.missingCount = 0;
+      // Timed-trajectory mode (feature on + a usable plan) supersedes the
+      // conservative from/to ease: the marker plays the plan forward by time,
+      // and a fresher plan corrects it without ever rewinding (see
+      // TimedTrajectory). When there's no plan we fall through to the ease below.
+      if (_applyTimedPlan(existing, s, at)) {
+        if (s.heading != null) existing.heading = s.heading;
+        existing.path ??= s.path;
+        continue;
+      }
+      // A vehicle that had a plan but no longer does (feature flipped off, or the
+      // plan dropped out): abandon timed mode and resume conservative easing from
+      // wherever the marker currently shows.
+      if (existing.timed != null) {
+        existing.from = existing.timed!.position;
+        existing.to = existing.timed!.position;
+        final p = existing.path;
+        if (p != null && p.isUsable) {
+          final d = p.project(existing.timed!.position);
+          existing.fromDist = d;
+          existing.toDist = d;
+        }
+        existing.timed = null;
+      }
       // A path may only have become available on a later update; when it does,
       // there's no prior distance-along to anchor the projection to yet.
       final justAdoptedPath = existing.path == null && s.path != null;
@@ -233,6 +288,58 @@ class VehicleTrackAnimator {
     );
   }
 
+  /// Build or refresh a track's timed-trajectory player from a sample, returning
+  /// whether timed mode is active afterwards. Needs a plan, its as-of time, and a
+  /// usable route path projected onto the road geometry; without all three the
+  /// track stays in (or falls back to) the conservative from/to ease.
+  bool _applyTimedPlan(VehicleTrack track, VehicleSample s, DateTime at) {
+    final plan = s.trajectory;
+    final path = s.path;
+    if (plan == null || plan.length < 2 || path == null || !path.isUsable || s.asOf == null) {
+      return false;
+    }
+    final existing = track.timed;
+    if (existing == null) {
+      final built = TimedTrajectory.build(
+        path: path,
+        plan: plan,
+        asOf: s.asOf!,
+        now: at,
+      );
+      if (built == null) return false;
+      track.timed = built;
+      track.path = path;
+    } else {
+      // A failed re-projection leaves the previous plan playing rather than
+      // dropping to a jump — timed mode stays active either way.
+      if (existing.updatePlan(path: path, plan: plan, asOf: s.asOf!, now: at)) {
+        track.path = path;
+      }
+    }
+    // Only a plan that still projects motion counts as "moved" — a vehicle
+    // parked at the end of its plan ages toward "looks stuck" as before.
+    if (track.timed!.hasForwardMotion(at)) track.lastMovedAt = at;
+    return true;
+  }
+
+  /// Step every timed track's displayed position forward to [now]. Called once
+  /// per sampler tick by the map before it reads positions, so the per-frame
+  /// advance happens exactly once (reads stay pure). No-op for tracks without a
+  /// plan. Returns whether any timed track still has motion to render.
+  bool advanceTimed(DateTime now) {
+    var moving = false;
+    for (final t in _tracks.values) {
+      final timed = t.timed;
+      if (timed == null) continue;
+      timed.advance(now);
+      if (timed.hasForwardMotion(now)) {
+        moving = true;
+        t.lastMovedAt = now;
+      }
+    }
+    return moving;
+  }
+
   /// Whether a vehicle currently reads as stuck (hasn't actually moved for at
   /// least [_stuckAfter]). Unknown keys are treated as moving.
   bool isStuck(String key) {
@@ -259,7 +366,13 @@ class VehicleTrackAnimator {
   /// to animate, so the caller can leave the ticker stopped instead of spinning
   /// the marker layer at frame rate over a set of stationary vehicles.
   bool get hasPendingMotion {
+    final now = _clock();
     for (final t in _tracks.values) {
+      final timed = t.timed;
+      if (timed != null) {
+        if (timed.hasForwardMotion(now)) return true;
+        continue; // a timed track's ease fields are stale — don't consult them
+      }
       final path = t.path;
       if (path != null && path.isUsable) {
         if ((t.toDist - t.fromDist).abs() > _stillMeters) return true;
@@ -293,6 +406,8 @@ class VehicleTrackAnimator {
 
   ll.LatLng positionOf(String key, double t) {
     final track = _tracks[key]!;
+    final timed = track.timed;
+    if (timed != null) return timed.position;
     final path = track.path;
     if (path != null && path.isUsable) {
       return path.pointAt(_lerpD(track.fromDist, track.toDist, t));
@@ -306,6 +421,8 @@ class VehicleTrackAnimator {
   double? headingAt(String key, double t) {
     final track = _tracks[key];
     if (track == null) return null;
+    final timed = track.timed;
+    if (timed != null) return timed.heading;
     final path = track.path;
     if (path != null && path.isUsable) {
       final cur = _lerpD(track.fromDist, track.toDist, t);

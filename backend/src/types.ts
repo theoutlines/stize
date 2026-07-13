@@ -1,6 +1,15 @@
 export type VehicleType = "bus" | "tram" | "trolleybus";
 export type ServiceStatus = "ok" | "unavailable";
 
+// One waypoint of a vehicle's forward timing plan (timed-trajectory feature):
+// an absolute route position and the seconds from the response's `updated_at`
+// (its as-of time) at which the vehicle is expected to be there.
+export interface TrajectoryPointDto {
+  lat: number;
+  lon: number;
+  eta_seconds: number;
+}
+
 export interface ArrivalDto {
   line: string;
   vehicle_type: VehicleType;
@@ -10,6 +19,10 @@ export interface ArrivalDto {
   gps: { lat: number; lon: number } | null;
   garage_no: string | null;
   heading: number | null;
+  // Forward timing plan, anchored at the response's `updated_at`. Additive and
+  // flag-gated (`timed_trajectory`): absent unless the feature is on, so old
+  // clients and prod are unaffected. Null when no usable plan is available.
+  trajectory?: TrajectoryPointDto[] | null;
 }
 
 // A single moving vehicle for the "all transport in the visible area" map view,
@@ -21,6 +34,10 @@ export interface VehicleDto {
   lat: number;
   lon: number;
   heading: number | null;
+  // Forward timing plan for this vehicle and the as-of time it's anchored to
+  // (the source board's `updated_at`). Additive + flag-gated, like ArrivalDto.
+  trajectory?: TrajectoryPointDto[] | null;
+  as_of?: string;
 }
 
 export interface VehiclesResponse {

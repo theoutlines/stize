@@ -22,6 +22,18 @@ class AppConfig {
   /// [coverageMapShow] — the tab and the overlay gate separately.
   bool get coverageOnMainMap => flag('coverage_on_main_map');
 
+  /// Whether vehicle markers animate smoothly forward along the backend's timed
+  /// trajectory (instead of easing to the last fix and stopping). Gated remotely
+  /// so it's OFF on prod and ON on staging until it's ready to ship. This is the
+  /// *data/motion* flag; [symbolLayer] is the orthogonal *render* flag.
+  bool get timedTrajectory => flag('timed_trajectory');
+
+  /// Whether moving vehicles render as a MapLibre GPU symbol layer (batched,
+  /// sub-linear in count) instead of per-vehicle Flutter widgets. Client-side
+  /// render flag, independent of [timedTrajectory]. OFF on prod (the widget path
+  /// stays the fallback), ON on staging.
+  bool get symbolLayer => flag('symbol_layer');
+
   static const empty = AppConfig(version: '', flags: {});
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {

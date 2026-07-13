@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart' as geo show Position;
 import 'package:go_router/go_router.dart';
@@ -12,8 +13,10 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
 import '../../core/coverage_heatmap.dart';
+import '../../core/fps_overlay.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
+import '../../core/moving_object_layer.dart';
 import '../../core/route_path.dart';
 import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_track_animator.dart';
@@ -112,7 +115,23 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // motion, stopped when it settles) so a map of stationary vehicles renders
   // zero frames instead of ticking forever (thermal fix — "idle = 0 frames").
   Timer? _vehSampler;
+  // Timed mode needs a per-vsync repaint so continuous motion is actually smooth
+  // (~60fps): a 66ms timer caps it at ~15fps, which reads as choppy. The ticker
+  // drives the vehicle layer every frame while a plan is playing and stops the
+  // instant motion ends (idle = 0). Kept alongside the coarse sampler; only one
+  // runs at a time (see [_startVehDriver]).
+  Ticker? _vehTicker;
   final ValueNotifier<double> _vehTick = ValueNotifier<double>(1);
+
+  // Symbol-layer render path (remote `symbol_layer` flag): when on, moving
+  // vehicles are one batched GPU symbol layer (sub-linear in count) instead of
+  // per-vehicle Flutter widgets. When off — prod — the widget path below is the
+  // unchanged fallback. Read in build; the two paths never render at once.
+  bool _symbolLayerEnabled = false;
+  bool _vehLayerAdded = false; // source + symbol layers present in this style
+  // The currently-selected vehicle's tracking key (tap highlight on the symbol
+  // layer via the feature's `selected` property). Null = nothing selected.
+  String? _selectedVehicleKey;
   // Backgrounded (tab hidden / app paused): all animation and polling stop, and
   // we remember when so the frozen span can be discounted from the "stuck"
   // heuristic on resume.
@@ -231,6 +250,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _searchDebounce?.cancel();
     _vehiclesTimer?.cancel();
     _stopVehSampler();
+    _vehTicker?.dispose();
     _vehAnim.removeStatusListener(_onVehAnimStatus);
     _vehTick.dispose();
     _vehAnim.dispose();
@@ -294,27 +314,68 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     );
   }
 
-  // ---- Vehicle-layer ticker (runs only while a position ease is in flight) --
+  // ---- Vehicle-layer driver (runs only while something is actually moving) --
 
-  void _startVehSampler() {
-    // Push the current eased position into the marker layer ~15×/s (not every
-    // frame) — smooth enough for a slow vehicle, far cheaper than 60fps.
-    _vehSampler ??= Timer.periodic(const Duration(milliseconds: 66), (_) {
-      if (_vehTick.value != _vehAnim.value) _vehTick.value = _vehAnim.value;
-    });
+  /// Start driving the vehicle layer's repaints.
+  ///
+  /// **Timed mode** uses a per-frame (vsync) [Ticker] so continuous plan-driven
+  /// motion is smooth (~60fps). **Conservative mode** keeps the coarse 66ms
+  /// sampler: the marker only inches toward its last fix, 15fps is plenty, and it
+  /// keeps prod off a 60fps loop. Either way the driver stops the instant nothing
+  /// is moving (idle = zero frames), for both render paths.
+  void _startVehDriver({required bool timed}) {
+    if (timed) {
+      _vehSampler?.cancel();
+      _vehSampler = null;
+      _vehTicker ??= createTicker((_) => _pumpVehLayer());
+      if (!_vehTicker!.isActive) _vehTicker!.start();
+    } else {
+      _vehTicker?.stop();
+      _vehSampler ??=
+          Timer.periodic(const Duration(milliseconds: 66), (_) => _pumpVehLayer());
+    }
+  }
+
+  // One repaint step: advance any timed players by wall-clock, then either paint
+  // the current positions (while motion continues) or, when nothing is moving,
+  // stop the driver and settle on the final frame.
+  void _pumpVehLayer() {
+    _vehAnimator.advanceTimed(DateTime.now());
+    if (_vehAnim.isAnimating || _vehAnimator.hasPendingMotion) {
+      _paintVehicles();
+    } else {
+      _stopVehSampler();
+      _paintVehicles();
+      if (mounted) setState(() {});
+    }
+  }
+
+  /// Push the current vehicle positions to whichever render path is active: the
+  /// GPU symbol source (flag on) or the widget marker layer's tick (flag off).
+  void _paintVehicles() {
+    if (_symbolLayerEnabled) {
+      _writeVehiclesToSource();
+    } else if (_vehTick.value != _vehAnim.value) {
+      _vehTick.value = _vehAnim.value;
+    }
   }
 
   void _stopVehSampler() {
     _vehSampler?.cancel();
     _vehSampler = null;
+    _vehTicker?.stop(); // keep the Ticker instance; dispose only in dispose()
   }
 
   void _onVehAnimStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed ||
         status == AnimationStatus.dismissed) {
-      _stopVehSampler();
-      // One final rebuild so the layer lands on the settled positions and the
+      // The 30s ease controller finished. In timed mode the driver must keep
+      // running while a plan is still playing, so only stop it when nothing is
+      // moving; otherwise leave it to self-stop when the plan is exhausted.
+      if (!_vehAnimator.hasPendingMotion) _stopVehSampler();
+      // One final paint so the layer lands on the settled positions and the
       // markers' halos drop out of their breathing state (animate == false).
+      _paintVehicles();
       if (mounted) setState(() {});
     }
   }
@@ -334,9 +395,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   Future<void> _onStyleLoaded(StyleController style) async {
     _style = style;
     // A fresh style (first load or after a theme flip) has none of our layers;
-    // the heatmap must be (re)added if it should currently be visible.
+    // the heatmap and the vehicle symbol layers must be (re)added if they should
+    // currently be visible.
     _coverageAdded = false;
+    _vehLayerAdded = false;
     await registerStigmaImages(style, _scheme);
+    if (_symbolLayerEnabled) {
+      await registerMovingObjectImages(style);
+      await _addVehicleSymbolLayers();
+    }
     if (!mounted) return;
     setState(() => _imagesReady = true);
     // Show stops and live vehicles for wherever the map currently sits, even
@@ -345,6 +412,72 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _loadVehiclesForVisibleArea(force: true);
     _loadTramRails();
     _reconcileCoverageLayer();
+  }
+
+  /// Adds the moving-object GeoJSON source and its three symbol layers (badge,
+  /// direction arrow, coin label). Idempotent per style load. On any failure it
+  /// degrades quietly: the flag is left un-added so a later reconcile can retry,
+  /// and the map simply shows no vehicle symbols rather than crashing.
+  Future<void> _addVehicleSymbolLayers() async {
+    final style = _style;
+    if (style == null || _vehLayerAdded) return;
+    _vehLayerAdded = true;
+    try {
+      await style.addSource(movingObjectsSource());
+      await style.addLayer(movingObjectsBadgeLayer());
+      await style.addLayer(movingObjectsArrowLayer());
+      await style.addLayer(movingObjectsLabelLayer());
+      // Paint whatever the animator already holds, so vehicles appear at once.
+      _writeVehiclesToSource();
+    } catch (_) {
+      _vehLayerAdded = false;
+    }
+  }
+
+  /// Enable the symbol layer after the fact — when the remote flag resolves
+  /// true *after* the style already loaded (config usually lands a beat later).
+  /// Registers the images, then adds the source+layers. No-op if already added
+  /// or the flag is off / style not ready.
+  Future<void> _reconcileVehicleSymbolLayers() async {
+    if (!_symbolLayerEnabled || _vehLayerAdded) return;
+    final style = _style;
+    if (style == null) return;
+    await registerMovingObjectImages(style);
+    await _addVehicleSymbolLayers();
+  }
+
+  /// Builds the typed moving-object set from the animator's current positions
+  /// and pushes it to the GPU symbol source. Applies spiderfy (coincident
+  /// vehicles fanned out) and the selected/focus state. No fleet id / identity
+  /// is written — only what the layer draws and a tap needs to route.
+  void _writeVehiclesToSource() {
+    final style = _style;
+    if (style == null || !_vehLayerAdded) return;
+    final t = _vehAnim.value;
+    final focusLine = _focus?.line;
+    final objects = <MovingObject>[];
+    for (final entry in _vehAnimator.currentPositions(t)) {
+      final track = _vehAnimator.trackFor(entry.key);
+      if (track == null) continue;
+      if (focusLine != null && track.line != focusLine) continue;
+      objects.add(
+        MovingObject(
+          key: entry.key,
+          position: entry.value,
+          kind: MovingObjectKind.fromVehicleType(track.type),
+          label: track.line,
+          heading: _vehAnimator.headingAt(entry.key, t),
+          selected: entry.key == _selectedVehicleKey,
+          stuck: _vehAnimator.isStuck(entry.key),
+        ),
+      );
+    }
+    final zoom = _controller?.getCamera().zoom ?? 15.0;
+    final placed = spiderfyCoincident(objects, zoom: zoom);
+    style.updateGeoJsonSource(
+      id: movingObjectsSourceId,
+      data: movingObjectsGeoJson(placed),
+    );
   }
 
   /// Adds the coverage heatmap source + layer the first time the map is zoomed
@@ -755,8 +888,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           .nearby(lat: center.latitude, lon: center.longitude, radiusMeters: radius);
       if (!mounted || seq != _vehiclesRequestSeq) return;
       // Make sure each visible line's route geometry is (being) fetched so the
-      // animator can move markers along the road, not through buildings (X5).
+      // animator can move markers along the road, not through buildings (X5) —
+      // and, in timed mode, project the plan onto it.
       _ensureShapesFor(vehicles.map((v) => v.line));
+      // Timed-trajectory playback is remote-gated (OFF prod, ON staging). When
+      // on, hand the animator each vehicle's forward plan + as-of time so it
+      // plays them forward by time; when off, plan/as-of are null and the marker
+      // eases conservatively exactly as before. Orthogonal to the render path.
+      final timedOn =
+          ref.read(appConfigProvider).valueOrNull?.timedTrajectory ?? false;
       _vehAnimator.syncSamples([
         for (final v in vehicles)
           VehicleSample(
@@ -770,17 +910,23 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             type: classifyLine(v.line),
             heading: v.heading,
             path: _shapeCache[v.line],
+            trajectory: timedOn ? v.trajectory : null,
+            asOf: timedOn ? v.asOf : null,
           ),
       ], _vehAnim.value);
-      // Only spin the ease (and the sampler) when a fix actually brings motion
-      // and we're in the foreground; otherwise settle instantly so a screen of
-      // stationary vehicles renders zero frames until the next real move.
+      // Only drive the layer when a fix actually brings motion and we're in the
+      // foreground; otherwise settle instantly so a screen of stationary vehicles
+      // renders zero frames until the next real move. Timed mode is driven by the
+      // wall-clock ticker (the 30s ease controller is unused there); conservative
+      // mode runs the ease controller + coarse sampler as before. Both feed
+      // whichever render path is active (symbol source / widget tick).
       if (!_paused && _vehAnimator.hasPendingMotion) {
-        _vehAnim.forward(from: 0);
-        _startVehSampler();
+        if (!timedOn) _vehAnim.forward(from: 0);
+        _startVehDriver(timed: timedOn);
       } else {
         _stopVehSampler();
         _vehAnim.value = 1; // land straight on the latest fixes, no per-frame ease
+        _paintVehicles(); // one paint so the settled positions show immediately
       }
       // Reflect the animator's set (which may still hold briefly-missing
       // vehicles during their grace period), not just this response (X6).
@@ -886,8 +1032,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   }
 
   void _clearFocus() {
-    if (_focus == null) return;
-    setState(() => _focus = null);
+    if (_focus == null && _selectedVehicleKey == null) return;
+    setState(() {
+      _focus = null;
+      _selectedVehicleKey = null;
+    });
+    // Drop the tap highlight on the symbol layer.
+    if (_symbolLayerEnabled) _writeVehiclesToSource();
   }
 
   // ---- Taps -----------------------------------------------------------------
@@ -896,9 +1047,28 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final controller = _controller;
     if (controller == null) return;
     final screen = controller.toScreenLocation(point);
-    final features = controller.featuresInRect(
-      Rect.fromCircle(center: screen, radius: 22),
-    );
+    final rect = Rect.fromCircle(center: screen, radius: 22);
+    // Symbol-layer vehicles: hit-test the badge layer and open the tapped line
+    // (the same bottom sheet the widget marker's onTap opens). Highlight the
+    // selected vehicle via its feature `selected` flag. Widget-path vehicles
+    // keep handling their own taps through the marker's onTap.
+    if (_symbolLayerEnabled && _vehLayerAdded) {
+      final vehicleFeatures = controller.featuresInRect(
+        rect,
+        layerIds: movingObjectsTapLayerIds,
+      );
+      for (final f in vehicleFeatures) {
+        final line = f.properties['label'];
+        if (line is String && line.isNotEmpty) {
+          final key = f.properties['key'];
+          setState(() => _selectedVehicleKey = key is String ? key : null);
+          _writeVehiclesToSource();
+          _openVehicleLine(line, focusOn: ll.LatLng(point.lat, point.lon));
+          return;
+        }
+      }
+    }
+    final features = controller.featuresInRect(rect);
     for (final f in features) {
       final props = f.properties;
       final stopId = props['stopId'];
@@ -1103,6 +1273,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       }
     }
 
+    // Symbol-layer render flag: usually flips false→true once config resolves.
+    // When it turns on, add the source+layers after this frame (the style may
+    // already be loaded). The widget vehicle layer is built only while it's off.
+    final symbolEnabled = ref.watch(symbolLayerEnabledProvider);
+    if (symbolEnabled != _symbolLayerEnabled) {
+      _symbolLayerEnabled = symbolEnabled;
+      if (symbolEnabled) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _reconcileVehicleSymbolLayers(),
+        );
+      }
+    }
+
     return PopScope(
       // While a line is focused, Android back closes the focus overlay instead
       // of leaving the map.
@@ -1156,15 +1339,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                           );
                         },
                       ),
-                    // Live vehicles, rebuilt on the throttled tick so their eased
-                    // positions update; only this subtree repaints.
-                    ValueListenableBuilder<double>(
-                      valueListenable: _vehTick,
-                      builder: (context, t, _) => WidgetLayer(
-                        markers: _vehicleMarkers(t),
-                        allowInteraction: true,
+                    // Live vehicles. With the symbol_layer flag ON they render
+                    // as the batched GPU symbol layer (added imperatively in
+                    // _addVehicleSymbolLayers), so no widget layer is built here.
+                    // With it OFF this is the unchanged fallback: a WidgetLayer
+                    // rebuilt on the throttled tick so eased positions update.
+                    if (!_symbolLayerEnabled)
+                      ValueListenableBuilder<double>(
+                        valueListenable: _vehTick,
+                        builder: (context, t, _) => WidgetLayer(
+                          markers: _vehicleMarkers(t),
+                          allowInteraction: true,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -1183,6 +1370,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             _bottomSearch(l10n, theme)
           else
             _focusPanel(theme),
+          // On-device FPS meter — diagnostic only, off in the normal app; on a
+          // staging preview the owner enables it with `?fps=1` to compare the
+          // symbol layer against the widget path at different vehicle counts.
+          if (fpsOverlayEnabled())
+            const Positioned(
+              left: 12,
+              bottom: 96,
+              child: SafeArea(child: FpsOverlay()),
+            ),
         ],
       ),
       ),

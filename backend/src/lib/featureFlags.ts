@@ -19,11 +19,22 @@ import type { Env } from "../env";
 //                       stop clusters). Independent of coverage_map_show: the
 //                       tab can be off while the overlay is on, and vice-versa.
 //                       OFF on prod, ON on staging.
+//   timed_trajectory  — the backend emits each vehicle's forward timing plan
+//                       (`trajectory`) and the app animates markers smoothly
+//                       forward along it by time, instead of easing to the last
+//                       fix and stopping. OFF on prod, ON on staging until ready.
+//   symbol_layer      — the app renders moving vehicles as a MapLibre GPU symbol
+//                       layer (batched, sub-linear in vehicle count) instead of
+//                       per-vehicle Flutter widgets. Client-side render flag,
+//                       independent of timed_trajectory (which is the data flag).
+//                       OFF on prod (widget path stays the fallback), ON staging.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
   "coverage_map_show",
   "coverage_on_main_map",
+  "timed_trajectory",
+  "symbol_layer",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

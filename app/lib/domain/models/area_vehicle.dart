@@ -1,3 +1,4 @@
+import 'trajectory_point.dart';
 import 'vehicle_type.dart';
 
 /// A single moving vehicle shown on the map's "transport in the visible area"
@@ -11,6 +12,8 @@ class AreaVehicle {
     required this.lat,
     required this.lon,
     required this.heading,
+    this.trajectory,
+    this.asOf,
   });
 
   final String line;
@@ -20,11 +23,18 @@ class AreaVehicle {
   final double lon;
   final double? heading;
 
+  /// Forward timing plan (timed-trajectory feature) and the as-of time it is
+  /// anchored to (the source board's last refresh). Both null when the backend
+  /// didn't provide a plan (feature off / none available).
+  final List<TrajectoryPoint>? trajectory;
+  final DateTime? asOf;
+
   /// Stable identity for tracking/interpolation across refreshes.
   String get key =>
       garageNo ?? '$line:${lat.toStringAsFixed(5)}:${lon.toStringAsFixed(5)}';
 
   factory AreaVehicle.fromJson(Map<String, dynamic> json) {
+    final asOf = json['as_of'];
     return AreaVehicle(
       line: json['line'] as String,
       vehicleType: VehicleType.fromApi(json['vehicle_type'] as String),
@@ -32,6 +42,8 @@ class AreaVehicle {
       lat: (json['lat'] as num).toDouble(),
       lon: (json['lon'] as num).toDouble(),
       heading: (json['heading'] as num?)?.toDouble(),
+      trajectory: TrajectoryPoint.listFromJson(json['trajectory']),
+      asOf: asOf is String ? DateTime.tryParse(asOf) : null,
     );
   }
 }
