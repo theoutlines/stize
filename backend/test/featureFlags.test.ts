@@ -25,6 +25,7 @@ describe("featureFlags", () => {
       "analytics_show",
       "coverage_map_show",
       "coverage_on_main_map",
+      "schedule_fallback",
       "symbol_layer",
       "timed_trajectory",
     ]);

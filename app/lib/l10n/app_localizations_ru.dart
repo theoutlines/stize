@@ -107,6 +107,9 @@ class AppLocalizationsRu extends AppLocalizations {
       'Приблизьте карту, чтобы увидеть транспорт';
 
   @override
+  String get vehicleScheduled => 'По расписанию — не живая позиция';
+
+  @override
   String get stopUpdatedJustNow => 'Обновлено только что';
 
   @override

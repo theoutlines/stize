@@ -31,6 +31,7 @@
   "nearbyStopsTitle": "Stajališta u blizini",
   "nearbyStopsEmpty": "Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.",
   "mapZoomInForVehicles": "Uvećaj mapu da vidiš prevoz uživo",
+  "vehicleScheduled": "Po redu vožnje — nije pozicija uživo",
 
   "stopUpdatedJustNow": "Ažurirano upravo sada",
   "stopUpdatedSecondsAgo": "Ažurirano pre {seconds} sek",

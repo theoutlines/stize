@@ -25,6 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:maplibre/maplibre.dart';
 
+import '../domain/models/vehicle_source.dart';
 import '../domain/models/vehicle_type.dart';
 import '../presentation/widgets/vehicle_icon.dart';
 
@@ -69,6 +70,7 @@ class MovingObject {
     this.stuck = false,
     this.opacity = 1.0,
     this.moving = true,
+    this.source = VehicleSource.live,
   });
 
   /// Stable tracking id (e.g. garage number). Used to route a tap and to group
@@ -98,7 +100,16 @@ class MovingObject {
   /// — it only decides arrangement: stationary coincident vehicles are fanned
   /// out, moving ones pass through each other.
   final bool moving;
+
+  /// Live vs GTFS-schedule-predicted. Not written to the layer — the scheduled
+  /// dimming is folded into [opacity]; this only orders z (live drawn on top).
+  final VehicleSource source;
 }
+
+/// Baseline draw opacity of a scheduled (timetable-predicted) object, so it
+/// reads clearly as "by schedule, not a live position" while staying legible.
+/// Combined with the grace/crossing fades. Live objects render at full opacity.
+const double kScheduledBaseOpacity = 0.5;
 
 // ---- Source / layer ids -----------------------------------------------------
 

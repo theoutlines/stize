@@ -34,6 +34,11 @@ class AppConfig {
   /// stays the fallback), ON on staging.
   bool get symbolLayer => flag('symbol_layer');
 
+  /// Whether GTFS-schedule-predicted vehicles are shown (semi-transparent) when
+  /// there's no live stream — the hybrid live+schedule display. OFF on prod
+  /// until confirmed; the backend also gates whether it emits scheduled objects.
+  bool get scheduleFallback => flag('schedule_fallback');
+
   static const empty = AppConfig(version: '', flags: {});
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {

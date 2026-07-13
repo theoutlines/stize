@@ -28,6 +28,11 @@ import type { Env } from "../env";
 //                       per-vehicle Flutter widgets. Client-side render flag,
 //                       independent of timed_trajectory (which is the data flag).
 //                       OFF on prod (widget path stays the fallback), ON staging.
+//   schedule_fallback — the app shows GTFS-schedule-predicted vehicles (semi-
+//                       transparent) when there's no live stream — the hybrid
+//                       live+schedule display. Client render flag; the backend
+//                       (feature/gtfs-freshness) separately gates whether it
+//                       emits `source:"scheduled"` objects. OFF on prod.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -35,6 +40,7 @@ export const FEATURE_FLAGS = [
   "coverage_on_main_map",
   "timed_trajectory",
   "symbol_layer",
+  "schedule_fallback",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

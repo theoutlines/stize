@@ -2,6 +2,7 @@ import 'package:latlong2/latlong.dart' as ll;
 
 import '../domain/models/arrival.dart';
 import '../domain/models/trajectory_point.dart';
+import '../domain/models/vehicle_source.dart';
 import '../domain/models/vehicle_type.dart';
 import 'route_path.dart';
 import 'timed_trajectory.dart';
@@ -13,6 +14,7 @@ class VehicleTrack {
     required this.type,
     this.heading,
     this.path,
+    this.source = VehicleSource.live,
   }) : from = to {
     if (path != null) {
       final d = path!.project(to);
@@ -28,6 +30,10 @@ class VehicleTrack {
   /// badge without re-looking-up the arrival.
   final String line;
   final VehicleType type;
+
+  /// Live GPS vs GTFS-schedule-predicted. Scheduled tracks render semi-
+  /// transparent; movement is identical (both play the timed plan).
+  VehicleSource source;
 
   /// Travel direction in degrees (0 = north, clockwise), or null if unknown.
   /// Used only as a fallback heading when there's no route [path]; with a path
@@ -72,6 +78,7 @@ class VehicleSample {
     this.path,
     this.trajectory,
     this.asOf,
+    this.source = VehicleSource.live,
   });
 
   final String key;
@@ -79,6 +86,9 @@ class VehicleSample {
   final String line;
   final VehicleType type;
   final double? heading;
+
+  /// Live GPS vs GTFS-schedule-predicted (hybrid live+schedule).
+  final VehicleSource source;
 
   /// The vehicle's route geometry, if the caller could resolve it.
   final RoutePath? path;
@@ -196,6 +206,7 @@ class VehicleTrackAnimator {
           type: s.type,
           heading: s.heading,
           path: s.path,
+          source: s.source,
         )..lastMovedAt = at;
         _applyTimedPlan(track, s, at);
         _tracks[s.key] = track;
@@ -203,6 +214,7 @@ class VehicleTrackAnimator {
       }
 
       existing.missingCount = 0;
+      existing.source = s.source;
       // Timed-trajectory mode (feature on + a usable plan) supersedes the
       // conservative from/to ease: the marker plays the plan forward by time,
       // and a fresher plan corrects it without ever rewinding (see

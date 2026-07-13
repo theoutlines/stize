@@ -81,6 +81,15 @@
     <span class="vehicle-coin__line">95</span>
   </div>
 </div>
+<!-- Scheduled (timetable-predicted) vehicle: semi-transparent, moves by the GTFS
+     plan via the same timed math; live always draws on top. Flag schedule_fallback. -->
+<div class="vehicle-coin vehicle-coin--tram" style="left:180px;top:520px;opacity:.5">
+  <div class="vehicle-coin__arrow" style="transform:translateX(-50%) rotate(30deg)"></div>
+  <div class="vehicle-coin__badge">
+    <span class="vehicle-coin__glyph glyph"><svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d='M11 2c-3 0-5 .4-5 .4L7 4H6a2 2 0 0 0-2 2v8a3 3 0 0 0 3 3l-1.5 2h2l1.2-1.6h4.6L14.7 19h2L15 17a3 3 0 0 0 3-3V6a2 2 0 0 0-2-2h-1l1-1.6S14 2 11 2Zm-5 6h10v4H6V8Zm2 8a1.1 1.1 0 1 0 0-2.2A1.1 1.1 0 0 0 8 16Zm8 0a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Z'/></svg></span>
+    <span class="vehicle-coin__line">7</span>
+  </div>
+</div>
 <!-- Far-zoom degradation: coin collapses to the type-coloured dot (GPU zoom). -->
 <div class="vehicle-dot vehicle-dot--bus" style="left:330px;top:360px"></div>
 <div class="vehicle-dot vehicle-dot--tram" style="left:70px;top:600px"></div>
@@ -95,7 +104,7 @@
 
     </div>
   </div>
-  <div class="stage__caption">Symbol-layer render (flag <code>symbol_layer</code>): moving vehicles are one batched GPU symbol layer — coloured coins (type = colour, glyph over line number, rotating direction arrow), a selected coin with a dark ring, a stuck coin in crimson, the far-zoom dot. Two moving coins (65/22) show the crossing behaviour — they pass through each other, the overlapping one dimmed, no sideways jump; only stationary clusters fan out. A stale coin (95) fades over its grace period instead of standing. Metro is a reserved roadmap kind. Fleet id is never on the coin.</div>
+  <div class="stage__caption">Symbol-layer render (flag <code>symbol_layer</code>): moving vehicles are one batched GPU symbol layer — coloured coins (type = colour, glyph over line number, rotating direction arrow), a selected coin with a dark ring, a stuck coin in crimson, the far-zoom dot. Two moving coins (65/22) show the crossing behaviour — they pass through each other, the overlapping one dimmed, no sideways jump; only stationary clusters fan out. A stale coin (95) fades over its grace period instead of standing. A scheduled coin (tram 7) is semi-transparent — a GTFS-timetable-predicted vehicle shown when live is absent (flag <code>schedule_fallback</code>), moving by the same timed math, with live always drawn on top; a tap says "by schedule — not a live position". Metro is a reserved roadmap kind. Fleet id is never on the coin.</div>
 </div>
 </body>
 </html>

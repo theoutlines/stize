@@ -75,6 +75,12 @@ final symbolLayerEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.symbolLayer ?? false,
 );
 
+/// Whether GTFS-schedule-predicted vehicles are shown when live is absent
+/// (remote `schedule_fallback` flag). Defaults false until config resolves.
+final scheduleFallbackEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.scheduleFallback ?? false,
+);
+
 /// Rolled-up analytics for one line number (draft transport-analytics feature).
 final lineAnalyticsProvider = FutureProvider.family<LineAnalytics, String>((
   ref,
