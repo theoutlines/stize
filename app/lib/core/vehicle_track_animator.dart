@@ -289,15 +289,22 @@ class VehicleTrackAnimator {
   }
 
   /// Build or refresh a track's timed-trajectory player from a sample, returning
-  /// whether timed mode is active afterwards. Needs a plan, its as-of time, and a
-  /// usable route path projected onto the road geometry; without all three the
-  /// track stays in (or falls back to) the conservative from/to ease.
+  /// whether timed mode is active afterwards. Needs a plan and its as-of time.
+  ///
+  /// The route geometry the plan plays along is the road-accurate GTFS shape when
+  /// the caller has it; **otherwise the plan's own station points** — so a
+  /// vehicle keeps *moving* (extrapolating forward by wall-clock) the moment its
+  /// plan arrives, instead of standing at its last fix until the shape loads a
+  /// refetch later. When the real shape does arrive on a later sample it upgrades
+  /// in place (the player re-anchors onto it without a jump). This is what makes
+  /// "keep predicting when fixes run out" the default rather than standing still.
   bool _applyTimedPlan(VehicleTrack track, VehicleSample s, DateTime at) {
     final plan = s.trajectory;
-    final path = s.path;
-    if (plan == null || plan.length < 2 || path == null || !path.isUsable || s.asOf == null) {
-      return false;
-    }
+    if (plan == null || plan.length < 2 || s.asOf == null) return false;
+    final realPath = (s.path != null && s.path!.isUsable) ? s.path : null;
+    final path = realPath ??
+        RoutePath.fromLatLon([for (final p in plan) [p.lat, p.lon]]);
+    if (path == null || !path.isUsable) return false;
     final existing = track.timed;
     if (existing == null) {
       final built = TimedTrajectory.build(
@@ -308,18 +315,34 @@ class VehicleTrackAnimator {
       );
       if (built == null) return false;
       track.timed = built;
-      track.path = path;
     } else {
       // A failed re-projection leaves the previous plan playing rather than
       // dropping to a jump — timed mode stays active either way.
-      if (existing.updatePlan(path: path, plan: plan, asOf: s.asOf!, now: at)) {
-        track.path = path;
-      }
+      existing.updatePlan(path: path, plan: plan, asOf: s.asOf!, now: at);
     }
+    // Remember the real road shape (not the plan-point fallback) for the
+    // conservative path should timed mode ever drop.
+    if (realPath != null) track.path = realPath;
     // Only a plan that still projects motion counts as "moved" — a vehicle
     // parked at the end of its plan ages toward "looks stuck" as before.
     if (track.timed!.hasForwardMotion(at)) track.lastMovedAt = at;
     return true;
+  }
+
+  /// Whether a specific vehicle currently has forward motion to render (timed
+  /// plan still playing, or a conservative ease still in flight). Used to decide
+  /// spiderfy behaviour: only genuinely *stationary* coincident vehicles are
+  /// fanned out; moving ones pass through each other instead.
+  bool hasMotion(String key) {
+    final t = _tracks[key];
+    if (t == null) return false;
+    final timed = t.timed;
+    if (timed != null) return timed.hasForwardMotion(_clock());
+    final path = t.path;
+    if (path != null && path.isUsable) {
+      return (t.toDist - t.fromDist).abs() > _stillMeters;
+    }
+    return !_isSamePlace(t.from, t.to);
   }
 
   /// Step every timed track's displayed position forward to [now]. Called once

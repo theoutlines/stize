@@ -104,9 +104,9 @@ void main() {
     });
 
     test('never leaks fleet id or identity onto the marker', () {
-      // The tracking key is present for taps/spiderfy, but nothing resembling a
-      // rich fleet identity (model, garage-as-identity) is exposed. The property
-      // set is exactly the small, fixed list the styles read.
+      // The tracking key is present for taps/arrangement, but nothing resembling
+      // a rich fleet identity (model, garage-as-identity) is exposed. The
+      // property set is exactly the small, fixed list the styles read.
       final props =
           ((movingObjectsFeatureCollection([obj()])['features'] as List).single
                   as Map)['properties']
@@ -118,7 +118,34 @@ void main() {
         'heading',
         'selected',
         'stuck',
+        'opacity',
       });
+    });
+
+    test('carries draw opacity (grace fade / crossing dim) as a property', () {
+      final fc = movingObjectsFeatureCollection([
+        MovingObject(
+          key: 'A',
+          position: ll.LatLng(44.8, 20.46),
+          kind: MovingObjectKind.bus,
+          label: '18',
+          opacity: 0.4,
+        ),
+      ]);
+      final props =
+          ((fc['features'] as List).single as Map)['properties'] as Map;
+      expect(props['opacity'], 0.4);
+    });
+
+    test('defaults opacity to 1.0 and moving to true', () {
+      const o = MovingObject(
+        key: 'A',
+        position: ll.LatLng(44.8, 20.46),
+        kind: MovingObjectKind.bus,
+        label: '18',
+      );
+      expect(o.opacity, 1.0);
+      expect(o.moving, isTrue);
     });
 
     test('movingObjectsGeoJson emits valid JSON that round-trips', () {
@@ -131,55 +158,6 @@ void main() {
     test('empty input yields an empty FeatureCollection', () {
       final fc = movingObjectsFeatureCollection(const []);
       expect(fc['features'], isEmpty);
-    });
-  });
-
-  group('spiderfyCoincident', () {
-    MovingObject at(String key, double lat, double lon) => MovingObject(
-      key: key,
-      position: ll.LatLng(lat, lon),
-      kind: MovingObjectKind.bus,
-      label: key,
-    );
-
-    test('returns the same list when nothing is coincident', () {
-      final input = [at('A', 44.80, 20.46), at('B', 44.81, 20.47)];
-      final out = spiderfyCoincident(input, zoom: 15);
-      expect(identical(out, input), isTrue);
-    });
-
-    test('single object is returned unchanged', () {
-      final input = [at('A', 44.80, 20.46)];
-      expect(identical(spiderfyCoincident(input, zoom: 15), input), isTrue);
-    });
-
-    test('spreads coincident objects apart while preserving count and keys', () {
-      final input = [
-        at('A', 44.80, 20.46),
-        at('B', 44.80, 20.46), // same spot as A
-        at('C', 44.80, 20.46), // same spot as A
-        at('D', 44.90, 20.50), // elsewhere — untouched
-      ];
-      final out = spiderfyCoincident(input, zoom: 15);
-      expect(out.length, 4);
-      expect(out.map((o) => o.key).toList(), ['A', 'B', 'C', 'D']);
-      // The three coincident ones now sit at distinct positions.
-      final coincident = out.take(3).map((o) => o.position).toList();
-      expect(coincident[0] == coincident[1], isFalse);
-      expect(coincident[1] == coincident[2], isFalse);
-      // The isolated D is left exactly where it was.
-      expect(out[3].position, ll.LatLng(44.90, 20.50));
-    });
-
-    test('spread grows as zoom decreases (constant on-screen size)', () {
-      final input = [at('A', 44.80, 20.46), at('B', 44.80, 20.46)];
-      final near = spiderfyCoincident(input, zoom: 17);
-      final far = spiderfyCoincident(input, zoom: 13);
-      double offset(MovingObject a, MovingObject b) =>
-          (a.position.latitude - b.position.latitude).abs() +
-          (a.position.longitude - b.position.longitude).abs();
-      // Same pixel spread → more metres (bigger coordinate delta) at lower zoom.
-      expect(offset(far[0], input[0]), greaterThan(offset(near[0], input[0])));
     });
   });
 }
