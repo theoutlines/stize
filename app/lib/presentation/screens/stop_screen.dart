@@ -228,9 +228,16 @@ class _StopScreenState extends ConsumerState<StopScreen> {
           ),
         ),
         if (allLines.length > 1)
-          Padding(
+          // One horizontally-scrolling row instead of a Wrap: a stop with many
+          // lines — e.g. Baćevac's ~22 after the suburban merge — used to wrap
+          // into a tall multi-row block that shoved the arrivals list off
+          // screen. Mirrors the favourites-carousel pattern (F7): horizontal
+          // scroll + edge insets so the first/last chip aren't clipped flush.
+          // Few-line stops keep their old look — the row just doesn't scroll.
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Wrap(
+            child: Row(
               spacing: 8,
               children: [
                 ChoiceChip(
