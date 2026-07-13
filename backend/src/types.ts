@@ -96,6 +96,19 @@ export interface ConfigResponse {
   flags: Record<string, boolean>;
 }
 
+// Bundle freshness metadata, written by scripts/build-gtfs.mjs into
+// public/gtfs/feed_meta.json and served at GET /api/v1/gtfs-meta. Dates are ISO
+// (YYYY-MM-DD) or null when the source feed omitted them.
+export interface FeedMeta {
+  feed_version: string | null; // GTFS feed_info.feed_version, e.g. "24"
+  feed_start_date: string | null; // start of the feed's declared validity
+  feed_end_date: string | null; // end of the feed's declared validity
+  calendar_start: string | null; // widest service window across calendar.txt
+  calendar_end: string | null;
+  built_at: string; // ISO timestamp of the bundle build
+  counts: { lines: number; stops: number; shapes: number };
+}
+
 // One time-bucket of a line's rolled-up analytics (by hour-of-day or day-of-
 // week). Means are null when there weren't enough samples to measure them.
 export interface AnalyticsBucket {

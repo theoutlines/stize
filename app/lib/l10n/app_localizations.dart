@@ -484,6 +484,12 @@ abstract class AppLocalizations {
   /// **'About Stigla'**
   String get aboutTitle;
 
+  /// No description provided for @aboutRouteData.
+  ///
+  /// In en, this message translates to:
+  /// **'Route data: {date}'**
+  String aboutRouteData(String date);
+
   /// No description provided for @aboutDisclaimer.
   ///
   /// In en, this message translates to:

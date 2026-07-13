@@ -239,6 +239,11 @@ class AppLocalizationsSr extends AppLocalizations {
   String get aboutTitle => 'O Stigla aplikaciji';
 
   @override
+  String aboutRouteData(String date) {
+    return 'Podaci o linijama: $date';
+  }
+
+  @override
   String get aboutDisclaimer =>
       'Nezvanična aplikacija. Nije povezana sa JKP Upravljanje javnim prevozom Beograd.';
 

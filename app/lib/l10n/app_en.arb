@@ -87,6 +87,8 @@
   "settingsThemeDark": "Dark",
 
   "aboutTitle": "About Stigla",
+  "aboutRouteData": "Route data: {date}",
+  "@aboutRouteData": {"placeholders": {"date": {"type": "String"}}},
   "aboutDisclaimer": "Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.",
   "aboutDescription": "Stigla shows real-time Belgrade public transport arrivals. Built for personal use.",
 

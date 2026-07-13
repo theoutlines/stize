@@ -17,6 +17,7 @@ import { getNearbyVehicles } from "./lib/vehicles";
 import {
   getAllLines,
   getAllStops,
+  getFeedMeta,
   getLineByNumber,
   getRouteShape,
   nearbyStops,
@@ -60,6 +61,16 @@ app.get("/api/v1/config", async (c) => {
   };
   c.header("cache-control", "no-store");
   return c.json(body);
+});
+
+// GTFS bundle freshness metadata (feed version + validity dates). An explicit
+// Hono route so it gets CORS headers — the static-asset binding that serves
+// /gtfs/*.json bypasses the cors() middleware. 404 if the bundle predates
+// feed_meta.json (client degrades silently).
+app.get("/api/v1/gtfs-meta", async (c) => {
+  const meta = await getFeedMeta(c.env);
+  if (!meta) return c.json({ error: "no feed metadata" }, 404);
+  return c.json(meta);
 });
 
 app.get("/api/v1/arrivals", async (c) => {

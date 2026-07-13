@@ -1,5 +1,5 @@
 import type { Env } from "../env";
-import type { LineDto, RouteShapeResponse, StopDto } from "../types";
+import type { FeedMeta, LineDto, RouteShapeResponse, StopDto } from "../types";
 import { haversineDistanceMeters } from "./haversine";
 
 // GTFS bundles are static assets built by scripts/build-gtfs.mjs. They only
@@ -7,9 +7,21 @@ import { haversineDistanceMeters } from "./haversine";
 // isolate instead of re-fetching/parsing per request.
 let stopsCache: StopDto[] | null = null;
 let linesCache: LineDto[] | null = null;
+let feedMetaCache: FeedMeta | null = null;
 
 async function fetchAsset(env: Env, path: string): Promise<Response> {
   return env.ASSETS.fetch(new URL(path, "https://assets.internal"));
+}
+
+// Bundle freshness metadata (feed version + validity dates + build time), for
+// the "Route data: <date>" line in the app. Written by build-gtfs.mjs. Returns
+// null if the asset is missing (older bundle) — callers degrade silently.
+export async function getFeedMeta(env: Env): Promise<FeedMeta | null> {
+  if (feedMetaCache) return feedMetaCache;
+  const res = await fetchAsset(env, "/gtfs/feed_meta.json");
+  if (!res.ok) return null;
+  feedMetaCache = (await res.json()) as FeedMeta;
+  return feedMetaCache;
 }
 
 async function loadStops(env: Env): Promise<StopDto[]> {

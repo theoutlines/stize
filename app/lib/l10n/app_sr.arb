@@ -80,6 +80,7 @@
   "settingsThemeDark": "Tamna",
 
   "aboutTitle": "O Stigla aplikaciji",
+  "aboutRouteData": "Podaci o linijama: {date}",
   "aboutDisclaimer": "Nezvanična aplikacija. Nije povezana sa JKP Upravljanje javnim prevozom Beograd.",
   "aboutDescription": "Stigla prikazuje dolaske javnog prevoza u Beogradu u realnom vremenu. Napravljeno za ličnu upotrebu.",
 

@@ -20,6 +20,7 @@ import '../../data/repositories/vehicles_repository_impl.dart';
 import '../../domain/models/app_config.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
+import '../../domain/models/feed_meta.dart';
 import '../../domain/models/line_analytics.dart';
 import '../../domain/models/idea.dart';
 import '../../domain/models/pinned_line.dart';
@@ -76,6 +77,18 @@ final coverageOnMainMapEnabledProvider = Provider<bool>(
 final livePositionOnlyProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.livePositionOnly ?? false,
 );
+
+/// GTFS bundle freshness metadata (feed version + data dates), for the
+/// `Route data: <date>` line in About. Null on any failure — the line is simply
+/// hidden (silent fallback), never an error surface.
+final feedMetaProvider = FutureProvider<FeedMeta?>((ref) async {
+  try {
+    final json = await ref.watch(apiClientProvider).getJson('/api/v1/gtfs-meta');
+    return FeedMeta.fromJson(json);
+  } catch (_) {
+    return null;
+  }
+});
 
 /// Rolled-up analytics for one line number (draft transport-analytics feature).
 final lineAnalyticsProvider = FutureProvider.family<LineAnalytics, String>((
