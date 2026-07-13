@@ -266,6 +266,75 @@ void main() {
     expect(find.text('Linija 35 menja trasu.'), findsNothing);
   });
 
+  testWidgets('a stop with many lines scrolls the filter chips instead of '
+      'clipping them, and filtering still works', (tester) async {
+    // Suburban node (e.g. Baćevac) carrying 22 lines. Before the fix the chips
+    // were a Wrap that ballooned into a tall block; now they must be a single
+    // horizontally-scrolling row that neither overflows nor drops chips.
+    const manyLines = [
+      '401', '402', '403', '404', '405', '407', '408', '410', '411', '412',
+      '413', '525', '526', '527', '551', '552', '553', '554', '555', '860',
+      '862', '863',
+    ];
+    const bacevac = Stop(
+      stopId: '20091',
+      name: 'Baćevac',
+      lat: 44.70,
+      lon: 20.35,
+      lines: manyLines,
+    );
+    // Two lines actually arriving, so we can prove tapping a chip filters.
+    final board = ArrivalsBoard.fromJson({
+      'stop_id': '20091',
+      'stop_name': 'Baćevac',
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      'arrivals': [
+        {'line': '401', 'vehicle_type': 'bus', 'eta_minutes': 6, 'stops_remaining': 3, 'route_id': '00401'},
+        {'line': '405', 'vehicle_type': 'bus', 'eta_minutes': 9, 'stops_remaining': 7, 'route_id': '00405'},
+      ],
+      'service_status': 'ok',
+    });
+
+    await tester.pumpWidget(
+      _wrap(
+        const StopScreen(stopId: '20091', initialStopName: 'Baćevac'),
+        arrivals: _FakeArrivalsRepository(board),
+        favorites: _FakeFavoritesRepository(),
+        stopLocation: bacevac,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // No RenderFlex overflow from cramming 22 chips onto one line.
+    expect(tester.takeException(), isNull);
+
+    // The row is a horizontal scroller (SingleChildScrollView → an
+    // Axis.horizontal Scrollable), not a Wrap.
+    final horizontal = tester
+        .widgetList<Scrollable>(find.byType(Scrollable))
+        .where((s) =>
+            s.axisDirection == AxisDirection.right ||
+            s.axisDirection == AxisDirection.left);
+    expect(horizontal, isNotEmpty);
+
+    // Every chip is built — including the last one, off-screen to the right —
+    // so nothing is clipped away. (A SingleChildScrollView builds all children.)
+    expect(find.widgetWithText(ChoiceChip, 'All lines'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, '401'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, '863'), findsOneWidget);
+
+    // Both arrivals show before filtering.
+    expect(find.text('3 stops away'), findsOneWidget); // line 401
+    expect(find.text('7 stops away'), findsOneWidget); // line 405
+
+    // Tapping the 401 chip filters the list down to just line 401.
+    await tester.tap(find.widgetWithText(ChoiceChip, '401'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('3 stops away'), findsOneWidget); // 401 stays
+    expect(find.text('7 stops away'), findsNothing);   // 405 filtered out
+  });
+
   testWidgets('toggling favorite updates the star icon', (tester) async {
     final favorites = _FakeFavoritesRepository();
     await tester.pumpWidget(
