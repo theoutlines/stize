@@ -10,6 +10,9 @@ export interface RawArrival {
   // Travel direction in degrees (0 = north, clockwise), derived from the
   // vehicle's own route geometry, or null when it can't be determined.
   heading: number | null;
+  // The vehicle's own trip, ordered origin→destination (parsed `all_stations`).
+  // Used to resolve which direction of the line it's on. Empty when absent.
+  routeStations: { lat: number; lon: number }[];
 }
 
 // Abstracts the upstream live-arrivals source. The concrete endpoint and its
@@ -63,13 +66,16 @@ export function parseRawArrival(item: unknown): RawArrival {
       : null;
   const gps = rawGps && !Number.isNaN(rawGps.lat) && !Number.isNaN(rawGps.lon) ? rawGps : null;
 
+  const routeStations = parseRouteStations(r.all_stations);
+
   return {
     lineNumber: String(r.line_number ?? ""),
     etaSeconds: typeof r.seconds_left === "number" ? r.seconds_left : 0,
     stopsRemaining: typeof r.stations_between === "number" ? r.stations_between : null,
     garageNo: typeof r.garage_no === "string" ? r.garage_no : null,
     gps,
-    heading: gps ? headingFromRoute(gps, parseRouteStations(r.all_stations)) : null,
+    heading: gps ? headingFromRoute(gps, routeStations) : null,
+    routeStations,
   };
 }
 

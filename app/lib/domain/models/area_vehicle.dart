@@ -11,6 +11,7 @@ class AreaVehicle {
     required this.lat,
     required this.lon,
     required this.heading,
+    this.routeId,
   });
 
   final String line;
@@ -19,6 +20,11 @@ class AreaVehicle {
   final double lat;
   final double lon;
   final double? heading;
+
+  /// route_id of the direction this vehicle is actually travelling (resolved
+  /// backend-side). Null on older payloads. Lets the map stitch it to the right
+  /// direction's shape instead of the canonical one.
+  final String? routeId;
 
   /// Stable identity for tracking/interpolation across refreshes.
   String get key =>
@@ -32,6 +38,7 @@ class AreaVehicle {
       lat: (json['lat'] as num).toDouble(),
       lon: (json['lon'] as num).toDouble(),
       heading: (json['heading'] as num?)?.toDouble(),
+      routeId: json['route_id'] as String?,
     );
   }
 }

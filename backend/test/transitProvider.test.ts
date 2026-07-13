@@ -24,6 +24,7 @@ describe("parseRawArrival", () => {
       garageNo: "P26624",
       gps: { lat: 44.79091, lon: 20.5405716 },
       heading: null, // no all_stations in this sample
+      routeStations: [],
     });
   });
 
@@ -36,6 +37,7 @@ describe("parseRawArrival", () => {
       garageNo: null,
       gps: null,
       heading: null,
+      routeStations: [],
     });
   });
 

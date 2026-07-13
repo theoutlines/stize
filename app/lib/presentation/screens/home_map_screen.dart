@@ -19,6 +19,7 @@ import '../../core/route_path.dart';
 import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_track_animator.dart';
 import '../../data/location/location_service.dart';
+import '../../domain/models/area_vehicle.dart';
 import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/pinned_line.dart';
@@ -762,9 +763,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       final vehicles = ref.read(livePositionOnlyProvider)
           ? fetched.where(areaVehicleHasLivePosition).toList()
           : fetched;
-      // Make sure each visible line's route geometry is (being) fetched so the
+      // Which shape to move each vehicle along. With `vehicle_direction_shape`
+      // on, stitch to the *direction the vehicle is actually going* (backend-
+      // resolved route_id) so it doesn't ride the canonical direction's street
+      // ("through houses"); off ⇒ the line's canonical shape, as before. A null
+      // key (older payload) just means no path → straight-line ease (safe).
+      final byDirection = ref.read(vehicleDirectionShapeProvider);
+      String? shapeKeyOf(AreaVehicle v) => byDirection ? v.routeId : v.line;
+      // Make sure each visible route's geometry is (being) fetched so the
       // animator can move markers along the road, not through buildings (X5).
-      _ensureShapesFor(vehicles.map((v) => v.line));
+      _ensureShapesFor(
+        [for (final v in vehicles) shapeKeyOf(v)].whereType<String>(),
+        byRouteId: byDirection,
+      );
       _vehAnimator.syncSamples([
         for (final v in vehicles)
           VehicleSample(
@@ -777,7 +788,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             // how the same line's stops are coloured.
             type: classifyLine(v.line),
             heading: v.heading,
-            path: _shapeCache[v.line],
+            path: shapeKeyOf(v) == null ? null : _shapeCache[shapeKeyOf(v)!],
           ),
       ], _vehAnim.value);
       // Only spin the ease (and the sampler) when a fix actually brings motion
@@ -798,25 +809,27 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
   }
 
-  /// Lazily fetches (once, cached) the route geometry for each given line so
-  /// vehicles on it can be animated along the route. A failed lookup caches
-  /// null — the vehicle then falls back to a plain straight-line ease.
-  void _ensureShapesFor(Iterable<String> lines) {
-    for (final line in lines.toSet()) {
-      if (_shapeCache.containsKey(line) || _shapeFetching.contains(line)) {
+  /// Lazily fetches (once, cached) the route geometry for each given key so
+  /// vehicles on it can be animated along the route. Keys are direction route_ids
+  /// when [byRouteId] (fetched by route_id), else line numbers (fetched by
+  /// number). A failed lookup caches null — the vehicle then falls back to a
+  /// plain straight-line ease. Route_ids and line numbers don't collide, so the
+  /// one cache safely holds both across a flag flip.
+  void _ensureShapesFor(Iterable<String> keys, {required bool byRouteId}) {
+    final repo = ref.read(linesRepositoryProvider);
+    for (final key in keys.toSet()) {
+      if (_shapeCache.containsKey(key) || _shapeFetching.contains(key)) {
         continue;
       }
-      _shapeFetching.add(line);
-      ref
-          .read(linesRepositoryProvider)
-          .getShapeByLineNumber(line)
+      _shapeFetching.add(key);
+      (byRouteId ? repo.getShapeByRouteId(key) : repo.getShapeByLineNumber(key))
           .then((shape) {
-            _shapeCache[line] = RoutePath.fromLatLon(shape.polyline);
+            _shapeCache[key] = RoutePath.fromLatLon(shape.polyline);
           })
           .catchError((_) {
-            _shapeCache[line] = null;
+            _shapeCache[key] = null;
           })
-          .whenComplete(() => _shapeFetching.remove(line));
+          .whenComplete(() => _shapeFetching.remove(key));
     }
   }
 

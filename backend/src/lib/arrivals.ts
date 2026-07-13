@@ -2,7 +2,8 @@ import type { Env } from "../env";
 import type { ArrivalDto, ArrivalsResponse } from "../types";
 import { getWithStaleWhileRevalidate, type WaitUntilCtx } from "./swrCache";
 import { BgnaplataTransitProvider, type RawArrival } from "./transitProvider";
-import { getStopById, getLineByNumber } from "./gtfsData";
+import { getStopById, getLineByNumber, getLineDirectionEndpoints } from "./gtfsData";
+import { resolveDirectionRouteId } from "./direction";
 import { logObservations } from "./analytics";
 
 const ARRIVALS_TTL_SECONDS = 30;
@@ -50,12 +51,23 @@ export async function getArrivals(
       continue;
     }
     const lineMeta = await getLineByNumber(env, lineNumber);
+    const canonicalRouteId = lineMeta?.route_id ?? raw.lineNumber;
+    // For mappable vehicles, resolve which direction they're actually on so the
+    // map can stitch them to that direction's shape (not always the canonical
+    // one). Falls back to canonical when the direction can't be told.
+    let directionRouteId = canonicalRouteId;
+    if (raw.gps) {
+      const directions = await getLineDirectionEndpoints(env, lineNumber);
+      directionRouteId =
+        resolveDirectionRouteId(raw.routeStations, directions) ?? canonicalRouteId;
+    }
     arrivals.push({
       line: lineNumber,
       vehicle_type: lineMeta?.vehicle_type ?? "bus",
       eta_minutes: Math.round(raw.etaSeconds / 60),
       stops_remaining: raw.stopsRemaining,
-      route_id: lineMeta?.route_id ?? raw.lineNumber,
+      route_id: canonicalRouteId,
+      direction_route_id: directionRouteId,
       gps: raw.gps,
       garage_no: raw.garageNo,
       heading: raw.heading,

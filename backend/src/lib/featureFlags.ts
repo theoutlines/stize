@@ -26,12 +26,19 @@ import type { Env } from "../env";
 //                       this on they stay in the arrivals *list* but are not drawn
 //                       as (stationary, stacked-on-the-stop) markers. Read
 //                       client-side. OFF on prod, ON on staging.
+//   vehicle_direction_shape — the map stitches a moving vehicle to the shape of
+//                       the direction it's actually travelling (resolved backend-
+//                       side from its `all_stations`), instead of always the
+//                       canonical direction. Fixes markers drawn on the wrong
+//                       street ("through houses"). Read client-side; the backend
+//                       always sends the resolved route_id. OFF prod, ON staging.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
   "coverage_map_show",
   "coverage_on_main_map",
   "live_position_only",
+  "vehicle_direction_shape",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

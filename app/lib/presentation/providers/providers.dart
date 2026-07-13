@@ -78,6 +78,13 @@ final livePositionOnlyProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.livePositionOnly ?? false,
 );
 
+/// Whether the map stitches a vehicle to its actual-direction shape (remote
+/// `vehicle_direction_shape` flag). Defaults to false until config resolves, so
+/// the current (canonical-direction) stitching holds if config can't be reached.
+final vehicleDirectionShapeProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.vehicleDirectionShape ?? false,
+);
+
 /// GTFS bundle freshness metadata (feed version + data dates), for the
 /// `Route data: <date>` line in About. Null on any failure — the line is simply
 /// hidden (silent fallback), never an error surface.
