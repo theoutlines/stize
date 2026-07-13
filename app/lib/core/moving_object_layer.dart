@@ -20,7 +20,6 @@
 library;
 
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart' as ll;
@@ -68,6 +67,8 @@ class MovingObject {
     this.heading,
     this.selected = false,
     this.stuck = false,
+    this.opacity = 1.0,
+    this.moving = true,
   });
 
   /// Stable tracking id (e.g. garage number). Used to route a tap and to group
@@ -87,6 +88,16 @@ class MovingObject {
 
   final bool selected;
   final bool stuck;
+
+  /// Draw opacity 0..1. Fades a vanishing/stale vehicle out over its grace period
+  /// (rather than holding it standing) and dims a moving vehicle while it crosses
+  /// another so the overlap reads as two passing, not one.
+  final double opacity;
+
+  /// Whether the vehicle currently has forward motion. Not written to the layer
+  /// — it only decides arrangement: stationary coincident vehicles are fanned
+  /// out, moving ones pass through each other.
+  final bool moving;
 }
 
 // ---- Source / layer ids -----------------------------------------------------
@@ -185,6 +196,7 @@ Map<String, dynamic> movingObjectsFeatureCollection(
             'heading': o.heading ?? 0,
             'selected': o.selected,
             'stuck': o.stuck,
+            'opacity': o.opacity,
           },
         },
     ],
@@ -196,60 +208,11 @@ Map<String, dynamic> movingObjectsFeatureCollection(
 String movingObjectsGeoJson(Iterable<MovingObject> objects) =>
     jsonEncode(movingObjectsFeatureCollection(objects));
 
-// ---- Pure spiderfy (unit-tested) --------------------------------------------
-
-/// Fans objects that share (almost) the same coordinate onto a small circle so
-/// co-located vehicles each stay visible instead of stacking into one blob (F4).
-/// Non-coincident objects are returned unchanged. Pure: the spread is computed
-/// in metres from a fixed on-screen radius at [zoom], so it reads the same size
-/// regardless of zoom. [centerLat] only sets the metres-per-pixel scale.
-List<MovingObject> spiderfyCoincident(
-  List<MovingObject> objects, {
-  required double zoom,
-  double centerLat = 44.8125,
-}) {
-  if (objects.length < 2) return objects;
-  final groups = <String, List<int>>{};
-  for (var i = 0; i < objects.length; i++) {
-    final p = objects[i].position;
-    final key =
-        '${p.latitude.toStringAsFixed(5)}:${p.longitude.toStringAsFixed(5)}';
-    groups.putIfAbsent(key, () => []).add(i);
-  }
-  // Nothing coincident — return the input list untouched (identity preserved).
-  if (groups.values.every((g) => g.length < 2)) return objects;
-
-  final out = List<MovingObject>.of(objects);
-  const spreadPx = 20.0;
-  final metersPerPixel =
-      156543.03392 * math.cos(centerLat * math.pi / 180) / math.pow(2, zoom);
-  final radiusM = spreadPx * metersPerPixel;
-  for (final idxs in groups.values) {
-    if (idxs.length < 2) continue;
-    for (var j = 0; j < idxs.length; j++) {
-      final base = objects[idxs[j]];
-      final angle = 2 * math.pi * j / idxs.length;
-      final dLat = radiusM * math.sin(angle) / 111320.0;
-      final dLon =
-          radiusM *
-          math.cos(angle) /
-          (111320.0 * math.cos(base.position.latitude * math.pi / 180));
-      out[idxs[j]] = MovingObject(
-        key: base.key,
-        position: ll.LatLng(
-          base.position.latitude + dLat,
-          base.position.longitude + dLon,
-        ),
-        kind: base.kind,
-        label: base.label,
-        heading: base.heading,
-        selected: base.selected,
-        stuck: base.stuck,
-      );
-    }
-  }
-  return out;
-}
+// NB: arrangement of co-located vehicles (fan out stationary clusters; pass
+// moving ones through each other with a crossing fade) is *stateful* — it eases
+// across frames and reads the animator's per-vehicle motion — so it lives in the
+// map screen (`_arrangeVehicles`), not here. This module stays pure: model +
+// GeoJSON + layer specs.
 
 // ---- Source + layer specs ---------------------------------------------------
 
@@ -268,6 +231,8 @@ CircleStyleLayer movingObjectsBadgeLayer() => CircleStyleLayer(
   sourceId: movingObjectsSourceId,
   paint: {
     'circle-color': _badgeColorExpression(),
+    'circle-opacity': <Object>['get', 'opacity'],
+    'circle-stroke-opacity': <Object>['get', 'opacity'],
     'circle-radius': <Object>[
       'interpolate',
       ['linear'],
@@ -313,6 +278,7 @@ SymbolStyleLayer movingObjectsArrowLayer() => SymbolStyleLayer(
     'icon-allow-overlap': true,
     'icon-ignore-placement': true,
   },
+  paint: {'icon-opacity': <Object>['get', 'opacity']},
 );
 
 /// The coin's content: the type glyph stacked above the line number, both drawn
@@ -348,6 +314,8 @@ SymbolStyleLayer movingObjectsLabelLayer() => SymbolStyleLayer(
     'text-color': '#ffffff',
     'text-halo-color': 'rgba(0,0,0,0.45)',
     'text-halo-width': 1.2,
+    'text-opacity': <Object>['get', 'opacity'],
+    'icon-opacity': <Object>['get', 'opacity'],
   },
 );
 

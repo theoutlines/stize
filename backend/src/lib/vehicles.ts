@@ -11,7 +11,12 @@ import type { WaitUntilCtx } from "./swrCache";
 // zoomed-out client can't trigger a request storm against the fragile source,
 // and each per-stop call still rides the shared 30s stale-while-revalidate
 // cache, so steady-state upstream load stays low.
-const MAX_STOPS_FANOUT = 12;
+// Widened 12 -> 18 so a panned viewport has fewer dead patches with no fresh
+// fixes (which read as vehicles "standing still"). Each per-stop call still
+// rides the shared 30s SWR cache, so steady-state upstream load rises at most
+// ~50% worst-case, not per-user; the 30s-per-key cap is untouched. Watch the
+// source for pushback at this fan-out.
+const MAX_STOPS_FANOUT = 18;
 const MAX_RADIUS_METERS = 1500;
 
 export async function getNearbyVehicles(

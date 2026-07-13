@@ -69,10 +69,21 @@ class TimedTrajectory {
   }) {
     final wps = _project(path, plan);
     if (wps == null) return false;
+    // When the *geometry itself* changes — the plan-point fallback upgrading to
+    // the road shape, or a fresh fallback path — a raw distance-along on the old
+    // path means nothing on the new one. Capture the current geographic position
+    // first and re-anchor onto the new geometry at the same spot, so the upgrade
+    // is seamless instead of jumping. Same-path updates keep the shown distance
+    // (monotonic, never rewind).
+    final pathChanged = !identical(path, _path);
+    final ll.LatLng? geoBefore = pathChanged ? position : null;
     _path = path;
     _waypoints = wps;
     _asOf = asOf;
     _lastAdvance = now;
+    if (geoBefore != null) {
+      _dispDist = path.project(geoBefore);
+    }
     // Never rewind: keep the shown distance, only clamp into the new plan's end.
     final end = wps.last.dist;
     if (_dispDist > end) _dispDist = end;

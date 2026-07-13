@@ -151,6 +151,47 @@ void main() {
         isNull,
       );
     });
+
+    test('upgrading to a refined geometry re-anchors at the same spot', () {
+      // Start on the plan's own straight chord (no road shape loaded yet).
+      final chord = RoutePath.fromLatLon([
+        [44.80, 20.50],
+        [44.80, 20.60],
+      ])!;
+      const plan = [
+        TrajectoryPoint(44.80, 20.50, 0),
+        TrajectoryPoint(44.80, 20.60, 100),
+      ];
+      final tt = TimedTrajectory.build(
+        path: chord,
+        plan: plan,
+        asOf: _t0,
+        now: _t0,
+      )!;
+      tt.advance(_t0.add(const Duration(seconds: 50)));
+      final before = tt.position.longitude;
+      expect(before, closeTo(20.55, 2e-2));
+
+      // The road shape arrives (denser vertices, same line). Upgrading the
+      // geometry must re-anchor at the same geographic spot — NOT reset to the
+      // route origin (which a raw distance-along on a different path would do).
+      final road = RoutePath.fromLatLon([
+        [44.80, 20.50],
+        [44.80, 20.53],
+        [44.80, 20.57],
+        [44.80, 20.60],
+      ])!;
+      tt.updatePlan(
+        path: road,
+        plan: plan,
+        asOf: _t0,
+        now: _t0.add(const Duration(seconds: 50)),
+      );
+      expect(tt.position.longitude, closeTo(before, 5e-3));
+      // And keeps moving forward from there.
+      tt.advance(_t0.add(const Duration(seconds: 70)));
+      expect(tt.position.longitude, greaterThan(before));
+    });
   });
 
   group('VehicleTrackAnimator timed mode', () {
@@ -233,20 +274,28 @@ void main() {
       expect(half, lessThan(20.51));
     });
 
-    test('degrades to the conservative ease when the plan has no route path', () {
-      final animator = VehicleTrackAnimator();
+    test('extrapolates along the plan when no route path is available yet', () {
+      var now = _t0;
+      final animator = VehicleTrackAnimator(clock: () => now);
+      // No GTFS shape yet — but the plan alone drives the vehicle forward (along
+      // its own station points) instead of standing at its fix. This is the
+      // "keep predicting when fixes/geometry run out" fix, not a standstill.
       animator.syncSamples([
         VehicleSample(
           key: 'P1',
           position: const ll.LatLng(44.80, 20.50),
           line: '2',
           type: VehicleType.tram,
-          path: null, // no geometry → can't build a timed player
+          path: null,
           trajectory: _eastPlan(),
           asOf: _t0,
         ),
-      ], 0);
-      expect(animator.trackFor('P1')!.timed, isNull);
+      ], 0, now: now);
+      expect(animator.trackFor('P1')!.timed, isNotNull);
+      now = _t0.add(const Duration(seconds: 100));
+      animator.advanceTimed(now);
+      expect(animator.positionOf('P1', 0).longitude, greaterThan(20.50));
+      expect(animator.hasMotion('P1'), isTrue);
     });
 
     test('abandons timed mode (without rewinding) if the plan later drops out', () {

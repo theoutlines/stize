@@ -62,7 +62,9 @@ const _minVehiclesZoom = 14.0;
 const _vehicleDetailZoom = 15.5;
 // Fixed 30s cadence, shared with the stop views, matched to the backend cache.
 const _vehiclesRefreshInterval = kLiveRefreshInterval;
-const _vehiclesMaxRadius = 1000.0;
+// Widened 1000 -> 1500 m (matched to the backend's MAX_RADIUS_METERS and the
+// 18-stop fan-out) so a panned viewport has fewer patches with no live vehicles.
+const _vehiclesMaxRadius = 1500.0;
 
 // Short ease so the "my position" marker glides to each fresh GPS fix instead
 // of snapping. Fixes are frequent (distance-filtered ~8 m), so this stays well
@@ -140,15 +142,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // layer via the feature's `selected` property). Null = nothing selected.
   String? _selectedVehicleKey;
 
-  // Stable spiderfy state (symbol path). Co-located vehicles are fanned out, but
-  // the spread must not flicker as two vehicles' cells overlap and separate
-  // frame-to-frame. Per key we ease the applied offset toward its target and
-  // *hold* the "crowded" state for a few frames after they part, so a brief
-  // crossing doesn't snap them together and back apart. Offsets are stored as a
-  // (dLat, dLon) delta reusing LatLng as a pair.
+  // Vehicle-arrangement state (symbol path), eased across writes so nothing
+  // snaps. `_spiderfyOffset` is the applied fan offset per key (dLat,dLon, only
+  // for stationary coincident vehicles); `_crossOpacity` is the eased crossing
+  // dim per key (a moving vehicle overlapping another). See [_arrangeVehicles].
   final Map<String, ll.LatLng> _spiderfyOffset = {};
-  final Map<String, int> _spiderfyHold = {};
-  static const _spiderfyHoldFrames = 30; // ~0.5s at 60fps before a spread relaxes
+  final Map<String, double> _crossOpacity = {};
   // Backgrounded (tab hidden / app paused): all animation and polling stop, and
   // we remember when so the frozen span can be discounted from the "stuck"
   // heuristic on resume.
@@ -535,116 +534,140 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           heading: _vehAnimator.headingAt(entry.key, t),
           selected: entry.key == _selectedVehicleKey,
           stuck: _vehAnimator.isStuck(entry.key),
+          // Fade a vanishing/stale vehicle over its grace period instead of
+          // holding it standing (X6 fade).
+          opacity: _vehAnimator.opacityFor(entry.key),
+          moving: _vehAnimator.hasMotion(entry.key),
         ),
       );
     }
     final zoom = _controller?.getCamera().zoom ?? 15.0;
-    final placed = _stableSpiderfy(objects, zoom);
+    final placed = _arrangeVehicles(objects, zoom);
     style.updateGeoJsonSource(
       id: movingObjectsSourceId,
       data: movingObjectsGeoJson(placed),
     );
   }
 
-  /// Fans out co-located vehicles (F4) *stably*: the applied offset per key eases
-  /// toward its target and the "crowded" state is held for [_spiderfyHoldFrames]
-  /// after two vehicles separate. So a brief pass-by doesn't cause them to snap
-  /// apart and jump back together each frame (the jitter the widget path's plain
-  /// grid spiderfy shows at 60fps). Runs on the vsync write, hence per-frame
-  /// easing. Non-crowded vehicles keep their true position (offset eased to ~0).
-  List<MovingObject> _stableSpiderfy(List<MovingObject> objects, double zoom) {
+  /// Arranges the vehicle set for the symbol source with two distinct behaviours,
+  /// per the owner's brief:
+  ///
+  ///  * **Stationary coincident vehicles are fanned out** (several at a stop /
+  ///    terminus read as several, F4). Their positions don't move, so the fan is
+  ///    stable — no hold/debounce needed.
+  ///  * **Moving vehicles are never displaced.** Two that cross (oncoming lanes,
+  ///    an intersection) simply **pass over each other**; the one(s) overlapping
+  ///    fade slightly so the overlap reads as two, not one. No sideways jumps.
+  ///
+  /// Position offsets (stationary fan) and crossing opacity are both eased while a
+  /// driver produces frames and snapped on a one-off write at rest, so nothing is
+  /// left half-arranged and idle stays at zero frames.
+  List<MovingObject> _arrangeVehicles(List<MovingObject> objects, double zoom) {
     if (objects.isEmpty) {
       _spiderfyOffset.clear();
-      _spiderfyHold.clear();
+      _crossOpacity.clear();
       return objects;
     }
     final metersPerPixel =
         156543.03392 * math.cos(_belgradeCenter.lat * math.pi / 180) /
         math.pow(2, zoom);
-    final radiusM = 16.0 * metersPerPixel; // spread radius, constant on screen
-    final cellM = 30.0 * metersPerPixel; // ~coin size: closer than this = crowded
+    final radiusM = 16.0 * metersPerPixel; // fan radius, constant on screen
+    final cellM = 30.0 * metersPerPixel; // ~coin size: closer than this overlaps
     final cellLat = cellM / 111320.0;
-
-    // Group by a screen-sized grid cell; a group of ≥2 is "crowded" this frame.
-    final groups = <String, List<int>>{};
-    for (var i = 0; i < objects.length; i++) {
-      final p = objects[i].position;
+    String cellOf(ll.LatLng p) {
       final cellLon = cellM / (111320.0 * math.cos(p.latitude * math.pi / 180));
-      final key = '${(p.latitude / cellLat).floor()}:'
+      return '${(p.latitude / cellLat).floor()}:'
           '${(p.longitude / cellLon).floor()}';
-      groups.putIfAbsent(key, () => []).add(i);
     }
 
-    // Target offset per key: an even fan for crowded groups (stable rank by key),
-    // zero otherwise. Refresh the hold timer for anything crowded now.
-    final targets = <String, ll.LatLng>{};
-    for (final group in groups.values) {
+    final driverRunning = (_vehTicker?.isActive ?? false) || _vehSampler != null;
+    final ease = driverRunning ? 0.3 : 1.0;
+
+    // --- Pass 1: fan out stationary coincident vehicles ---------------------
+    // Group ONLY the stationary vehicles, so a moving vehicle passing through a
+    // parked cluster's cell can't collapse the fan.
+    final stationaryByCell = <String, List<int>>{};
+    for (var i = 0; i < objects.length; i++) {
+      if (objects[i].moving) continue;
+      stationaryByCell.putIfAbsent(cellOf(objects[i].position), () => []).add(i);
+    }
+    final offsetTarget = <String, ll.LatLng>{}; // dLat,dLon per key
+    for (final group in stationaryByCell.values) {
       if (group.length < 2) continue;
       group.sort((a, b) => objects[a].key.compareTo(objects[b].key));
       for (var r = 0; r < group.length; r++) {
         final o = objects[group[r]];
         final angle = 2 * math.pi * r / group.length;
-        final dLat = radiusM * math.sin(angle) / 111320.0;
-        final dLon = radiusM *
-            math.cos(angle) /
-            (111320.0 * math.cos(o.position.latitude * math.pi / 180));
-        targets[o.key] = ll.LatLng(dLat, dLon);
-        _spiderfyHold[o.key] = _spiderfyHoldFrames;
+        offsetTarget[o.key] = ll.LatLng(
+          radiusM * math.sin(angle) / 111320.0,
+          radiusM *
+              math.cos(angle) /
+              (111320.0 * math.cos(o.position.latitude * math.pi / 180)),
+        );
       }
     }
 
-    // Ease the offset only while a driver is actually producing frames (motion),
-    // so 60fps crossings fan out/in smoothly without snapping. On a one-off write
-    // at rest (settle / initial / tap — no driver running) snap to the target so
-    // a stationary bunch fans out fully in that single frame instead of freezing
-    // 25%-spread. Preserves idle = zero frames (no ticker kept alive for the fan).
-    final driverRunning = (_vehTicker?.isActive ?? false) || _vehSampler != null;
-    final ease = driverRunning ? 0.25 : 1.0;
-    final present = <String>{};
-    final result = <MovingObject>[];
+    // Ease each key's applied offset toward its target (zero if not in a
+    // stationary cluster) and compute placed positions.
+    final placedPos = <ll.LatLng>[];
     for (final o in objects) {
-      present.add(o.key);
-      ll.LatLng target = targets[o.key] ?? const ll.LatLng(0, 0);
-      if (targets[o.key] == null) {
-        final hold = _spiderfyHold[o.key] ?? 0;
-        if (hold > 0) {
-          // Still held after a recent crossing: keep where it is (don't relax
-          // yet), so a momentary separation doesn't yank it back.
-          _spiderfyHold[o.key] = hold - 1;
-          target = _spiderfyOffset[o.key] ?? const ll.LatLng(0, 0);
-        }
-      }
+      final target = offsetTarget[o.key] ?? const ll.LatLng(0, 0);
       final cur = _spiderfyOffset[o.key] ?? const ll.LatLng(0, 0);
       final applied = ll.LatLng(
         cur.latitude + (target.latitude - cur.latitude) * ease,
         cur.longitude + (target.longitude - cur.longitude) * ease,
       );
-      if (applied.latitude.abs() < 1e-7 &&
-          applied.longitude.abs() < 1e-7 &&
-          (_spiderfyHold[o.key] ?? 0) == 0) {
+      if (applied.latitude.abs() < 1e-7 && applied.longitude.abs() < 1e-7) {
         _spiderfyOffset.remove(o.key);
-        result.add(o);
+        placedPos.add(o.position);
       } else {
         _spiderfyOffset[o.key] = applied;
-        result.add(
-          MovingObject(
-            key: o.key,
-            position: ll.LatLng(
-              o.position.latitude + applied.latitude,
-              o.position.longitude + applied.longitude,
-            ),
-            kind: o.kind,
-            label: o.label,
-            heading: o.heading,
-            selected: o.selected,
-            stuck: o.stuck,
-          ),
-        );
+        placedPos.add(ll.LatLng(
+          o.position.latitude + applied.latitude,
+          o.position.longitude + applied.longitude,
+        ));
       }
     }
-    // Drop state for vehicles no longer in the set.
+
+    // --- Pass 2: cross-fade moving vehicles that overlap --------------------
+    // Count occupancy of each cell at the placed positions; a MOVING vehicle
+    // sharing a cell with anything else is "crossing" and dims a little.
+    final cellCount = <String, int>{};
+    for (final p in placedPos) {
+      cellCount.update(cellOf(p), (v) => v + 1, ifAbsent: () => 1);
+    }
+    const crossOpacity = 0.7;
+    final present = <String>{};
+    final result = <MovingObject>[];
+    for (var i = 0; i < objects.length; i++) {
+      final o = objects[i];
+      present.add(o.key);
+      final crossing = o.moving && (cellCount[cellOf(placedPos[i])] ?? 0) > 1;
+      final targetOpacity = crossing ? crossOpacity : 1.0;
+      final curOpacity = _crossOpacity[o.key] ?? 1.0;
+      final appliedOpacity = curOpacity + (targetOpacity - curOpacity) * ease;
+      if ((appliedOpacity - 1.0).abs() < 0.02) {
+        _crossOpacity.remove(o.key);
+      } else {
+        _crossOpacity[o.key] = appliedOpacity;
+      }
+      result.add(
+        MovingObject(
+          key: o.key,
+          position: placedPos[i],
+          kind: o.kind,
+          label: o.label,
+          heading: o.heading,
+          selected: o.selected,
+          stuck: o.stuck,
+          // Combine the grace fade with the crossing dim.
+          opacity: o.opacity * appliedOpacity,
+          moving: o.moving,
+        ),
+      );
+    }
     _spiderfyOffset.removeWhere((k, _) => !present.contains(k));
-    _spiderfyHold.removeWhere((k, _) => !present.contains(k));
+    _crossOpacity.removeWhere((k, _) => !present.contains(k));
     return result;
   }
 
