@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/fleet_matcher.dart';
 import '../../data/api/stigla_api_client.dart';
 import '../../data/device/device_id_service.dart';
 import '../../data/local/gtfs_offline_cache.dart';
@@ -62,6 +64,19 @@ final nearbyEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.nearbyList ?? false,
 );
 
+/// Whether the coverage-map tab is enabled for this user (remote
+/// `coverage_map_show` flag). Defaults to false until config resolves.
+final coverageEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.coverageMapShow ?? false,
+);
+
+/// Whether the main map shows the coverage heatmap overlay when zoomed out
+/// (remote `coverage_on_main_map` flag). Independent of [coverageEnabledProvider].
+/// Defaults to false until config resolves.
+final coverageOnMainMapEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.coverageOnMainMap ?? false,
+);
+
 /// Rolled-up analytics for one line number (draft transport-analytics feature).
 final lineAnalyticsProvider = FutureProvider.family<LineAnalytics, String>((
   ref,
@@ -71,6 +86,21 @@ final lineAnalyticsProvider = FutureProvider.family<LineAnalytics, String>((
       .watch(apiClientProvider)
       .getJson('/api/v1/analytics/lines/$line');
   return LineAnalytics.fromJson(json);
+});
+
+/// Fleet-ID reference data (task B1–B5). Parsed once from the static asset.
+///
+/// Returns null — silently disabling every Fleet-ID surface (badges, model
+/// card, comfort sort) — if the asset is missing, unreadable, unparseable, or
+/// schema-invalid. Transit features are unaffected (spec §5 / B5). No network
+/// request: the catalog is a bundled asset.
+final fleetCatalogProvider = FutureProvider<FleetCatalog?>((ref) async {
+  try {
+    final source = await rootBundle.loadString('assets/data/fleet_models.json');
+    return FleetCatalog.tryParse(source);
+  } catch (_) {
+    return null;
+  }
 });
 
 final deviceIdServiceProvider = Provider<DeviceIdService>((ref) => DeviceIdService());

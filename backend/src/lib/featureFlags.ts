@@ -17,11 +17,21 @@ import type { Env } from "../env";
 //   nearby_sort_board — the "Nearby" list is ordered by time-to-board (walk to
 //                       the stop + wait for the soonest catchable departure)
 //                       instead of by bare ETA. Off on prod, on on staging.
+//   coverage_map_show — the app reveals the coverage-map tab (a static
+//                       infographic layer). OFF on prod, ON on staging until
+//                       it's ready to ship.
+//   coverage_on_main_map — the app shows the coverage heatmap as a passive
+//                       background on the *main* map when zoomed out (instead of
+//                       stop clusters). Independent of coverage_map_show: the
+//                       tab can be off while the overlay is on, and vice-versa.
+//                       OFF on prod, ON on staging.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
   "nearby_list",
   "nearby_sort_board",
+  "coverage_map_show",
+  "coverage_on_main_map",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

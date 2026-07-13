@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/providers.dart';
 import '../widgets/app_drawer.dart';
+import 'coverage_screen.dart';
 import 'home_map_screen.dart';
 import 'ideas_screen.dart';
 
@@ -32,21 +33,35 @@ class _RootScreenState extends ConsumerState<RootScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // The coverage tab is a third section, but only when its remote flag is on —
+    // so a dormant feature never builds its (map-backed) screen.
+    final coverageEnabled = ref.watch(coverageEnabledProvider);
+    final sectionCount = coverageEnabled ? 3 : 2;
+    // If the flag flips off while coverage is showing, fall back to the map.
+    final index = _index.clamp(0, sectionCount - 1);
+
+    // The home map and the Coverage tab are each a MapLibreMap; both stay mounted
+    // in the IndexedStack (instant switching, all state preserved). On web a map
+    // whose container is already sized when created wouldn't kick its initial
+    // render — that's handled in web/index.html (forced repaint until the map
+    // settles), so two maps coexist there too.
+    final sections = <Widget>[
+      // `active` lets the map stop its continuous rendering when it's not the
+      // visible section (iOS-web thermal fix).
+      HomeMapScreen(onOpenDrawer: _openDrawer, active: index == 0),
+      IdeasScreen(onOpenDrawer: _openDrawer),
+      if (coverageEnabled) CoverageScreen(onOpenDrawer: _openDrawer),
+    ];
+
     return Scaffold(
       key: _scaffoldKey,
       drawer: AppDrawer(
-        currentIndex: _index,
+        currentIndex: index,
         onSelect: (i) => setState(() => _index = i),
       ),
       // A single Scaffold owns the drawer; the section pages switch inside it,
       // and each opens the drawer through [_openDrawer] (hamburger / edge swipe).
-      body: IndexedStack(
-        index: _index,
-        children: [
-          HomeMapScreen(onOpenDrawer: _openDrawer, active: _index == 0),
-          IdeasScreen(onOpenDrawer: _openDrawer),
-        ],
-      ),
+      body: IndexedStack(index: index, children: sections),
     );
   }
 }

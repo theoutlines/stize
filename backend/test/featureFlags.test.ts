@@ -23,6 +23,8 @@ describe("featureFlags", () => {
     expect(Object.keys(flags).sort()).toEqual([
       "analytics_collect",
       "analytics_show",
+      "coverage_map_show",
+      "coverage_on_main_map",
       "nearby_list",
       "nearby_sort_board",
     ]);

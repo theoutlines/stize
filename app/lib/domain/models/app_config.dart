@@ -17,6 +17,15 @@ class AppConfig {
   /// shown. Off on prod, on on staging — an experiment, not a redesign.
   bool get nearbyList => flag('nearby_list');
 
+  /// Whether the coverage-map tab should be shown to the user. Gated remotely so
+  /// the (static infographic) screen can ship dormant and be revealed later.
+  bool get coverageMapShow => flag('coverage_map_show');
+
+  /// Whether the main map shows the coverage heatmap as a passive background
+  /// when zoomed out (in place of stop clusters). Independent of
+  /// [coverageMapShow] — the tab and the overlay gate separately.
+  bool get coverageOnMainMap => flag('coverage_on_main_map');
+
   static const empty = AppConfig(version: '', flags: {});
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {

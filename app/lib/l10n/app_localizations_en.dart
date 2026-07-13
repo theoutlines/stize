@@ -291,4 +291,127 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vehicleTypeTrolleybus => 'Trolleybus';
+
+  @override
+  String fleetAgeYears(int years) {
+    return '$years yr';
+  }
+
+  @override
+  String fleetVehicleNumber(String number) {
+    return '#$number';
+  }
+
+  @override
+  String get fleetSortByTime => 'By time';
+
+  @override
+  String get fleetSortByComfort => 'By comfort';
+
+  @override
+  String get fleetUnknownModel => 'Model unknown';
+
+  @override
+  String get fleetSectionComfort => 'Comfort';
+
+  @override
+  String get fleetSectionAmenities => 'On board';
+
+  @override
+  String get fleetSectionDetails => 'Details';
+
+  @override
+  String get fleetAc => 'Air conditioning';
+
+  @override
+  String get fleetNoAc => 'No air conditioning';
+
+  @override
+  String get fleetLowFloor => 'Low floor';
+
+  @override
+  String get fleetHighFloor => 'Steps at the door';
+
+  @override
+  String get fleetArticulated => 'Articulated (bendy)';
+
+  @override
+  String get fleetUsb => 'USB charging';
+
+  @override
+  String get fleetElectric => 'Electric';
+
+  @override
+  String get fleetHybrid => 'Hybrid';
+
+  @override
+  String get fleetCng => 'Runs on gas (CNG)';
+
+  @override
+  String get fleetTrolley => 'Trolleybus';
+
+  @override
+  String get fleetTram => 'Tram';
+
+  @override
+  String get fleetDiesel => 'Diesel';
+
+  @override
+  String get fleetAge => 'Age';
+
+  @override
+  String fleetAgeApprox(int years, int from, int to) {
+    return '~$years yr (built $from–$to)';
+  }
+
+  @override
+  String fleetCapacity(int count) {
+    return 'Holds ~$count';
+  }
+
+  @override
+  String fleetLength(String meters) {
+    return '$meters m long';
+  }
+
+  @override
+  String fleetOperator(String name) {
+    return 'Operator: $name';
+  }
+
+  @override
+  String fleetManufacturer(String value) {
+    return 'Manufacturer: $value';
+  }
+
+  @override
+  String get fleetComfortRetro => 'retro';
+
+  @override
+  String get fleetComfortOk => 'ok';
+
+  @override
+  String get fleetComfortComfy => 'comfort';
+
+  @override
+  String get fleetApproxNote =>
+      '“~” marks values estimated for this operator, not confirmed for this exact vehicle.';
+
+  @override
+  String get navCoverage => 'Coverage';
+
+  @override
+  String get coverageFilterAll => 'All';
+
+  @override
+  String get coverageLegendTitle => 'Transit density';
+
+  @override
+  String get coverageLegendLow => 'rarer';
+
+  @override
+  String get coverageLegendHigh => 'busier';
+
+  @override
+  String get coverageUnavailable => 'Coverage map is unavailable right now.';
 }
