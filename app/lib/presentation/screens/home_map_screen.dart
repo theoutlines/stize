@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
@@ -35,6 +36,12 @@ import 'map_screen_args.dart';
 
 const _belgradeCenter = Geographic(lon: 20.4612, lat: 44.8125);
 const _distance = ll.Distance();
+
+// Imperative tram-rail network layer (symbol_layer mode only) — see
+// _addVehicleSymbolLayers for why the rails are owned here rather than as the
+// declarative PolylineLayer the widget path uses.
+const _tramRailsSourceId = 'tram-rails-src';
+const _tramRailsLayerId = 'tram-rails';
 
 // Load stops for the viewport from this zoom up; below it the map is a clean
 // overview. Between here and [_individualZoom] stops are shown clustered; at or
@@ -132,6 +139,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // The currently-selected vehicle's tracking key (tap highlight on the symbol
   // layer via the feature's `selected` property). Null = nothing selected.
   String? _selectedVehicleKey;
+
+  // Stable spiderfy state (symbol path). Co-located vehicles are fanned out, but
+  // the spread must not flicker as two vehicles' cells overlap and separate
+  // frame-to-frame. Per key we ease the applied offset toward its target and
+  // *hold* the "crowded" state for a few frames after they part, so a brief
+  // crossing doesn't snap them together and back apart. Offsets are stored as a
+  // (dLat, dLon) delta reusing LatLng as a pair.
+  final Map<String, ll.LatLng> _spiderfyOffset = {};
+  final Map<String, int> _spiderfyHold = {};
+  static const _spiderfyHoldFrames = 30; // ~0.5s at 60fps before a spread relaxes
   // Backgrounded (tab hidden / app paused): all animation and polling stop, and
   // we remember when so the frozen span can be discounted from the "stuck"
   // heuristic on resume.
@@ -423,15 +440,64 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (style == null || _vehLayerAdded) return;
     _vehLayerAdded = true;
     try {
+      // Tram rails FIRST, so they sit *under* the vehicle layers (infrastructure
+      // beneath moving objects, C2). In symbol mode the rails are their own
+      // imperative line layer rather than the declarative PolylineLayer: mixing
+      // the declarative index-managed layers with our imperative ones drops the
+      // rails (the reason they vanished), so we own them here directly. The
+      // widget-path (flag off) keeps the declarative rails unchanged.
+      await style.addSource(
+        const GeoJsonSource(
+          id: _tramRailsSourceId,
+          data: '{"type":"FeatureCollection","features":[]}',
+        ),
+      );
+      await style.addLayer(
+        const LineStyleLayer(
+          id: _tramRailsLayerId,
+          sourceId: _tramRailsSourceId,
+          layout: {'line-cap': 'round', 'line-join': 'round'},
+          paint: {
+            'line-color': '#D3342B', // tram red (matches tramRailColor)
+            'line-opacity': 0.6,
+            'line-width': 2.0,
+          },
+        ),
+      );
       await style.addSource(movingObjectsSource());
       await style.addLayer(movingObjectsBadgeLayer());
       await style.addLayer(movingObjectsArrowLayer());
       await style.addLayer(movingObjectsLabelLayer());
-      // Paint whatever the animator already holds, so vehicles appear at once.
+      // Paint whatever the animator / rails cache already hold, so they show at
+      // once (also covers a theme-flip re-add, where _loadTramRails won't refire).
       _writeVehiclesToSource();
+      _pushTramRailsToSource();
     } catch (_) {
       _vehLayerAdded = false;
     }
+  }
+
+  /// Pushes the cached tram rail polylines into the imperative rails source
+  /// (symbol mode only). No-op until the layer exists / rails have loaded.
+  void _pushTramRailsToSource() {
+    final style = _style;
+    if (style == null || !_vehLayerAdded || _tramRails.isEmpty) return;
+    final features = [
+      for (final poly in _tramRails)
+        {
+          'type': 'Feature',
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': [
+              for (final p in poly) [p[1], p[0]], // [lat,lon] -> [lon,lat]
+            ],
+          },
+        },
+    ];
+    style.updateGeoJsonSource(
+      id: _tramRailsSourceId,
+      data: jsonEncode({'type': 'FeatureCollection', 'features': features}),
+    );
   }
 
   /// Enable the symbol layer after the fact — when the remote flag resolves
@@ -473,11 +539,113 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       );
     }
     final zoom = _controller?.getCamera().zoom ?? 15.0;
-    final placed = spiderfyCoincident(objects, zoom: zoom);
+    final placed = _stableSpiderfy(objects, zoom);
     style.updateGeoJsonSource(
       id: movingObjectsSourceId,
       data: movingObjectsGeoJson(placed),
     );
+  }
+
+  /// Fans out co-located vehicles (F4) *stably*: the applied offset per key eases
+  /// toward its target and the "crowded" state is held for [_spiderfyHoldFrames]
+  /// after two vehicles separate. So a brief pass-by doesn't cause them to snap
+  /// apart and jump back together each frame (the jitter the widget path's plain
+  /// grid spiderfy shows at 60fps). Runs on the vsync write, hence per-frame
+  /// easing. Non-crowded vehicles keep their true position (offset eased to ~0).
+  List<MovingObject> _stableSpiderfy(List<MovingObject> objects, double zoom) {
+    if (objects.isEmpty) {
+      _spiderfyOffset.clear();
+      _spiderfyHold.clear();
+      return objects;
+    }
+    final metersPerPixel =
+        156543.03392 * math.cos(_belgradeCenter.lat * math.pi / 180) /
+        math.pow(2, zoom);
+    final radiusM = 16.0 * metersPerPixel; // spread radius, constant on screen
+    final cellM = 30.0 * metersPerPixel; // ~coin size: closer than this = crowded
+    final cellLat = cellM / 111320.0;
+
+    // Group by a screen-sized grid cell; a group of ≥2 is "crowded" this frame.
+    final groups = <String, List<int>>{};
+    for (var i = 0; i < objects.length; i++) {
+      final p = objects[i].position;
+      final cellLon = cellM / (111320.0 * math.cos(p.latitude * math.pi / 180));
+      final key = '${(p.latitude / cellLat).floor()}:'
+          '${(p.longitude / cellLon).floor()}';
+      groups.putIfAbsent(key, () => []).add(i);
+    }
+
+    // Target offset per key: an even fan for crowded groups (stable rank by key),
+    // zero otherwise. Refresh the hold timer for anything crowded now.
+    final targets = <String, ll.LatLng>{};
+    for (final group in groups.values) {
+      if (group.length < 2) continue;
+      group.sort((a, b) => objects[a].key.compareTo(objects[b].key));
+      for (var r = 0; r < group.length; r++) {
+        final o = objects[group[r]];
+        final angle = 2 * math.pi * r / group.length;
+        final dLat = radiusM * math.sin(angle) / 111320.0;
+        final dLon = radiusM *
+            math.cos(angle) /
+            (111320.0 * math.cos(o.position.latitude * math.pi / 180));
+        targets[o.key] = ll.LatLng(dLat, dLon);
+        _spiderfyHold[o.key] = _spiderfyHoldFrames;
+      }
+    }
+
+    // Ease the offset only while a driver is actually producing frames (motion),
+    // so 60fps crossings fan out/in smoothly without snapping. On a one-off write
+    // at rest (settle / initial / tap — no driver running) snap to the target so
+    // a stationary bunch fans out fully in that single frame instead of freezing
+    // 25%-spread. Preserves idle = zero frames (no ticker kept alive for the fan).
+    final driverRunning = (_vehTicker?.isActive ?? false) || _vehSampler != null;
+    final ease = driverRunning ? 0.25 : 1.0;
+    final present = <String>{};
+    final result = <MovingObject>[];
+    for (final o in objects) {
+      present.add(o.key);
+      ll.LatLng target = targets[o.key] ?? const ll.LatLng(0, 0);
+      if (targets[o.key] == null) {
+        final hold = _spiderfyHold[o.key] ?? 0;
+        if (hold > 0) {
+          // Still held after a recent crossing: keep where it is (don't relax
+          // yet), so a momentary separation doesn't yank it back.
+          _spiderfyHold[o.key] = hold - 1;
+          target = _spiderfyOffset[o.key] ?? const ll.LatLng(0, 0);
+        }
+      }
+      final cur = _spiderfyOffset[o.key] ?? const ll.LatLng(0, 0);
+      final applied = ll.LatLng(
+        cur.latitude + (target.latitude - cur.latitude) * ease,
+        cur.longitude + (target.longitude - cur.longitude) * ease,
+      );
+      if (applied.latitude.abs() < 1e-7 &&
+          applied.longitude.abs() < 1e-7 &&
+          (_spiderfyHold[o.key] ?? 0) == 0) {
+        _spiderfyOffset.remove(o.key);
+        result.add(o);
+      } else {
+        _spiderfyOffset[o.key] = applied;
+        result.add(
+          MovingObject(
+            key: o.key,
+            position: ll.LatLng(
+              o.position.latitude + applied.latitude,
+              o.position.longitude + applied.longitude,
+            ),
+            kind: o.kind,
+            label: o.label,
+            heading: o.heading,
+            selected: o.selected,
+            stuck: o.stuck,
+          ),
+        );
+      }
+    }
+    // Drop state for vehicles no longer in the set.
+    _spiderfyOffset.removeWhere((k, _) => !present.contains(k));
+    _spiderfyHold.removeWhere((k, _) => !present.contains(k));
+    return result;
   }
 
   /// Adds the coverage heatmap source + layer the first time the map is zoomed
@@ -529,6 +697,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     ]);
     if (!mounted) return;
     setState(() => _tramRails = rails);
+    // Symbol mode draws the rails as its own imperative line layer; push the
+    // freshly-loaded geometry into it. The widget path renders them declaratively
+    // from _tramRails (see _buildLayers), so nothing more is needed there.
+    if (_symbolLayerEnabled) _pushTramRailsToSource();
   }
 
   void _onEvent(MapEvent event) {
@@ -914,20 +1086,30 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             asOf: timedOn ? v.asOf : null,
           ),
       ], _vehAnim.value);
-      // Only drive the layer when a fix actually brings motion and we're in the
-      // foreground; otherwise settle instantly so a screen of stationary vehicles
-      // renders zero frames until the next real move. Timed mode is driven by the
-      // wall-clock ticker (the 30s ease controller is unused there); conservative
-      // mode runs the ease controller + coarse sampler as before. Both feed
-      // whichever render path is active (symbol source / widget tick).
+      // Drive the layer whenever a fix brings motion (foregrounded); otherwise
+      // settle so a screen of stationary vehicles renders zero frames until the
+      // next move. Always run the 30s ease controller here — NOT only when
+      // timed is off: a vehicle whose route geometry/plan isn't available yet
+      // (shape still loading, or no trajectory) falls back to the conservative
+      // ease, and that ease needs the controller's t-ramp to move at all.
+      // Without it such a fallback vehicle would sit pinned at its last fix and
+      // jump on the next refetch. In timed mode the wall-clock ticker also runs
+      // (it advances the timed players and repaints); the two coexist — the
+      // ticker reads each track's live position, easing for fallback tracks,
+      // wall-clock for timed ones.
       if (!_paused && _vehAnimator.hasPendingMotion) {
-        if (!timedOn) _vehAnim.forward(from: 0);
+        _vehAnim.forward(from: 0);
         _startVehDriver(timed: timedOn);
       } else {
         _stopVehSampler();
         _vehAnim.value = 1; // land straight on the latest fixes, no per-frame ease
-        _paintVehicles(); // one paint so the settled positions show immediately
       }
+      // Always push the fresh set to the render path right away, so newly-entered
+      // vehicles appear and departed ones drop this frame (not only on the next
+      // ticker tick). The symbol source is write-driven — unlike the widget path
+      // it doesn't self-heal on every rebuild — so the set membership must be
+      // written on every sync.
+      _paintVehicles();
       // Reflect the animator's set (which may still hold briefly-missing
       // vehicles during their grace period), not just this response (X6).
       setState(() => _hasVehicles = _vehAnimator.tracks.isNotEmpty);
@@ -1705,8 +1887,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // Fully faded out ⇒ don't build the stop layers at all (heatmap-only view).
     final showStops = stopsOpacity > 0.01;
     return [
-      // Tram rails, under everything (C2).
-      if (_tramRails.isNotEmpty)
+      // Tram rails, under everything (C2). Symbol mode owns them as an imperative
+      // line layer (see _addVehicleSymbolLayers), so only the widget path draws
+      // them declaratively here.
+      if (!_symbolLayerEnabled && _tramRails.isNotEmpty)
         PolylineLayer(
           polylines: [
             for (final poly in _tramRails)
