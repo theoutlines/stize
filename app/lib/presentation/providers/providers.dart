@@ -68,6 +68,15 @@ final coverageOnMainMapEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.coverageOnMainMap ?? false,
 );
 
+/// Whether the map draws only vehicles with a real live position — placeholder
+/// rows (junk garage / GPS on the stop) stay in the arrivals list but off the
+/// map (remote `live_position_only` flag). Defaults to false until config
+/// resolves, so the current (show-everything) behaviour holds if config can't
+/// be reached.
+final livePositionOnlyProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.livePositionOnly ?? false,
+);
+
 /// Rolled-up analytics for one line number (draft transport-analytics feature).
 final lineAnalyticsProvider = FutureProvider.family<LineAnalytics, String>((
   ref,

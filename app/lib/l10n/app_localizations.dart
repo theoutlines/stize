@@ -256,6 +256,12 @@ abstract class AppLocalizations {
   /// **'Zoom in to see live transport'**
   String get mapZoomInForVehicles;
 
+  /// No description provided for @noLiveVehiclesOnMap.
+  ///
+  /// In en, this message translates to:
+  /// **'No live-tracked vehicles to map right now — see the arrivals below.'**
+  String get noLiveVehiclesOnMap;
+
   /// No description provided for @stopUpdatedJustNow.
   ///
   /// In en, this message translates to:

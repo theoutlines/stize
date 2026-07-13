@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart' as ll;
 
 import '../../core/api_config.dart';
 import '../../core/fleet_matcher.dart';
+import '../../core/live_position.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
@@ -189,20 +190,34 @@ class _StopScreenState extends ConsumerState<StopScreen> {
       });
     }
 
-    final vehiclesWithGps = board.arrivals.where((a) => a.gps != null).toList();
+    // With `live_position_only` on, keep the schedule-derived placeholder rows
+    // (junk garage, GPS pinned to this stop) off the map — otherwise they render
+    // as a motionless stack on the stop pin. They stay in the arrivals list
+    // below regardless. Flag off ⇒ every gps-bearing row is mapped, as before.
+    final livePositionOnly = ref.watch(livePositionOnlyProvider);
+    final mapVehicles = livePositionOnly
+        ? board.arrivals.where(arrivalHasLivePosition).toList()
+        : board.arrivals.where((a) => a.gps != null).toList();
+    // Nothing live left to draw but arrivals *are* coming: explain the empty map
+    // instead of a blank slot (which reads as broken). Only under the flag —
+    // without it, an all-placeholder stop still showed the (stacked) markers.
+    final showNoLiveHint =
+        livePositionOnly && stopLocation != null && mapVehicles.isEmpty;
     final ageSeconds = DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
     final isStale = ageSeconds > 90; // well past the ~30s refresh cadence — likely a stuck cache
 
     return Column(
       children: [
-        if (stopLocation != null && vehiclesWithGps.isNotEmpty)
+        if (stopLocation != null && mapVehicles.isNotEmpty)
           SizedBox(
             height: 220,
             child: LiveVehiclesMap(
-              arrivals: vehiclesWithGps,
+              arrivals: mapVehicles,
               stopLocation: ll.LatLng(stopLocation.lat, stopLocation.lon),
             ),
-          ),
+          )
+        else if (showNoLiveHint)
+          _noLiveVehiclesHint(context, l10n),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Text(
@@ -280,6 +295,42 @@ class _StopScreenState extends ConsumerState<StopScreen> {
                 : null,
           ),
       ],
+    );
+  }
+
+  /// Shown in place of the mini-map when `live_position_only` has filtered out
+  /// every placeholder and there's no genuinely live vehicle to plot — an
+  /// explained empty state (the lines are still listed below) instead of a blank
+  /// slot that reads as a failure. Same muted-banner language as the route alerts
+  /// strip / freshness label.
+  Widget _noLiveVehiclesHint(BuildContext context, AppLocalizations l10n) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.location_searching,
+              size: 18,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                l10n.noLiveVehiclesOnMap,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

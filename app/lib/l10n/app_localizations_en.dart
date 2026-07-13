@@ -103,6 +103,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapZoomInForVehicles => 'Zoom in to see live transport';
 
   @override
+  String get noLiveVehiclesOnMap =>
+      'No live-tracked vehicles to map right now — see the arrivals below.';
+
+  @override
   String get stopUpdatedJustNow => 'Updated just now';
 
   @override

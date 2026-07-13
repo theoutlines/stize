@@ -26,6 +26,7 @@ app/web/build/
 backend/node_modules/
 backend/.wrangler/
 app/.wrangler/
+/.wrangler/
 backend/dist/
 node_modules/
 

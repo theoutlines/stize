@@ -22,6 +22,12 @@ class AppConfig {
   /// [coverageMapShow] — the tab and the overlay gate separately.
   bool get coverageOnMainMap => flag('coverage_on_main_map');
 
+  /// Whether the map draws only vehicles with a real live position. The upstream
+  /// emits placeholder rows (junk garage `P1..P999`, GPS = the stop coordinate)
+  /// that aren't tracked vehicles; when on they stay in the arrivals list but
+  /// are not drawn as markers. Gated remotely so it can ship dormant.
+  bool get livePositionOnly => flag('live_position_only');
+
   static const empty = AppConfig(version: '', flags: {});
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {

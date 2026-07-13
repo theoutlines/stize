@@ -12,6 +12,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
 import '../../core/coverage_heatmap.dart';
+import '../../core/live_position.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
 import '../../core/route_path.dart';
@@ -750,10 +751,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final seq = ++_vehiclesRequestSeq;
     _lastVehiclesCenter = center;
     try {
-      final vehicles = await ref
+      final fetched = await ref
           .read(vehiclesRepositoryProvider)
           .nearby(lat: center.latitude, lon: center.longitude, radiusMeters: radius);
       if (!mounted || seq != _vehiclesRequestSeq) return;
+      // Placeholder rows (junk garage `P1..P999`, GPS pinned to a stop) aren't
+      // tracked vehicles — they'd sit motionless on a stop. Keep them off the
+      // map when the flag is on; the arrivals *list* on the stop screen still
+      // shows their line/ETA. Flag off ⇒ unchanged.
+      final vehicles = ref.read(livePositionOnlyProvider)
+          ? fetched.where(areaVehicleHasLivePosition).toList()
+          : fetched;
       // Make sure each visible line's route geometry is (being) fetched so the
       // animator can move markers along the road, not through buildings (X5).
       _ensureShapesFor(vehicles.map((v) => v.line));

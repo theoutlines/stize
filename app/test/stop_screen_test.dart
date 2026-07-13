@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:stigla/core/map_support.dart';
 import 'package:stigla/data/api/api_exceptions.dart';
+import 'package:stigla/domain/models/app_config.dart';
 import 'package:stigla/domain/models/arrival.dart';
 import 'package:stigla/domain/models/favorite_stop.dart';
 import 'package:stigla/domain/models/route_alert.dart';
@@ -68,6 +69,7 @@ Widget _wrap(
   FavoritesRepository? favorites,
   List<RouteAlert> alerts = const [],
   Stop? stopLocation = _batutovaStop,
+  bool livePositionOnly = false,
 }) {
   return ProviderScope(
     overrides: [
@@ -75,6 +77,12 @@ Widget _wrap(
       if (favorites != null) favoritesRepositoryProvider.overrideWithValue(favorites),
       alertsProvider.overrideWith((ref) async => alerts),
       stopLocationProvider('20091').overrideWith((ref) async => stopLocation),
+      appConfigProvider.overrideWith(
+        (ref) async => AppConfig(
+          version: 'test',
+          flags: {'live_position_only': livePositionOnly},
+        ),
+      ),
     ],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -104,6 +112,48 @@ void main() {
     expect(find.text('79'), findsOneWidget);
     expect(find.text('11 min'), findsOneWidget);
     expect(find.text('6 stops away'), findsOneWidget);
+  });
+
+  testWidgets('live_position_only: an all-placeholder stop shows the explained '
+      'hint instead of a map, but still lists the line', (tester) async {
+    // One arrival, a schedule placeholder: junk garage P1 with GPS pinned to the
+    // stop's own coordinate — exactly the upstream shape that used to draw a
+    // motionless marker on the stop.
+    final placeholderBoard = ArrivalsBoard.fromJson({
+      'stop_id': '20091',
+      'stop_name': 'Batutova',
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      'arrivals': [
+        {
+          'line': '79',
+          'vehicle_type': 'bus',
+          'eta_minutes': 4,
+          'stops_remaining': 1,
+          'route_id': '00079',
+          'gps': {'lat': 44.795374, 'lon': 20.499713}, // == stop coordinate
+          'garage_no': 'P1', // junk placeholder pool
+        },
+      ],
+      'service_status': 'ok',
+    });
+
+    await tester.pumpWidget(
+      _wrap(
+        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+        arrivals: _FakeArrivalsRepository(placeholderBoard),
+        favorites: _FakeFavoritesRepository(),
+        livePositionOnly: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The line stays in the arrivals list (its ETA is valid) ...
+    expect(find.text('79'), findsOneWidget);
+    // ... but the map slot is replaced by the explained empty state.
+    expect(
+      find.text('No live-tracked vehicles to map right now — see the arrivals below.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows the human empty state when there are no arrivals', (tester) async {

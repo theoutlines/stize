@@ -107,6 +107,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Приблизьте карту, чтобы увидеть транспорт';
 
   @override
+  String get noLiveVehiclesOnMap =>
+      'Нет машин с live-позицией — смотри список прибытий ниже.';
+
+  @override
   String get stopUpdatedJustNow => 'Обновлено только что';
 
   @override
