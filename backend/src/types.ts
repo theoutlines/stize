@@ -73,6 +73,9 @@ export interface LineDto {
   origin_lon?: number;
   dest_lat?: number;
   dest_lon?: number;
+  // True for a purely-suburban line merged in from the suburban feed (not in the
+  // city feed). Only used to keep such lines out of the city coverage map.
+  suburban?: boolean;
 }
 
 export interface LinesResponse {
