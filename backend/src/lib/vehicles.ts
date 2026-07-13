@@ -48,6 +48,9 @@ export async function getNearbyVehicles(
         lat: a.gps.lat,
         lon: a.gps.lon,
         heading: a.heading,
+        // Direction the vehicle is actually travelling, so the map draws it on
+        // that direction's shape (falls back to canonical inside getArrivals).
+        route_id: a.direction_route_id,
       });
     }
   }

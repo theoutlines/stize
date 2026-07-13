@@ -28,6 +28,11 @@ class AppConfig {
   /// are not drawn as markers. Gated remotely so it can ship dormant.
   bool get livePositionOnly => flag('live_position_only');
 
+  /// Whether the map stitches a moving vehicle to the shape of the direction it
+  /// is actually travelling (from the backend-resolved route_id) instead of the
+  /// canonical direction. Fixes markers drawn on the wrong street.
+  bool get vehicleDirectionShape => flag('vehicle_direction_shape');
+
   static const empty = AppConfig(version: '', flags: {});
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {

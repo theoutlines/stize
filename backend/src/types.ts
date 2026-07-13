@@ -6,7 +6,12 @@ export interface ArrivalDto {
   vehicle_type: VehicleType;
   eta_minutes: number;
   stops_remaining: number | null;
-  route_id: string;
+  route_id: string; // canonical direction (bare route_id), unchanged
+  // The route_id of the *direction this vehicle is actually travelling*, resolved
+  // from its live route (`all_stations`). Falls back to the canonical route_id
+  // when the direction can't be told. Lets the map stitch the vehicle to the
+  // correct direction's shape instead of always the canonical one.
+  direction_route_id?: string;
   gps: { lat: number; lon: number } | null;
   garage_no: string | null;
   heading: number | null;
@@ -21,6 +26,9 @@ export interface VehicleDto {
   lat: number;
   lon: number;
   heading: number | null;
+  // Direction-resolved route_id (see ArrivalDto.direction_route_id) so the map
+  // can draw the vehicle on the shape of the direction it's really going.
+  route_id?: string;
 }
 
 export interface VehiclesResponse {
@@ -59,6 +67,12 @@ export interface LineDto {
   direction_id?: string;
   origin: string;
   destination: string;
+  // Terminal coordinates (origin/destination stop). Used to match a live
+  // vehicle's own route to the correct direction (lib/direction.ts).
+  origin_lat?: number;
+  origin_lon?: number;
+  dest_lat?: number;
+  dest_lon?: number;
 }
 
 export interface LinesResponse {

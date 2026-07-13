@@ -1,5 +1,6 @@
 import type { Env } from "../env";
 import type { FeedMeta, LineDto, RouteShapeResponse, StopDto } from "../types";
+import type { DirectionEndpoints } from "./direction";
 import { haversineDistanceMeters } from "./haversine";
 
 // GTFS bundles are static assets built by scripts/build-gtfs.mjs. They only
@@ -88,6 +89,38 @@ export async function searchLines(env: Env, query: string): Promise<LineDto[]> {
 export async function getLineByNumber(env: Env, line: string): Promise<LineDto | null> {
   const lines = await loadLines(env);
   return lines.find((l) => l.line.toLowerCase() === line.toLowerCase()) ?? null;
+}
+
+// Per-line terminal coordinates for each direction, derived once from lines.json
+// (already isolate-cached) — no per-request shape loading. Feeds direction
+// resolution (lib/direction.ts). Directions missing terminal coords are skipped.
+const lineDirectionsCache = new Map<string, DirectionEndpoints[]>();
+export async function getLineDirectionEndpoints(
+  env: Env,
+  line: string,
+): Promise<DirectionEndpoints[]> {
+  const key = line.toLowerCase();
+  const cached = lineDirectionsCache.get(key);
+  if (cached) return cached;
+  const lines = await loadLines(env);
+  const out: DirectionEndpoints[] = [];
+  for (const l of lines) {
+    if (l.line.toLowerCase() !== key) continue;
+    if (
+      typeof l.origin_lat === "number" &&
+      typeof l.origin_lon === "number" &&
+      typeof l.dest_lat === "number" &&
+      typeof l.dest_lon === "number"
+    ) {
+      out.push({
+        routeId: l.route_id,
+        origin: { lat: l.origin_lat, lon: l.origin_lon },
+        destination: { lat: l.dest_lat, lon: l.dest_lon },
+      });
+    }
+  }
+  lineDirectionsCache.set(key, out);
+  return out;
 }
 
 export async function getRouteShape(env: Env, routeId: string): Promise<RouteShapeResponse | null> {
