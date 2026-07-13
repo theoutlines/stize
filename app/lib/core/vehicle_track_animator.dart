@@ -426,7 +426,10 @@ class VehicleTrackAnimator {
     final path = track.path;
     if (path != null && path.isUsable) {
       final cur = _lerpD(track.fromDist, track.toDist, t);
-      return path.headingAt(cur, forward: track.toDist >= track.fromDist);
+      // Smoothed bearing so the direction arrow turns continuously through a
+      // curve rather than snapping at each ~15 m vertex (zigzag on the symbol
+      // layer's offset arrow). Same look-ahead as the timed player.
+      return path.headingAtSmoothed(cur, forward: track.toDist >= track.fromDist);
     }
     return track.heading;
   }

@@ -101,7 +101,10 @@ class TimedTrajectory {
       _asOf.add(Duration(milliseconds: (_waypoints.last.etaSeconds * 1000).round()));
 
   ll.LatLng get position => _path.pointAt(_dispDist);
-  double get heading => _path.headingAt(_dispDist, forward: true);
+  // Smoothed (look-ahead) bearing: turns continuously through a curve so the
+  // direction arrow rotates smoothly instead of snapping vertex-to-vertex (which
+  // reads as a zigzag on a road-accurate, ~15 m-spaced GTFS shape).
+  double get heading => _path.headingAtSmoothed(_dispDist, forward: true);
 
   /// Whether the marker still has forward motion to render at [now]. False once
   /// it has reached the plan's end or wall-clock has run past the plan's horizon

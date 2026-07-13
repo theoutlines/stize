@@ -111,6 +111,39 @@ class RoutePath {
     return _bearing(a, b);
   }
 
+  /// A *smoothed* travel bearing at [dist]: the bearing of the chord from the
+  /// current point to a point [lookahead] metres further along (or, near the
+  /// end, from a point [lookahead] behind up to the current point).
+  ///
+  /// The per-segment [headingAt] steps discretely at every vertex — on a
+  /// road-accurate GTFS shape that's a new bearing every ~15 m, jumping 15–25°
+  /// at a bend. A direction arrow driven by that snaps vertex-to-vertex, which
+  /// reads as a zigzag on curves. Averaging over a span longer than one vertex
+  /// spacing makes the heading turn *continuously* through a curve, so the arrow
+  /// rotates smoothly. Both chord endpoints slide continuously with [dist], so
+  /// the result has no discontinuities (only tiny kinks as an endpoint crosses a
+  /// vertex, negligible over a 30 m span).
+  double headingAtSmoothed(double dist, {double lookahead = 30, bool forward = true}) {
+    if (points.length < 2) return 0;
+    final d = dist.clamp(0.0, length);
+    final ahead = math.min(d + lookahead, length);
+    final behind = math.max(d - lookahead, 0.0);
+    final ll.LatLng a, b;
+    if (ahead - d > 1) {
+      a = pointAt(d);
+      b = pointAt(ahead);
+    } else if (d - behind > 1) {
+      // Within [lookahead] of the end: use the trailing chord instead.
+      a = pointAt(behind);
+      b = pointAt(d);
+    } else {
+      // Degenerate (path shorter than the window): fall back to the segment.
+      return headingAt(dist, forward: forward);
+    }
+    final bearing = _bearing(a, b);
+    return forward ? bearing : (bearing + 180) % 360;
+  }
+
   // Index i such that _cum[i] <= d <= _cum[i+1], via binary search.
   int _segmentFor(double d) {
     var lo = 0;
