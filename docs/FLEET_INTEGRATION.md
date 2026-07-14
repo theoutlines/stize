@@ -1,99 +1,144 @@
-# Stigla — Fleet Identification (справочник подвижного состава)
+# Stigla — Fleet Identification
 
-Задача: по гаражному номеру из real-time API (`P80209`, `P93052`…) показывать пассажиру, **на чём именно он поедет** — модель, возраст, кондиционер, низкий пол — и давать сравнивать варианты. Источник данных: `assets/data/fleet_models.json`. Справочник собран 2026-07-10 из ростеров transphoto.org и fotobus.msk.ru, сверен с наблюдениями API (1141 машина).
+Goal: from the garage number in the real-time API (`P80209`, `P93052`, …), show
+the rider **which vehicle they're about to board** — model, age, air
+conditioning, low floor — and let them compare options. Data source:
+`assets/data/fleet_models.json`, assembled from public enthusiast rosters and
+cross-checked against API observations (~1141 vehicles).
 
-## 1. Как устроен номер
+## 1. How the number works
 
-`P` + целое число. Расшифровка подтверждена повагонной сверкой:
+`P` + an integer. The decoding was confirmed vehicle-by-vehicle:
 
-- **8xxxx — электрохозяйство ГСП**: `число − 80000` = бортовой номер (трамваи КТ4 с 2016 носят крашеный `2000 + бортовой`, т.е. вагон «2209» = P80209).
-- **9xxxx — автобусы ГСП**: `число − 90000` = крашеный номер (автобус «3052» = P93052; минибусы «7174» = P97174).
-- **2xxxx, 3xxxx, 45xxx, 7xxxx — частные перевозчики.** Гранулярность — блоки по 100–500 номеров, каждый = оператор: 210xx C&LC-Group, 215xx Dumeco, 220xx Trans-Jug, 225xx Beobus City, 230xx Banbus, 235xx LDM Group, 240xx Saga Trans, 245xx Transprodukt, 250xx Niš-ekspres, 260xx Presto, 262xx Knežević trans, 264xx Lui travel, 266xx Ćurdić, 268xx B&B Linea, 270xx M&M trans, 280xx Barbados, 300xx/302xx минибусы Transprodukt/Banbus, 70xxx–71xxx Strela Beograd (крупнейший, 500+ машин), 72xxx Strela-электро.
-- **P1–P999 — мусор**: подменные id, которые источник отдаёт при отсутствии реального номера. Никогда не матчить, не дедупить по ним, в UI не показывать «модель». (Нормализация junk уже реализована на бэкенде в сборе аналитики — матчер обязан следовать тому же правилу.)
+- **8xxxx — GSP electric fleet**: `n − 80000` = fleet number (KT4 trams since
+  2016 carry a painted `2000 + fleet`, so car "2209" = P80209).
+- **9xxxx — GSP buses**: `n − 90000` = painted number (bus "3052" = P93052;
+  minibuses "7174" = P97174).
+- **2xxxx, 3xxxx, 45xxx, 7xxxx — private operators.** Granularity is blocks of
+  100–500 numbers, each = one operator (e.g. 70xxx–71xxx is the largest, 500+
+  vehicles).
+- **P1–P999 — junk**: placeholder ids the source emits when there's no real
+  number. Never match, dedupe, or show a "model" for these. (Junk normalization
+  already exists in the backend analytics collection — the matcher follows the
+  same rule.)
 
-## 2. Алгоритм матчинга (v2)
+## 2. Matching algorithm (v2)
 
-Три уровня, от точного к грубому:
+Three levels, exact to coarse:
 
 ```
 resolve(garageNo):
   n = int(strip 'P')
   if n < 1000 → return UNKNOWN_JUNK
 
-  # 1) точная повагонная карта (1089 машин частников)
+  # 1) exact per-vehicle map (~1089 private vehicles)
   if str(n) in fleet.vehicles:
      modelKey = fleet.vehicles[str(n)]
-     return fleet.models_catalog[modelKey]   # полные атрибуты модели
+     return fleet.models_catalog[modelKey]   # full model attributes
 
-  # 2) диапазоны классов; при вложенности побеждает БОЛЕЕ УЗКИЙ
+  # 2) class ranges; on nesting the NARROWER range wins
   best = argmin(b-a) over classes.ranges where a <= n <= b
   if best → return best
 
-  # 3) UNKNOWN (показать только тип из API, без модели)
+  # 3) UNKNOWN (show only the API type, no model)
 ```
 
-Правило «узкий диапазон приоритетнее» существенно: электробусные классы (например, Ćurdić 26611–26639) вложены в операторские блоки. Итог `resolve` для номера кешировать — номера иммутабельны в рамках сессии.
+The "narrower range wins" rule matters: some electric-bus classes are nested
+inside operator blocks. Cache the `resolve` result per number — numbers are
+immutable within a session.
 
-Два вида ответа: **model-hit** (уровень 1 — атрибуты из `models_catalog`) и **class-hit** (уровень 2 — атрибуты класса; для операторских классов частников это «усреднённые» значения с `confidence: per-vehicle`, в UI помечать «~»). Матчер обязан быть **total**: любой номер даёт модель, класс или честный UNKNOWN. Никогда не падать и не гадать.
+Two kinds of answer: **model-hit** (level 1 — attributes from `models_catalog`)
+and **class-hit** (level 2 — class attributes; for private operator classes these
+are averaged values with `confidence: per-vehicle`, marked "~" in the UI). The
+matcher must be **total**: any number yields a model, a class, or an honest
+UNKNOWN. Never crash, never guess.
 
-## 3. Атрибуты для сравнения (что показываем человеку)
+## 3. Comparison attributes (what a rider sees)
 
-Пассажирская ценность по убыванию — этот же порядок использовать в UI карточки:
+By passenger value, descending — use this same order in the card UI:
 
-| Поле | Тип | Зачем пассажиру |
+| Field | Type | Why the rider cares |
 |---|---|---|
-| `ac` | bool | Главный вопрос белградского лета. Иконка ❄️ / «сауна» |
-| `low_floor` | bool | Коляски, чемоданы, пожилые. Иконка ♿ |
-| `years_built` | [from,to] | Показывать как возраст: «вагону ~44 года» считается от среднего диапазона |
-| `comfort_score` | 1–5 | Сводная шкала (см. §4) — для сортировки/бейджа |
-| `nickname_sr` | string | Локальный колорит: «Ката», «Шпанац», «трола» — показывать крупно, модель мелко |
-| `capacity`, `articulated`, `length_m` | — | «Гармошка — влезешь даже в час пик» |
-| `powertrain` | enum | diesel / cng / trolleybus / tram / electric_battery / electric_ultracap — для эко-бейджа |
-| `usb` | bool | Есть только у новья (Bozankaya, BMC CNG, Otokar 2025) |
-| `human_note_ru` | string | Готовый текст карточки, одно предложение с характером |
-| `confidence.*` | verified/assumed | assumed-поля рендерить с «~» или серым; не выдавать за факт |
+| `ac` | bool | The main question of a Belgrade summer. ❄️ / "sauna" icon |
+| `low_floor` | bool | Strollers, luggage, elderly. ♿ icon |
+| `years_built` | [from,to] | Shown as age, from the range midpoint |
+| `comfort_score` | 1–5 | Summary scale (see §4) — for sort/badge |
+| `nickname_sr` | string | Local colour ("Kata", "Španac", "trola") — big; model small |
+| `capacity`, `articulated`, `length_m` | — | "Articulated — you'll fit even at rush hour" |
+| `powertrain` | enum | diesel / cng / trolleybus / tram / electric_battery / electric_ultracap — for the eco badge |
+| `usb` | bool | Only on the newest vehicles |
+| `human_note` | string | Ready one-sentence card text with character |
+| `confidence.*` | verified/assumed | Render assumed fields with "~" or grey; don't pass them off as fact |
 
-`operator` есть у не-ГСП классов — показывать в деталях («перевозчик: Ćurdić»).
+`operator` exists on non-GSP classes — show it in details.
 
-## 4. Шкала комфорта (comfort_score)
+## 4. Comfort scale (comfort_score)
 
-Уже посчитана в JSON, но формула фиксируется, чтобы пересчитывать при обновлениях:
+Precomputed in the JSON, but the formula is fixed so it can be recomputed on
+updates:
 
 ```
 score = 1
-+2 если ac
-+1 если low_floor
-+1 если год_до >= 2019
-−1 если год_до <= 1990
++2 if ac
++1 if low_floor
++1 if year_to >= 2019
+−1 if year_to <= 1990
 clamp(1..5)
 ```
 
-Смысловые якоря шкалы: 1 = КТ4/старые БКМ (жарко, ступеньки), 3 = крепкая середина (Solaris 2013, Икарбусы), 5 = Bozankaya / Otokar 2025 / Yutong. В UI — не цифра, а пять точек или бейдж «ретро / норм / комфорт».
+Anchors: 1 = old KT4/BKM (hot, steps), 3 = solid middle (Solaris 2013,
+Ikarbus), 5 = the newest classes. In the UI it's not a number but five dots or a
+"retro / ok / comfort" badge.
 
-## 5. UI-поведение
+## 5. UI behaviour
 
-- В списке прибытий рядом с временем — компактно: иконка типа + ❄️/♿ + возраст-бейдж. Тап → карточка модели с визуалом (см. §8), nickname, human_note_ru, полными атрибутами.
-- Если UNKNOWN — ничего не выдумывать: только тип и номер. Для UNKNOWN_JUNK номер не показывать вообще.
-- Сравнение «на чём ехать»: когда к остановке идут ≥2 машины разных классов, сортировка «по комфорту» как опция. Кейс из жизни: линия 12 — «Ката через 3 мин или Bozankaya через 9» — это реальный выбор, ради него всё и делается.
-- Фичефлаг деградации: справочник — статический asset; если json не распарсился, фича молча выключается, транзит-функции не страдают.
+- In the arrivals list, compact next to the time: type icon + ❄️/♿ + age badge.
+  Tap → model card with a visual (see §8), nickname, note, full attributes.
+- If UNKNOWN, invent nothing: just type and number. For UNKNOWN_JUNK, don't show
+  the number at all.
+- "Which one to ride" comparison: when ≥2 vehicles of different classes are
+  approaching a stop, offer a "by comfort" sort. Real case: line 12 — "the Kata
+  in 3 min or the Bozankaya in 9" is a genuine choice; that's the whole point.
+- Graceful degradation: the catalog is a static asset; if the JSON fails to
+  parse, the feature silently switches off and transit functions are unaffected.
 
-## 6. Известные дыры (не блокируют релиз)
+## 6. Known gaps (do not block release)
 
-После добавления частников непокрытым остался только пригород группы «Ласта»: блоки 58xxx (560/580/581 Обреновац), 71000–71499 (351/470/491–493), 76xxx/78xxx/79xxx (46x/313/4xxx Младеновац—Барајево—Сопот) — суммарно ~40 машин из наблюдавшихся 1141. Матчер вернёт UNKNOWN → UI покажет только тип. Закрывается сохранением fotobus-страницы «Lasta». Плюс мини-блок 28201–28299 (4 машины, линия 49). Прицепы B4 к трамваям GT6 в API не светятся — игнорировать.
+After adding private operators, the only uncovered vehicles are ~40 suburban
+"Lasta" vehicles across a few number blocks — the matcher returns UNKNOWN and the
+UI shows only the type. Closed by saving the relevant roster pages. Trailer cars
+attached to GT6 trams don't appear in the API — ignore.
 
-Пассажирский инсайт из данных, который стоит донести в UI: парк частников моложе парка ГСП — почти всё 2017–2026 годов (гибридные Citaro/Conecto у Strela — 2023–2025), тогда как у ГСП ядро — Solaris 2013-го и трамваи 1967–1990. «Едет частник» в Белграде чаще значит «едет новьё».
+A passenger insight worth surfacing: the private fleet is younger than GSP's —
+mostly 2017–2026, whereas GSP's core is Solaris 2013 and trams from 1967–1990. In
+Belgrade, "a private operator is coming" often means "something new is coming".
 
-## 7. Обновление данных
+## 7. Data updates
 
-Раз в квартал (или при новостях о поставках): пересохранить 3 ростера transphoto + fotobus-списки «GSP Beograd» и «Private operators», прогнать парсер (таблица `tr.sNN` → статус по легенде Color Coding; у transphoto-RU и у частников есть сдвиг колонок — Гос.№ и колонка оператора соответственно; у частников оператор иногда лежит в note), пересобрать диапазоны и карту vehicles. Ожидаемые скорые изменения: добивка Bozankaya до 81555, вывод БКМ 2005 года (82160–82199), новые 100 электробусов Higer к EXPO 2027 — под них зарезервировано место в 82xxx.
+Quarterly (or on delivery news): re-save the rosters, run the parser, rebuild the
+ranges and the vehicle map. Expected near-term changes: more new-generation
+buses, retirement of mid-2000s trolleybuses, and a batch of new electric buses.
 
-**Полуавтоматизация через борт-агрегат аналитики**: поля first/last seen из агрегата «борт × линия» — автодетектор жизни парка. Машина перестала появляться в API → кандидат на вывод; появился новый диапазон номеров → пришла поставка. Квартальная сверка начинается с этого дифа, а не с ручного сравнения ростеров.
+**Semi-automation via the analytics vehicle aggregate**: first/last-seen fields
+from the "vehicle × line" aggregate act as a fleet-life detector. A vehicle that
+stops appearing in the API → a retirement candidate; a new number range appearing
+→ a delivery arrived. The quarterly check starts from that diff, not from a
+manual roster comparison.
 
-## 8. Визуал карточки
+## 8. Card visual
 
-Главный визуал карточки — **не фотография, а модель машины** (решение зафиксировано в BACKLOG, раздел «Модели транспорта»). Производство AI-first, руками не рисуется:
+The card's main visual is **the vehicle model, not a photo**. Production is
+AI-assisted, not hand-drawn:
 
-- **Ступень 1 — схема салона**: вид сверху (кресла, двери, низкопольная зона, гармошка, место коляски), SVG по планировкам производителей + стайлгайд приложения. Лёгкий интерактив: тап по зоне → подпись, zoom. Сначала топ-10 классов по fleet_size.
-- **Ступень 2 (позже, за гейтом)** — крутилка «со всех сторон»: фото → AI-3D → glTF-вьювер или спрайт-кадры с drag-to-rotate. Только топ-5 массовых классов, после пилота на одном классе.
+- **Step 1 — interior diagram**: top view (seats, doors, low-floor zone,
+  articulation, wheelchair space), SVG from manufacturer floor plans + the app
+  style guide. Light interactivity: tap a zone → label, zoom. Top classes by
+  fleet size first.
+- **Step 2 (later, gated)** — a "spin around" view: photo → AI-3D → glTF viewer
+  or sprite frames with drag-to-rotate. Top classes only, after a single-class
+  pilot.
 
-Фото — опциональный второй план: снимки transphoto/fotobus под правами авторов, в приложение их брать нельзя; допустимы собственная съёмка или Wikimedia Commons с атрибуцией. Ключ визуала строить из `id` класса: `assets/fleet/{id}.webp` (схема) / `assets/fleet/{id}/` (кадры крутилки).
+Photos are an optional secondary layer: roster photos are under their authors'
+rights and can't be shipped in the app; own photography or Wikimedia Commons with
+attribution are acceptable. Build the visual key from the class `id`:
+`assets/fleet/{id}.webp` (diagram) / `assets/fleet/{id}/` (spin frames).

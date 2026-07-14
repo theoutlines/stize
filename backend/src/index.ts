@@ -76,9 +76,9 @@ app.get("/api/v1/gtfs-meta", async (c) => {
 });
 
 app.get("/api/v1/arrivals", async (c) => {
-  // Live board — never cache. Without this the zone's Browser Cache TTL (see
-  // CLAUDE.md) serves the browser a stale board on the client's 30s poll, so it
-  // only refreshed on a hard reload. no-store, like /config.
+  // Live board — never cache. Without this the zone's Browser Cache TTL serves
+  // the browser a stale board on the client's 30s poll, so it only refreshed on
+  // a hard reload. no-store, like /config.
   c.header("cache-control", "no-store");
   const stopId = c.req.query("stop");
   if (!stopId) return c.json({ error: "missing 'stop' query param" }, 400);
@@ -148,8 +148,8 @@ app.get("/api/v1/stops/nearby", async (c) => {
 // right away" view. Reconstructed from per-stop arrivals (see getNearbyVehicles)
 // with the fan-out bounded and rate-limited by the shared per-stop cache.
 app.get("/api/v1/vehicles/nearby", async (c) => {
-  // Live positions — never cache (see the /arrivals note + CLAUDE.md Browser
-  // Cache TTL gotcha). Otherwise the 30s poll is served stale from the browser
+  // Live positions — never cache (same zone Browser Cache TTL gotcha as
+  // /arrivals). Otherwise the 30s poll is served stale from the browser
   // HTTP cache and only a hard reload updates the map.
   c.header("cache-control", "no-store");
   const lat = parseFloat(c.req.query("lat") ?? "");
@@ -237,7 +237,7 @@ app.get("/api/v1/lines/:routeId/shape", async (c) => {
 // Coverage-map *render* layer: the raw route shapes (build-coverage-lines.mjs →
 // public/gtfs/coverage.geojson). Served through an explicit Hono route so it
 // gets the CORS headers the web build needs cross-origin — the raw /gtfs/*
-// static-asset path bypasses the cors() middleware (see CLAUDE.md).
+// static-asset path bypasses the cors() middleware.
 //
 // Cache: a short shared (edge) TTL so a redeploy of the data reflects within a
 // minute, with a longer browser TTL since the file only changes on redeploy.

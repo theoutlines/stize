@@ -49,8 +49,8 @@ export interface VehicleDto {
   // Direction-resolved route_id (see ArrivalDto.direction_route_id) so the map
   // can draw the vehicle on the shape of the direction it's really going.
   route_id?: string;
-  // Schedule fallback Phase 2 (SCHEDULE_FALLBACK_CONTRACT.md). For a planned
-  // (not live) object: source "scheduled" and the GTFS trip_id. Its position/
+  // Schedule fallback Phase 2. For a planned (not live) object: source
+  // "scheduled" and the GTFS trip_id. Its position/
   // `trajectory`/`as_of` reuse the fields above — the client moves a scheduled
   // object with the same timed code as a live vehicle. Omitted for live vehicles.
   source?: "live" | "scheduled";

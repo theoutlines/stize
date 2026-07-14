@@ -41,15 +41,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.iml
-.claude/
 
 # MapTiler key (client key, kept out of the repo; passed via --dart-define-from-file)
 app/dart_defines.json
 dart_defines.json
-
-# Fleet garage-number research (local-only collection scripts + accumulated data)
-/scripts/
-/data/
-
-# Handoff package — local copies for upload to the product chat, not repo content
-/handoff/

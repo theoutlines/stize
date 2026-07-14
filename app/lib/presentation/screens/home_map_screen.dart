@@ -1798,7 +1798,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           _topButtons(theme),
           // Staging-only stop-render diagnostics (isStaging; invisible in prod).
           // The one reliable render-observation channel on Flutter-CanvasKit —
-          // see _stopDiagnosticsOverlay and the map gotchas in CLAUDE.md.
+          // see _stopDiagnosticsOverlay and the map-render gotchas.
           if (isStaging && _focus == null) _stopDiagnosticsOverlay(theme),
           // Far-out zoom with no vehicles in the bounded area: nudge the user to
           // zoom in rather than leaving them staring at a blank map (F5).
@@ -1850,7 +1850,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// map, and — via [MapController.queryLayers] — whether each type's layer
   /// really draws at a real stop's pixel (catches "layer present, data pushed,
   /// but nothing rendered"). Keep it: it is what broke the multi-round
-  /// stop-render investigation open. See the map-render gotchas in CLAUDE.md.
+  /// stop-render investigation open.
   Widget _stopDiagnosticsOverlay(ThemeData theme) {
     final center = _lastFetchCenter;
     final controller = _controller;
