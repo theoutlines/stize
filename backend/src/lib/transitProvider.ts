@@ -1,6 +1,16 @@
 import type { Env } from "../env";
 import { bearingDegrees, distanceToSegmentMeters } from "./haversine";
 
+// One waypoint of a vehicle's forward timing plan: an absolute route position
+// and how many seconds from *now* (the moment upstream produced this response)
+// the vehicle is expected to reach it. The plan starts at the vehicle's current
+// GPS (etaSeconds 0) and lists each downstream station ahead of it.
+export interface TrajectoryPoint {
+  lat: number;
+  lon: number;
+  etaSeconds: number;
+}
+
 export interface RawArrival {
   lineNumber: string;
   etaSeconds: number;
@@ -10,6 +20,11 @@ export interface RawArrival {
   // Travel direction in degrees (0 = north, clockwise), derived from the
   // vehicle's own route geometry, or null when it can't be determined.
   heading: number | null;
+  // Forward timing plan built from `all_stations` (timed-trajectory feature):
+  // where the vehicle will be and when, so the client can animate it smoothly by
+  // time instead of easing to the last fix and stopping. Null when the upstream
+  // gives no usable per-station timing.
+  trajectory: TrajectoryPoint[] | null;
   // The vehicle's own trip, ordered origin→destination (parsed `all_stations`).
   // Used to resolve which direction of the line it's on. Empty when absent.
   routeStations: { lat: number; lon: number }[];
@@ -75,8 +90,44 @@ export function parseRawArrival(item: unknown): RawArrival {
     garageNo: typeof r.garage_no === "string" ? r.garage_no : null,
     gps,
     heading: gps ? headingFromRoute(gps, routeStations) : null,
+    trajectory: gps ? parseTrajectory(gps, r.all_stations) : null,
     routeStations,
   };
+}
+
+// Upper bound on plan points we forward, so a pathological upstream route can't
+// bloat the response. Real Belgrade trips have ~20-60 stations; this is well
+// clear of that while still bounding the payload.
+const MAX_TRAJECTORY_POINTS = 80;
+
+// Build the forward timing plan from the vehicle's `all_stations`. Each entry
+// carries `second_left_by_route`: the live estimated seconds from the vehicle's
+// *current* position to that station (stations already behind read 0). We keep
+// only the stations still ahead, prepend the current GPS at etaSeconds 0, and
+// enforce a strictly increasing time axis so the client can invert it. Returns
+// null unless there's at least one real step ahead to animate toward.
+export function parseTrajectory(
+  gps: { lat: number; lon: number },
+  allStations: unknown,
+): TrajectoryPoint[] | null {
+  if (!Array.isArray(allStations)) return null;
+  const points: TrajectoryPoint[] = [{ lat: gps.lat, lon: gps.lon, etaSeconds: 0 }];
+  let lastEta = 0;
+  for (const s of allStations as Record<string, unknown>[]) {
+    const c = s?.coordinates as Record<string, unknown> | undefined;
+    if (!c) continue;
+    const lat = parseFloat(String(c.latitude));
+    const lon = parseFloat(String(c.longitude));
+    const eta = typeof s.second_left_by_route === "number" ? s.second_left_by_route : NaN;
+    if (Number.isNaN(lat) || Number.isNaN(lon) || Number.isNaN(eta)) continue;
+    // Only stations genuinely ahead of the vehicle (eta strictly growing). A
+    // non-increasing eta is a station it has already passed or a duplicate.
+    if (eta <= lastEta) continue;
+    points.push({ lat, lon, etaSeconds: eta });
+    lastEta = eta;
+    if (points.length >= MAX_TRAJECTORY_POINTS) break;
+  }
+  return points.length >= 2 ? points : null;
 }
 
 // `all_stations` is the vehicle's own full trip, ordered origin -> destination,

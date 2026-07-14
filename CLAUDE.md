@@ -44,6 +44,27 @@ npx wrangler pages deploy build/web --project-name=stigla --branch=main         
 npx wrangler pages deploy build/web --project-name=stigla --branch=preview-<x>  # preview alias <x>.stigla.pages.dev
 ```
 
+### Deploying a **staging** preview (testing an in-development feature flag)
+A feature-flag build (`symbol_layer`, `timed_trajectory`, …) is only exercised
+against the **staging** worker, where in-development flags default ON. The flag
+values come from the backend `/api/v1/config`, so the bundle **must point at the
+staging backend** — otherwise it silently hits prod (default `apiBaseUrl` in
+`core/api_config.dart`), where those flags are OFF, and you get the *pre-flag*
+render with no error. So a staging preview build MUST bake in both defines:
+```sh
+# from app/
+flutter build web --release --dart-define-from-file=dart_defines.json \
+  --dart-define=API_BASE_URL=https://stigla-api-staging.theoutlines.xyz \
+  --dart-define=ENVIRONMENT=staging
+npx wrangler pages deploy build/web --project-name=stigla --branch=preview-<x>
+# verify the bundle baked the staging backend, not prod:
+grep -o 'stigla-api[a-z-]*\.theoutlines\.xyz' build/web/main.dart.js | sort -u
+```
+`ENVIRONMENT=staging` also shows a visible **STAGING** badge in-app — its
+presence is the quick eyeball check that the preview is on the staging backend
+(preview URLs sit behind Cloudflare Access, so a curl+sha check just returns
+"Authentication required"; use the badge instead).
+
 ## Architecture
 
 ### Backend — a proxy/cache/normalization layer

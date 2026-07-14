@@ -1,6 +1,15 @@
 export type VehicleType = "bus" | "tram" | "trolleybus";
 export type ServiceStatus = "ok" | "unavailable";
 
+// One waypoint of a vehicle's forward timing plan (timed-trajectory feature):
+// an absolute route position and the seconds from the response's `updated_at`
+// (its as-of time) at which the vehicle is expected to be there.
+export interface TrajectoryPointDto {
+  lat: number;
+  lon: number;
+  eta_seconds: number;
+}
+
 export interface ArrivalDto {
   line: string;
   vehicle_type: VehicleType;
@@ -15,6 +24,10 @@ export interface ArrivalDto {
   gps: { lat: number; lon: number } | null;
   garage_no: string | null;
   heading: number | null;
+  // Forward timing plan, anchored at the response's `updated_at`. Additive and
+  // flag-gated (`timed_trajectory`): absent unless the feature is on, so old
+  // clients and prod are unaffected. Null when no usable plan is available.
+  trajectory?: TrajectoryPointDto[] | null;
   // Schedule fallback: "scheduled" for a planned (not live) arrival; omitted /
   // "live" for real vehicles. Lets the list show live first + a schedule tail.
   source?: "live" | "scheduled";
@@ -29,18 +42,19 @@ export interface VehicleDto {
   lat: number;
   lon: number;
   heading: number | null;
+  // Forward timing plan for this vehicle and the as-of time it's anchored to
+  // (the source board's `updated_at`). Additive + flag-gated, like ArrivalDto.
+  trajectory?: TrajectoryPointDto[] | null;
+  as_of?: string;
   // Direction-resolved route_id (see ArrivalDto.direction_route_id) so the map
   // can draw the vehicle on the shape of the direction it's really going.
   route_id?: string;
   // Schedule fallback Phase 2 (SCHEDULE_FALLBACK_CONTRACT.md). For a planned
-  // (not live) object: source "scheduled", the GTFS trip_id, the as-of time the
-  // plan is anchored to, and a forward `trajectory` (stop points + cumulative
-  // eta_seconds from as_of) so the client moves it with the same timed code as a
-  // live vehicle. Omitted for live vehicles.
+  // (not live) object: source "scheduled" and the GTFS trip_id. Its position/
+  // `trajectory`/`as_of` reuse the fields above — the client moves a scheduled
+  // object with the same timed code as a live vehicle. Omitted for live vehicles.
   source?: "live" | "scheduled";
   trip_id?: string;
-  as_of?: string;
-  trajectory?: { lat: number; lon: number; eta_seconds: number }[];
 }
 
 export interface VehiclesResponse {

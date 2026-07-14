@@ -33,6 +33,7 @@
   "nearbyStopsTitle": "Nearby stops",
   "nearbyStopsEmpty": "Turn on location, or search for a stop, street, or line above.",
   "mapZoomInForVehicles": "Zoom in to see live transport",
+  "vehicleScheduled": "By schedule — not a live position",
   "noLiveVehiclesOnMap": "No live-tracked vehicles to map right now — see the arrivals below.",
 
   "stopUpdatedJustNow": "Updated just now",

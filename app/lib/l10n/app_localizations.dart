@@ -256,6 +256,12 @@ abstract class AppLocalizations {
   /// **'Zoom in to see live transport'**
   String get mapZoomInForVehicles;
 
+  /// No description provided for @vehicleScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'By schedule — not a live position'**
+  String get vehicleScheduled;
+
   /// No description provided for @noLiveVehiclesOnMap.
   ///
   /// In en, this message translates to:

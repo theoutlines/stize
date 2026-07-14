@@ -20,7 +20,12 @@ import type { WaitUntilCtx } from "./swrCache";
 // zoomed-out client can't trigger a request storm against the fragile source,
 // and each per-stop call still rides the shared 30s stale-while-revalidate
 // cache, so steady-state upstream load stays low.
-const MAX_STOPS_FANOUT = 12;
+// Widened 12 -> 18 so a panned viewport has fewer dead patches with no fresh
+// fixes (which read as vehicles "standing still"). Each per-stop call still
+// rides the shared 30s SWR cache, so steady-state upstream load rises at most
+// ~50% worst-case, not per-user; the 30s-per-key cap is untouched. Watch the
+// source for pushback at this fan-out.
+const MAX_STOPS_FANOUT = 18;
 const MAX_RADIUS_METERS = 1500;
 // Cap how many routes we pull the timetable for in one viewport, so a pathological
 // zoomed-out request can't fetch hundreds of trip files. In practice far fewer:
@@ -38,8 +43,11 @@ export async function getNearbyVehicles(
   const stops = (await nearbyStops(env, lat, lon, radius)).slice(0, MAX_STOPS_FANOUT);
 
   const boards = await Promise.all(
+    // Map path: skip the schedule fallback *list* so an 18-stop fan-out doesn't
+    // blow Cloudflare's per-invocation subrequest / CPU limits (→ 503). The map's
+    // own scheduled objects are added once below, not per stop.
     stops.map((s) =>
-      getArrivals(env, ctx, s.stop_id, { includeScheduleList: false }).catch(() => null),
+      getArrivals(env, ctx, s.stop_id, { includeSchedule: false }).catch(() => null),
     ),
   );
 
@@ -66,6 +74,13 @@ export async function getNearbyVehicles(
         // Direction the vehicle is actually travelling, so the map draws it on
         // that direction's shape (falls back to canonical inside getArrivals).
         route_id: a.direction_route_id,
+        // Carry the forward timing plan (timed-trajectory) and the as-of time it
+        // is anchored to (this board's last successful upstream refresh). Both
+        // are absent when the arrivals layer left `trajectory` off (flag off /
+        // no plan), keeping the field additive.
+        ...(a.trajectory
+          ? { trajectory: a.trajectory, as_of: board.updated_at }
+          : {}),
       });
     }
   }
@@ -77,7 +92,7 @@ export async function getNearbyVehicles(
   // lines that have NO live vehicle here, so a busy live viewport stays cheap
   // (few candidates) and we never double a bus that's already live. Flag-gated,
   // best-effort.
-  if (await getFlag(env, "schedule_fallback")) {
+  if (await getFlag(env, "schedule_map")) {
     try {
       const scheduled = await scheduledMapVehicles(env, stops, center, radius, byVehicle, asOf);
       vehicles.push(...scheduled);

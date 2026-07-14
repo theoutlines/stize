@@ -69,6 +69,19 @@ final coverageOnMainMapEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.coverageOnMainMap ?? false,
 );
 
+/// Whether moving vehicles render as the MapLibre GPU symbol layer instead of
+/// per-vehicle Flutter widgets (remote `symbol_layer` flag). Defaults to false
+/// until config resolves, so prod keeps the widget path (the fallback).
+final symbolLayerEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.symbolLayer ?? false,
+);
+
+/// Whether GTFS-schedule-predicted vehicles are shown when live is absent
+/// (remote `schedule_fallback` flag). Defaults false until config resolves.
+final scheduleFallbackEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.scheduleFallback ?? false,
+);
+
 /// Whether the map draws only vehicles with a real live position — placeholder
 /// rows (junk garage / GPS on the stop) stay in the arrivals list but off the
 /// map (remote `live_position_only` flag). Defaults to false until config

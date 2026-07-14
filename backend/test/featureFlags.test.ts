@@ -27,6 +27,9 @@ describe("featureFlags", () => {
       "coverage_on_main_map",
       "live_position_only",
       "schedule_fallback",
+      "schedule_map",
+      "symbol_layer",
+      "timed_trajectory",
       "vehicle_direction_shape",
     ]);
   });

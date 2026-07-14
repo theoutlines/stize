@@ -19,6 +19,10 @@ class VehiclesRepositoryImpl implements VehiclesRepository {
         'lat': lat.toString(),
         'lon': lon.toString(),
         'radius': radiusMeters.toString(),
+        // Cache-buster: the 30s poll must hit the origin, not a stale browser /
+        // zone HTTP cache (Browser Cache TTL gotcha). Backend also sets
+        // no-store; this is the belt-and-suspenders on the client side.
+        'cb': DateTime.now().millisecondsSinceEpoch.toString(),
       });
       return (json['vehicles'] as List<dynamic>)
           .map((e) => AreaVehicle.fromJson(e as Map<String, dynamic>))
