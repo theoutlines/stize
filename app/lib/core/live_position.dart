@@ -20,7 +20,7 @@ bool isPlaceholderGarage(String? garageNo) {
 /// Whether an arrival is a genuinely live-tracked vehicle safe to draw as a
 /// moving marker on the map: it has a real GPS fix and isn't a placeholder row.
 /// Placeholders belong in the arrivals *list* (their ETA is valid) but not on
-/// the map. Used to gate the `live_position_only` feature.
+/// the map.
 bool arrivalHasLivePosition(Arrival a) =>
     a.gps != null && !isPlaceholderGarage(a.garageNo);
 

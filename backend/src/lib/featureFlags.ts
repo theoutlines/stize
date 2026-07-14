@@ -29,13 +29,6 @@ import type { Env } from "../env";
 //                       layer (batched, sub-linear in vehicle count) instead of
 //                       per-vehicle Flutter widgets. Client-side render flag.
 //                       OFF on prod (widget path stays the fallback), ON staging.
-//   live_position_only — the app draws on the map only vehicles with a real live
-//                       GPS position. The upstream emits schedule-derived
-//                       placeholder rows (junk garage id `P1..P999`, GPS = the
-//                       stop's own coordinate) that aren't tracked vehicles; with
-//                       this on they stay in the arrivals *list* but are not drawn
-//                       as (stationary, stacked-on-the-stop) markers. Read
-//                       client-side. OFF on prod, ON on staging.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -44,7 +37,6 @@ export const FEATURE_FLAGS = [
   "coverage_map_show",
   "coverage_on_main_map",
   "symbol_layer",
-  "live_position_only",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

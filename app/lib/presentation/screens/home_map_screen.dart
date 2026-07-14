@@ -1268,17 +1268,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           .nearby(lat: center.latitude, lon: center.longitude, radiusMeters: radius);
       if (!mounted || seq != _vehiclesRequestSeq) return;
       // Placeholder rows (junk garage `P1..P999`, GPS pinned to a stop) aren't
-      // tracked vehicles — they'd sit motionless on a stop. Keep them off the
-      // map when the flag is on; the arrivals *list* on the stop screen still
-      // shows their line/ETA. Scheduled objects are schedule-derived by design,
-      // so they bypass this junk filter. Flag off ⇒ unchanged.
-      final vehicles = ref.read(livePositionOnlyProvider)
-          ? fetched
-              .where((v) =>
-                  v.source == VehicleSource.scheduled ||
-                  areaVehicleHasLivePosition(v))
-              .toList()
-          : fetched;
+      // tracked vehicles — they'd sit motionless on a stop, so keep them off the
+      // map. The arrivals *list* on the stop screen still shows their line/ETA.
+      // Scheduled objects are schedule-derived by design, so they bypass this
+      // junk filter.
+      final vehicles = fetched
+          .where((v) =>
+              v.source == VehicleSource.scheduled ||
+              areaVehicleHasLivePosition(v))
+          .toList();
       // Hybrid live+schedule: render whatever the backend sends, live and
       // schedule-predicted alike. (The backend de-dups a scheduled trip that has
       // a live vehicle; the client's key-prefixing keeps the two off the same

@@ -85,14 +85,6 @@ final symbolLayerEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.symbolLayer ?? false,
 );
 
-/// Whether the map draws only vehicles with a real live position — placeholder
-/// rows (junk garage / GPS on the stop) stay in the arrivals list but off the
-/// map (remote `live_position_only` flag). Defaults to false until config
-/// resolves, so the current (show-everything) behaviour holds if config can't
-/// be reached.
-final livePositionOnlyProvider = Provider<bool>(
-  (ref) => ref.watch(appConfigProvider).valueOrNull?.livePositionOnly ?? false,
-);
 
 
 /// GTFS bundle freshness metadata (feed version + data dates), for the

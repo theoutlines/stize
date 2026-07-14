@@ -190,19 +190,13 @@ class _StopScreenState extends ConsumerState<StopScreen> {
       });
     }
 
-    // With `live_position_only` on, keep the schedule-derived placeholder rows
-    // (junk garage, GPS pinned to this stop) off the map — otherwise they render
-    // as a motionless stack on the stop pin. They stay in the arrivals list
-    // below regardless. Flag off ⇒ every gps-bearing row is mapped, as before.
-    final livePositionOnly = ref.watch(livePositionOnlyProvider);
-    final mapVehicles = livePositionOnly
-        ? board.arrivals.where(arrivalHasLivePosition).toList()
-        : board.arrivals.where((a) => a.gps != null).toList();
+    // Keep the schedule-derived placeholder rows (junk garage, GPS pinned to
+    // this stop) off the map — otherwise they render as a motionless stack on
+    // the stop pin. They stay in the arrivals list below regardless.
+    final mapVehicles = board.arrivals.where(arrivalHasLivePosition).toList();
     // Nothing live left to draw but arrivals *are* coming: explain the empty map
-    // instead of a blank slot (which reads as broken). Only under the flag —
-    // without it, an all-placeholder stop still showed the (stacked) markers.
-    final showNoLiveHint =
-        livePositionOnly && stopLocation != null && mapVehicles.isEmpty;
+    // instead of a blank slot (which reads as broken).
+    final showNoLiveHint = stopLocation != null && mapVehicles.isEmpty;
     final ageSeconds = DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
     final isStale = ageSeconds > 90; // well past the ~30s refresh cadence — likely a stuck cache
 
@@ -305,8 +299,8 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     );
   }
 
-  /// Shown in place of the mini-map when `live_position_only` has filtered out
-  /// every placeholder and there's no genuinely live vehicle to plot — an
+  /// Shown in place of the mini-map when the placeholder filter has left no
+  /// genuinely live vehicle to plot — an
   /// explained empty state (the lines are still listed below) instead of a blank
   /// slot that reads as a failure. Same muted-banner language as the route alerts
   /// strip / freshness label.
