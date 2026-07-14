@@ -214,6 +214,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   final Map<String, RoutePath?> _shapeCache = {};
   final Set<String> _shapeFetching = {};
 
+  // The last vehicle set handed to the animator, kept so a route shape that
+  // finishes loading *after* a sync can be re-applied immediately (upgrading a
+  // timed track from the plan-point chord fallback to the real road geometry)
+  // instead of waiting for the next 30s poll. Debounced by [_shapeResyncTimer]
+  // so a burst of shape loads (panning brings in many lines) coalesces into one
+  // re-sync.
+  List<AreaVehicle> _lastShownVehicles = const [];
+  Timer? _shapeResyncTimer;
+
   bool _searching = false;
   List<Stop> _resultStops = [];
   List<LineInfo> _resultLines = [];
@@ -268,6 +277,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _meAnim.dispose();
     _searchDebounce?.cancel();
     _vehiclesTimer?.cancel();
+    _shapeResyncTimer?.cancel();
     _stopVehSampler();
     _vehTicker?.dispose();
     _vehAnim.removeStatusListener(_onVehAnimStatus);
@@ -1141,30 +1151,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // eases conservatively exactly as before. Orthogonal to the render path.
       final timedOn =
           ref.read(appConfigProvider).valueOrNull?.timedTrajectory ?? false;
-      _vehAnimator.syncSamples([
-        for (final v in shown)
-          VehicleSample(
-            key: v.key,
-            position: ll.LatLng(v.lat, v.lon),
-            line: v.line,
-            // Classify by the well-known Belgrade tram/trolley line sets rather
-            // than the feed's per-vehicle type, which mislabels some lines (e.g.
-            // trolley 40/40L as a bus). Keeps moving vehicles consistent with
-            // how the same line's stops are coloured.
-            type: classifyLine(v.line),
-            heading: v.heading,
-            // Stitch to the direction-resolved shape when available (fixes
-            // "through houses"); null key ⇒ no path ⇒ straight-line ease.
-            path: shapeKeyOf(v) == null ? null : _shapeCache[shapeKeyOf(v)!],
-            // A scheduled object always carries a timed plan (its predicted
-            // motion); play it like a live one regardless of the timed flag.
-            trajectory: (timedOn || v.source == VehicleSource.scheduled)
-                ? v.trajectory
-                : null,
-            asOf: (timedOn || v.source == VehicleSource.scheduled) ? v.asOf : null,
-            source: v.source,
-          ),
-      ], _vehAnim.value);
+      _lastShownVehicles = shown;
+      _vehAnimator.syncSamples(_buildVehicleSamples(shown), _vehAnim.value);
       // Drive the layer whenever a fix brings motion (foregrounded); otherwise
       // settle so a screen of stationary vehicles renders zero frames until the
       // next move. Always run the 30s ease controller here — NOT only when
@@ -1212,13 +1200,76 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _shapeFetching.add(key);
       (byRouteId ? repo.getShapeByRouteId(key) : repo.getShapeByLineNumber(key))
           .then((shape) {
-            _shapeCache[key] = RoutePath.fromLatLon(shape.polyline);
+            final path = RoutePath.fromLatLon(shape.polyline);
+            _shapeCache[key] = path;
+            // The shape landed after the sync that needed it: re-apply the
+            // current set so any timed track still on the plan-point chord
+            // fallback upgrades to this road geometry now (~fetch latency)
+            // instead of driving straight "through buildings" until the next
+            // 30s poll. updatePlan re-anchors onto the new path without a jump.
+            if (path != null && path.isUsable) _scheduleVehicleResync();
           })
           .catchError((_) {
             _shapeCache[key] = null;
           })
           .whenComplete(() => _shapeFetching.remove(key));
     }
+  }
+
+  /// Build the animator samples for a vehicle set from the current flags and the
+  /// (possibly just-updated) shape cache. Self-contained so both the 30s poll
+  /// and the shape-load re-sync produce identical samples.
+  List<VehicleSample> _buildVehicleSamples(List<AreaVehicle> shown) {
+    final byDirection = ref.read(vehicleDirectionShapeProvider);
+    final timedOn =
+        ref.read(appConfigProvider).valueOrNull?.timedTrajectory ?? false;
+    String? shapeKeyOf(AreaVehicle v) => byDirection ? v.routeId : v.line;
+    return [
+      for (final v in shown)
+        VehicleSample(
+          key: v.key,
+          position: ll.LatLng(v.lat, v.lon),
+          line: v.line,
+          // Classify by the well-known Belgrade tram/trolley line sets rather
+          // than the feed's per-vehicle type, which mislabels some lines (e.g.
+          // trolley 40/40L as a bus). Keeps moving vehicles consistent with how
+          // the same line's stops are coloured.
+          type: classifyLine(v.line),
+          heading: v.heading,
+          // Stitch to the direction-resolved shape when available (fixes
+          // "through houses"); null key ⇒ no path ⇒ straight-line ease.
+          path: shapeKeyOf(v) == null ? null : _shapeCache[shapeKeyOf(v)!],
+          // A scheduled object always carries a timed plan (its predicted
+          // motion); play it like a live one regardless of the timed flag.
+          trajectory: (timedOn || v.source == VehicleSource.scheduled)
+              ? v.trajectory
+              : null,
+          asOf: (timedOn || v.source == VehicleSource.scheduled) ? v.asOf : null,
+          source: v.source,
+        ),
+    ];
+  }
+
+  /// Debounced re-sync after a route shape finishes loading (see
+  /// [_ensureShapesFor]). Coalesces a burst of shape loads into one animator
+  /// re-sync so a newly-fetched road geometry replaces the chord fallback
+  /// promptly, without resetting the 30s ease ramp (that would nudge fallback
+  /// tracks) — timed tracks upgrade their path in place via updatePlan.
+  void _scheduleVehicleResync() {
+    _shapeResyncTimer?.cancel();
+    _shapeResyncTimer = Timer(const Duration(milliseconds: 120), () {
+      if (!mounted || _lastShownVehicles.isEmpty) return;
+      _vehAnimator.syncSamples(
+        _buildVehicleSamples(_lastShownVehicles),
+        _vehAnim.value,
+      );
+      if (!_paused && _vehAnimator.hasPendingMotion) {
+        final timedOn =
+            ref.read(appConfigProvider).valueOrNull?.timedTrajectory ?? false;
+        _startVehDriver(timed: timedOn);
+      }
+      _paintVehicles();
+    });
   }
 
   /// Highlight a line's route on this same map (hiding the rest) instead of

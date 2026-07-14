@@ -43,29 +43,42 @@ class TimedTrajectory {
   // A plan step shorter than this (metres) isn't worth treating as motion.
   static const double _epsilonMeters = 0.5;
 
-  // Restrained extrapolation, anchored to the *real fix*. The upstream board's
-  // `as_of` can be badly stale (it goes down / 503s under load → SWR serves a
-  // frozen board, so `now - as_of` grows unbounded). Predicting `now - as_of`
-  // forward from a stale anchor is exactly what made markers "appear far ahead"
-  // and "fly while the vehicle is actually parked". So:
-  //   * the marker sits AT the fix (plan point 0) and only leads a short
-  //     [_bridgeSeconds] bridge to smooth the gap to the next fix, and
-  //   * once the fix is older than [_stalenessSeconds] (the board isn't
-  //     refreshing) it stops predicting entirely — holds at the fix and lets the
-  //     grace fade remove it — instead of coasting on a rotten anchor.
-  // The metre cap below stays as a final safety belt on distance-ahead.
-  static const double _bridgeSeconds = 15;
+  // Continuous prediction while the board is fresh, hard-stopped once it isn't.
+  //
+  // The plan is a forward (position, eta) table anchored at `as_of`; the marker
+  // chases `plan[now - as_of]` — the vehicle's *predicted current* spot — so on
+  // healthy 30s data it moves continuously across the whole poll interval (the
+  // reference apps do exactly this) instead of leading a short bridge and then
+  // sitting until the next batch, which read as the whole city freezing and
+  // reviving in lockstep.
+  //
+  // The upstream board's `as_of` can go badly stale (upstream 503s under load →
+  // SWR serves a frozen board, so `now - as_of` grows unbounded). Predicting
+  // that unbounded gap from a frozen anchor is exactly what made markers "fly
+  // while the vehicle is parked". The defence is NOT a short prediction window —
+  // it's the [_stalenessSeconds] gate: while the fix is fresh we predict the
+  // full elapsed time; once it's older than the gate (the board isn't
+  // refreshing) we stop predicting and hold at the fix. The gate (45s) sits
+  // above the 30s poll cadence, so healthy data never touches it (continuous
+  // motion) while a frozen board is caught within one gate-width (hold, never
+  // fly). [_maxAheadMeters] is the matching distance belt — the furthest the
+  // marker may lead within that window, so an implausibly fast plan can't
+  // outrun the gate.
   static const double _stalenessSeconds = 45;
-  static const double _maxAheadMeters = 500;
+  static const double _maxAheadMeters = 900;
 
-  // The elapsed time used to place the *target* along the plan: a short bridge
-  // past the fix, and zero (sit at the fix) once the fix is stale. This — not the
-  // raw `now - as_of` — is what the marker chases, so a stale/frozen board can't
-  // fly it forward.
-  double _targetElapsed(DateTime now) {
-    final age = _elapsedSeconds(_asOf, now);
-    if (age > _stalenessSeconds) return 0; // stale board: don't predict, hold at fix
-    return age < _bridgeSeconds ? age : _bridgeSeconds;
+  // The elapsed time used to place the *target* along the plan: the full time
+  // since the fix while it's fresh (continuous prediction), and zero (sit at the
+  // fix) once it's stale. This — not the raw `now - as_of` used unconditionally —
+  // is what the marker chases, so a stale/frozen board can't fly it forward: the
+  // moment the fix ages past the gate the target collapses back to the fix and
+  // the forward-only [advance] simply holds (never lurches or rewinds).
+  double _targetElapsed(DateTime now) => _gatedElapsed(_asOf, now);
+
+  static double _gatedElapsed(DateTime asOf, DateTime now) {
+    final age = _elapsedSeconds(asOf, now);
+    if (age > _stalenessSeconds) return 0; // stale board: don't predict, hold
+    return age; // fresh board: predict the full elapsed time (continuous)
   }
 
   /// Builds a player, or null when the plan/path can't form a usable monotone
@@ -78,11 +91,19 @@ class TimedTrajectory {
   }) {
     final wps = _project(path, plan);
     if (wps == null) return null;
-    // Appear AT the real fix (plan point 0), never at the `now - as_of` position
-    // — a vehicle entering the viewport must show up on its GPS point, not fly in
-    // with a catch-up from an already-stale anchor. The short bridge grows in via
-    // advance from here.
-    return TimedTrajectory._(path, wps, asOf, wps.first.dist, now);
+    // Appear at the *predicted current* spot — the fix (plan point 0) projected
+    // forward by the gated elapsed time — so a vehicle entering the viewport
+    // mid-interval shows up where it actually is, not at a stale GPS point it
+    // then races to catch up to (a visible forward lurch on every appearance,
+    // worse the wider the prediction window). The gate keeps this honest: a
+    // stale board (age past the gate) projects zero, so it still appears AT the
+    // fix and holds — never flying in from a frozen anchor. Bounded to the
+    // distance horizon as a belt against an implausibly fast plan.
+    final gated = _gatedElapsed(asOf, now);
+    var dispDist = _distAtElapsed(wps, gated);
+    final horizon = wps.first.dist + _maxAheadMeters;
+    if (dispDist > horizon) dispDist = horizon;
+    return TimedTrajectory._(path, wps, asOf, dispDist, now);
   }
 
   /// Adopts a fresher plan without ever moving the marker backward: the current
@@ -158,10 +179,12 @@ class TimedTrajectory {
   /// (no fresh data) — the caller then parks the ticker (idle = zero frames).
   bool hasForwardMotion(DateTime now) {
     if (_dispDist >= _horizonDist - _epsilonMeters) return false;
-    // Motion only while the (bridge-capped, staleness-gated) target is still
-    // ahead of the display. Once the bridge is used up — or the fix went stale —
-    // the target stops advancing, the marker settles, and the ticker parks (idle
-    // = zero frames); the grace fade then removes a stale vehicle.
+    // Motion only while the (staleness-gated) target is still ahead of the
+    // display. While the fix is fresh the target advances with wall-clock, so
+    // this stays true across the whole poll interval (continuous motion). Once
+    // the fix goes stale the target collapses to the fix, the marker settles,
+    // and the ticker parks (idle = zero frames); the grace fade then removes a
+    // vehicle that also dropped from the feed.
     final target = _distAtElapsed(_waypoints, _targetElapsed(now));
     return target > _dispDist + _epsilonMeters;
   }

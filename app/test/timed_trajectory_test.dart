@@ -16,8 +16,11 @@ RoutePath _eastRoute() => RoutePath.fromLatLon([
     ])!;
 
 // A realistic plan (all on the east route): ~237 m station steps. The marker
-// does NOT play this all the way by wall-clock — it sits at the fix and only
-// leads a short ~15 s bridge, advancing further only when a fresh fix lands.
+// plays this forward by wall-clock *continuously while the fix is fresh* (up to
+// the staleness gate at 45 s), so it keeps moving across the whole 30 s poll
+// interval instead of sitting after a short bridge. Once the fix ages past the
+// gate the target collapses back to the fix and it holds (never flies to the
+// plan's far end).
 List<TrajectoryPoint> _eastPlan() => const [
       TrajectoryPoint(44.80, 20.500, 0),
       TrajectoryPoint(44.80, 20.503, 28),
@@ -52,23 +55,39 @@ void main() {
           isFalse);
     });
 
-    test('leads only a short bridge past the fix, then holds (no fly to the end)', () {
+    test('appears mid-interval at the predicted-now spot, not the stale fix', () {
+      // Built 20 s into the interval (fresh, < gate): shows up where the vehicle
+      // actually is now (plan[20s] ≈ 20.502), not back at the 20 s-old GPS point
+      // — so it doesn't race forward to catch up on appearance.
+      final tt = TimedTrajectory.build(
+        path: _eastRoute(),
+        plan: _eastPlan(),
+        asOf: _t0,
+        now: _t0.add(const Duration(seconds: 20)),
+      )!;
+      expect(tt.position.longitude, greaterThan(20.5015));
+      expect(tt.position.longitude, lessThan(20.503));
+    });
+
+    test('predicts continuously across the interval while the fix is fresh', () {
       final tt = TimedTrajectory.build(
         path: _eastRoute(),
         plan: _eastPlan(),
         asOf: _t0,
         now: _t0,
       )!;
-      // Moves a little forward within the bridge window.
       tt.advance(_t0.add(const Duration(seconds: 5)));
-      expect(tt.position.longitude, greaterThan(20.500));
+      final at5 = tt.position.longitude;
+      expect(at5, greaterThan(20.500));
 
-      // Well past the bridge, still fresh (< staleness): holds a short lead — it
-      // does NOT keep sliding to the plan's far end (20.506).
+      // Still fresh (40 s < 45 s gate): kept moving forward the WHOLE interval —
+      // it did not stall at a short bridge. Near plan[40s] ≈ 20.5043.
       tt.advance(_t0.add(const Duration(seconds: 40)));
-      final held = tt.position.longitude;
-      expect(held, greaterThan(20.500));
-      expect(held, lessThan(20.5025)); // ~15 s of ~4 m/s ≈ a couple hundred metres
+      final at40 = tt.position.longitude;
+      expect(at40, greaterThan(at5 + 1e-4));
+      expect(at40, closeTo(20.50433, 6e-4));
+      // But never past the plan's far end (20.506).
+      expect(at40, lessThan(20.506));
     });
 
     test('a stale fix stops predicting: holds near the fix and idles', () {
@@ -78,11 +97,11 @@ void main() {
         asOf: _t0,
         now: _t0,
       )!;
-      tt.advance(_t0.add(const Duration(seconds: 15))); // bridge in
-      final bridged = tt.position.longitude;
+      tt.advance(_t0.add(const Duration(seconds: 15))); // predicting, fresh
+      final led = tt.position.longitude;
       // Board goes stale (no fresh fix) — must NOT coast on toward the plan end.
       tt.advance(_t0.add(const Duration(seconds: 300)));
-      expect(tt.position.longitude, closeTo(bridged, 2e-3));
+      expect(tt.position.longitude, closeTo(led, 2e-3));
       expect(tt.hasForwardMotion(_t0.add(const Duration(seconds: 300))), isFalse);
       // It certainly never flew to the plan's far end.
       expect(tt.position.longitude, lessThan(20.505));
@@ -207,28 +226,34 @@ void main() {
       );
     }
 
-    test('appears at the fix, leads a short bridge, idles stale near the fix', () {
+    test('appears at the fix, predicts continuously, idles stale near the lead', () {
       var now = _t0;
       final animator = VehicleTrackAnimator(clock: () => now);
       animator.syncSamples([sample('P1', asOf: _t0)], 0, now: now);
-      // Appears on the GPS point, not flown ahead.
+      // Built fresh at asOf (age 0): appears on the GPS point, not flown ahead.
       expect(animator.positionOf('P1', 0).longitude, closeTo(20.500, 1e-4));
 
-      // A few seconds later there's forward motion to render (the bridge).
+      // A few seconds later there's forward motion to render.
       now = _t0.add(const Duration(seconds: 5));
       expect(animator.hasPendingMotion, isTrue);
       animator.advanceTimed(now);
-      final mid = animator.positionOf('P1', 0);
-      expect(mid.longitude, greaterThan(20.500));
-      expect(mid.longitude, lessThan(20.503)); // a short lead, not a fly
+      final at5 = animator.positionOf('P1', 0).longitude;
+      expect(at5, greaterThan(20.500));
       expect(animator.headingAt('P1', 0)!, closeTo(90, 5));
 
-      // Stale (no fresh fix): parked near the fix, nothing left to animate — and
+      // Still fresh at 40 s: kept moving the whole interval (continuous), not
+      // stalled at a short bridge.
+      now = _t0.add(const Duration(seconds: 40));
+      animator.advanceTimed(now);
+      final at40 = animator.positionOf('P1', 0).longitude;
+      expect(at40, greaterThan(at5 + 1e-4));
+
+      // Stale (no fresh fix): parked at the lead, nothing left to animate — and
       // NOT slid to the plan's far end.
       now = _t0.add(const Duration(seconds: 300));
       animator.advanceTimed(now);
       expect(animator.hasPendingMotion, isFalse);
-      expect(animator.positionOf('P1', 0).longitude, lessThan(20.504));
+      expect(animator.positionOf('P1', 0).longitude, lessThan(20.506));
     });
 
     test('a fresh fix drives the marker forward without rewinding', () {
@@ -292,7 +317,7 @@ void main() {
         ),
       ], 0, now: now);
       expect(animator.trackFor('P1')!.timed, isNotNull);
-      // Fresh: there's a bridge of motion to render, and it moves forward.
+      // Fresh: there's motion to render, and it moves forward.
       now = _t0.add(const Duration(seconds: 5));
       expect(animator.hasMotion('P1'), isTrue);
       animator.advanceTimed(now);
