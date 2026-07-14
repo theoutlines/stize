@@ -33,7 +33,16 @@ function main() {
 
   const shapes = [];
   let missing = 0;
+  let suburbanSkipped = 0;
   for (const l of lines) {
+    // Coverage is a *city* density map. Purely-suburban lines (merged in for the
+    // stop directory) run tens of km into the agglomeration — including them
+    // stretches the scale and buries "where it's dense in the city". Skip them;
+    // the shared 600-series (city routes) are not flagged and stay in.
+    if (l.suburban) {
+      suburbanSkipped++;
+      continue;
+    }
     const shapePath = join(OUT_DIR, "shapes", `${l.route_id}.json`);
     if (!existsSync(shapePath)) {
       missing++;
@@ -43,6 +52,7 @@ function main() {
     shapes.push({ line: l.line, vehicleType: l.vehicle_type, polyline: shape.polyline ?? [] });
   }
   if (missing) console.log(`  (${missing} entries had no shape file, skipped)`);
+  if (suburbanSkipped) console.log(`  (${suburbanSkipped} suburban entries skipped — city coverage only)`);
 
   console.log(`Resampling shapes to points every ~${STEP_METRES} m ...`);
   const geojson = buildCoveragePoints(shapes, { stepMetres: STEP_METRES });

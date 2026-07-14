@@ -26,6 +26,7 @@ describe("parseRawArrival", () => {
       gps: { lat: 44.79091, lon: 20.5405716 },
       heading: null, // no all_stations in this sample
       trajectory: null, // no all_stations timing in this sample
+      routeStations: [],
     });
   });
 
@@ -39,6 +40,7 @@ describe("parseRawArrival", () => {
       gps: null,
       heading: null,
       trajectory: null,
+      routeStations: [],
     });
   });
 

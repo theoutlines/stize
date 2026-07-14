@@ -17,6 +17,7 @@ class AreaVehicle {
     this.asOf,
     this.source = VehicleSource.live,
     this.tripId,
+    this.routeId,
   });
 
   final String line;
@@ -41,6 +42,11 @@ class AreaVehicle {
   final List<TrajectoryPoint>? trajectory;
   final DateTime? asOf;
 
+  /// route_id of the direction this vehicle is actually travelling (resolved
+  /// backend-side). Null on older payloads. Lets the map stitch it to the right
+  /// direction's shape instead of the canonical one.
+  final String? routeId;
+
   /// Stable identity for tracking/interpolation across refreshes: garage number
   /// for a live vehicle, GTFS trip id for a scheduled one, else a coordinate
   /// fallback. Prefixed for scheduled so a scheduled and a live object can never
@@ -64,6 +70,7 @@ class AreaVehicle {
       asOf: asOf is String ? DateTime.tryParse(asOf) : null,
       source: VehicleSource.fromApi(json['source']),
       tripId: json['trip_id'] as String?,
+      routeId: json['route_id'] as String?,
     );
   }
 }

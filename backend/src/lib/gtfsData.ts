@@ -1,5 +1,7 @@
 import type { Env } from "../env";
-import type { LineDto, RouteShapeResponse, StopDto } from "../types";
+import type { FeedMeta, LineDto, RouteShapeResponse, StopDto } from "../types";
+import type { DirectionEndpoints } from "./direction";
+import type { ScheduleMeta, StopSchedule } from "./schedule";
 import { haversineDistanceMeters } from "./haversine";
 
 // GTFS bundles are static assets built by scripts/build-gtfs.mjs. They only
@@ -7,9 +9,21 @@ import { haversineDistanceMeters } from "./haversine";
 // isolate instead of re-fetching/parsing per request.
 let stopsCache: StopDto[] | null = null;
 let linesCache: LineDto[] | null = null;
+let feedMetaCache: FeedMeta | null = null;
 
 async function fetchAsset(env: Env, path: string): Promise<Response> {
   return env.ASSETS.fetch(new URL(path, "https://assets.internal"));
+}
+
+// Bundle freshness metadata (feed version + validity dates + build time), for
+// the "Route data: <date>" line in the app. Written by build-gtfs.mjs. Returns
+// null if the asset is missing (older bundle) — callers degrade silently.
+export async function getFeedMeta(env: Env): Promise<FeedMeta | null> {
+  if (feedMetaCache) return feedMetaCache;
+  const res = await fetchAsset(env, "/gtfs/feed_meta.json");
+  if (!res.ok) return null;
+  feedMetaCache = (await res.json()) as FeedMeta;
+  return feedMetaCache;
 }
 
 async function loadStops(env: Env): Promise<StopDto[]> {
@@ -76,6 +90,57 @@ export async function searchLines(env: Env, query: string): Promise<LineDto[]> {
 export async function getLineByNumber(env: Env, line: string): Promise<LineDto | null> {
   const lines = await loadLines(env);
   return lines.find((l) => l.line.toLowerCase() === line.toLowerCase()) ?? null;
+}
+
+// Per-line terminal coordinates for each direction, derived once from lines.json
+// (already isolate-cached) — no per-request shape loading. Feeds direction
+// resolution (lib/direction.ts). Directions missing terminal coords are skipped.
+const lineDirectionsCache = new Map<string, DirectionEndpoints[]>();
+export async function getLineDirectionEndpoints(
+  env: Env,
+  line: string,
+): Promise<DirectionEndpoints[]> {
+  const key = line.toLowerCase();
+  const cached = lineDirectionsCache.get(key);
+  if (cached) return cached;
+  const lines = await loadLines(env);
+  const out: DirectionEndpoints[] = [];
+  for (const l of lines) {
+    if (l.line.toLowerCase() !== key) continue;
+    if (
+      typeof l.origin_lat === "number" &&
+      typeof l.origin_lon === "number" &&
+      typeof l.dest_lat === "number" &&
+      typeof l.dest_lon === "number"
+    ) {
+      out.push({
+        routeId: l.route_id,
+        origin: { lat: l.origin_lat, lon: l.origin_lon },
+        destination: { lat: l.dest_lat, lon: l.dest_lon },
+      });
+    }
+  }
+  lineDirectionsCache.set(key, out);
+  return out;
+}
+
+// Schedule fallback (Phase 1): the shared calendar/service metadata (cached for
+// the isolate — it's tiny and changes only on rebuild) and one stop's planned
+// departures (fetched per stop, like shapes). Both return null when absent so
+// callers degrade to live-only.
+let scheduleMetaCache: ScheduleMeta | null = null;
+export async function getScheduleMeta(env: Env): Promise<ScheduleMeta | null> {
+  if (scheduleMetaCache) return scheduleMetaCache;
+  const res = await fetchAsset(env, "/gtfs/schedule/_meta.json");
+  if (!res.ok) return null;
+  scheduleMetaCache = (await res.json()) as ScheduleMeta;
+  return scheduleMetaCache;
+}
+
+export async function getStopSchedule(env: Env, stopId: string): Promise<StopSchedule | null> {
+  const res = await fetchAsset(env, `/gtfs/schedule/${encodeURIComponent(stopId)}.json`);
+  if (!res.ok) return null;
+  return (await res.json()) as StopSchedule;
 }
 
 export async function getRouteShape(env: Env, routeId: string): Promise<RouteShapeResponse | null> {

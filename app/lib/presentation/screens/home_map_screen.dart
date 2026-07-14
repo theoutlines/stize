@@ -15,6 +15,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 import '../../core/api_config.dart';
 import '../../core/coverage_heatmap.dart';
 import '../../core/fps_overlay.dart';
+import '../../core/live_position.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
 import '../../core/moving_object_layer.dart';
@@ -22,6 +23,7 @@ import '../../core/route_path.dart';
 import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_track_animator.dart';
 import '../../data/location/location_service.dart';
+import '../../domain/models/area_vehicle.dart';
 import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/pinned_line.dart';
@@ -1090,24 +1092,45 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final seq = ++_vehiclesRequestSeq;
     _lastVehiclesCenter = center;
     try {
-      final vehicles = await ref
+      final fetched = await ref
           .read(vehiclesRepositoryProvider)
           .nearby(lat: center.latitude, lon: center.longitude, radiusMeters: radius);
       if (!mounted || seq != _vehiclesRequestSeq) return;
-      // Make sure each visible line's route geometry is (being) fetched so the
-      // animator can move markers along the road, not through buildings (X5) —
-      // and, in timed mode, project the plan onto it.
+      // Placeholder rows (junk garage `P1..P999`, GPS pinned to a stop) aren't
+      // tracked vehicles — they'd sit motionless on a stop. Keep them off the
+      // map when the flag is on; the arrivals *list* on the stop screen still
+      // shows their line/ETA. Scheduled objects are schedule-derived by design,
+      // so they bypass this junk filter. Flag off ⇒ unchanged.
+      final vehicles = ref.read(livePositionOnlyProvider)
+          ? fetched
+              .where((v) =>
+                  v.source == VehicleSource.scheduled ||
+                  areaVehicleHasLivePosition(v))
+              .toList()
+          : fetched;
       // Hybrid live+schedule: schedule-predicted vehicles only render when the
-      // `schedule_fallback` flag is on; otherwise drop them here so they never
-      // enter the animator. (The backend already de-dups a scheduled trip that
-      // has a live vehicle; the client's key-prefixing keeps a scheduled and a
-      // live object from ever colliding on the same track.)
+      // `schedule_fallback` flag is on; otherwise drop them so they never enter
+      // the animator. (The backend de-dups a scheduled trip that has a live
+      // vehicle; the client's key-prefixing keeps the two off the same track.)
       final scheduleOn =
           ref.read(appConfigProvider).valueOrNull?.scheduleFallback ?? false;
       final shown = scheduleOn
           ? vehicles
           : [for (final v in vehicles) if (v.source == VehicleSource.live) v];
-      _ensureShapesFor(shown.map((v) => v.line));
+      // Which shape to move each vehicle along. With `vehicle_direction_shape`
+      // on, stitch to the *direction the vehicle is actually going* (backend-
+      // resolved route_id) so it doesn't ride the canonical direction's street
+      // ("through houses"); off ⇒ the line's canonical shape, as before. A null
+      // key (older payload) just means no path → straight-line ease (safe).
+      final byDirection = ref.read(vehicleDirectionShapeProvider);
+      String? shapeKeyOf(AreaVehicle v) => byDirection ? v.routeId : v.line;
+      // Make sure each visible route's geometry is (being) fetched so the
+      // animator can move markers along the road, not through buildings (X5) —
+      // and, in timed mode, project the plan onto it.
+      _ensureShapesFor(
+        [for (final v in shown) shapeKeyOf(v)].whereType<String>(),
+        byRouteId: byDirection,
+      );
       // Timed-trajectory playback is remote-gated (OFF prod, ON staging). When
       // on, hand the animator each vehicle's forward plan + as-of time so it
       // plays them forward by time; when off, plan/as-of are null and the marker
@@ -1126,7 +1149,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             // how the same line's stops are coloured.
             type: classifyLine(v.line),
             heading: v.heading,
-            path: _shapeCache[v.line],
+            // Stitch to the direction-resolved shape when available (fixes
+            // "through houses"); null key ⇒ no path ⇒ straight-line ease.
+            path: shapeKeyOf(v) == null ? null : _shapeCache[shapeKeyOf(v)!],
             // A scheduled object always carries a timed plan (its predicted
             // motion); play it like a live one regardless of the timed flag.
             trajectory: (timedOn || v.source == VehicleSource.scheduled)
@@ -1168,25 +1193,27 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
   }
 
-  /// Lazily fetches (once, cached) the route geometry for each given line so
-  /// vehicles on it can be animated along the route. A failed lookup caches
-  /// null — the vehicle then falls back to a plain straight-line ease.
-  void _ensureShapesFor(Iterable<String> lines) {
-    for (final line in lines.toSet()) {
-      if (_shapeCache.containsKey(line) || _shapeFetching.contains(line)) {
+  /// Lazily fetches (once, cached) the route geometry for each given key so
+  /// vehicles on it can be animated along the route. Keys are direction route_ids
+  /// when [byRouteId] (fetched by route_id), else line numbers (fetched by
+  /// number). A failed lookup caches null — the vehicle then falls back to a
+  /// plain straight-line ease. Route_ids and line numbers don't collide, so the
+  /// one cache safely holds both across a flag flip.
+  void _ensureShapesFor(Iterable<String> keys, {required bool byRouteId}) {
+    final repo = ref.read(linesRepositoryProvider);
+    for (final key in keys.toSet()) {
+      if (_shapeCache.containsKey(key) || _shapeFetching.contains(key)) {
         continue;
       }
-      _shapeFetching.add(line);
-      ref
-          .read(linesRepositoryProvider)
-          .getShapeByLineNumber(line)
+      _shapeFetching.add(key);
+      (byRouteId ? repo.getShapeByRouteId(key) : repo.getShapeByLineNumber(key))
           .then((shape) {
-            _shapeCache[line] = RoutePath.fromLatLon(shape.polyline);
+            _shapeCache[key] = RoutePath.fromLatLon(shape.polyline);
           })
           .catchError((_) {
-            _shapeCache[line] = null;
+            _shapeCache[key] = null;
           })
-          .whenComplete(() => _shapeFetching.remove(line));
+          .whenComplete(() => _shapeFetching.remove(key));
     }
   }
 

@@ -15,7 +15,12 @@ export interface ArrivalDto {
   vehicle_type: VehicleType;
   eta_minutes: number;
   stops_remaining: number | null;
-  route_id: string;
+  route_id: string; // canonical direction (bare route_id), unchanged
+  // The route_id of the *direction this vehicle is actually travelling*, resolved
+  // from its live route (`all_stations`). Falls back to the canonical route_id
+  // when the direction can't be told. Lets the map stitch the vehicle to the
+  // correct direction's shape instead of always the canonical one.
+  direction_route_id?: string;
   gps: { lat: number; lon: number } | null;
   garage_no: string | null;
   heading: number | null;
@@ -23,6 +28,9 @@ export interface ArrivalDto {
   // flag-gated (`timed_trajectory`): absent unless the feature is on, so old
   // clients and prod are unaffected. Null when no usable plan is available.
   trajectory?: TrajectoryPointDto[] | null;
+  // Schedule fallback: "scheduled" for a planned (not live) arrival; omitted /
+  // "live" for real vehicles. Lets the list show live first + a schedule tail.
+  source?: "live" | "scheduled";
 }
 
 // A single moving vehicle for the "all transport in the visible area" map view,
@@ -38,6 +46,15 @@ export interface VehicleDto {
   // (the source board's `updated_at`). Additive + flag-gated, like ArrivalDto.
   trajectory?: TrajectoryPointDto[] | null;
   as_of?: string;
+  // Direction-resolved route_id (see ArrivalDto.direction_route_id) so the map
+  // can draw the vehicle on the shape of the direction it's really going.
+  route_id?: string;
+  // Schedule fallback (map): "scheduled" when this is a timetable-predicted
+  // object (no live GPS) rather than a live vehicle, + its trip id for de-dup.
+  // Backend emission is future work (feature/gtfs-freshness) per
+  // docs/SCHEDULE_FALLBACK_CONTRACT.md; the client already reads these.
+  source?: "live" | "scheduled";
+  trip_id?: string;
 }
 
 export interface VehiclesResponse {
@@ -76,6 +93,15 @@ export interface LineDto {
   direction_id?: string;
   origin: string;
   destination: string;
+  // Terminal coordinates (origin/destination stop). Used to match a live
+  // vehicle's own route to the correct direction (lib/direction.ts).
+  origin_lat?: number;
+  origin_lon?: number;
+  dest_lat?: number;
+  dest_lon?: number;
+  // True for a purely-suburban line merged in from the suburban feed (not in the
+  // city feed). Only used to keep such lines out of the city coverage map.
+  suburban?: boolean;
 }
 
 export interface LinesResponse {
@@ -111,6 +137,19 @@ export interface ConfigResponse {
   version: string;
   environment: string; // "production" | "staging"
   flags: Record<string, boolean>;
+}
+
+// Bundle freshness metadata, written by scripts/build-gtfs.mjs into
+// public/gtfs/feed_meta.json and served at GET /api/v1/gtfs-meta. Dates are ISO
+// (YYYY-MM-DD) or null when the source feed omitted them.
+export interface FeedMeta {
+  feed_version: string | null; // GTFS feed_info.feed_version, e.g. "24"
+  feed_start_date: string | null; // start of the feed's declared validity
+  feed_end_date: string | null; // end of the feed's declared validity
+  calendar_start: string | null; // widest service window across calendar.txt
+  calendar_end: string | null;
+  built_at: string; // ISO timestamp of the bundle build
+  counts: { lines: number; stops: number; shapes: number };
 }
 
 // One time-bucket of a line's rolled-up analytics (by hour-of-day or day-of-

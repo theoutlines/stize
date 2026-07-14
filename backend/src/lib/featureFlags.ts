@@ -28,11 +28,25 @@ import type { Env } from "../env";
 //                       per-vehicle Flutter widgets. Client-side render flag,
 //                       independent of timed_trajectory (which is the data flag).
 //                       OFF on prod (widget path stays the fallback), ON staging.
-//   schedule_fallback — the app shows GTFS-schedule-predicted vehicles (semi-
-//                       transparent) when there's no live stream — the hybrid
-//                       live+schedule display. Client render flag; the backend
-//                       (feature/gtfs-freshness) separately gates whether it
-//                       emits `source:"scheduled"` objects. OFF on prod.
+//   live_position_only — the app draws on the map only vehicles with a real live
+//                       GPS position. The upstream emits schedule-derived
+//                       placeholder rows (junk garage id `P1..P999`, GPS = the
+//                       stop's own coordinate) that aren't tracked vehicles; with
+//                       this on they stay in the arrivals *list* but are not drawn
+//                       as (stationary, stacked-on-the-stop) markers. Read
+//                       client-side. OFF on prod, ON on staging.
+//   vehicle_direction_shape — the map stitches a moving vehicle to the shape of
+//                       the direction it's actually travelling (resolved backend-
+//                       side from its `all_stations`), instead of always the
+//                       canonical direction. Fixes markers drawn on the wrong
+//                       street ("through houses"). Read client-side; the backend
+//                       always sends the resolved route_id. OFF prod, ON staging.
+//   schedule_fallback — hybrid live+schedule. Phase 1 (list): the stop arrivals
+//                       list gains planned departures (`source:"scheduled"`),
+//                       deduped against live. Map (this branch): schedule-
+//                       predicted vehicles drawn semi-transparently when live is
+//                       absent, moved by the same timed math. Gates backend
+//                       emission; the client reads the same flag. OFF prod.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -40,6 +54,8 @@ export const FEATURE_FLAGS = [
   "coverage_on_main_map",
   "timed_trajectory",
   "symbol_layer",
+  "live_position_only",
+  "vehicle_direction_shape",
   "schedule_fallback",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];

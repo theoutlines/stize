@@ -39,6 +39,17 @@ class AppConfig {
   /// until confirmed; the backend also gates whether it emits scheduled objects.
   bool get scheduleFallback => flag('schedule_fallback');
 
+  /// Whether the map draws only vehicles with a real live position. The upstream
+  /// emits placeholder rows (junk garage `P1..P999`, GPS = the stop coordinate)
+  /// that aren't tracked vehicles; when on they stay in the arrivals list but
+  /// are not drawn as markers. Gated remotely so it can ship dormant.
+  bool get livePositionOnly => flag('live_position_only');
+
+  /// Whether the map stitches a moving vehicle to the shape of the direction it
+  /// is actually travelling (from the backend-resolved route_id) instead of the
+  /// canonical direction. Fixes markers drawn on the wrong street.
+  bool get vehicleDirectionShape => flag('vehicle_direction_shape');
+
   static const empty = AppConfig(version: '', flags: {});
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {

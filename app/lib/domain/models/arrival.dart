@@ -23,6 +23,7 @@ class Arrival {
     required this.garageNo,
     this.heading,
     this.trajectory,
+    this.scheduled = false,
   });
 
   final String line;
@@ -41,6 +42,10 @@ class Arrival {
   /// off, or no usable plan) — callers fall back to the conservative animator.
   final List<TrajectoryPoint>? trajectory;
 
+  /// Planned (timetable) arrival, not a live vehicle — the schedule fallback
+  /// (`source: "scheduled"`). Shown marked and after live arrivals of the line.
+  final bool scheduled;
+
   factory Arrival.fromJson(Map<String, dynamic> json) {
     return Arrival(
       line: json['line'] as String,
@@ -52,6 +57,7 @@ class Arrival {
       garageNo: json['garage_no'] as String?,
       heading: (json['heading'] as num?)?.toDouble(),
       trajectory: TrajectoryPoint.listFromJson(json['trajectory']),
+      scheduled: json['source'] == 'scheduled',
     );
   }
 }

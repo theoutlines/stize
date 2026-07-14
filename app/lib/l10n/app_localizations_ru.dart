@@ -110,6 +110,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get vehicleScheduled => 'По расписанию — не живая позиция';
 
   @override
+  String get noLiveVehiclesOnMap =>
+      'Нет машин с live-позицией — смотри список прибытий ниже.';
+
+  @override
   String get stopUpdatedJustNow => 'Обновлено только что';
 
   @override
@@ -129,6 +133,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get arrivalEtaNow => 'Сейчас';
+
+  @override
+  String get arrivalScheduled => 'По расписанию';
 
   @override
   String arrivalStopsAway(int count) {
@@ -240,6 +247,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get aboutTitle => 'О Stigla';
+
+  @override
+  String aboutRouteData(String date) {
+    return 'Данные маршрутов: $date';
+  }
 
   @override
   String get aboutDisclaimer =>

@@ -53,6 +53,9 @@ export async function getNearbyVehicles(
         lat: a.gps.lat,
         lon: a.gps.lon,
         heading: a.heading,
+        // Direction the vehicle is actually travelling, so the map draws it on
+        // that direction's shape (falls back to canonical inside getArrivals).
+        route_id: a.direction_route_id,
         // Carry the forward timing plan (timed-trajectory) and the as-of time it
         // is anchored to (this board's last successful upstream refresh). Both
         // are absent when the arrivals layer left `trajectory` off (flag off /
