@@ -85,4 +85,36 @@ void main() {
       expect(d, lessThan(outAndBack.length / 2));
     });
   });
+
+  group('headingAtSmoothed (continuous bearing through curves)', () {
+    // Reuse the L-shaped path: east leg (bearing ~90) then north leg (~0).
+    final corner = path.project(const ll.LatLng(44.80, 20.52));
+
+    test('matches the segment heading on a straight run', () {
+      // Well inside the east leg, away from any bend, the look-ahead chord is
+      // colinear with the segment — so smoothed ≈ per-segment.
+      expect(
+        path.headingAtSmoothed(corner / 2, lookahead: 30),
+        closeTo(path.headingAt(corner / 2), 0.5),
+      );
+    });
+
+    test('begins turning before a corner instead of snapping at it', () {
+      final near = corner - 15; // 15 m before the bend
+      // The per-segment bearing is still exactly the east leg (no turn yet)...
+      expect(path.headingAt(near), closeTo(90, 1));
+      // ...but the look-ahead chord already reaches into the north leg, so the
+      // smoothed bearing has started rotating east→north (a value strictly
+      // between the two legs) — a continuous turn, not a vertex-to-vertex jump.
+      final smoothed = path.headingAtSmoothed(near, lookahead: 40);
+      expect(smoothed, lessThan(89));
+      expect(smoothed, greaterThan(1));
+    });
+
+    test('reverses by 180° when travelling the path backward', () {
+      final fwd = path.headingAtSmoothed(corner / 2, forward: true);
+      final back = path.headingAtSmoothed(corner / 2, forward: false);
+      expect((back - (fwd + 180) % 360).abs(), lessThan(1));
+    });
+  });
 }

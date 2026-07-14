@@ -35,6 +35,7 @@
   --tram:    #d3342b;
   --mixed:   #5b6b7a;
   --stuck:   #b00842;
+  --metro:   #7a3fb0;
   --star:    #f6a609;
   --place:   #e5484d;
 
@@ -281,6 +282,48 @@ svg.icon { display: block; }
 .vehicle-dot--tram { background: var(--tram); }
 .vehicle-dot--trolley { background: var(--trolley); }
 .vehicle-dot--stuck { background: var(--stuck); }
+
+/* symbol-layer coin (flag: symbol_layer) — the GPU symbol equivalent of the
+   vehicle pill: a coloured coin carrying the type glyph over the line number,
+   with a rotating direction arrow. Type is encoded by colour; the fleet id is
+   NOT on the coin (identity lives in the tap sheet). */
+.vehicle-coin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  width: 30px; height: 30px;
+}
+.vehicle-coin__badge {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: var(--bus);
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.35);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0;
+}
+.vehicle-coin__glyph { width: 12px; height: 12px; color: #fff; margin-bottom: -1px; }
+.vehicle-coin__line {
+  color: #fff; font-weight: 700; font-size: 11px; line-height: 1;
+  text-shadow: 0 0 2px rgba(0,0,0,.45);
+}
+.vehicle-coin__arrow {
+  position: absolute; top: -12px; left: 50%;
+  width: 0; height: 0;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 10px solid #fff;
+  filter: drop-shadow(0 0 1px rgba(15,23,42,.8));
+}
+.vehicle-coin--bus     .vehicle-coin__badge { background: var(--bus); }
+.vehicle-coin--tram    .vehicle-coin__badge { background: var(--tram); }
+.vehicle-coin--trolley .vehicle-coin__badge { background: var(--trolley); }
+.vehicle-coin--metro   .vehicle-coin__badge { background: var(--metro); }
+.vehicle-coin--selected .vehicle-coin__badge { border-color: #0f172a; border-width: 3px; }
+.vehicle-coin--stuck   .vehicle-coin__badge { background: var(--stuck); }
+/* far-zoom: coin collapses to the coloured dot (same as the widget path) */
 
 /* zoom-in hint */
 .zoom-hint {

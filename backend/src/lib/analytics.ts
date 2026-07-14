@@ -39,25 +39,31 @@ export async function logObservations(env: Env, stopId: string, raw: RawArrival[
   if (raw.length === 0) return;
 
   const now = Math.floor(Date.now() / 1000);
-  const placeholders = raw.map(() => "(?,?,?,?,?,?,?)").join(",");
-  const binds: (string | number | null)[] = [];
-  for (const r of raw) {
-    binds.push(
-      r.lineNumber,
-      stopId,
-      r.garageNo,
-      vehicleIdOf(r.garageNo),
-      r.etaSeconds != null ? Math.round(r.etaSeconds / 60) : null,
-      r.stopsRemaining,
-      now,
-    );
+  // Chunk the insert: 7 bound params per row, and D1/SQLite caps parameters per
+  // statement (~999), so a busy stop (>142 rows) in a single statement throws
+  // "too many SQL variables". [INSERT_CHUNK] keeps each statement well under it.
+  for (let i = 0; i < raw.length; i += INSERT_CHUNK) {
+    const chunk = raw.slice(i, i + INSERT_CHUNK);
+    const placeholders = chunk.map(() => "(?,?,?,?,?,?,?)").join(",");
+    const binds: (string | number | null)[] = [];
+    for (const r of chunk) {
+      binds.push(
+        r.lineNumber,
+        stopId,
+        r.garageNo,
+        vehicleIdOf(r.garageNo),
+        r.etaSeconds != null ? Math.round(r.etaSeconds / 60) : null,
+        r.stopsRemaining,
+        now,
+      );
+    }
+    await env.STIGLA_ANALYTICS_DB.prepare(
+      `INSERT INTO raw_observations (line, stop_id, garage_no, vehicle_id, eta_minutes, stops_remaining, observed_at)
+       VALUES ${placeholders}`,
+    )
+      .bind(...binds)
+      .run();
   }
-  await env.STIGLA_ANALYTICS_DB.prepare(
-    `INSERT INTO raw_observations (line, stop_id, garage_no, vehicle_id, eta_minutes, stops_remaining, observed_at)
-     VALUES ${placeholders}`,
-  )
-    .bind(...binds)
-    .run();
 }
 
 interface Bucket {

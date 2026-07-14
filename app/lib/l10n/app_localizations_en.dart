@@ -103,6 +103,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapZoomInForVehicles => 'Zoom in to see live transport';
 
   @override
+  String get vehicleScheduled => 'By schedule — not a live position';
+
+  @override
   String get noLiveVehiclesOnMap =>
       'No live-tracked vehicles to map right now — see the arrivals below.';
 
