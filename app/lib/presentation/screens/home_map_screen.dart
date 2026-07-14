@@ -1279,15 +1279,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   areaVehicleHasLivePosition(v))
               .toList()
           : fetched;
-      // Hybrid live+schedule: schedule-predicted vehicles only render when the
-      // `schedule_fallback` flag is on; otherwise drop them so they never enter
-      // the animator. (The backend de-dups a scheduled trip that has a live
-      // vehicle; the client's key-prefixing keeps the two off the same track.)
-      final scheduleOn =
-          ref.read(appConfigProvider).valueOrNull?.scheduleFallback ?? false;
-      final shown = scheduleOn
-          ? vehicles
-          : [for (final v in vehicles) if (v.source == VehicleSource.live) v];
+      // Hybrid live+schedule: render whatever the backend sends, live and
+      // schedule-predicted alike. (The backend de-dups a scheduled trip that has
+      // a live vehicle; the client's key-prefixing keeps the two off the same
+      // track.) Scheduled objects are present only where the map endpoint emits
+      // them; elsewhere this is just the live set.
+      final shown = vehicles;
       // Which shape to move each vehicle along: the *direction the vehicle is
       // actually going* (backend-resolved route_id) so it doesn't ride the
       // canonical direction's street ("through houses"). A null key (older

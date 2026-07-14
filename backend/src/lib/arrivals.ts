@@ -12,7 +12,6 @@ import {
 import { resolveDirectionRouteId } from "./direction";
 import { belgradeNow, upcomingScheduled, dedupScheduledAgainstLive } from "./schedule";
 import { logObservations } from "./analytics";
-import { getFlag } from "./featureFlags";
 
 const ARRIVALS_TTL_SECONDS = 30;
 
@@ -102,9 +101,11 @@ export async function getArrivals(
 
   // Schedule fallback (Phase 1): append planned departures so a thin/empty live
   // board (night, inter-peak) still shows what's coming, deduped against the
-  // live rows so a bus with a live vehicle isn't doubled. Flag-gated; any
-  // failure degrades silently to the live-only board.
-  if (includeSchedule && (await getFlag(env, "schedule_fallback"))) {
+  // live rows so a bus with a live vehicle isn't doubled. Only the arrivals list
+  // asks for it (includeSchedule); the map fan-out passes includeSchedule:false
+  // so an 18-stop fan-out never pays this cost (→ 503). Failure degrades
+  // silently to the live-only board.
+  if (includeSchedule) {
     try {
       const [meta, schedule] = await Promise.all([
         getScheduleMeta(env),
