@@ -885,6 +885,9 @@ svg.icon { display: block; }
 .nearby-eta { text-align: right; }
 .nearby-eta__first { font-size: 16px; font-weight: 700; color: var(--on-surface); }
 .nearby-eta__second { font-size: 13px; color: var(--on-surface-variant); }
+/* Soonest departure is a planned (schedule) time, no live vehicle yet — the
+   never-empty tail that keeps a nearby stop from looking dead off-peak. */
+.nearby-eta__sched { font-size: 11px; font-style: italic; color: var(--on-surface-variant); }
 
 /* =========================================================================
    VEHICLE DETAIL SHEET
