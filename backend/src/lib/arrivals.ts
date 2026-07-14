@@ -53,11 +53,6 @@ export async function getArrivals(
       }),
   );
 
-  // Timed-trajectory plan is additive and flag-gated: emitted only when the
-  // feature is on (default ON on staging, OFF on prod), so prod payload and old
-  // clients are untouched. Read once per board build.
-  const timedTrajectoryOn = await getFlag(env, "timed_trajectory");
-
   const arrivals: ArrivalDto[] = [];
   for (const raw of rawArrivals) {
     // Upstream occasionally emits a junk row with no line number. It can't be
@@ -92,15 +87,15 @@ export async function getArrivals(
       gps: raw.gps,
       garage_no: raw.garageNo,
       heading: raw.heading,
-      // `raw.trajectory` is undefined on a stale pre-deploy cache entry; treat
-      // that the same as "no plan" so an old cache never breaks the response.
-      trajectory: timedTrajectoryOn
-        ? (raw.trajectory?.map((p) => ({
-            lat: p.lat,
-            lon: p.lon,
-            eta_seconds: p.etaSeconds,
-          })) ?? null)
-        : undefined,
+      // Forward timing plan. `raw.trajectory` is undefined on a stale pre-deploy
+      // cache entry; treat that the same as "no plan" so an old cache never
+      // breaks the response.
+      trajectory:
+        raw.trajectory?.map((p) => ({
+          lat: p.lat,
+          lon: p.lon,
+          eta_seconds: p.etaSeconds,
+        })) ?? null,
     });
   }
   arrivals.sort((a, b) => a.eta_minutes - b.eta_minutes);

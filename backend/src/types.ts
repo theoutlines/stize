@@ -24,9 +24,9 @@ export interface ArrivalDto {
   gps: { lat: number; lon: number } | null;
   garage_no: string | null;
   heading: number | null;
-  // Forward timing plan, anchored at the response's `updated_at`. Additive and
-  // flag-gated (`timed_trajectory`): absent unless the feature is on, so old
-  // clients and prod are unaffected. Null when no usable plan is available.
+  // Forward timing plan, anchored at the response's `updated_at`. The client
+  // animates markers forward along it by time; null when no usable plan is
+  // available (the marker then eases conservatively to its latest fix).
   trajectory?: TrajectoryPointDto[] | null;
   // Schedule fallback: "scheduled" for a planned (not live) arrival; omitted /
   // "live" for real vehicles. Lets the list show live first + a schedule tail.
