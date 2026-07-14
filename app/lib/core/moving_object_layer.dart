@@ -244,14 +244,19 @@ CircleStyleLayer movingObjectsBadgeLayer() => CircleStyleLayer(
     'circle-color': _badgeColorExpression(),
     'circle-opacity': <Object>['get', 'opacity'],
     'circle-stroke-opacity': <Object>['get', 'opacity'],
+    // Progressive detail (F5): a small coloured *dot* below the detail zoom,
+    // then a jump to the full coin at/above it (where the glyph+number+arrow
+    // symbol layers switch on). Keeping the far-zoom radius small is what makes
+    // the overview read as dots, not a wall of coins.
     'circle-radius': <Object>[
       'interpolate',
       ['linear'],
       ['zoom'],
-      11, 4.0,
-      14, 7.0,
-      kMovingObjectDetailZoom, 13.0,
-      18, 15.0,
+      11, 3.5,
+      14, 5.0,
+      kMovingObjectDetailZoom - 0.1, 6.0,
+      kMovingObjectDetailZoom, 12.0,
+      18, 14.0,
     ],
     'circle-stroke-width': <Object>[
       'case',

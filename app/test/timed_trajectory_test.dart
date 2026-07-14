@@ -9,20 +9,24 @@ import 'package:stigla/domain/models/vehicle_type.dart';
 
 // A straight route heading due east along lat 44.80, lon 20.50 -> 20.60. On it,
 // distance-along grows monotonically with longitude, so tests can reason about
-// forward motion simply as "longitude increases".
+// forward motion simply as "longitude increases". Long enough that the restraint
+// caps (500 m ahead) have headroom.
 RoutePath _eastRoute() => RoutePath.fromLatLon([
       [44.80, 20.50],
       [44.80, 20.60],
     ])!;
 
-// A plan (all on the east route) placing the vehicle at lon 20.50 now, 20.55 at
-// +100s, 20.60 at +200s.
+// A realistic plan (all on the east route): ~237 m station steps spanning 55 s —
+// comfortably inside the restrained-extrapolation window (60 s / 500 m), so the
+// forward/converge/no-rewind behaviour is what these tests exercise. The caps
+// themselves have their own dedicated test.
 List<TrajectoryPoint> _eastPlan() => const [
-      TrajectoryPoint(44.80, 20.50, 0),
-      TrajectoryPoint(44.80, 20.55, 100),
-      TrajectoryPoint(44.80, 20.60, 200),
+      TrajectoryPoint(44.80, 20.500, 0),
+      TrajectoryPoint(44.80, 20.503, 28),
+      TrajectoryPoint(44.80, 20.506, 55),
     ];
 
+const _distance = ll.Distance();
 final _t0 = DateTime(2026, 1, 1, 12, 0, 0);
 
 void main() {
@@ -35,16 +39,16 @@ void main() {
         now: _t0,
       )!;
       // At as-of time the marker sits at the plan's first point.
-      expect(tt.position.longitude, closeTo(20.50, 1e-4));
+      expect(tt.position.longitude, closeTo(20.500, 1e-4));
 
-      // Halfway through the first leg (+50s) it's around lon 20.525.
-      tt.advance(_t0.add(const Duration(seconds: 50)));
-      expect(tt.position.longitude, greaterThan(20.50));
-      expect(tt.position.longitude, lessThan(20.55));
+      // Part-way along (+28 s, the middle waypoint) it has moved east.
+      tt.advance(_t0.add(const Duration(seconds: 28)));
+      expect(tt.position.longitude, greaterThan(20.500));
+      expect(tt.position.longitude, lessThan(20.506));
 
-      // At the second waypoint's eta (+100s) it's reached ~lon 20.55.
-      tt.advance(_t0.add(const Duration(seconds: 100)));
-      expect(tt.position.longitude, closeTo(20.55, 3e-3));
+      // At the last waypoint's eta (+55 s) it's reached ~lon 20.506.
+      tt.advance(_t0.add(const Duration(seconds: 55)));
+      expect(tt.position.longitude, closeTo(20.506, 5e-4));
     });
 
     test('never runs past the end of the plan', () {
@@ -54,14 +58,15 @@ void main() {
         asOf: _t0,
         now: _t0,
       )!;
-      // Way past the plan horizon.
+      // Way past the plan horizon: parked at the plan's end (also the restraint
+      // horizon here, since the plan is < 500 m long).
       tt.advance(_t0.add(const Duration(seconds: 500)));
-      expect(tt.position.longitude, closeTo(20.60, 1e-4));
-      expect(tt.displayDistance, closeTo(tt.endDistance, 0.01));
+      expect(tt.position.longitude, closeTo(20.506, 1e-3));
+      expect(tt.displayDistance, closeTo(tt.endDistance, 0.5));
 
       // Advancing further never pushes it beyond the last waypoint.
       tt.advance(_t0.add(const Duration(seconds: 900)));
-      expect(tt.displayDistance, closeTo(tt.endDistance, 0.01));
+      expect(tt.displayDistance, closeTo(tt.endDistance, 0.5));
     });
 
     test('hasForwardMotion is false once the plan is exhausted (idle)', () {
@@ -77,6 +82,36 @@ void main() {
       expect(tt.hasForwardMotion(_t0.add(const Duration(seconds: 300))), isFalse);
     });
 
+    test('restrains extrapolation: caps how far it predicts past the last fix', () {
+      // A plan that, unchecked, would carry the vehicle kilometres away over ten
+      // minutes. With no fresh fix arriving, the marker must lead only modestly
+      // and then hold — not run away / let the map live its own life.
+      final route = RoutePath.fromLatLon([
+        [44.80, 20.50],
+        [44.80, 20.90],
+      ])!;
+      const farPlan = [
+        TrajectoryPoint(44.80, 20.50, 0),
+        TrajectoryPoint(44.80, 20.60, 600),
+      ];
+      final tt = TimedTrajectory.build(
+        path: route,
+        plan: farPlan,
+        asOf: _t0,
+        now: _t0,
+      )!;
+      final start = tt.position;
+      for (var s = 0; s <= 200; s += 5) {
+        tt.advance(_t0.add(Duration(seconds: s)));
+      }
+      // Stopped predicting once the look-ahead window passed with no fresh data…
+      expect(tt.hasForwardMotion(_t0.add(const Duration(seconds: 200))), isFalse);
+      // …and it led forward but did NOT run away — capped ~500 m ahead.
+      final aheadM = _distance.as(ll.LengthUnit.Meter, start, tt.position);
+      expect(aheadM, greaterThan(100));
+      expect(aheadM, lessThan(600));
+    });
+
     test('a fresher plan that recalculates ETAs longer never rewinds the marker', () {
       final route = _eastRoute();
       final tt = TimedTrajectory.build(
@@ -85,15 +120,15 @@ void main() {
         asOf: _t0,
         now: _t0,
       )!;
-      // Play forward to ~lon 20.55.
-      tt.advance(_t0.add(const Duration(seconds: 100)));
+      // Play forward to ~lon 20.506 (plan end).
+      tt.advance(_t0.add(const Duration(seconds: 60)));
       final before = tt.position.longitude;
-      expect(before, closeTo(20.55, 5e-3));
+      expect(before, closeTo(20.506, 5e-3));
 
-      // A fresh plan (as-of now) says the vehicle is actually back at lon 20.50
-      // and only reaches 20.55 in another 100s — i.e. it's *behind* where the
-      // marker shows. The marker must hold, never jump backward.
-      final now = _t0.add(const Duration(seconds: 100));
+      // A fresh plan (as-of now) says the vehicle is actually back at lon 20.500
+      // — i.e. behind where the marker shows. The marker must hold, never jump
+      // backward.
+      final now = _t0.add(const Duration(seconds: 60));
       tt.updatePlan(path: route, plan: _eastPlan(), asOf: now, now: now);
       final lons = <double>[before];
       for (var s = 0; s <= 60; s += 10) {
@@ -115,29 +150,30 @@ void main() {
         asOf: _t0,
         now: _t0,
       )!;
-      // Marker is near the start (lon ~20.50).
-      expect(tt.position.longitude, closeTo(20.50, 1e-3));
+      // Marker is near the start (lon ~20.500).
+      expect(tt.position.longitude, closeTo(20.500, 1e-3));
 
-      // A fresh plan says the vehicle is already at lon 20.58 now (moved faster
-      // than predicted). One short frame later it should have advanced toward it
-      // but NOT jumped all the way — smooth convergence.
+      // A fresh plan says the vehicle is already at lon 20.503 now (moved faster
+      // than predicted) — within the restraint window. One short frame later it
+      // should have advanced toward it but NOT jumped all the way.
       tt.updatePlan(
         path: route,
         plan: const [
-          TrajectoryPoint(44.80, 20.58, 0),
-          TrajectoryPoint(44.80, 20.60, 100),
+          TrajectoryPoint(44.80, 20.503, 0),
+          TrajectoryPoint(44.80, 20.506, 60),
         ],
         asOf: _t0,
         now: _t0,
       );
       tt.advance(_t0.add(const Duration(milliseconds: 500)));
       final afterOneFrame = tt.position.longitude;
-      expect(afterOneFrame, greaterThan(20.50)); // moved forward
-      expect(afterOneFrame, lessThan(20.58)); // but did not teleport to target
+      expect(afterOneFrame, greaterThan(20.500)); // moved forward
+      expect(afterOneFrame, lessThan(20.503)); // but did not teleport to target
 
-      // Given enough time it does reach it.
-      tt.advance(_t0.add(const Duration(seconds: 20)));
-      expect(tt.position.longitude, closeTo(20.58, 5e-3));
+      // Given enough time it reaches and passes the fresh start.
+      tt.advance(_t0.add(const Duration(seconds: 40)));
+      expect(tt.position.longitude, greaterThan(20.503));
+      expect(tt.position.longitude, lessThan(20.507));
     });
 
     test('build returns null without a usable path or ≥2 forward points', () {
@@ -155,12 +191,12 @@ void main() {
     test('upgrading to a refined geometry re-anchors at the same spot', () {
       // Start on the plan's own straight chord (no road shape loaded yet).
       final chord = RoutePath.fromLatLon([
-        [44.80, 20.50],
-        [44.80, 20.60],
+        [44.80, 20.500],
+        [44.80, 20.506],
       ])!;
       const plan = [
-        TrajectoryPoint(44.80, 20.50, 0),
-        TrajectoryPoint(44.80, 20.60, 100),
+        TrajectoryPoint(44.80, 20.500, 0),
+        TrajectoryPoint(44.80, 20.506, 55),
       ];
       final tt = TimedTrajectory.build(
         path: chord,
@@ -168,28 +204,28 @@ void main() {
         asOf: _t0,
         now: _t0,
       )!;
-      tt.advance(_t0.add(const Duration(seconds: 50)));
+      tt.advance(_t0.add(const Duration(seconds: 28)));
       final before = tt.position.longitude;
-      expect(before, closeTo(20.55, 2e-2));
+      expect(before, closeTo(20.503, 5e-3));
 
       // The road shape arrives (denser vertices, same line). Upgrading the
       // geometry must re-anchor at the same geographic spot — NOT reset to the
       // route origin (which a raw distance-along on a different path would do).
       final road = RoutePath.fromLatLon([
-        [44.80, 20.50],
-        [44.80, 20.53],
-        [44.80, 20.57],
-        [44.80, 20.60],
+        [44.80, 20.500],
+        [44.80, 20.502],
+        [44.80, 20.504],
+        [44.80, 20.506],
       ])!;
       tt.updatePlan(
         path: road,
         plan: plan,
         asOf: _t0,
-        now: _t0.add(const Duration(seconds: 50)),
+        now: _t0.add(const Duration(seconds: 28)),
       );
       expect(tt.position.longitude, closeTo(before, 5e-3));
       // And keeps moving forward from there.
-      tt.advance(_t0.add(const Duration(seconds: 70)));
+      tt.advance(_t0.add(const Duration(seconds: 45)));
       expect(tt.position.longitude, greaterThan(before));
     });
   });
@@ -198,7 +234,7 @@ void main() {
     VehicleSample sample(String key, {required DateTime asOf, DateTime? now}) {
       return VehicleSample(
         key: key,
-        position: const ll.LatLng(44.80, 20.50),
+        position: const ll.LatLng(44.80, 20.500),
         line: '2',
         type: VehicleType.tram,
         path: _eastRoute(),
@@ -213,10 +249,10 @@ void main() {
       animator.syncSamples([sample('P1', asOf: _t0)], 0, now: now);
 
       // Mid-plan: advancing the clock moves the marker east and keeps it live.
-      now = _t0.add(const Duration(seconds: 50));
+      now = _t0.add(const Duration(seconds: 40));
       animator.advanceTimed(now);
       final mid = animator.positionOf('P1', 0);
-      expect(mid.longitude, greaterThan(20.50));
+      expect(mid.longitude, greaterThan(20.500));
       expect(animator.hasPendingMotion, isTrue);
       // Heading comes from the route tangent (due east ≈ 90°).
       expect(animator.headingAt('P1', 0)!, closeTo(90, 5));
@@ -224,7 +260,7 @@ void main() {
       // Past the plan's horizon: parked at the end, nothing left to animate.
       now = _t0.add(const Duration(seconds: 300));
       animator.advanceTimed(now);
-      expect(animator.positionOf('P1', 0).longitude, closeTo(20.60, 1e-3));
+      expect(animator.positionOf('P1', 0).longitude, closeTo(20.506, 1e-3));
       expect(animator.hasPendingMotion, isFalse);
     });
 
@@ -232,7 +268,7 @@ void main() {
       var now = _t0;
       final animator = VehicleTrackAnimator(clock: () => now);
       animator.syncSamples([sample('P1', asOf: _t0)], 0, now: now);
-      now = _t0.add(const Duration(seconds: 100));
+      now = _t0.add(const Duration(seconds: 60));
       animator.advanceTimed(now);
       final before = animator.positionOf('P1', 0).longitude;
 
@@ -283,7 +319,7 @@ void main() {
       animator.syncSamples([
         VehicleSample(
           key: 'P1',
-          position: const ll.LatLng(44.80, 20.50),
+          position: const ll.LatLng(44.80, 20.500),
           line: '2',
           type: VehicleType.tram,
           path: null,
@@ -292,9 +328,9 @@ void main() {
         ),
       ], 0, now: now);
       expect(animator.trackFor('P1')!.timed, isNotNull);
-      now = _t0.add(const Duration(seconds: 100));
+      now = _t0.add(const Duration(seconds: 30));
       animator.advanceTimed(now);
-      expect(animator.positionOf('P1', 0).longitude, greaterThan(20.50));
+      expect(animator.positionOf('P1', 0).longitude, greaterThan(20.500));
       expect(animator.hasMotion('P1'), isTrue);
     });
 
@@ -302,7 +338,7 @@ void main() {
       var now = _t0;
       final animator = VehicleTrackAnimator(clock: () => now);
       animator.syncSamples([sample('P1', asOf: _t0)], 0, now: now);
-      now = _t0.add(const Duration(seconds: 100));
+      now = _t0.add(const Duration(seconds: 60));
       animator.advanceTimed(now);
       final before = animator.positionOf('P1', 0).longitude;
 
@@ -310,7 +346,7 @@ void main() {
       animator.syncSamples([
         VehicleSample(
           key: 'P1',
-          position: const ll.LatLng(44.80, 20.55),
+          position: const ll.LatLng(44.80, 20.506),
           line: '2',
           type: VehicleType.tram,
           path: _eastRoute(),
@@ -319,8 +355,7 @@ void main() {
       expect(animator.trackFor('P1')!.timed, isNull);
       // The marker resumes conservative easing from where it visually was — it
       // does not snap back to the route origin.
-      expect(animator.positionOf('P1', 0).longitude,
-          closeTo(before, 1e-3));
+      expect(animator.positionOf('P1', 0).longitude, closeTo(before, 1e-3));
     });
   });
 }

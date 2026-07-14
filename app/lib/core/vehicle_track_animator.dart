@@ -142,7 +142,7 @@ class VehicleTrackAnimator {
   // before dropping it (X6 grace period). At ~30s/update this holds a blinked-
   // out vehicle ~2 min, faded, rather than popping it off the instant the
   // reconstruction drops it from one fan-out.
-  static const _graceThreshold = 4;
+  static const _graceThreshold = 3;
 
   // Never let a marker jump more than this toward a new fix in a single update:
   // excess distance is deferred to later updates so the marker eases at a
@@ -383,14 +383,16 @@ class VehicleTrackAnimator {
     return _clock().difference(t.lastMovedAt) >= _stuckAfter;
   }
 
-  /// Display opacity for a vehicle: fully opaque while present, then fading
-  /// gently over the grace period once it goes missing rather than vanishing
-  /// abruptly (X6).
+  /// Display opacity for a vehicle: fully opaque while present, then fading over
+  /// the grace period once it goes missing rather than vanishing abruptly (X6).
+  /// Steeper than before (and a shorter grace, [_graceThreshold]=3) so a vehicle
+  /// with no fresh data fades out quickly instead of lingering — the "don't hold
+  /// a stale prediction" half of restrained extrapolation.
   double opacityFor(String key) {
     final missing = _tracks[key]?.missingCount ?? 0;
     if (missing <= 0) return 1.0;
-    const fade = <int, double>{1: 0.7, 2: 0.55, 3: 0.4};
-    return fade[missing] ?? 0.28;
+    const fade = <int, double>{1: 0.55, 2: 0.3, 3: 0.12};
+    return fade[missing] ?? 0.0;
   }
 
   VehicleTrack? trackFor(String key) => _tracks[key];

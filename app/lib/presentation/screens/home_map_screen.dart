@@ -576,7 +576,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// driver produces frames and snapped on a one-off write at rest, so nothing is
   /// left half-arranged and idle stays at zero frames.
   List<MovingObject> _arrangeVehicles(List<MovingObject> objects, double zoom) {
-    if (objects.isEmpty) {
+    // Far zoom shows plain dots (below the detail threshold): don't fan or
+    // cross-fade there. The cell grid is coarse in metres when zoomed out, so
+    // membership churns as the camera moves — that churn read as jitter on the
+    // overview. Dots overlapping is fine; render true positions, state cleared.
+    if (objects.isEmpty || zoom < kMovingObjectDetailZoom) {
       _spiderfyOffset.clear();
       _crossOpacity.clear();
       return objects;

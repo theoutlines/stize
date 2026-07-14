@@ -43,6 +43,15 @@ class TimedTrajectory {
   // A plan step shorter than this (metres) isn't worth treating as motion.
   static const double _epsilonMeters = 0.5;
 
+  // Restrained extrapolation — how far the marker is allowed to *predict* past
+  // the last real fix before it holds and waits for fresh data, so it leads
+  // reality without "running away" / the map living its own life. Normally moot
+  // (a fresh fix lands every ~30s, resetting both), these only bite when data
+  // stops (vehicle left the fan-out, a feed gap): the marker coasts at most this
+  // far ahead in time OR distance, then parks (and the grace fade takes over).
+  static const double _maxLookaheadSeconds = 60;
+  static const double _maxAheadMeters = 500;
+
   /// Builds a player, or null when the plan/path can't form a usable monotone
   /// distance-vs-time table (needs a usable path and ≥2 strictly-forward points).
   static TimedTrajectory? build({
@@ -94,7 +103,11 @@ class TimedTrajectory {
   /// *now*. Forward-only: holds (never reverses) when the plan is behind the
   /// marker, converges smoothly when it's ahead, clamps at the plan's end.
   void advance(DateTime now) {
-    final target = _distAtElapsed(_waypoints, _elapsedSeconds(_asOf, now));
+    final elapsed = _elapsedSeconds(_asOf, now);
+    final capped = elapsed < _maxLookaheadSeconds ? elapsed : _maxLookaheadSeconds;
+    final horizon = _horizonDist;
+    var target = _distAtElapsed(_waypoints, capped);
+    if (target > horizon) target = horizon;
     final dt = now.difference(_lastAdvance).inMicroseconds / 1e6;
     _lastAdvance = now;
     if (dt > 0 && target > _dispDist) {
@@ -102,14 +115,20 @@ class TimedTrajectory {
       _dispDist += gap * (1 - math.exp(-dt / _convergeTau));
       if (_dispDist > target) _dispDist = target;
     }
-    final end = endDistance;
-    if (_dispDist > end) _dispDist = end;
+    if (_dispDist > horizon) _dispDist = horizon;
   }
 
   double get displayDistance => _dispDist;
   double get endDistance => _waypoints.last.dist;
-  DateTime get endTime =>
-      _asOf.add(Duration(milliseconds: (_waypoints.last.etaSeconds * 1000).round()));
+
+  // The furthest distance-along the marker may predict to right now: the plan's
+  // end, but no more than [_maxAheadMeters] past the last fix (waypoint 0). Keeps
+  // extrapolation restrained when fresh fixes stop coming.
+  double get _horizonDist {
+    final byDistance = _waypoints.first.dist + _maxAheadMeters;
+    final end = endDistance;
+    return byDistance < end ? byDistance : end;
+  }
 
   ll.LatLng get position => _path.pointAt(_dispDist);
   // Smoothed (look-ahead) bearing: turns continuously through a curve so the
@@ -121,8 +140,11 @@ class TimedTrajectory {
   /// it has reached the plan's end or wall-clock has run past the plan's horizon
   /// (no fresh data) — the caller then parks the ticker (idle = zero frames).
   bool hasForwardMotion(DateTime now) {
-    if (_dispDist >= endDistance - _epsilonMeters) return false;
-    return now.isBefore(endTime);
+    if (_dispDist >= _horizonDist - _epsilonMeters) return false;
+    // Only predict up to the look-ahead window past the plan's as-of time; once
+    // fresh data has stopped for longer than that, park (the grace fade removes
+    // it) instead of coasting on indefinitely.
+    return _elapsedSeconds(_asOf, now) < _maxLookaheadSeconds;
   }
 
   // Projects each plan point onto [path], keeping only strictly-forward,
