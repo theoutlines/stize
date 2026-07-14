@@ -30,7 +30,11 @@ export async function getNearbyVehicles(
   const stops = (await nearbyStops(env, lat, lon, radius)).slice(0, MAX_STOPS_FANOUT);
 
   const boards = await Promise.all(
-    stops.map((s) => getArrivals(env, ctx, s.stop_id).catch(() => null)),
+    // Map path: skip the schedule fallback (list-only) so an 18-stop fan-out
+    // doesn't blow Cloudflare's per-invocation subrequest / CPU limits (→ 503).
+    stops.map((s) =>
+      getArrivals(env, ctx, s.stop_id, { includeSchedule: false }).catch(() => null),
+    ),
   );
 
   const center = { lat, lon };
