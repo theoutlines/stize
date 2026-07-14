@@ -49,6 +49,13 @@ Production (`main`, flags off) and a separate **staging** web contour (dev flags
 on, isolated KV/D1, STAGING badge) for testing unreleased features. Addresses,
 data isolation and the promote-to-prod steps are in `docs/staging.md`.
 
+## Architecture
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the backend and app
+fit together and the non-obvious gotchas (map rendering on CanvasKit, GeoJSON
+escaping, caching, `PointerInterceptor`, staging defines, …). Read it before
+touching the map stack or adding a backend route.
+
 ## Code style
 
 - Code and comments: English.

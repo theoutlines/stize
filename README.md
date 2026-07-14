@@ -75,5 +75,6 @@ a local backend with `--dart-define=API_BASE_URL=http://localhost:8787`.
 ## Contributing & license
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — ground rules and setup.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how it's built + non-obvious gotchas.
 - [`CHANGELOG.md`](CHANGELOG.md) — human-readable history.
 - Licensed under **AGPL-3.0** — see [`LICENSE`](LICENSE).
