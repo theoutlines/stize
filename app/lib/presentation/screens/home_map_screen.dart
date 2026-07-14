@@ -1611,88 +1611,81 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final stopsOpacity = _coverageEnabled
         ? coverageMainStopsOpacity(zoom)
         : 1.0;
-    // Fully faded out ⇒ don't build the stop layers at all (heatmap-only view).
-    final showStops = stopsOpacity > 0.01;
+
+    // The layer list MUST stay a fixed length in a fixed order. maplibre 0.3.5
+    // keys sources/layers *positionally* (`maplibre-layer-$index`) and its
+    // LayerManager reconciles the new list against the old **by index**. If an
+    // entry appears/disappears (a `if (…isNotEmpty)` layer, or the async-loaded
+    // tram-rails polyline dropping in at the front), every later layer shifts
+    // index — so the manager does a cross-type removeLayer(i)+addLayer(i) whose
+    // *unawaited* platform calls can race and silently drop a stop layer,
+    // leaving markers built but never drawn (the "stop has an OSM icon but no
+    // clickable pin" bug). Keeping the list stable (empty feature lists instead
+    // of omission) pins each layer to a constant index+type, so reconcile only
+    // ever refreshes a source's data — never a racy cross-type swap.
+    Feature<Point> pointFeature(Stop s) => Feature<Point>(
+      geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
+      properties: {'stopId': s.stopId, 'name': s.name},
+    );
+    MarkerLayer stopLayer(List<Feature<Point>> points, String image) =>
+        MarkerLayer(
+          points: points,
+          iconImage: image,
+          iconSize: _iconSize,
+          iconOpacity: stopsOpacity,
+          iconAllowOverlap: true,
+        );
+
     return [
-      // Tram rails, under everything (C2).
-      if (_tramRails.isNotEmpty)
-        PolylineLayer(
-          polylines: [
-            for (final poly in _tramRails)
-              Feature<LineString>(
-                geometry: LineString.from([
-                  for (final p in poly) Geographic(lon: p[1], lat: p[0]),
-                ]),
-              ),
-          ],
-          color: tramRailColor,
-          width: 2,
-        ),
-      if (showStops && _clusterPts.isNotEmpty)
-        MarkerLayer(
-          points: _clusterPts,
-          iconImage: MapImages.cluster,
-          iconSize: _iconSize,
-          iconOpacity: stopsOpacity,
-          iconAllowOverlap: true,
-          textField: '{point_count}',
-          textColor: _scheme.onPrimary,
-          textSize: 13,
-          textAllowOverlap: true,
-        ),
-      if (showStops && _busPts.isNotEmpty)
-        MarkerLayer(
-          points: _busPts,
-          iconImage: MapImages.bus,
-          iconSize: _iconSize,
-          iconOpacity: stopsOpacity,
-          iconAllowOverlap: true,
-        ),
-      if (showStops && _tramPts.isNotEmpty)
-        MarkerLayer(
-          points: _tramPts,
-          iconImage: MapImages.tram,
-          iconSize: _iconSize,
-          iconOpacity: stopsOpacity,
-          iconAllowOverlap: true,
-        ),
-      if (showStops && _trolleyPts.isNotEmpty)
-        MarkerLayer(
-          points: _trolleyPts,
-          iconImage: MapImages.trolley,
-          iconSize: _iconSize,
-          iconOpacity: stopsOpacity,
-          iconAllowOverlap: true,
-        ),
-      if (showStops && _mixedPts.isNotEmpty)
-        MarkerLayer(
-          points: _mixedPts,
-          iconImage: MapImages.mixedStop,
-          iconSize: _iconSize,
-          iconOpacity: stopsOpacity,
-          iconAllowOverlap: true,
-        ),
-      if (favoriteStops.isNotEmpty)
-        MarkerLayer(
-          points: [
-            for (final s in favoriteStops)
-              Feature<Point>(
-                geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
-                properties: {'stopId': s.stopId, 'name': s.name},
-              ),
-          ],
-          iconImage: MapImages.favorite,
-          iconSize: _iconSize,
-          iconAllowOverlap: true,
-        ),
-      if (_pinnedPlace != null)
-        MarkerLayer(
-          points: [Feature<Point>(geometry: Point(_pinnedPlace!))],
-          iconImage: MapImages.place,
-          iconSize: _iconSize,
-          iconAnchor: IconAnchor.bottom,
-          iconAllowOverlap: true,
-        ),
+      // Tram rails, under everything (C2). Always present (empty when the
+      // shapes haven't loaded) so its arrival never shifts the layers above.
+      PolylineLayer(
+        polylines: [
+          for (final poly in _tramRails)
+            Feature<LineString>(
+              geometry: LineString.from([
+                for (final p in poly) Geographic(lon: p[1], lat: p[0]),
+              ]),
+            ),
+        ],
+        color: tramRailColor,
+        width: 2,
+      ),
+      // Stop markers. Opacity (not presence) does the coverage crossfade, so the
+      // count stays constant; `_areaStops` is already empty below the min zoom.
+      MarkerLayer(
+        points: _clusterPts,
+        iconImage: MapImages.cluster,
+        iconSize: _iconSize,
+        iconOpacity: stopsOpacity,
+        iconAllowOverlap: true,
+        textField: '{point_count}',
+        textColor: _scheme.onPrimary,
+        textSize: 13,
+        textAllowOverlap: true,
+      ),
+      stopLayer(_busPts, MapImages.bus),
+      stopLayer(_tramPts, MapImages.tram),
+      stopLayer(_trolleyPts, MapImages.trolley),
+      stopLayer(_mixedPts, MapImages.mixedStop),
+      // Favourites — always present (empty when none).
+      MarkerLayer(
+        points: [for (final s in favoriteStops) pointFeature(s)],
+        iconImage: MapImages.favorite,
+        iconSize: _iconSize,
+        iconAllowOverlap: true,
+      ),
+      // Pinned place — always present (empty when none).
+      MarkerLayer(
+        points: [
+          if (_pinnedPlace case final place?)
+            Feature<Point>(geometry: Point(place)),
+        ],
+        iconImage: MapImages.place,
+        iconSize: _iconSize,
+        iconAnchor: IconAnchor.bottom,
+        iconAllowOverlap: true,
+      ),
       // NB: "my position" is intentionally *not* here — it's a WidgetLayer
       // marker (see build) so it can't be culled at low zoom (X2).
     ];
