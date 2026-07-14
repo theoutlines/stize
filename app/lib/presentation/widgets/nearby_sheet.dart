@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart' as ll;
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
 import '../../data/api/api_exceptions.dart';
@@ -178,19 +179,26 @@ class _NearbySheetState extends ConsumerState<NearbySheet> {
       snap: true,
       snapSizes: const [0.30, 0.92],
       builder: (context, scrollController) {
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: const [
-              BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, -2)),
-            ],
-          ),
-          child: Column(
-            children: [
-              _header(theme),
-              Expanded(child: _content(scrollController)),
-            ],
+        // PointerInterceptor stops scroll/drag/taps on the sheet from falling
+        // through to the MapLibre platform view underneath (which would pan/zoom
+        // the map) on web — the same guard the stop/vehicle sheets use. It wraps
+        // only the sheet's own extent, so the map still pans in the area above it.
+        // No-op on mobile.
+        return PointerInterceptor(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              boxShadow: const [
+                BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, -2)),
+              ],
+            ),
+            child: Column(
+              children: [
+                _header(theme),
+                Expanded(child: _content(scrollController)),
+              ],
+            ),
           ),
         );
       },
