@@ -256,6 +256,18 @@ abstract class AppLocalizations {
   /// **'Zoom in to see live transport'**
   String get mapZoomInForVehicles;
 
+  /// No description provided for @vehicleScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'By schedule — not a live position'**
+  String get vehicleScheduled;
+
+  /// No description provided for @noLiveVehiclesOnMap.
+  ///
+  /// In en, this message translates to:
+  /// **'No live-tracked vehicles to map right now — see the arrivals below.'**
+  String get noLiveVehiclesOnMap;
+
   /// No description provided for @nearbySearchHint.
   ///
   /// In en, this message translates to:
@@ -333,6 +345,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Now'**
   String get arrivalEtaNow;
+
+  /// No description provided for @arrivalScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled'**
+  String get arrivalScheduled;
 
   /// No description provided for @arrivalStopsAway.
   ///
@@ -525,6 +543,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'About Stigla'**
   String get aboutTitle;
+
+  /// No description provided for @aboutRouteData.
+  ///
+  /// In en, this message translates to:
+  /// **'Route data: {date}'**
+  String aboutRouteData(String date);
 
   /// No description provided for @aboutDisclaimer.
   ///

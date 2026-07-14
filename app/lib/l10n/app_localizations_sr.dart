@@ -104,6 +104,13 @@ class AppLocalizationsSr extends AppLocalizations {
   String get mapZoomInForVehicles => 'Uvećaj mapu da vidiš prevoz uživo';
 
   @override
+  String get vehicleScheduled => 'Po redu vožnje — nije pozicija uživo';
+
+  @override
+  String get noLiveVehiclesOnMap =>
+      'Trenutno nema vozila uživo na mapi — pogledaj dolaske ispod.';
+
+  @override
   String get nearbySearchHint => 'Filtriraj linije u blizini…';
 
   @override
@@ -151,6 +158,9 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get arrivalEtaNow => 'Sada';
+
+  @override
+  String get arrivalScheduled => 'Po redu vožnje';
 
   @override
   String arrivalStopsAway(int count) {
@@ -261,6 +271,11 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get aboutTitle => 'O Stigla aplikaciji';
+
+  @override
+  String aboutRouteData(String date) {
+    return 'Podaci o linijama: $date';
+  }
 
   @override
   String get aboutDisclaimer =>

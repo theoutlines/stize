@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
 import {
+  getFeedMeta,
   getLineByNumber,
   getLineDirections,
   getRouteShape,
@@ -83,5 +84,15 @@ describe("gtfsData (against the real built GTFS bundle)", () => {
 
   it("returns null for an unknown route_id", async () => {
     expect(await getRouteShape(env, "not-a-real-route")).toBeNull();
+  });
+
+  it("exposes bundle freshness metadata (feed_meta.json)", async () => {
+    const meta = await getFeedMeta(env);
+    expect(meta).not.toBeNull();
+    // ISO dates (or null), a build timestamp, and the bundle counts.
+    expect(meta?.feed_start_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(meta?.built_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(meta?.counts.stops).toBeGreaterThan(0);
+    expect(meta?.counts.lines).toBeGreaterThan(0);
   });
 });

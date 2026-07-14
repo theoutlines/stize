@@ -6,9 +6,12 @@ import {
 } from "../src/lib/nearbyArrivals";
 import type { ArrivalDto, StopDto, VehicleType } from "../src/types";
 
+// `direction` doubles as the arrival's direction route_id (the grouping key) and,
+// via [dests] below, its display name — mirroring how getNearbyArrivals groups by
+// `direction_route_id` and resolves the terminus name from GTFS line metadata.
 function arrival(
   line: string,
-  destination: string | null,
+  direction: string | null,
   etaMinutes: number,
   extra: Partial<ArrivalDto> = {},
 ): ArrivalDto {
@@ -18,13 +21,20 @@ function arrival(
     eta_minutes: etaMinutes,
     stops_remaining: null,
     route_id: line,
+    direction_route_id: direction ?? line,
     gps: null,
     garage_no: null,
     heading: null,
-    destination,
-    direction_id: null,
     ...extra,
   };
+}
+
+// Build the route_id → destination-name map the way getNearbyArrivals does, but
+// for tests we let the direction key be its own display name.
+function dests(...names: string[]): Map<string, string | null> {
+  const m = new Map<string, string | null>();
+  for (const n of names) m.set(n, n);
+  return m;
 }
 
 function board(
@@ -39,23 +49,23 @@ function board(
     stop,
     distanceMeters,
     board: {
-      stop_id: stopId,
-      stop_name: stopName,
       updated_at: updatedAt,
       arrivals,
-      service_status: "ok",
     },
   };
 }
 
 describe("groupNearbyArrivals", () => {
-  it("groups by line + direction (destination), one row per group", () => {
-    const groups = groupNearbyArrivals([
-      board("A", "Stop A", 100, [
-        arrival("79", "Zeleni venac", 5),
-        arrival("79", "Blok 45", 8), // same line, opposite direction
-      ]),
-    ]);
+  it("groups by line + direction (direction_route_id), one row per group", () => {
+    const groups = groupNearbyArrivals(
+      [
+        board("A", "Stop A", 100, [
+          arrival("79", "Zeleni venac", 5),
+          arrival("79", "Blok 45", 8), // same line, opposite direction
+        ]),
+      ],
+      dests("Zeleni venac", "Blok 45"),
+    );
     expect(groups.length).toBe(2);
     expect(new Set(groups.map((g) => g.destination))).toEqual(
       new Set(["Zeleni venac", "Blok 45"]),
@@ -95,11 +105,11 @@ describe("groupNearbyArrivals", () => {
     expect(groups.map((g) => g.line)).toEqual(["2", "1", "3"]);
   });
 
-  it("distinguishes directions that only differ by direction_id when destination is absent", () => {
+  it("distinguishes the two directions of a line by their direction_route_id", () => {
     const groups = groupNearbyArrivals([
       board("A", "Stop A", 100, [
-        arrival("41", null, 5, { direction_id: "0" }),
-        arrival("41", null, 6, { direction_id: "1" }),
+        arrival("41", "41-0", 5),
+        arrival("41", "41-1", 6),
       ]),
     ]);
     expect(groups.length).toBe(2);
@@ -143,6 +153,7 @@ describe("groupNearbyArrivals — board sort", () => {
         board("near", "Batutova", 43, [arrival("79", "Dorćol", 5)]),
         board("far", "Škola", 294, [arrival("62", "Zvezdara", 2)]),
       ],
+      new Map(),
       "board",
     );
     expect(groups.map((g) => g.line)).toEqual(["79", "62"]);

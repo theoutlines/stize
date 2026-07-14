@@ -65,15 +65,29 @@ Set<VehicleType> stopTypes(Stop stop) {
   return types;
 }
 
-/// The marker-image id for a stop, coloured by the type it serves (D1). A stop
-/// served by more than one type (e.g. bus + trolley) gets a single *unified*
-/// "mixed" marker (D2) rather than several stacked icons — the official app's
-/// habit of drawing two pins on a mixed stop is exactly the clutter we avoid.
-/// Always one marker per stop.
-String stopImageFor(Stop stop) {
+/// The single marker type to draw for a stop, applying type priority.
+/// Returns `null` when the stop should use the unified "mixed" marker.
+///
+/// Trams dominate absolutely: any tram line makes it a tram stop, even when
+/// buses (including night buses) or trolleys also call there — a stop on the
+/// rails is always a tram stop (owner rule). For non-tram stops the older
+/// behaviour stands: more than one type (e.g. bus + trolley) → mixed marker;
+/// a single type → that type. Always one marker per stop.
+VehicleType? stopMarkerType(Stop stop) {
   final types = stopTypes(stop);
-  if (types.length > 1) return MapImages.mixedStop;
-  return MapImages.forStop(types.isEmpty ? VehicleType.bus : types.first);
+  if (types.contains(VehicleType.tram)) return VehicleType.tram;
+  if (types.length > 1) return null; // mixed (e.g. bus + trolley)
+  return types.isEmpty ? VehicleType.bus : types.first;
+}
+
+/// The marker-image id for a stop, coloured by the type it serves (D1). A stop
+/// served by more than one *non-tram* type (e.g. bus + trolley) gets a single
+/// *unified* "mixed" marker (D2) rather than several stacked icons — the
+/// official app's habit of drawing two pins on a mixed stop is exactly the
+/// clutter we avoid. Always one marker per stop.
+String stopImageFor(Stop stop) {
+  final type = stopMarkerType(stop);
+  return type == null ? MapImages.mixedStop : MapImages.forStop(type);
 }
 
 /// Works around a MapLibre-on-web init race: the web plugin measures the map

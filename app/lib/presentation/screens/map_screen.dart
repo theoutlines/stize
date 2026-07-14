@@ -144,7 +144,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             for (final s in widget.stops)
               Feature<Point>(
                 geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
-                properties: {'stopId': s.stopId, 'name': s.name},
+                // Only `stopId` (the tap handler looks the name up from it). A
+                // `name` here would be serialised by the declarative
+                // LayerManager's geobase `toText()`, which doesn't escape `"` —
+                // stops like `Park "Tašmajdan"` would emit invalid JSON and
+                // vanish. See home_map_screen `_pushStopSources`.
+                properties: {'stopId': s.stopId},
               ),
           ],
           iconImage: MapImages.bus,

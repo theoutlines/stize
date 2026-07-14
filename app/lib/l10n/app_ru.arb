@@ -31,6 +31,8 @@
   "nearbyStopsTitle": "Остановки рядом",
   "nearbyStopsEmpty": "Включи геолокацию или поищи остановку, улицу или линию выше.",
   "mapZoomInForVehicles": "Приблизьте карту, чтобы увидеть транспорт",
+  "vehicleScheduled": "По расписанию — не живая позиция",
+  "noLiveVehiclesOnMap": "Нет машин с live-позицией — смотри список прибытий ниже.",
 
   "nearbySearchHint": "Фильтр линий рядом…",
   "nearbyDistanceMeters": "{meters} м",
@@ -48,6 +50,7 @@
 
   "arrivalEtaMinutes": "{minutes} мин",
   "arrivalEtaNow": "Сейчас",
+  "arrivalScheduled": "По расписанию",
   "arrivalStopsAway": "{count, plural, =0{здесь} one{{count} остановка} few{{count} остановки} many{{count} остановок} other{{count} остановок}}",
 
   "vehicleMoving": "В движении",
@@ -89,6 +92,7 @@
   "settingsThemeDark": "Тёмная",
 
   "aboutTitle": "О Stigla",
+  "aboutRouteData": "Данные маршрутов: {date}",
   "aboutDisclaimer": "Неофициальное приложение. Не связано с JKP Upravljanje javnim prevozom Beograd.",
   "aboutDescription": "Stigla показывает прибытие транспорта Белграда в реальном времени. Сделано для личного использования.",
 

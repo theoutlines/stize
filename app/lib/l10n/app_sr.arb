@@ -31,6 +31,8 @@
   "nearbyStopsTitle": "Stajališta u blizini",
   "nearbyStopsEmpty": "Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.",
   "mapZoomInForVehicles": "Uvećaj mapu da vidiš prevoz uživo",
+  "vehicleScheduled": "Po redu vožnje — nije pozicija uživo",
+  "noLiveVehiclesOnMap": "Trenutno nema vozila uživo na mapi — pogledaj dolaske ispod.",
 
   "nearbySearchHint": "Filtriraj linije u blizini…",
   "nearbyDistanceMeters": "{meters} m",
@@ -48,6 +50,7 @@
 
   "arrivalEtaMinutes": "{minutes} min",
   "arrivalEtaNow": "Sada",
+  "arrivalScheduled": "Po redu vožnje",
   "arrivalStopsAway": "{count, plural, =0{ovde} one{{count} stanica} few{{count} stanice} other{{count} stanica}}",
 
   "vehicleMoving": "U pokretu",
@@ -89,6 +92,7 @@
   "settingsThemeDark": "Tamna",
 
   "aboutTitle": "O Stigla aplikaciji",
+  "aboutRouteData": "Podaci o linijama: {date}",
   "aboutDisclaimer": "Nezvanična aplikacija. Nije povezana sa JKP Upravljanje javnim prevozom Beograd.",
   "aboutDescription": "Stigla prikazuje dolaske javnog prevoza u Beogradu u realnom vremenu. Napravljeno za ličnu upotrebu.",
 

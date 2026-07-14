@@ -25,6 +25,39 @@ import type { Env } from "../env";
 //                       stop clusters). Independent of coverage_map_show: the
 //                       tab can be off while the overlay is on, and vice-versa.
 //                       OFF on prod, ON on staging.
+//   timed_trajectory  — the backend emits each vehicle's forward timing plan
+//                       (`trajectory`) and the app animates markers smoothly
+//                       forward along it by time, instead of easing to the last
+//                       fix and stopping. OFF on prod, ON on staging until ready.
+//   symbol_layer      — the app renders moving vehicles as a MapLibre GPU symbol
+//                       layer (batched, sub-linear in vehicle count) instead of
+//                       per-vehicle Flutter widgets. Client-side render flag,
+//                       independent of timed_trajectory (which is the data flag).
+//                       OFF on prod (widget path stays the fallback), ON staging.
+//   live_position_only — the app draws on the map only vehicles with a real live
+//                       GPS position. The upstream emits schedule-derived
+//                       placeholder rows (junk garage id `P1..P999`, GPS = the
+//                       stop's own coordinate) that aren't tracked vehicles; with
+//                       this on they stay in the arrivals *list* but are not drawn
+//                       as (stationary, stacked-on-the-stop) markers. Read
+//                       client-side. OFF on prod, ON on staging.
+//   vehicle_direction_shape — the map stitches a moving vehicle to the shape of
+//                       the direction it's actually travelling (resolved backend-
+//                       side from its `all_stations`), instead of always the
+//                       canonical direction. Fixes markers drawn on the wrong
+//                       street ("through houses"). Read client-side; the backend
+//                       always sends the resolved route_id. OFF prod, ON staging.
+//   schedule_fallback — hybrid live+schedule. Gates the arrivals *list* (Phase 1):
+//                       the stop board gains planned departures
+//                       (`source:"scheduled"`), deduped against live. Also the
+//                       flag the *client* reads to render scheduled objects at
+//                       all. OFF prod.
+//   schedule_map — the map (`/vehicles/nearby`) emits schedule-predicted vehicles
+//                       (Phase 2) where a line has no live vehicle, moved by the
+//                       same timed trajectory. Separate from schedule_fallback so
+//                       the map can be rolled back without killing the (proven)
+//                       list. Both it and schedule_fallback must be ON for
+//                       scheduled buses to appear on the map. OFF prod.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -32,6 +65,12 @@ export const FEATURE_FLAGS = [
   "nearby_sort_board",
   "coverage_map_show",
   "coverage_on_main_map",
+  "timed_trajectory",
+  "symbol_layer",
+  "live_position_only",
+  "vehicle_direction_shape",
+  "schedule_fallback",
+  "schedule_map",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

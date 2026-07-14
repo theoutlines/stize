@@ -33,6 +33,8 @@ function main() {
   const shapes = [];
   let missing = 0;
   for (const l of lines) {
+    // City coverage only — skip purely-suburban lines (see build-coverage-points).
+    if (l.suburban) continue;
     const shapePath = join(OUT_DIR, "shapes", `${l.route_id}.json`);
     if (!existsSync(shapePath)) {
       missing++;

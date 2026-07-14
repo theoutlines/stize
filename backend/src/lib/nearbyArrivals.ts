@@ -1,24 +1,26 @@
 import type { Env } from "../env";
 import type {
-  ArrivalsResponse,
+  ArrivalDto,
   NearbyArrivalGroup,
   NearbyArrivalsResponse,
   StopDto,
 } from "../types";
 import { getArrivals } from "./arrivals";
 import { getFlag } from "./featureFlags";
-import { nearbyStops } from "./gtfsData";
+import { nearbyStops, getLineDtoByRouteId } from "./gtfsData";
 import { haversineDistanceMeters } from "./haversine";
 import type { WaitUntilCtx } from "./swrCache";
 
 // The "Nearby" list reconstructs "which lines can I catch from here, and when"
 // by fanning out to the arrivals of each nearby stop and grouping them by line +
-// direction. Bounds keep the fan-out from storming the fragile upstream, each
-// per-stop call riding the shared 30s stale-while-revalidate cache. The stop cap
-// is deliberately below the vehicles-in-area fan-out's 12: aggregating a dozen
-// cold per-stop boards (each a large upstream parse) in one request overruns the
-// Worker CPU budget (1102), and for a "what can I catch on foot" list the
-// closest 8 stops are plenty. Do not raise these.
+// direction. It reuses the same bounded, cache-rate-limited fan-out as the map
+// (nearbyStops + getArrivals), so it never storms the fragile upstream and each
+// per-stop board rides the shared 30s stale-while-revalidate cache.
+//
+// The stop cap is deliberately below the vehicles-in-area fan-out's 18:
+// aggregating this many cold per-stop boards (each a large upstream parse) in one
+// request already sits near the Worker CPU budget (1102), and for a "what can I
+// catch on foot" list the closest 8 stops are plenty. Do not raise these.
 const MAX_STOPS_FANOUT = 8;
 const MAX_RADIUS_METERS = 1500;
 
@@ -56,20 +58,31 @@ export function timeToBoardMinutes(distanceMeters: number, etasMinutes: number[]
 
 export type NearbySortMode = "eta" | "board";
 
-// One nearby stop with its live board and its distance to the user.
+// One nearby stop with its board and its distance to the user.
 export interface StopBoard {
   stop: StopDto;
   distanceMeters: number;
-  board: ArrivalsResponse;
+  board: { arrivals: ArrivalDto[]; updated_at: string };
+}
+
+// The direction a nearby row groups by: the direction the vehicle is actually
+// travelling (`direction_route_id`), falling back to the canonical `route_id`.
+// This is main's reliable, backend-resolved direction — it replaces the old
+// terminus-name match and fixes the "→ None" rows the branch used to emit.
+function directionKey(a: ArrivalDto): string {
+  return a.direction_route_id ?? a.route_id;
 }
 
 // Pure aggregation: group arrivals across nearby stops by line + direction, keep
 // only the stop closest to the user for each group (dedup), and sort the rows —
 // by soonest ETA ("eta", default) or by time-to-board ("board"). Kept free of
 // env/fetch so the grouping/dedup/sort rules are unit-testable in isolation.
-// [boards] must be ordered nearest-stop-first.
+// [boards] must be ordered nearest-stop-first. [destinationByRoute] maps a
+// direction route_id to its human terminus name (resolved by the caller from
+// GTFS line metadata); missing entries render as a null destination.
 export function groupNearbyArrivals(
   boards: StopBoard[],
+  destinationByRoute: Map<string, string | null> = new Map(),
   sortMode: NearbySortMode = "eta",
 ): NearbyArrivalGroup[] {
   const groups = new Map<string, NearbyArrivalGroup>();
@@ -80,18 +93,19 @@ export function groupNearbyArrivals(
     // just the first one encountered.
     const buckets = new Map<string, NearbyArrivalGroup>();
     for (const a of board.arrivals) {
-      const key = `${a.line}|${a.destination ?? a.direction_id ?? ""}`;
+      const key = `${a.line}|${directionKey(a)}`;
       // Since boards come nearest-first, the first stop that serves a group wins
       // it; a farther stop's copy of the same line+direction is dropped (dedup).
       if (groups.has(key)) continue;
 
       let bucket = buckets.get(key);
       if (!bucket) {
+        const routeId = directionKey(a);
         bucket = {
           line: a.line,
           vehicle_type: a.vehicle_type,
-          destination: a.destination,
-          direction_id: a.direction_id,
+          route_id: routeId,
+          destination: destinationByRoute.get(routeId) ?? null,
           stop_id: stop.stop_id,
           stop_name: stop.name,
           distance_meters: Math.round(distanceMeters),
@@ -103,6 +117,7 @@ export function groupNearbyArrivals(
         eta_minutes: a.eta_minutes,
         garage_no: a.garage_no,
         stops_remaining: a.stops_remaining,
+        source: a.source,
       });
     }
 
@@ -142,7 +157,14 @@ export async function getNearbyArrivals(
   const center = { lat, lon };
   const boards = await Promise.all(
     stops.map(async (stop): Promise<StopBoard | null> => {
-      const board = await getArrivals(env, ctx, stop.stop_id).catch(() => null);
+      // Live-only per stop for now: the schedule fallback (which makes nearby
+      // stops "never empty") is added in a follow-up with an explicit fan-out cap,
+      // because getStopSchedule is one uncached subrequest per stop and an
+      // 8-stop-wide schedule fan-out risks the same CPU/subrequest limit the map
+      // path hit (→ 503). See getArrivals' includeSchedule note.
+      const board = await getArrivals(env, ctx, stop.stop_id, {
+        includeSchedule: false,
+      }).catch(() => null);
       if (!board) return null;
       return {
         stop,
@@ -154,8 +176,22 @@ export async function getNearbyArrivals(
 
   // nearbyStops already returns nearest-first; keep that order for the dedup.
   const present = boards.filter((b): b is StopBoard => b !== null);
+
+  // Resolve each present direction's terminus name once (in-memory GTFS lookup,
+  // no subrequests) so the pure grouping can label rows "→ <destination>".
+  const destinationByRoute = new Map<string, string | null>();
+  for (const b of present) {
+    for (const a of b.board.arrivals) {
+      const routeId = a.direction_route_id ?? a.route_id;
+      if (!destinationByRoute.has(routeId)) {
+        const line = await getLineDtoByRouteId(env, routeId);
+        destinationByRoute.set(routeId, line?.destination ?? null);
+      }
+    }
+  }
+
   const sortMode: NearbySortMode = (await getFlag(env, "nearby_sort_board")) ? "board" : "eta";
-  const groups = groupNearbyArrivals(present, sortMode);
+  const groups = groupNearbyArrivals(present, destinationByRoute, sortMode);
 
   let latest = "";
   for (const b of present) {

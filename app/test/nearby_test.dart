@@ -22,7 +22,7 @@ NearbyGroup _group({
     'line': line,
     'vehicle_type': 'bus',
     'destination': destination,
-    'direction_id': '0',
+    'route_id': '$line-0',
     'stop_id': 's-$line',
     'stop_name': stopName,
     'distance_meters': distance,

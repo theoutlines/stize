@@ -60,7 +60,12 @@ class ArrivalTile extends StatelessWidget {
         children: [
           Text(
             arrival.etaMinutes <= 0 ? l10n.arrivalEtaNow : l10n.arrivalEtaMinutes(arrival.etaMinutes),
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              // Planned arrivals read dimmer than live ones (they're a fallback,
+              // not a tracked vehicle).
+              color: arrival.scheduled ? theme.colorScheme.onSurfaceVariant : null,
+            ),
           ),
           if (etaDeltaMinutes != null && etaDeltaMinutes != 0)
             _EtaChangeBadge(deltaMinutes: etaDeltaMinutes!),
@@ -72,7 +77,23 @@ class ArrivalTile extends StatelessWidget {
   /// Second line of the tile: the "N stops away" text and the Fleet-ID badge
   /// strip, kept on a single row so a badge never turns one row into two (B2).
   Widget? _subtitle(BuildContext context, AppLocalizations l10n) {
+    final theme = Theme.of(context);
     final stops = arrival.stopsRemaining;
+    // Planned (timetable) arrival: a clear "по расписанию" marker instead of
+    // "N stops away" / fleet badges (which only exist for a live vehicle).
+    if (arrival.scheduled) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.schedule, size: 14, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Text(
+            l10n.arrivalScheduled,
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ],
+      );
+    }
     final strip = fleet == null
         ? null
         : FleetBadgeStrip(

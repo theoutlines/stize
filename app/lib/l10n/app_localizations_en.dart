@@ -103,6 +103,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapZoomInForVehicles => 'Zoom in to see live transport';
 
   @override
+  String get vehicleScheduled => 'By schedule — not a live position';
+
+  @override
+  String get noLiveVehiclesOnMap =>
+      'No live-tracked vehicles to map right now — see the arrivals below.';
+
+  @override
   String get nearbySearchHint => 'Filter lines nearby…';
 
   @override
@@ -150,6 +157,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get arrivalEtaNow => 'Now';
+
+  @override
+  String get arrivalScheduled => 'Scheduled';
 
   @override
   String arrivalStopsAway(int count) {
@@ -259,6 +269,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTitle => 'About Stigla';
+
+  @override
+  String aboutRouteData(String date) {
+    return 'Route data: $date';
+  }
 
   @override
   String get aboutDisclaimer =>

@@ -33,6 +33,8 @@
   "nearbyStopsTitle": "Nearby stops",
   "nearbyStopsEmpty": "Turn on location, or search for a stop, street, or line above.",
   "mapZoomInForVehicles": "Zoom in to see live transport",
+  "vehicleScheduled": "By schedule — not a live position",
+  "noLiveVehiclesOnMap": "No live-tracked vehicles to map right now — see the arrivals below.",
 
   "nearbySearchHint": "Filter lines nearby…",
   "nearbyDistanceMeters": "{meters} m",
@@ -53,6 +55,7 @@
   "arrivalEtaMinutes": "{minutes} min",
   "@arrivalEtaMinutes": {"placeholders": {"minutes": {"type": "int"}}},
   "arrivalEtaNow": "Now",
+  "arrivalScheduled": "Scheduled",
   "arrivalStopsAway": "{count, plural, =0{here} =1{1 stop away} other{{count} stops away}}",
   "@arrivalStopsAway": {"placeholders": {"count": {"type": "int"}}},
 
@@ -96,6 +99,8 @@
   "settingsThemeDark": "Dark",
 
   "aboutTitle": "About Stigla",
+  "aboutRouteData": "Route data: {date}",
+  "@aboutRouteData": {"placeholders": {"date": {"type": "String"}}},
   "aboutDisclaimer": "Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.",
   "aboutDescription": "Stigla shows real-time Belgrade public transport arrivals. Built for personal use.",
 

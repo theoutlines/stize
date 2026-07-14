@@ -6,17 +6,23 @@ class NearbyEta {
     required this.etaMinutes,
     required this.garageNo,
     required this.stopsRemaining,
+    required this.isScheduled,
   });
 
   final int etaMinutes;
   final String? garageNo;
   final int? stopsRemaining;
 
+  /// True for a planned (GTFS-schedule) departure with no live vehicle yet —
+  /// the "По расписанию" tail that keeps a nearby stop from ever looking empty.
+  final bool isScheduled;
+
   factory NearbyEta.fromJson(Map<String, dynamic> json) {
     return NearbyEta(
       etaMinutes: json['eta_minutes'] as int,
       garageNo: json['garage_no'] as String?,
       stopsRemaining: json['stops_remaining'] as int?,
+      isScheduled: json['source'] == 'scheduled',
     );
   }
 }
@@ -29,7 +35,7 @@ class NearbyGroup {
     required this.line,
     required this.vehicleType,
     required this.destination,
-    required this.directionId,
+    required this.routeId,
     required this.stopId,
     required this.stopName,
     required this.distanceMeters,
@@ -39,10 +45,13 @@ class NearbyGroup {
   final String line;
   final VehicleType vehicleType;
 
-  /// Terminus name = travel direction. Null when the upstream carried no route
-  /// geometry to derive it from.
+  /// Terminus name = travel direction (resolved backend-side from GTFS line
+  /// metadata). Null when the line's metadata carries no destination name.
   final String? destination;
-  final String? directionId;
+
+  /// The direction the row groups by: the vehicle's `direction_route_id`, or the
+  /// canonical `route_id` as a fallback. Stable id; [destination] is its label.
+  final String routeId;
 
   final String stopId;
   final String stopName;
@@ -52,14 +61,14 @@ class NearbyGroup {
   final List<NearbyEta> arrivals;
 
   /// Stable identity for list keys / diffing across refreshes.
-  String get key => '$line|${destination ?? directionId ?? ''}|$stopId';
+  String get key => '$line|$routeId|$stopId';
 
   factory NearbyGroup.fromJson(Map<String, dynamic> json) {
     return NearbyGroup(
       line: json['line'] as String,
       vehicleType: VehicleType.fromApi(json['vehicle_type'] as String),
       destination: json['destination'] as String?,
-      directionId: json['direction_id'] as String?,
+      routeId: json['route_id'] as String,
       stopId: json['stop_id'] as String,
       stopName: json['stop_name'] as String,
       distanceMeters: (json['distance_meters'] as num).round(),
