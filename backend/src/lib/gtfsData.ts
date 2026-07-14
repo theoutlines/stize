@@ -1,7 +1,7 @@
 import type { Env } from "../env";
 import type { FeedMeta, LineDto, RouteShapeResponse, StopDto } from "../types";
 import type { DirectionEndpoints } from "./direction";
-import type { ScheduleMeta, StopSchedule } from "./schedule";
+import type { ScheduleMeta, StopSchedule, TripTimed } from "./schedule";
 import { haversineDistanceMeters } from "./haversine";
 
 // GTFS bundles are static assets built by scripts/build-gtfs.mjs. They only
@@ -92,6 +92,34 @@ export async function getLineByNumber(env: Env, line: string): Promise<LineDto |
   return lines.find((l) => l.line.toLowerCase() === line.toLowerCase()) ?? null;
 }
 
+// route_id -> LineDto and line number -> route_ids, both cached for the isolate.
+// Used to turn a viewport's stop lines into candidate route ids for scheduled
+// map objects, and to label each object with its line/vehicle_type.
+let routeMetaCache: { byRoute: Map<string, LineDto>; byLine: Map<string, string[]> } | null = null;
+async function routeMaps(env: Env) {
+  if (routeMetaCache) return routeMetaCache;
+  const lines = await loadLines(env);
+  const byRoute = new Map<string, LineDto>();
+  const byLine = new Map<string, string[]>();
+  for (const l of lines) {
+    byRoute.set(l.route_id, l);
+    const arr = byLine.get(l.line) ?? [];
+    arr.push(l.route_id);
+    byLine.set(l.line, arr);
+  }
+  routeMetaCache = { byRoute, byLine };
+  return routeMetaCache;
+}
+export async function getLineDtoByRouteId(env: Env, routeId: string): Promise<LineDto | undefined> {
+  return (await routeMaps(env)).byRoute.get(routeId);
+}
+export async function getRouteIdsForLines(env: Env, lineNumbers: Iterable<string>): Promise<string[]> {
+  const { byLine } = await routeMaps(env);
+  const out = new Set<string>();
+  for (const ln of lineNumbers) for (const rid of byLine.get(ln) ?? []) out.add(rid);
+  return [...out];
+}
+
 // Per-line terminal coordinates for each direction, derived once from lines.json
 // (already isolate-cached) — no per-request shape loading. Feeds direction
 // resolution (lib/direction.ts). Directions missing terminal coords are skipped.
@@ -141,6 +169,15 @@ export async function getStopSchedule(env: Env, stopId: string): Promise<StopSch
   const res = await fetchAsset(env, `/gtfs/schedule/${encodeURIComponent(stopId)}.json`);
   if (!res.ok) return null;
   return (await res.json()) as StopSchedule;
+}
+
+// A route's timetable trips (Phase 2 — scheduled map objects), fetched per route
+// only for lines that lack a live vehicle, so a busy live viewport stays cheap.
+export async function getRouteTrips(env: Env, routeId: string): Promise<TripTimed[] | null> {
+  const res = await fetchAsset(env, `/gtfs/trips/${encodeURIComponent(routeId)}.json`);
+  if (!res.ok) return null;
+  const body = (await res.json()) as { trips: TripTimed[] };
+  return body.trips;
 }
 
 export async function getRouteShape(env: Env, routeId: string): Promise<RouteShapeResponse | null> {
