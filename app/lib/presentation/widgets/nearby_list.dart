@@ -183,6 +183,17 @@ class _EtaColumn extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+        // When the soonest departure has no live vehicle yet, it's a planned
+        // (schedule) time — flag it so the ETA isn't read as a tracked bus. This
+        // is why a nearby stop is never empty (live + schedule tail).
+        if (arrivals.first.isScheduled)
+          Text(
+            l10n.arrivalScheduled,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
       ],
     );
   }

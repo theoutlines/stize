@@ -27,12 +27,14 @@ import '../../domain/models/area_vehicle.dart';
 import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/pinned_line.dart';
+import '../../domain/models/nearby_arrival.dart';
 import '../../domain/models/stop.dart';
 import '../../domain/models/vehicle_source.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/favorites_carousel.dart';
+import '../widgets/nearby_sheet.dart';
 import '../widgets/stop_sheet.dart';
 import '../widgets/vehicle_icon.dart';
 import 'map_screen_args.dart';
@@ -1673,6 +1675,22 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     );
   }
 
+  // Open a stop's arrivals from a "Nearby" row — the group carries the nearest
+  // serving stop's id/name, so we can go straight to its sheet (same overlay as
+  // tapping a stop pin), no stop lookup needed.
+  void _openNearbyStop(NearbyGroup group) {
+    _clearSearch();
+    showStopSheet(
+      context,
+      stopId: group.stopId,
+      stopName: group.stopName,
+      onFocusVehicle: (lat, lon) => _controller?.animateCamera(
+        center: Geographic(lon: lon, lat: lat),
+        zoom: 16.5,
+      ),
+    );
+  }
+
   bool _isLinePinned(String line) {
     final pinned =
         ref.watch(pinnedLinesControllerProvider).valueOrNull ??
@@ -1750,6 +1768,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final theme = Theme.of(context);
     _scheme = theme.colorScheme;
     final brightness = theme.brightness;
+    // Experimental "Nearby" sheet (draggable list of lines around the user),
+    // gated remotely — replaces the bottom search bar when on.
+    final nearbyEnabled = ref.watch(nearbyEnabledProvider);
 
     // Follow the app theme: swap the MapTiler style when brightness flips.
     if (_styleBrightness == null) {
@@ -1872,12 +1893,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // zoom in rather than leaving them staring at a blank map (F5).
           if (_focus == null && _currentZoom < _minVehiclesZoom && !_hasVehicles)
             _zoomHint(l10n, theme),
-          // Bottom UI: normally the search + favourites bar; while a line is
-          // focused, a compact line panel with a close button instead.
-          if (_focus == null)
-            _bottomSearch(l10n, theme)
+          // Bottom UI: while a line is focused, a compact line panel with a close
+          // button. Otherwise the experimental "Nearby" sheet when its flag is on
+          // (it *replaces* the search bar), else the normal search + favourites.
+          if (_focus != null)
+            _focusPanel(theme)
+          else if (nearbyEnabled)
+            NearbySheet(
+              userLocation: _meTo,
+              locationDenied: _locationDenied,
+              active: _tabActive && _appResumed,
+              onEnableLocation: _recenterOnMe,
+              onTapGroup: _openNearbyStop,
+            )
           else
-            _focusPanel(theme),
+            _bottomSearch(l10n, theme),
           // On-device FPS meter — diagnostic only, off in the normal app; on a
           // staging preview the owner enables it with `?fps=1` to compare the
           // symbol layer against the widget path at different vehicle counts.
