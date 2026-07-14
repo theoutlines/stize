@@ -74,6 +74,10 @@ app.get("/api/v1/gtfs-meta", async (c) => {
 });
 
 app.get("/api/v1/arrivals", async (c) => {
+  // Live board — never cache. Without this the zone's Browser Cache TTL (see
+  // CLAUDE.md) serves the browser a stale board on the client's 30s poll, so it
+  // only refreshed on a hard reload. no-store, like /config.
+  c.header("cache-control", "no-store");
   const stopId = c.req.query("stop");
   if (!stopId) return c.json({ error: "missing 'stop' query param" }, 400);
 
@@ -142,6 +146,10 @@ app.get("/api/v1/stops/nearby", async (c) => {
 // right away" view. Reconstructed from per-stop arrivals (see getNearbyVehicles)
 // with the fan-out bounded and rate-limited by the shared per-stop cache.
 app.get("/api/v1/vehicles/nearby", async (c) => {
+  // Live positions — never cache (see the /arrivals note + CLAUDE.md Browser
+  // Cache TTL gotcha). Otherwise the 30s poll is served stale from the browser
+  // HTTP cache and only a hard reload updates the map.
+  c.header("cache-control", "no-store");
   const lat = parseFloat(c.req.query("lat") ?? "");
   const lon = parseFloat(c.req.query("lon") ?? "");
   const radius = parseFloat(c.req.query("radius") ?? "800");

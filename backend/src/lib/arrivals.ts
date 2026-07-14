@@ -20,6 +20,14 @@ export async function getArrivals(
   env: Env,
   ctx: WaitUntilCtx,
   stopId: string,
+  // The schedule fallback belongs to the arrivals *list* (a thin live board
+  // gains planned departures). The map's "vehicles in area" reconstruction
+  // (getNearbyVehicles) does NOT want it — scheduled rows carry no GPS and are
+  // dropped there anyway, but computing them fans out extra subrequests per
+  // stop (getScheduleMeta / getStopSchedule / getLineByNumber). Across an
+  // 18-stop map fan-out that alone blew Cloudflare's per-invocation subrequest +
+  // CPU limits (→ 503). So the map path passes includeSchedule:false.
+  { includeSchedule = true }: { includeSchedule?: boolean } = {},
 ): Promise<ArrivalsResponse | null> {
   const stop = await getStopById(env, stopId);
   if (!stop) return null;
@@ -101,7 +109,7 @@ export async function getArrivals(
   // board (night, inter-peak) still shows what's coming, deduped against the
   // live rows so a bus with a live vehicle isn't doubled. Flag-gated; any
   // failure degrades silently to the live-only board.
-  if (await getFlag(env, "schedule_fallback")) {
+  if (includeSchedule && (await getFlag(env, "schedule_fallback"))) {
     try {
       const [meta, schedule] = await Promise.all([
         getScheduleMeta(env),

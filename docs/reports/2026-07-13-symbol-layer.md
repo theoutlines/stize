@@ -335,6 +335,38 @@ fan-out** (узкий охват 503-ит так же). Латентность w
 клиент показывает последнее и гасит по grace (ровно фикс); переверить, когда
 источник поднимется.
 
+## Постфикс 7: диагноз 503 (наш worker, не upstream) + «только по F5» (кэш)
+
+Владелец не поверил в «упавший источник» (официальное приложение и наш **прод**
+работают на том же upstream). Проверил — она права, оба симптома в НАШЕЙ цепочке.
+
+**503 — `wrangler tail` staging-воркера:** `outcome=exceededCpu` +
+«**Too many subrequests by single Worker invocation**». Прод `/vehicles/nearby`
+→ 200 (тот же upstream). Причина: на карте fan-out **18 остановок** × (для
+КАЖДОЙ) `getArrivals` гонял **schedule fallback** (доп. subrequests
+`getScheduleMeta`/`getStopSchedule`/`getLineByNumber`) — расписание протекло в
+map-путь при merge, где оно не нужно (scheduled-строки без GPS всё равно
+отсекаются). За один вызов пробивался лимит Cloudflare.
+- **Фикс:** `getArrivals(..., { includeSchedule })`; map-путь
+  (`getNearbyVehicles`) передаёт `includeSchedule:false`. Список прибытий
+  расписание сохраняет. После фикса `/vehicles/nearby` при 18/1.5км — **200**,
+  50+ ТС; **fan-out 18 остался** (откат не понадобился).
+- **Staging-D1 приведён в порядок:** применены отставшие миграции
+  `0002_vehicle_id`/`0003_vehicle_aggregates` (была `no column vehicle_id`).
+  Плюс баг батча в `analytics.ts` (константа `INSERT_CHUNK=40` объявлена, но не
+  применялась → `too many SQL variables` на >142 строк) — вставка разбита на
+  чанки.
+
+**«Обновляется только по hard-refresh» — кэш, не мёртвый источник.** Стоп-экран
+поллит (30с `invalidate`), но `/vehicles/nearby` и `/arrivals` **не ставили
+`Cache-Control`** (в отличие от `/config`), а зона за Cloudflare имеет Browser
+Cache TTL (гоча из CLAUDE.md) → браузер отдавал 30с-опросу кэш, свежесть только
+по hard-refresh. **Пре-существующий баг, и в ПРОДЕ тоже** (прод `/vehicles` без
+cache-control).
+- **Фикс:** `Cache-Control: no-store` на `/vehicles/nearby` и `/arrivals`
+  (как `/config`) + cache-buster (`cb=<ms>`) на клиентских опросах vehicles/
+  arrivals. Проверено: оба роута теперь отдают `no-store`.
+
 ## Известные компромиссы
 
 - **Тип на монете = цвет + глиф.** Как у компакт-точки и как отмечено в промпте
