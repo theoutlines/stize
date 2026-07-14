@@ -1306,19 +1306,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       final shown = scheduleOn
           ? vehicles
           : [for (final v in vehicles) if (v.source == VehicleSource.live) v];
-      // Which shape to move each vehicle along. With `vehicle_direction_shape`
-      // on, stitch to the *direction the vehicle is actually going* (backend-
-      // resolved route_id) so it doesn't ride the canonical direction's street
-      // ("through houses"); off ⇒ the line's canonical shape, as before. A null
-      // key (older payload) just means no path → straight-line ease (safe).
-      final byDirection = ref.read(vehicleDirectionShapeProvider);
-      String? shapeKeyOf(AreaVehicle v) => byDirection ? v.routeId : v.line;
+      // Which shape to move each vehicle along: the *direction the vehicle is
+      // actually going* (backend-resolved route_id) so it doesn't ride the
+      // canonical direction's street ("through houses"). A null key (older
+      // payload) just means no path → straight-line ease (safe).
+      String? shapeKeyOf(AreaVehicle v) => v.routeId;
       // Make sure each visible route's geometry is (being) fetched so the
       // animator can move markers along the road, not through buildings (X5) —
       // and, in timed mode, project the plan onto it.
       _ensureShapesFor(
         [for (final v in shown) shapeKeyOf(v)].whereType<String>(),
-        byRouteId: byDirection,
+        byRouteId: true,
       );
       // Timed-trajectory playback is remote-gated (OFF prod, ON staging). When
       // on, hand the animator each vehicle's forward plan + as-of time so it
@@ -1395,10 +1393,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// (possibly just-updated) shape cache. Self-contained so both the 30s poll
   /// and the shape-load re-sync produce identical samples.
   List<VehicleSample> _buildVehicleSamples(List<AreaVehicle> shown) {
-    final byDirection = ref.read(vehicleDirectionShapeProvider);
     final timedOn =
         ref.read(appConfigProvider).valueOrNull?.timedTrajectory ?? false;
-    String? shapeKeyOf(AreaVehicle v) => byDirection ? v.routeId : v.line;
+    String? shapeKeyOf(AreaVehicle v) => v.routeId;
     return [
       for (final v in shown)
         VehicleSample(

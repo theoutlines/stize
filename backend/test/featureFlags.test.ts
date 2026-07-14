@@ -32,7 +32,6 @@ describe("featureFlags", () => {
       "schedule_map",
       "symbol_layer",
       "timed_trajectory",
-      "vehicle_direction_shape",
     ]);
   });
 
