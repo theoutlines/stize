@@ -75,13 +75,14 @@ void main() {
     expect(animator.tracks.containsKey('P1'), isTrue);
     expect(animator.opacityFor('P1'), lessThan(1.0));
 
-    // Held (and fading further) across the whole grace window.
-    for (var i = 0; i < 3; i++) {
+    // Held (and fading further) across the (shortened) grace window.
+    for (var i = 0; i < 2; i++) {
       animator.sync([], 1.0);
       expect(animator.tracks.containsKey('P1'), isTrue);
     }
 
-    // Missing beyond the grace period — now dropped.
+    // Missing beyond the grace period — now dropped (grace threshold = 3, so a
+    // vehicle absent for a 4th update is removed; faster fade than before).
     animator.sync([], 1.0);
     expect(animator.tracks.containsKey('P1'), isFalse);
   });

@@ -22,6 +22,23 @@ class AppConfig {
   /// [coverageMapShow] — the tab and the overlay gate separately.
   bool get coverageOnMainMap => flag('coverage_on_main_map');
 
+  /// Whether vehicle markers animate smoothly forward along the backend's timed
+  /// trajectory (instead of easing to the last fix and stopping). Gated remotely
+  /// so it's OFF on prod and ON on staging until it's ready to ship. This is the
+  /// *data/motion* flag; [symbolLayer] is the orthogonal *render* flag.
+  bool get timedTrajectory => flag('timed_trajectory');
+
+  /// Whether moving vehicles render as a MapLibre GPU symbol layer (batched,
+  /// sub-linear in count) instead of per-vehicle Flutter widgets. Client-side
+  /// render flag, independent of [timedTrajectory]. OFF on prod (the widget path
+  /// stays the fallback), ON on staging.
+  bool get symbolLayer => flag('symbol_layer');
+
+  /// Whether GTFS-schedule-predicted vehicles are shown (semi-transparent) when
+  /// there's no live stream — the hybrid live+schedule display. OFF on prod
+  /// until confirmed; the backend also gates whether it emits scheduled objects.
+  bool get scheduleFallback => flag('schedule_fallback');
+
   /// Whether the map draws only vehicles with a real live position. The upstream
   /// emits placeholder rows (junk garage `P1..P999`, GPS = the stop coordinate)
   /// that aren't tracked vehicles; when on they stay in the arrivals list but

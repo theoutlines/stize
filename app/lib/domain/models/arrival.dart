@@ -1,3 +1,4 @@
+import 'trajectory_point.dart';
 import 'vehicle_type.dart';
 
 class LatLon {
@@ -21,6 +22,7 @@ class Arrival {
     required this.gps,
     required this.garageNo,
     this.heading,
+    this.trajectory,
     this.scheduled = false,
   });
 
@@ -34,6 +36,11 @@ class Arrival {
 
   /// Travel direction in degrees (0 = north, clockwise), or null if unknown.
   final double? heading;
+
+  /// Forward timing plan (timed-trajectory feature), anchored to the board's
+  /// `updatedAt` as-of time. Null when the backend didn't provide one (feature
+  /// off, or no usable plan) — callers fall back to the conservative animator.
+  final List<TrajectoryPoint>? trajectory;
 
   /// Planned (timetable) arrival, not a live vehicle — the schedule fallback
   /// (`source: "scheduled"`). Shown marked and after live arrivals of the line.
@@ -49,6 +56,7 @@ class Arrival {
       gps: json['gps'] == null ? null : LatLon.fromJson(json['gps'] as Map<String, dynamic>),
       garageNo: json['garage_no'] as String?,
       heading: (json['heading'] as num?)?.toDouble(),
+      trajectory: TrajectoryPoint.listFromJson(json['trajectory']),
       scheduled: json['source'] == 'scheduled',
     );
   }
