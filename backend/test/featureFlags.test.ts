@@ -31,7 +31,6 @@ describe("featureFlags", () => {
       "schedule_fallback",
       "schedule_map",
       "symbol_layer",
-      "timed_trajectory",
     ]);
   });
 

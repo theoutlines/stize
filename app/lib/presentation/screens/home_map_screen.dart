@@ -137,19 +137,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   late final AnimationController _vehAnim;
   final _vehAnimator = VehicleTrackAnimator();
   Timer? _vehiclesTimer;
-  // The marker layer is heavy to re-lay-out (each vehicle is a platform-tracked
-  // widget), so instead of rebuilding it every animation frame (~60fps) we
-  // sample the eased positions on a slower cadence — smooth enough for a slow
-  // vehicle, far cheaper, and it stops starving map pan/zoom gestures. It runs
-  // *only while the ease is actually in flight* (started when a fix brings
-  // motion, stopped when it settles) so a map of stationary vehicles renders
-  // zero frames instead of ticking forever (thermal fix — "idle = 0 frames").
-  Timer? _vehSampler;
-  // Timed mode needs a per-vsync repaint so continuous motion is actually smooth
-  // (~60fps): a 66ms timer caps it at ~15fps, which reads as choppy. The ticker
-  // drives the vehicle layer every frame while a plan is playing and stops the
-  // instant motion ends (idle = 0). Kept alongside the coarse sampler; only one
-  // runs at a time (see [_startVehDriver]).
+  // A per-vsync repaint driver so continuous motion is smooth (~60fps). The
+  // ticker drives the vehicle layer every frame while a plan is playing (or an
+  // ease is in flight) and stops the instant motion ends, so a map of stationary
+  // vehicles renders zero frames instead of ticking forever (thermal fix —
+  // "idle = 0 frames"). See [_startVehDriver].
   Ticker? _vehTicker;
   final ValueNotifier<double> _vehTick = ValueNotifier<double>(1);
 
@@ -296,7 +288,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _searchDebounce?.cancel();
     _vehiclesTimer?.cancel();
     _shapeResyncTimer?.cancel();
-    _stopVehSampler();
+    _stopVehDriver();
     _vehTicker?.dispose();
     _vehAnim.removeStatusListener(_onVehAnimStatus);
     _vehTick.dispose();
@@ -334,7 +326,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _paused = true;
     _hiddenAt = DateTime.now();
     _vehAnim.stop();
-    _stopVehSampler();
+    _stopVehDriver();
     _vehiclesTimer?.cancel();
     _vehiclesTimer = null;
   }
@@ -370,17 +362,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// sampler: the marker only inches toward its last fix, 15fps is plenty, and it
   /// keeps prod off a 60fps loop. Either way the driver stops the instant nothing
   /// is moving (idle = zero frames), for both render paths.
-  void _startVehDriver({required bool timed}) {
-    if (timed) {
-      _vehSampler?.cancel();
-      _vehSampler = null;
-      _vehTicker ??= createTicker((_) => _pumpVehLayer());
-      if (!_vehTicker!.isActive) _vehTicker!.start();
-    } else {
-      _vehTicker?.stop();
-      _vehSampler ??=
-          Timer.periodic(const Duration(milliseconds: 66), (_) => _pumpVehLayer());
-    }
+  void _startVehDriver() {
+    _vehTicker ??= createTicker((_) => _pumpVehLayer());
+    if (!_vehTicker!.isActive) _vehTicker!.start();
   }
 
   // One repaint step: advance any timed players by wall-clock, then either paint
@@ -391,7 +375,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (_vehAnim.isAnimating || _vehAnimator.hasPendingMotion) {
       _paintVehicles();
     } else {
-      _stopVehSampler();
+      _stopVehDriver();
       _paintVehicles();
       if (mounted) setState(() {});
     }
@@ -407,9 +391,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
   }
 
-  void _stopVehSampler() {
-    _vehSampler?.cancel();
-    _vehSampler = null;
+  void _stopVehDriver() {
     _vehTicker?.stop(); // keep the Ticker instance; dispose only in dispose()
   }
 
@@ -419,7 +401,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // The 30s ease controller finished. In timed mode the driver must keep
       // running while a plan is still playing, so only stop it when nothing is
       // moving; otherwise leave it to self-stop when the plan is exhausted.
-      if (!_vehAnimator.hasPendingMotion) _stopVehSampler();
+      if (!_vehAnimator.hasPendingMotion) _stopVehDriver();
       // One final paint so the layer lands on the settled positions and the
       // markers' halos drop out of their breathing state (animate == false).
       _paintVehicles();
@@ -587,7 +569,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           '${(p.longitude / cellLon).floor()}';
     }
 
-    final driverRunning = (_vehTicker?.isActive ?? false) || _vehSampler != null;
+    final driverRunning = _vehTicker?.isActive ?? false;
     final ease = driverRunning ? 0.3 : 1.0;
 
     // --- Pass 1: fan out stationary coincident vehicles ---------------------
@@ -1318,12 +1300,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         [for (final v in shown) shapeKeyOf(v)].whereType<String>(),
         byRouteId: true,
       );
-      // Timed-trajectory playback is remote-gated (OFF prod, ON staging). When
-      // on, hand the animator each vehicle's forward plan + as-of time so it
-      // plays them forward by time; when off, plan/as-of are null and the marker
-      // eases conservatively exactly as before. Orthogonal to the render path.
-      final timedOn =
-          ref.read(appConfigProvider).valueOrNull?.timedTrajectory ?? false;
       _lastShownVehicles = shown;
       _vehAnimator.syncSamples(_buildVehicleSamples(shown), _vehAnim.value);
       // Drive the layer whenever a fix brings motion (foregrounded); otherwise
@@ -1339,9 +1315,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // wall-clock for timed ones.
       if (!_paused && _vehAnimator.hasPendingMotion) {
         _vehAnim.forward(from: 0);
-        _startVehDriver(timed: timedOn);
+        _startVehDriver();
       } else {
-        _stopVehSampler();
+        _stopVehDriver();
         _vehAnim.value = 1; // land straight on the latest fixes, no per-frame ease
       }
       // Always push the fresh set to the render path right away, so newly-entered
@@ -1393,8 +1369,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// (possibly just-updated) shape cache. Self-contained so both the 30s poll
   /// and the shape-load re-sync produce identical samples.
   List<VehicleSample> _buildVehicleSamples(List<AreaVehicle> shown) {
-    final timedOn =
-        ref.read(appConfigProvider).valueOrNull?.timedTrajectory ?? false;
     String? shapeKeyOf(AreaVehicle v) => v.routeId;
     return [
       for (final v in shown)
@@ -1411,12 +1385,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // Stitch to the direction-resolved shape when available (fixes
           // "through houses"); null key ⇒ no path ⇒ straight-line ease.
           path: shapeKeyOf(v) == null ? null : _shapeCache[shapeKeyOf(v)!],
-          // A scheduled object always carries a timed plan (its predicted
-          // motion); play it like a live one regardless of the timed flag.
-          trajectory: (timedOn || v.source == VehicleSource.scheduled)
-              ? v.trajectory
-              : null,
-          asOf: (timedOn || v.source == VehicleSource.scheduled) ? v.asOf : null,
+          // Hand the animator each vehicle's forward plan + as-of time so it
+          // plays motion forward by time; a vehicle without a plan (null) just
+          // eases conservatively to its latest fix.
+          trajectory: v.trajectory,
+          asOf: v.asOf,
           source: v.source,
         ),
     ];
@@ -1436,9 +1409,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         _vehAnim.value,
       );
       if (!_paused && _vehAnimator.hasPendingMotion) {
-        final timedOn =
-            ref.read(appConfigProvider).valueOrNull?.timedTrajectory ?? false;
-        _startVehDriver(timed: timedOn);
+        _startVehDriver();
       }
       _paintVehicles();
     });
