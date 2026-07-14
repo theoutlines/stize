@@ -31,10 +31,6 @@ class AppConfig {
   /// render flag. OFF on prod (the widget path stays the fallback), ON on staging.
   bool get symbolLayer => flag('symbol_layer');
 
-  /// Whether GTFS-schedule-predicted vehicles are shown (semi-transparent) when
-  /// there's no live stream — the hybrid live+schedule display. OFF on prod
-  /// until confirmed; the backend also gates whether it emits scheduled objects.
-  bool get scheduleFallback => flag('schedule_fallback');
 
   /// Whether the map draws only vehicles with a real live position. The upstream
   /// emits placeholder rows (junk garage `P1..P999`, GPS = the stop coordinate)
