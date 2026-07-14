@@ -104,6 +104,9 @@ class AppLocalizationsSr extends AppLocalizations {
   String get mapZoomInForVehicles => 'Uvećaj mapu da vidiš prevoz uživo';
 
   @override
+  String get vehicleScheduled => 'Po redu vožnje — nije pozicija uživo';
+
+  @override
   String get noLiveVehiclesOnMap =>
       'Trenutno nema vozila uživo na mapi — pogledaj dolaske ispod.';
 

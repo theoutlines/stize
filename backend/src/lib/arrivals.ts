@@ -10,9 +10,9 @@ import {
   getStopSchedule,
 } from "./gtfsData";
 import { resolveDirectionRouteId } from "./direction";
-import { getFlag } from "./featureFlags";
 import { belgradeNow, upcomingScheduled, dedupScheduledAgainstLive } from "./schedule";
 import { logObservations } from "./analytics";
+import { getFlag } from "./featureFlags";
 
 const ARRIVALS_TTL_SECONDS = 30;
 
@@ -20,12 +20,15 @@ export async function getArrivals(
   env: Env,
   ctx: WaitUntilCtx,
   stopId: string,
-  // The nearby-vehicles fan-out only needs live rows; it passes false to skip the
-  // per-stop schedule list (and its flag/asset reads), which would otherwise
-  // multiply subrequests across the 12-stop fan-out.
-  opts: { includeScheduleList?: boolean } = {},
+  // The schedule fallback belongs to the arrivals *list* (a thin live board
+  // gains planned departures). The map's "vehicles in area" reconstruction
+  // (getNearbyVehicles) does NOT want it — scheduled rows carry no GPS and are
+  // dropped there anyway, but computing them fans out extra subrequests per
+  // stop (getScheduleMeta / getStopSchedule / getLineByNumber). Across an
+  // 18-stop map fan-out that alone blew Cloudflare's per-invocation subrequest +
+  // CPU limits (→ 503). So the map path passes includeSchedule:false.
+  { includeSchedule = true }: { includeSchedule?: boolean } = {},
 ): Promise<ArrivalsResponse | null> {
-  const includeScheduleList = opts.includeScheduleList ?? true;
   const stop = await getStopById(env, stopId);
   if (!stop) return null;
 
@@ -49,6 +52,11 @@ export async function getArrivals(
         return raw;
       }),
   );
+
+  // Timed-trajectory plan is additive and flag-gated: emitted only when the
+  // feature is on (default ON on staging, OFF on prod), so prod payload and old
+  // clients are untouched. Read once per board build.
+  const timedTrajectoryOn = await getFlag(env, "timed_trajectory");
 
   const arrivals: ArrivalDto[] = [];
   for (const raw of rawArrivals) {
@@ -84,6 +92,15 @@ export async function getArrivals(
       gps: raw.gps,
       garage_no: raw.garageNo,
       heading: raw.heading,
+      // `raw.trajectory` is undefined on a stale pre-deploy cache entry; treat
+      // that the same as "no plan" so an old cache never breaks the response.
+      trajectory: timedTrajectoryOn
+        ? (raw.trajectory?.map((p) => ({
+            lat: p.lat,
+            lon: p.lon,
+            eta_seconds: p.etaSeconds,
+          })) ?? null)
+        : undefined,
     });
   }
   arrivals.sort((a, b) => a.eta_minutes - b.eta_minutes);
@@ -92,7 +109,7 @@ export async function getArrivals(
   // board (night, inter-peak) still shows what's coming, deduped against the
   // live rows so a bus with a live vehicle isn't doubled. Flag-gated; any
   // failure degrades silently to the live-only board.
-  if (includeScheduleList && (await getFlag(env, "schedule_fallback"))) {
+  if (includeSchedule && (await getFlag(env, "schedule_fallback"))) {
     try {
       const [meta, schedule] = await Promise.all([
         getScheduleMeta(env),
