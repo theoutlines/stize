@@ -100,6 +100,28 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   bool _coverageAdded = false; // source+layer present in the current style
   bool _coverageActive = false; // hysteresis state for the mount decision
 
+  // Imperative stop layers. maplibre 0.3.5's declarative `MapLibreMap.layers`
+  // reconciles the list *positionally* (`maplibre-layer-$index`) with unawaited
+  // add/remove calls; when the set of stop layers changes (types coming/going by
+  // area, tram rails loading async) it deterministically drops some — on prod a
+  // pure-bus stop lost its whole marker layer, so it had no clickable pin. So the
+  // stop layers are managed imperatively instead: added once per style load, then
+  // only their GeoJSON source data changes (exactly like the coverage layer), so
+  // the buggy LayerManager never touches them. Focus mode still uses the
+  // declarative list (a clean, user-initiated 2-layer swap).
+  bool _stopLayersAdded = false; // layers+sources present in the current style
+  final Map<String, String> _lastStopSourceText = {}; // dedup redundant setData
+  static const _railsLayerId = 'stg-stops-rails';
+  static const _clusterLayerId = 'stg-stops-cluster';
+  static const _busLayerId = 'stg-stops-bus';
+  static const _tramLayerId = 'stg-stops-tram';
+  static const _trolleyLayerId = 'stg-stops-trolley';
+  static const _mixedLayerId = 'stg-stops-mixed';
+  static const _favLayerId = 'stg-stops-fav';
+  static const _placeLayerId = 'stg-stops-place';
+  static const _emptyFeatureCollection =
+      '{"type":"FeatureCollection","features":[]}';
+
   // Live vehicles in the viewport: eased between refreshes by the animator, so
   // markers glide instead of teleporting. Only the vehicle WidgetLayer repaints
   // per tick (via an AnimatedBuilder), not the whole map.
@@ -336,13 +358,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   Future<void> _onStyleLoaded(StyleController style) async {
     _style = style;
     // A fresh style (first load or after a theme flip) has none of our layers;
-    // the heatmap must be (re)added if it should currently be visible.
+    // the stop layers and heatmap must be (re)added.
     _coverageAdded = false;
+    _stopLayersAdded = false;
+    _lastStopSourceText.clear();
     await registerStigmaImages(style, _scheme);
+    if (!mounted) return;
+    await _addStopLayers(style);
     if (!mounted) return;
     setState(() => _imagesReady = true);
     // Show stops and live vehicles for wherever the map currently sits, even
-    // before a location fix — transport shows up right away.
+    // before a location fix — transport shows up right away. Re-push any data
+    // already in hand (e.g. tram rails, area stops) onto the fresh sources.
+    _pushStopSources();
     _loadStopsForVisibleArea();
     _loadVehiclesForVisibleArea(force: true);
     _loadTramRails();
@@ -397,7 +425,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             .catchError((_) {}),
     ]);
     if (!mounted) return;
-    setState(() => _tramRails = rails);
+    _tramRails = rails;
+    _pushStopSources(); // push onto the (already-added) rails source
   }
 
   void _onEvent(MapEvent event) {
@@ -638,6 +667,138 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
   }
 
+  String _stopSourceId(String layerId) => '$layerId-src';
+
+  /// Adds the stop marker layers + their (empty) GeoJSON sources to a freshly
+  /// loaded style, once. Styling is taken from the same MarkerLayer/PolylineLayer
+  /// specs the declarative path used, so the pins look identical. Order = paint
+  /// order (first added sits lowest): rails · cluster · bus · tram · trolley ·
+  /// mixed · favourites · pinned place. Data arrives later via
+  /// [_pushStopSources]; the layers themselves are never removed/re-added, so the
+  /// buggy positional reconcile can't drop them.
+  Future<void> _addStopLayers(StyleController style) async {
+    if (_stopLayersAdded) return;
+    _stopLayersAdded = true;
+    MarkerLayer pin(String image, {IconAnchor anchor = IconAnchor.center}) =>
+        MarkerLayer(
+          points: const [],
+          iconImage: image,
+          iconSize: _iconSize,
+          iconAllowOverlap: true,
+          iconAnchor: anchor,
+        );
+    final specs = <(String, Layer)>[
+      (
+        _railsLayerId,
+        const PolylineLayer(polylines: [], color: tramRailColor, width: 2),
+      ),
+      (
+        _clusterLayerId,
+        MarkerLayer(
+          points: const [],
+          iconImage: MapImages.cluster,
+          iconSize: _iconSize,
+          iconAllowOverlap: true,
+          textField: '{point_count}',
+          textColor: _scheme.onPrimary,
+          textSize: 13,
+          textAllowOverlap: true,
+        ),
+      ),
+      (_busLayerId, pin(MapImages.bus)),
+      (_tramLayerId, pin(MapImages.tram)),
+      (_trolleyLayerId, pin(MapImages.trolley)),
+      (_mixedLayerId, pin(MapImages.mixedStop)),
+      (_favLayerId, pin(MapImages.favorite)),
+      (_placeLayerId, pin(MapImages.place, anchor: IconAnchor.bottom)),
+    ];
+    try {
+      for (final (id, tmpl) in specs) {
+        final srcId = _stopSourceId(id);
+        await style.addSource(
+          GeoJsonSource(id: srcId, data: _emptyFeatureCollection),
+        );
+        final StyleLayer layer = tmpl is PolylineLayer
+            ? LineStyleLayer(
+                id: id,
+                sourceId: srcId,
+                layout: tmpl.getLayout(),
+                paint: tmpl.getPaint(),
+              )
+            : SymbolStyleLayer(
+                id: id,
+                sourceId: srcId,
+                layout: (tmpl as MarkerLayer).getLayout(),
+                paint: tmpl.getPaint(),
+              );
+        await style.addLayer(layer);
+      }
+    } catch (_) {
+      // Style torn down mid-add (e.g. a theme flip) — allow a later retry.
+      _stopLayersAdded = false;
+    }
+  }
+
+  /// Pushes the current marker feature lists into the imperative stop layers'
+  /// sources. Only source *data* changes — no layers are added or removed — so
+  /// the reconcile bug can never drop a layer. Dedups redundant `setData` so the
+  /// per-tick rebuilds don't re-parse identical GeoJSON.
+  void _pushStopSources() {
+    final style = _style;
+    if (style == null || !_stopLayersAdded) return;
+    // While a line is focused, only its own route shows (via the declarative
+    // focus layers) — empty every ambient stop source so nothing else competes.
+    // Also hide the stops when the coverage heatmap stands in for them (flag on +
+    // zoomed out); the heatmap shows through.
+    final focused = _focus != null;
+    final zoom = _controller?.getCamera().zoom ?? 15.0;
+    final hidden =
+        focused || (_coverageEnabled && coverageMainStopsOpacity(zoom) <= 0.01);
+    final favStops =
+        ref.read(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
+    final railsFc = FeatureCollection([
+      for (final poly in _tramRails)
+        Feature<LineString>(
+          geometry: LineString.from([
+            for (final p in poly) Geographic(lon: p[1], lat: p[0]),
+          ]),
+        ),
+    ]).toText();
+    Feature<Point> pt(Stop s) => Feature<Point>(
+      geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
+      properties: {'stopId': s.stopId, 'name': s.name},
+    );
+    // Coverage hides only the stop-type + cluster layers; rails/favourites/place
+    // follow the original behaviour and only vanish while a line is focused.
+    String typeFc(List<Feature<Point>> f) =>
+        hidden ? _emptyFeatureCollection : FeatureCollection(f).toText();
+    final data = <String, String>{
+      _railsLayerId: focused ? _emptyFeatureCollection : railsFc,
+      _clusterLayerId: typeFc(_clusterPts),
+      _busLayerId: typeFc(_busPts),
+      _tramLayerId: typeFc(_tramPts),
+      _trolleyLayerId: typeFc(_trolleyPts),
+      _mixedLayerId: typeFc(_mixedPts),
+      _favLayerId: focused
+          ? _emptyFeatureCollection
+          : FeatureCollection([for (final s in favStops) pt(s)]).toText(),
+      _placeLayerId: focused
+          ? _emptyFeatureCollection
+          : FeatureCollection([
+              if (_pinnedPlace case final place?)
+                Feature<Point>(geometry: Point(place)),
+            ]).toText(),
+    };
+    for (final entry in data.entries) {
+      if (_lastStopSourceText[entry.key] == entry.value) continue;
+      _lastStopSourceText[entry.key] = entry.value;
+      style.updateGeoJsonSource(
+        id: _stopSourceId(entry.key),
+        data: entry.value,
+      );
+    }
+  }
+
   /// Rebuilds the cluster/per-type marker feature lists from [_areaStops] using
   /// the current camera. Client-side screen-space grid clustering (the maplibre
   /// 0.3.x GeoJsonSource has no native clustering).
@@ -716,6 +877,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _tramPts = tram;
     _trolleyPts = trolley;
     _mixedPts = mixed;
+    _pushStopSources();
   }
 
   Set<String> get _favoriteIds =>
@@ -874,6 +1036,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           stops: routeStops,
         );
       });
+      _pushStopSources(); // hide the ambient stop layers behind the focused line
       if (focusOn != null) _nudgeIntoView(focusOn);
       // Refresh the vehicle set so the focused line's buses show right away.
       _loadVehiclesForVisibleArea(force: true);
@@ -909,6 +1072,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _clearFocus() {
     if (_focus == null) return;
     setState(() => _focus = null);
+    _pushStopSources(); // restore the ambient stop layers
   }
 
   // ---- Taps -----------------------------------------------------------------
@@ -1086,6 +1250,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _pinnedPlace = center;
       _pinnedPlaceLabel = place.displayName;
     });
+    _pushStopSources(); // show the pinned-place marker
     await _controller?.animateCamera(center: center, zoom: 16);
   }
 
@@ -1108,8 +1273,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _controller!.setStyle(MapStyle.forBrightness(brightness));
     }
 
-    final favoriteStops =
-        ref.watch(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
+    // Favourites are drawn by an imperative source now; refresh it whenever the
+    // set changes (no widget rebuild needed for the markers themselves).
+    ref.listen(favoriteStopLocationsProvider, (_, _) => _pushStopSources());
 
     // Coverage overlay flag: usually flips false→true once the remote config
     // resolves. When it turns on, reconcile after this frame so the layer is
@@ -1151,7 +1317,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   onMapCreated: _onMapCreated,
                   onStyleLoaded: _onStyleLoaded,
                   onEvent: _onEvent,
-                  layers: _buildLayers(favoriteStops),
+                  layers: _buildLayers(),
                   children: [
                     const CompactAttribution(),
                     // "My position" as a widget marker so it survives every zoom
@@ -1228,25 +1394,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// classified into). This makes "the pin never appears" answerable on the
   /// device: either the id is absent from the fetch (data/request), or it is
   /// present (so it must be rendering) — no guessing.
-  /// Names the fixed `_buildLayers` slots so a raw `maplibre-layer-N` id reads as
-  /// its type in diagnostics (see `_buildLayers` for the canonical order).
-  static const _glLayerNames = [
-    'rails',
-    'cluster',
-    'bus',
-    'tram',
-    'trolley',
-    'mixed',
-    'fav',
-    'place',
-  ];
+  /// True for one of the imperative stop layers (see [_addStopLayers]).
+  static bool _isStopLayer(String id) => id.startsWith('stg-stops-');
 
-  String _glLayerLabel(String id) {
-    final n = int.tryParse(id.replaceFirst('maplibre-layer-', ''));
-    return (n != null && n >= 0 && n < _glLayerNames.length)
-        ? '$n:${_glLayerNames[n]}'
-        : id;
-  }
+  /// Short label for a stop layer id in diagnostics ('stg-stops-bus' → 'bus').
+  String _glLayerLabel(String id) =>
+      _isStopLayer(id) ? id.substring('stg-stops-'.length) : id;
 
   Widget _stopDiagnosticsOverlay(ThemeData theme) {
     final center = _lastFetchCenter;
@@ -1277,7 +1430,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           final layers = controller
               .queryLayers(off)
               .map((q) => q.layerId)
-              .where((id) => id.startsWith('maplibre-layer-'))
+              .where(_isStopLayer)
               .map(_glLayerLabel)
               .toList();
           hit = layers.isEmpty ? 'no stop layer' : layers.join(',');
@@ -1288,17 +1441,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       return '$id: $where · hit[$hit]';
     }
 
-    // The GL layers actually on the map right now (should be the stable 8).
+    // The imperative stop layers actually on the map right now (should be 8).
     // `getLayerIds` is the only style read that surfaces them; guard hard.
     var glLayers = 'style=null';
     if (style != null) {
       try {
         // ignore: invalid_use_of_visible_for_testing_member
         final allIds = style.getLayerIds();
-        final ids = allIds
-            .where((id) => id.startsWith('maplibre-layer-'))
-            .map(_glLayerLabel)
-            .toList();
+        final ids = allIds.where(_isStopLayer).map(_glLayerLabel).toList();
         glLayers = ids.isEmpty ? 'NONE' : ids.join(' ');
       } catch (_) {
         glLayers = 'err';
@@ -1309,7 +1459,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       'STOP DIAGNOSTICS (staging)',
       'zoom ${_currentZoom.toStringAsFixed(2)}  minStops $_minStopsZoom  indiv $_individualZoom',
       // The gates that decide whether ANY stop layer is built/drawn.
-      'imagesReady $_imagesReady  ctrl ${controller != null}  style ${style != null}  focus ${_focus != null}',
+      'imagesReady $_imagesReady  stopLayers $_stopLayersAdded  style ${style != null}  focus ${_focus != null}',
       center == null
           ? 'last fetch: none yet (zoom < $_minStopsZoom?)'
           : 'fetch @ ${center.latitude.toStringAsFixed(5)},${center.longitude.toStringAsFixed(5)} r=${_lastFetchRadius.toStringAsFixed(0)}m',
@@ -1659,97 +1809,18 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     return out;
   }
 
-  List<Layer> _buildLayers(List<Stop> favoriteStops) {
-    if (!_imagesReady) return const [];
+  // The ambient stop layers (rails · clusters · bus/tram/trolley/mixed pins ·
+  // favourites · pinned place) are NOT here — they're added imperatively once
+  // per style load and updated via [_pushStopSources] (see _addStopLayers), to
+  // dodge maplibre 0.3.5's positional LayerManager, which reconciles the
+  // declarative list by index with unawaited add/remove and deterministically
+  // dropped whole stop layers (a pure-bus stop lost its pin on prod). Only the
+  // focused-line view still uses the declarative list — a clean, user-initiated
+  // swap of at most two layers. "My position" is a WidgetLayer marker (in build)
+  // so it can't be culled at low zoom (X2).
+  List<Layer> _buildLayers() {
     final focus = _focus;
-    if (focus != null) return _focusLayers(focus);
-    // While the coverage overlay is on, the stop clusters crossfade with the
-    // heatmap over a zoom band: hidden far out (heatmap stands in for them),
-    // full once zoomed in. The heatmap's own opacity is a GPU zoom expression
-    // (smooth during a pinch); the markers rebuild on camera-idle, so they
-    // settle to this opacity at each rest. Flag off ⇒ 1.0, unchanged behaviour.
-    final zoom = _controller?.getCamera().zoom ?? 15.0;
-    final stopsOpacity = _coverageEnabled
-        ? coverageMainStopsOpacity(zoom)
-        : 1.0;
-
-    // The layer list MUST stay a fixed length in a fixed order. maplibre 0.3.5
-    // keys sources/layers *positionally* (`maplibre-layer-$index`) and its
-    // LayerManager reconciles the new list against the old **by index**. If an
-    // entry appears/disappears (a `if (…isNotEmpty)` layer, or the async-loaded
-    // tram-rails polyline dropping in at the front), every later layer shifts
-    // index — so the manager does a cross-type removeLayer(i)+addLayer(i) whose
-    // *unawaited* platform calls can race and silently drop a stop layer,
-    // leaving markers built but never drawn (the "stop has an OSM icon but no
-    // clickable pin" bug). Keeping the list stable (empty feature lists instead
-    // of omission) pins each layer to a constant index+type, so reconcile only
-    // ever refreshes a source's data — never a racy cross-type swap.
-    Feature<Point> pointFeature(Stop s) => Feature<Point>(
-      geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
-      properties: {'stopId': s.stopId, 'name': s.name},
-    );
-    MarkerLayer stopLayer(List<Feature<Point>> points, String image) =>
-        MarkerLayer(
-          points: points,
-          iconImage: image,
-          iconSize: _iconSize,
-          iconOpacity: stopsOpacity,
-          iconAllowOverlap: true,
-        );
-
-    return [
-      // Tram rails, under everything (C2). Always present (empty when the
-      // shapes haven't loaded) so its arrival never shifts the layers above.
-      PolylineLayer(
-        polylines: [
-          for (final poly in _tramRails)
-            Feature<LineString>(
-              geometry: LineString.from([
-                for (final p in poly) Geographic(lon: p[1], lat: p[0]),
-              ]),
-            ),
-        ],
-        color: tramRailColor,
-        width: 2,
-      ),
-      // Stop markers. Opacity (not presence) does the coverage crossfade, so the
-      // count stays constant; `_areaStops` is already empty below the min zoom.
-      MarkerLayer(
-        points: _clusterPts,
-        iconImage: MapImages.cluster,
-        iconSize: _iconSize,
-        iconOpacity: stopsOpacity,
-        iconAllowOverlap: true,
-        textField: '{point_count}',
-        textColor: _scheme.onPrimary,
-        textSize: 13,
-        textAllowOverlap: true,
-      ),
-      stopLayer(_busPts, MapImages.bus),
-      stopLayer(_tramPts, MapImages.tram),
-      stopLayer(_trolleyPts, MapImages.trolley),
-      stopLayer(_mixedPts, MapImages.mixedStop),
-      // Favourites — always present (empty when none).
-      MarkerLayer(
-        points: [for (final s in favoriteStops) pointFeature(s)],
-        iconImage: MapImages.favorite,
-        iconSize: _iconSize,
-        iconAllowOverlap: true,
-      ),
-      // Pinned place — always present (empty when none).
-      MarkerLayer(
-        points: [
-          if (_pinnedPlace case final place?)
-            Feature<Point>(geometry: Point(place)),
-        ],
-        iconImage: MapImages.place,
-        iconSize: _iconSize,
-        iconAnchor: IconAnchor.bottom,
-        iconAllowOverlap: true,
-      ),
-      // NB: "my position" is intentionally *not* here — it's a WidgetLayer
-      // marker (see build) so it can't be culled at low zoom (X2).
-    ];
+    return focus != null ? _focusLayers(focus) : const [];
   }
 
   /// Layers for the focused-line view: just that route (highlighted in its type
@@ -1843,10 +1914,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, size: 18),
-                          onPressed: () => setState(() {
-                            _pinnedPlace = null;
-                            _pinnedPlaceLabel = null;
-                          }),
+                          onPressed: () {
+                            setState(() {
+                              _pinnedPlace = null;
+                              _pinnedPlaceLabel = null;
+                            });
+                            _pushStopSources(); // clear the pinned-place marker
+                          },
                         ),
                       ],
                     ),
