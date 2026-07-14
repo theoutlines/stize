@@ -137,6 +137,97 @@ export function upcomingScheduled(
  * shows the live vehicle plus the *later* planned trips, not a doubled bus.
  * `liveByRoute`: direction route_id -> live ETAs (minutes).
  */
+// --- Phase 2: scheduled objects on the map ---------------------------------
+
+export interface TripTimed {
+  trip_id: string;
+  service: string;
+  times: (number | null)[]; // aligned to the route's shape stops (null = skipped)
+}
+export interface TrajectoryPointDto {
+  lat: number;
+  lon: number;
+  eta_seconds: number; // cumulative from as_of; 0 at the current position
+}
+export interface ScheduledMapObject {
+  trip_id: string;
+  lat: number;
+  lon: number;
+  heading: number | null;
+  trajectory: TrajectoryPointDto[];
+}
+
+function bearing(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const y = Math.sin(toRad(b.lon - a.lon)) * Math.cos(toRad(b.lat));
+  const x =
+    Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat)) -
+    Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(toRad(b.lon - a.lon));
+  return (Math.atan2(y, x) * 180) / Math.PI;
+}
+
+/**
+ * Trips of one route that are in transit *now* by the timetable, each placed on
+ * its route by interpolating between the two shape stops it's currently between,
+ * with a forward `trajectory` (stop points + cumulative eta) so the client moves
+ * it with the same timed-trajectory code as a live vehicle. Handles overnight
+ * trips from yesterday's service running in today's small hours.
+ */
+export function scheduledMapObjectsForRoute(
+  trips: TripTimed[],
+  stopCoords: { lat: number; lon: number }[], // aligned to `times` indices
+  meta: ScheduleMeta,
+  now: NowContext,
+): ScheduledMapObject[] {
+  const todaySvc = activeServices(now.dateISO, meta);
+  const yestSvc = activeServices(now.yesterdayISO, meta);
+  const instances: { services: Set<string>; offset: number }[] = [
+    { services: todaySvc, offset: 0 },
+    { services: yestSvc, offset: OVERNIGHT }, // yesterday's overnight tail
+  ];
+
+  const out: ScheduledMapObject[] = [];
+  for (const inst of instances) {
+    for (const trip of trips) {
+      if (!inst.services.has(trip.service)) continue;
+      // Served points (coord + local minute), overnight instance keeps only the
+      // after-midnight tail shifted into today.
+      const pts: { lat: number; lon: number; t: number }[] = [];
+      for (let i = 0; i < trip.times.length; i++) {
+        const raw = trip.times[i];
+        if (raw === null || !stopCoords[i]) continue;
+        if (inst.offset > 0) {
+          if (raw < OVERNIGHT) continue;
+          pts.push({ ...stopCoords[i], t: raw - OVERNIGHT });
+        } else {
+          pts.push({ ...stopCoords[i], t: raw });
+        }
+      }
+      if (pts.length < 2) continue;
+      const first = pts[0].t;
+      const last = pts[pts.length - 1].t;
+      if (now.minutes < first || now.minutes > last) continue; // not in transit
+
+      // Segment the vehicle is on.
+      let i = 0;
+      while (i < pts.length - 1 && pts[i + 1].t <= now.minutes) i++;
+      const a = pts[i];
+      const b = pts[i + 1];
+      const span = b.t - a.t;
+      const frac = span > 0 ? (now.minutes - a.t) / span : 0;
+      const lat = a.lat + (b.lat - a.lat) * frac;
+      const lon = a.lon + (b.lon - a.lon) * frac;
+
+      const trajectory: TrajectoryPointDto[] = [{ lat, lon, eta_seconds: 0 }];
+      for (let j = i + 1; j < pts.length; j++) {
+        trajectory.push({ lat: pts[j].lat, lon: pts[j].lon, eta_seconds: (pts[j].t - now.minutes) * 60 });
+      }
+      out.push({ trip_id: trip.trip_id, lat, lon, heading: bearing(a, b), trajectory });
+    }
+  }
+  return out;
+}
+
 export function dedupScheduledAgainstLive(
   scheduled: ScheduledArrival[],
   liveByRoute: Map<string, number[]>,
