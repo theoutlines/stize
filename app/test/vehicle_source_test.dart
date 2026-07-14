@@ -68,8 +68,9 @@ void main() {
 
       final track = animator.trackFor('sched:T1')!;
       expect(track.source, VehicleSource.scheduled);
-      // Movement is identical to a live object — the plan plays forward.
-      now = now.add(const Duration(seconds: 50));
+      // Movement is identical to a live object — the plan bridges forward from
+      // the fix (within the fresh window).
+      now = now.add(const Duration(seconds: 10));
       animator.advanceTimed(now);
       expect(animator.positionOf('sched:T1', 0).longitude, greaterThan(20.50));
     });
