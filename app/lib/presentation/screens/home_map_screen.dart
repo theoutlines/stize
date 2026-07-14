@@ -1228,10 +1228,32 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// classified into). This makes "the pin never appears" answerable on the
   /// device: either the id is absent from the fetch (data/request), or it is
   /// present (so it must be rendering) — no guessing.
+  /// Names the fixed `_buildLayers` slots so a raw `maplibre-layer-N` id reads as
+  /// its type in diagnostics (see `_buildLayers` for the canonical order).
+  static const _glLayerNames = [
+    'rails',
+    'cluster',
+    'bus',
+    'tram',
+    'trolley',
+    'mixed',
+    'fav',
+    'place',
+  ];
+
+  String _glLayerLabel(String id) {
+    final n = int.tryParse(id.replaceFirst('maplibre-layer-', ''));
+    return (n != null && n >= 0 && n < _glLayerNames.length)
+        ? '$n:${_glLayerNames[n]}'
+        : id;
+  }
+
   Widget _stopDiagnosticsOverlay(ThemeData theme) {
     final center = _lastFetchCenter;
     final byId = {for (final s in _areaStops) s.stopId: s};
     final favIds = _favoriteIds;
+    final controller = _controller;
+    final style = _style;
 
     String probeLine(String id) {
       final stop = byId[id];
@@ -1244,12 +1266,50 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               VehicleType.bus => 'bus',
               null => 'mixed',
             };
-      return '$id: present → $where';
+      // What is actually RENDERED at this stop's screen pixel — proves whether
+      // its GL marker layer is on the map and drawing here, or silently missing.
+      var hit = '?';
+      if (controller != null) {
+        try {
+          final off = controller.toScreenLocation(
+            Geographic(lon: stop.lon, lat: stop.lat),
+          );
+          final layers = controller
+              .queryLayers(off)
+              .map((q) => q.layerId)
+              .where((id) => id.startsWith('maplibre-layer-'))
+              .map(_glLayerLabel)
+              .toList();
+          hit = layers.isEmpty ? 'no stop layer' : layers.join(',');
+        } catch (_) {
+          hit = 'query err';
+        }
+      }
+      return '$id: $where · hit[$hit]';
+    }
+
+    // The GL layers actually on the map right now (should be the stable 8).
+    // `getLayerIds` is the only style read that surfaces them; guard hard.
+    var glLayers = 'style=null';
+    if (style != null) {
+      try {
+        // ignore: invalid_use_of_visible_for_testing_member
+        final allIds = style.getLayerIds();
+        final ids = allIds
+            .where((id) => id.startsWith('maplibre-layer-'))
+            .map(_glLayerLabel)
+            .toList();
+        glLayers = ids.isEmpty ? 'NONE' : ids.join(' ');
+      } catch (_) {
+        glLayers = 'err';
+      }
     }
 
     final lines = <String>[
       'STOP DIAGNOSTICS (staging)',
       'zoom ${_currentZoom.toStringAsFixed(2)}  minStops $_minStopsZoom  indiv $_individualZoom',
+      // The gates that decide whether ANY stop layer is built/drawn.
+      'imagesReady $_imagesReady  ctrl ${controller != null}  style ${style != null}  focus ${_focus != null}',
       center == null
           ? 'last fetch: none yet (zoom < $_minStopsZoom?)'
           : 'fetch @ ${center.latitude.toStringAsFixed(5)},${center.longitude.toStringAsFixed(5)} r=${_lastFetchRadius.toStringAsFixed(0)}m',
@@ -1257,7 +1317,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       'markers: bus ${_busPts.length} tram ${_tramPts.length} '
           'trolley ${_trolleyPts.length} mixed ${_mixedPts.length} '
           'cluster ${_clusterPts.length}',
-      'Batutova probe:',
+      'GL layers on map: $glLayers',
+      'Batutova probe (hit = rendered at its pixel):',
       for (final id in _batutovaProbeIds) '  ${probeLine(id)}',
     ];
 
