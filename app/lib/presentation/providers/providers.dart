@@ -78,12 +78,6 @@ final coverageOnMainMapEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.coverageOnMainMap ?? false,
 );
 
-/// Whether moving vehicles render as the MapLibre GPU symbol layer instead of
-/// per-vehicle Flutter widgets (remote `symbol_layer` flag). Defaults to false
-/// until config resolves, so prod keeps the widget path (the fallback).
-final symbolLayerEnabledProvider = Provider<bool>(
-  (ref) => ref.watch(appConfigProvider).valueOrNull?.symbolLayer ?? false,
-);
 
 
 

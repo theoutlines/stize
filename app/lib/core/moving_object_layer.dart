@@ -7,10 +7,9 @@
 /// the source, the layers, and the tap/spiderfy logic don't change. Objects from
 /// other backends can flow into the same source as long as they map to a kind.
 ///
-/// The heavy per-object Flutter widget path (`VehicleMarker`/`WidgetLayer`) stays
-/// as a fallback behind the `symbol_layer` flag — see `home_map_screen.dart`.
-/// Here everything is batched into one GeoJSON source rendered on the GPU, so
-/// the cost is sub-linear in object count (40 or 400 symbols ≈ one price).
+/// Everything is batched into one GeoJSON source rendered on the GPU, so the
+/// cost is sub-linear in object count (40 or 400 symbols ≈ one price) — far
+/// cheaper than a per-object Flutter widget per vehicle.
 ///
 /// **Identity is intentionally NOT on the marker.** A feature carries only what
 /// the map needs to draw and to route a tap: the tracking [MovingObject.key], the

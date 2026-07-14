@@ -56,9 +56,6 @@ const _individualZoom = 15.0;
 // backend's ~30s per-stop cache: polling faster just re-reads the same cached
 // positions, which the movement heuristic would misread as "stuck".
 const _minVehiclesZoom = 14.0;
-// At/above this zoom vehicles show as full number pills; below it they render as
-// simple coloured dots (progressive detail, B2) — including the far-out overview.
-const _vehicleDetailZoom = 15.5;
 // Fixed 30s cadence, shared with the stop views, matched to the backend cache.
 const _vehiclesRefreshInterval = kLiveRefreshInterval;
 // Widened 1000 -> 1500 m (matched to the backend's MAX_RADIUS_METERS and the
@@ -143,13 +140,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // vehicles renders zero frames instead of ticking forever (thermal fix —
   // "idle = 0 frames"). See [_startVehDriver].
   Ticker? _vehTicker;
-  final ValueNotifier<double> _vehTick = ValueNotifier<double>(1);
 
-  // Symbol-layer render path (remote `symbol_layer` flag): when on, moving
-  // vehicles are one batched GPU symbol layer (sub-linear in count) instead of
-  // per-vehicle Flutter widgets. When off — prod — the widget path below is the
-  // unchanged fallback. Read in build; the two paths never render at once.
-  bool _symbolLayerEnabled = false;
+  // Moving vehicles render as one batched GPU symbol layer (sub-linear in count).
   bool _vehLayerAdded = false; // source + symbol layers present in this style
   // The currently-selected vehicle's tracking key (tap highlight on the symbol
   // layer via the feature's `selected` property). Null = nothing selected.
@@ -291,7 +283,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _stopVehDriver();
     _vehTicker?.dispose();
     _vehAnim.removeStatusListener(_onVehAnimStatus);
-    _vehTick.dispose();
     _vehAnim.dispose();
     _searchController.dispose();
     _focusNode.dispose();
@@ -381,14 +372,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
   }
 
-  /// Push the current vehicle positions to whichever render path is active: the
-  /// GPU symbol source (flag on) or the widget marker layer's tick (flag off).
+  /// Push the current vehicle positions to the GPU symbol source.
   void _paintVehicles() {
-    if (_symbolLayerEnabled) {
-      _writeVehiclesToSource();
-    } else if (_vehTick.value != _vehAnim.value) {
-      _vehTick.value = _vehAnim.value;
-    }
+    _writeVehiclesToSource();
   }
 
   void _stopVehDriver() {
@@ -434,10 +420,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // objects belong above the stop/rail infrastructure (C2). Rails are the
     // lowest of the stop layers (see _addStopLayers).
     await _addStopLayers(style);
-    if (_symbolLayerEnabled) {
-      await registerMovingObjectImages(style);
-      await _addVehicleSymbolLayers();
-    }
+    await registerMovingObjectImages(style);
+    await _addVehicleSymbolLayers();
     if (!mounted) return;
     setState(() => _imagesReady = true);
     // Show stops and live vehicles for wherever the map currently sits, even
@@ -472,18 +456,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     } catch (_) {
       _vehLayerAdded = false;
     }
-  }
-
-  /// Enable the symbol layer after the fact — when the remote flag resolves
-  /// true *after* the style already loaded (config usually lands a beat later).
-  /// Registers the images, then adds the source+layers. No-op if already added
-  /// or the flag is off / style not ready.
-  Future<void> _reconcileVehicleSymbolLayers() async {
-    if (!_symbolLayerEnabled || _vehLayerAdded) return;
-    final style = _style;
-    if (style == null) return;
-    await registerMovingObjectImages(style);
-    await _addVehicleSymbolLayers();
   }
 
   /// Builds the typed moving-object set from the animator's current positions
@@ -1252,7 +1224,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // of zoom, so a zoomed-out view never fans the source out wider. Keeping it
     // live means the city overview still shows the (sparse) vehicles already
     // around the viewport as dots instead of a blank map; the marker layer
-    // degrades pills → dots below _vehicleDetailZoom on its own. When even the
+    // degrades pills → dots at low zoom on its own. When even the
     // bounded area is empty, a hint tells the user to zoom in (see _zoomHint).
     final center = ll.LatLng(camera.center.lat, camera.center.lon);
     final radius = _radiusForVisibleArea(camera).clamp(400.0, _vehiclesMaxRadius);
@@ -1497,7 +1469,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     });
     _pushStopSources(); // restore the ambient stop layers
     // Drop the tap highlight on the symbol layer.
-    if (_symbolLayerEnabled) _writeVehiclesToSource();
+    _writeVehiclesToSource();
   }
 
   // ---- Taps -----------------------------------------------------------------
@@ -1508,10 +1480,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final screen = controller.toScreenLocation(point);
     final rect = Rect.fromCircle(center: screen, radius: 22);
     // Symbol-layer vehicles: hit-test the badge layer and open the tapped line
-    // (the same bottom sheet the widget marker's onTap opens). Highlight the
-    // selected vehicle via its feature `selected` flag. Widget-path vehicles
-    // keep handling their own taps through the marker's onTap.
-    if (_symbolLayerEnabled && _vehLayerAdded) {
+    // (a bottom sheet). Highlight the selected vehicle via its feature
+    // `selected` flag.
+    if (_vehLayerAdded) {
       final vehicleFeatures = controller.featuresInRect(
         rect,
         layerIds: movingObjectsTapLayerIds,
@@ -1761,19 +1732,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       }
     }
 
-    // Symbol-layer render flag: usually flips false→true once config resolves.
-    // When it turns on, add the source+layers after this frame (the style may
-    // already be loaded). The widget vehicle layer is built only while it's off.
-    final symbolEnabled = ref.watch(symbolLayerEnabledProvider);
-    if (symbolEnabled != _symbolLayerEnabled) {
-      _symbolLayerEnabled = symbolEnabled;
-      if (symbolEnabled) {
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _reconcileVehicleSymbolLayers(),
-        );
-      }
-    }
-
     return PopScope(
       // While a line is focused, Android back closes the focus overlay instead
       // of leaving the map.
@@ -1827,19 +1785,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                           );
                         },
                       ),
-                    // Live vehicles. With the symbol_layer flag ON they render
-                    // as the batched GPU symbol layer (added imperatively in
-                    // _addVehicleSymbolLayers), so no widget layer is built here.
-                    // With it OFF this is the unchanged fallback: a WidgetLayer
-                    // rebuilt on the throttled tick so eased positions update.
-                    if (!_symbolLayerEnabled)
-                      ValueListenableBuilder<double>(
-                        valueListenable: _vehTick,
-                        builder: (context, t, _) => WidgetLayer(
-                          markers: _vehicleMarkers(t),
-                          allowInteraction: true,
-                        ),
-                      ),
+                    // Live vehicles render as the batched GPU symbol layer,
+                    // added imperatively in _addVehicleSymbolLayers — no widget
+                    // layer is built for them here.
                   ],
                 ),
               ),
@@ -2225,105 +2173,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         child: IconButton(icon: Icon(icon), tooltip: tooltip, onPressed: onTap),
       ),
     );
-  }
-
-  List<Marker> _vehicleMarkers(double t) {
-    if (!_hasVehicles) return const [];
-    final zoom = _controller?.getCamera().zoom ?? 15.0;
-    final compact = zoom < _vehicleDetailZoom;
-    final focusLine = _focus?.line;
-    // Breathing halos animate only while the layer is live (a fix is easing);
-    // once settled they rest, so an idle map holds at zero frames (thermal).
-    final live = _vehAnim.isAnimating;
-
-    // Collect the visible vehicles first so we can detect and spread any that
-    // land on (nearly) the same spot.
-    final keys = <String>[];
-    final tracks = <VehicleTrack>[];
-    final positions = <ll.LatLng>[];
-    for (final entry in _vehAnimator.currentPositions(t)) {
-      final track = _vehAnimator.trackFor(entry.key);
-      if (track == null) continue;
-      // When a line is focused, show only that line's vehicles.
-      if (focusLine != null && track.line != focusLine) continue;
-      keys.add(entry.key);
-      tracks.add(track);
-      positions.add(entry.value);
-    }
-
-    // Spiderfy coincident vehicles so several at one point read as several,
-    // not one blob of overlapping pills and crossed arrows (F4).
-    final placed = _spiderfy(positions, zoom);
-
-    final markers = <Marker>[];
-    for (var i = 0; i < keys.length; i++) {
-      final key = keys[i];
-      final track = tracks[i];
-      final pos = placed[i];
-      final opacity = _vehAnimator.opacityFor(key);
-      final marker = VehicleMarker(
-        key: ValueKey(key),
-        line: track.line,
-        type: track.type,
-        color: vehicleColor(track.type),
-        // Heading follows the route tangent so the arrow matches the motion.
-        heading: compact ? null : _vehAnimator.headingAt(key, t),
-        stuck: _vehAnimator.isStuck(key),
-        compact: compact,
-        animate: live,
-        onTap: () => _openVehicleLine(track.line, focusOn: pos),
-      );
-      markers.add(
-        Marker(
-          point: Geographic(lon: pos.longitude, lat: pos.latitude),
-          size: VehicleMarker.markerSize,
-          // Isolate each pill's breathing-halo repaints from the layer.
-          child: RepaintBoundary(
-            child: opacity >= 1.0
-                ? marker
-                : Opacity(opacity: opacity, child: marker),
-          ),
-        ),
-      );
-    }
-    return markers;
-  }
-
-  /// Fans out markers that share (almost) the same coordinate onto a small
-  /// circle so co-located vehicles are each visible, instead of being drawn on
-  /// top of one another (F4). Non-coincident markers are returned unchanged.
-  List<ll.LatLng> _spiderfy(List<ll.LatLng> positions, double zoom) {
-    if (positions.length < 2) return positions;
-    // Group by a ~1 m grid so only genuinely-coincident vehicles are spread.
-    final groups = <String, List<int>>{};
-    for (var i = 0; i < positions.length; i++) {
-      final p = positions[i];
-      final key =
-          '${p.latitude.toStringAsFixed(5)}:${p.longitude.toStringAsFixed(5)}';
-      groups.putIfAbsent(key, () => []).add(i);
-    }
-    final out = List<ll.LatLng>.of(positions);
-    // Screen-space spread turned into metres at the current zoom, so the fan is
-    // a constant on-screen size regardless of how far in/out the user is.
-    const spreadPx = 20.0;
-    final metersPerPixel =
-        156543.03392 * math.cos(_belgradeCenter.lat * math.pi / 180) /
-        math.pow(2, zoom);
-    final radiusM = spreadPx * metersPerPixel;
-    for (final idxs in groups.values) {
-      if (idxs.length < 2) continue;
-      for (var j = 0; j < idxs.length; j++) {
-        final base = positions[idxs[j]];
-        final angle = 2 * math.pi * j / idxs.length;
-        final dLat = radiusM * math.sin(angle) / 111320.0;
-        final dLon =
-            radiusM *
-            math.cos(angle) /
-            (111320.0 * math.cos(base.latitude * math.pi / 180));
-        out[idxs[j]] = ll.LatLng(base.latitude + dLat, base.longitude + dLon);
-      }
-    }
-    return out;
   }
 
   // The ambient stop layers (rails · clusters · bus/tram/trolley/mixed pins ·

@@ -25,10 +25,6 @@ import type { Env } from "../env";
 //                       stop clusters). Independent of coverage_map_show: the
 //                       tab can be off while the overlay is on, and vice-versa.
 //                       OFF on prod, ON on staging.
-//   symbol_layer      — the app renders moving vehicles as a MapLibre GPU symbol
-//                       layer (batched, sub-linear in vehicle count) instead of
-//                       per-vehicle Flutter widgets. Client-side render flag.
-//                       OFF on prod (widget path stays the fallback), ON staging.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -36,7 +32,6 @@ export const FEATURE_FLAGS = [
   "nearby_sort_board",
   "coverage_map_show",
   "coverage_on_main_map",
-  "symbol_layer",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

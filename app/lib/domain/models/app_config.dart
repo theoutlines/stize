@@ -26,11 +26,6 @@ class AppConfig {
   /// [coverageMapShow] — the tab and the overlay gate separately.
   bool get coverageOnMainMap => flag('coverage_on_main_map');
 
-  /// Whether moving vehicles render as a MapLibre GPU symbol layer (batched,
-  /// sub-linear in count) instead of per-vehicle Flutter widgets. Client-side
-  /// render flag. OFF on prod (the widget path stays the fallback), ON on staging.
-  bool get symbolLayer => flag('symbol_layer');
-
 
   static const empty = AppConfig(version: '', flags: {});
 

@@ -27,7 +27,6 @@ describe("featureFlags", () => {
       "coverage_on_main_map",
       "nearby_list",
       "nearby_sort_board",
-      "symbol_layer",
     ]);
   });
 
