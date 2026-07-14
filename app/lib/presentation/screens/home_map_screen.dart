@@ -1423,10 +1423,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             const SizedBox.expand(),
           // Round action buttons at the top: menu (left), recenter (right).
           _topButtons(theme),
-          // Staging-only diagnostics for the "stop has no clickable pin" report
-          // (fix/stop-data): shows what the viewport fetch returned, how many
-          // markers were built, and whether the known Batutova stop_ids made it
-          // into `_areaStops`. Never shown in production (isStaging gate).
+          // Staging-only stop-render diagnostics (isStaging; invisible in prod).
+          // The one reliable render-observation channel on Flutter-CanvasKit —
+          // see _stopDiagnosticsOverlay and the map gotchas in CLAUDE.md.
           if (isStaging && _focus == null) _stopDiagnosticsOverlay(theme),
           // Far-out zoom with no vehicles in the bounded area: nudge the user to
           // zoom in rather than leaving them staring at a blank map (F5).
@@ -1444,19 +1443,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     );
   }
 
-  /// Known "Batutova" stop_ids on Bul. kralja Aleksandra × Batutova (Zvezdara),
-  /// the case under investigation. The 79 pair is 20091/22542; the tram pair is
-  /// 20096/20097. Used only by the staging diagnostics overlay to prove, on the
-  /// owner's own device, whether these reach `_areaStops` at all.
-  static const _batutovaProbeIds = ['20091', '22542', '20096', '20097'];
-
-  /// Staging-only overlay tracing the stop pipeline for the visible viewport:
-  /// where the last fetch was centred + its radius, how many stops came back,
-  /// how they split across the marker layers, and — for the Batutova probe ids —
-  /// whether each is present in `_areaStops` (and, if so, which marker bucket it
-  /// classified into). This makes "the pin never appears" answerable on the
-  /// device: either the id is absent from the fetch (data/request), or it is
-  /// present (so it must be rendering) — no guessing.
   /// True for one of the imperative stop layers (see [_addStopLayers]).
   static bool _isStopLayer(String id) => id.startsWith('stg-stops-');
 
@@ -1464,44 +1450,38 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   String _glLayerLabel(String id) =>
       _isStopLayer(id) ? id.substring('stg-stops-'.length) : id;
 
+  /// Staging-only render-diagnostics overlay (`isStaging`, invisible in prod).
+  /// On Flutter-CanvasKit the map/layers aren't in the DOM and external JS
+  /// inspection is blind, so this is the one reliable window into the stop-render
+  /// pipeline: the gate flags ([_imagesReady]/[_stopLayersAdded]/style), where
+  /// the last viewport fetch landed, how many stops came back and how they split
+  /// across the marker lists, which imperative stop layers are actually on the
+  /// map, and — via [MapController.queryLayers] — whether each type's layer
+  /// really draws at a real stop's pixel (catches "layer present, data pushed,
+  /// but nothing rendered"). Keep it: it is what broke the multi-round
+  /// stop-render investigation open. See the map-render gotchas in CLAUDE.md.
   Widget _stopDiagnosticsOverlay(ThemeData theme) {
     final center = _lastFetchCenter;
-    final byId = {for (final s in _areaStops) s.stopId: s};
-    final favIds = _favoriteIds;
     final controller = _controller;
     final style = _style;
 
-    String probeLine(String id) {
-      final stop = byId[id];
-      if (stop == null) return '$id: ABSENT from fetch';
-      final where = favIds.contains(id)
-          ? 'favorite'
-          : switch (stopMarkerType(stop)) {
-              VehicleType.tram => 'tram',
-              VehicleType.trolleybus => 'trolley',
-              VehicleType.bus => 'bus',
-              null => 'mixed',
-            };
-      // What is actually RENDERED at this stop's screen pixel — proves whether
-      // its GL marker layer is on the map and drawing here, or silently missing.
-      var hit = '?';
-      if (controller != null) {
-        try {
-          final off = controller.toScreenLocation(
-            Geographic(lon: stop.lon, lat: stop.lat),
-          );
-          final layers = controller
-              .queryLayers(off)
-              .map((q) => q.layerId)
-              .where(_isStopLayer)
-              .map(_glLayerLabel)
-              .toList();
-          hit = layers.isEmpty ? 'no stop layer' : layers.join(',');
-        } catch (_) {
-          hit = 'query err';
-        }
+    // Whether the layer for a stop type actually renders at the first such
+    // stop's screen pixel — 'ok' drawn, 'MISS' built-but-not-drawn, '-' none.
+    String renders(String label, List<Feature<Point>> pts) {
+      if (pts.isEmpty) return '$label:-';
+      if (controller == null) return '$label:?';
+      try {
+        final p = pts.first.geometry!.position;
+        final off = controller.toScreenLocation(
+          Geographic(lon: p.x, lat: p.y),
+        );
+        final drawn = controller
+            .queryLayers(off)
+            .any((q) => _isStopLayer(q.layerId));
+        return '$label:${drawn ? 'ok' : 'MISS'}';
+      } catch (_) {
+        return '$label:err';
       }
-      return '$id: $where · hit[$hit]';
     }
 
     // The imperative stop layers actually on the map right now (should be 8).
@@ -1531,8 +1511,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           'trolley ${_trolleyPts.length} mixed ${_mixedPts.length} '
           'cluster ${_clusterPts.length}',
       'GL layers on map: $glLayers',
-      'Batutova probe (hit = rendered at its pixel):',
-      for (final id in _batutovaProbeIds) '  ${probeLine(id)}',
+      // Does each type's layer actually draw at its first stop's pixel?
+      'renders: ${renders('bus', _busPts)} ${renders('tram', _tramPts)} '
+          '${renders('trolley', _trolleyPts)} ${renders('mixed', _mixedPts)}',
     ];
 
     return SafeArea(
