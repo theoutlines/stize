@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
@@ -762,38 +763,87 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         focused || (_coverageEnabled && coverageMainStopsOpacity(zoom) <= 0.01);
     final favStops =
         ref.read(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
-    final railsFc = FeatureCollection([
-      for (final poly in _tramRails)
-        Feature<LineString>(
-          geometry: LineString.from([
-            for (final p in poly) Geographic(lon: p[1], lat: p[0]),
-          ]),
-        ),
-    ]).toText();
-    Feature<Point> pt(Stop s) => Feature<Point>(
-      geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
-      properties: {'stopId': s.stopId, 'name': s.name},
-    );
-    // Coverage hides only the stop-type + cluster layers; rails/favourites/place
-    // follow the original behaviour and only vanish while a line is focused.
-    String typeFc(List<Feature<Point>> f) =>
-        hidden ? _emptyFeatureCollection : FeatureCollection(f).toText();
+    // Serialise via `jsonEncode`, NOT geobase's `FeatureCollection.toText()`:
+    // toText() does not escape `"` (and other specials) in string properties, so
+    // a stop whose name contains a quote — e.g. `Park "Tašmajdan"` (19 such stops
+    // in the feed) — produced invalid JSON, which the web plugin's
+    // `setData(JSON.parse(data))` threw on, leaving that source empty and its
+    // stops unrendered. `jsonEncode` escapes correctly.
+    String pointsFc(List<Feature<Point>> f) {
+      if (hidden) return _emptyFeatureCollection;
+      return jsonEncode({
+        'type': 'FeatureCollection',
+        'features': [
+          for (final feature in f)
+            {
+              'type': 'Feature',
+              'geometry': {
+                'type': 'Point',
+                'coordinates': [
+                  feature.geometry!.position.x,
+                  feature.geometry!.position.y,
+                ],
+              },
+              'properties': feature.properties,
+            },
+        ],
+      });
+    }
+
+    Map<String, Object?> stopFeature(Stop s) => {
+      'type': 'Feature',
+      'geometry': {
+        'type': 'Point',
+        'coordinates': [s.lon, s.lat],
+      },
+      'properties': {'stopId': s.stopId, 'name': s.name},
+    };
     final data = <String, String>{
-      _railsLayerId: focused ? _emptyFeatureCollection : railsFc,
-      _clusterLayerId: typeFc(_clusterPts),
-      _busLayerId: typeFc(_busPts),
-      _tramLayerId: typeFc(_tramPts),
-      _trolleyLayerId: typeFc(_trolleyPts),
-      _mixedLayerId: typeFc(_mixedPts),
+      _railsLayerId: focused
+          ? _emptyFeatureCollection
+          : jsonEncode({
+              'type': 'FeatureCollection',
+              'features': [
+                for (final poly in _tramRails)
+                  {
+                    'type': 'Feature',
+                    'geometry': {
+                      'type': 'LineString',
+                      'coordinates': [
+                        for (final p in poly) [p[1], p[0]],
+                      ],
+                    },
+                    'properties': const <String, Object?>{},
+                  },
+              ],
+            }),
+      _clusterLayerId: pointsFc(_clusterPts),
+      _busLayerId: pointsFc(_busPts),
+      _tramLayerId: pointsFc(_tramPts),
+      _trolleyLayerId: pointsFc(_trolleyPts),
+      _mixedLayerId: pointsFc(_mixedPts),
       _favLayerId: focused
           ? _emptyFeatureCollection
-          : FeatureCollection([for (final s in favStops) pt(s)]).toText(),
+          : jsonEncode({
+              'type': 'FeatureCollection',
+              'features': [for (final s in favStops) stopFeature(s)],
+            }),
       _placeLayerId: focused
           ? _emptyFeatureCollection
-          : FeatureCollection([
-              if (_pinnedPlace case final place?)
-                Feature<Point>(geometry: Point(place)),
-            ]).toText(),
+          : jsonEncode({
+              'type': 'FeatureCollection',
+              'features': [
+                if (_pinnedPlace case final place?)
+                  {
+                    'type': 'Feature',
+                    'geometry': {
+                      'type': 'Point',
+                      'coordinates': [place.lon, place.lat],
+                    },
+                    'properties': const <String, Object?>{},
+                  },
+              ],
+            }),
     };
     // Always push every source (no dedup cache): `updateGeoJsonSource` is a
     // synchronous `setData` on web, so re-pushing unchanged data on a camera
@@ -1858,7 +1908,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           for (final s in focus.stops)
             Feature<Point>(
               geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
-              properties: {'stopId': s.stopId, 'name': s.name},
+              // No `name` here: the focus layer is declarative, so the maplibre
+              // LayerManager serialises it with geobase's `toText()`, which does
+              // not escape `"` in string properties (see _pushStopSources). The
+              // tap handler only needs `stopId`, so omitting the name keeps this
+              // path's JSON valid even for stops like `Park "Tašmajdan"`.
+              properties: {'stopId': s.stopId},
             ),
         ],
         iconImage: MapImages.forStop(focus.type),
