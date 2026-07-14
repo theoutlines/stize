@@ -9,7 +9,6 @@ import {
   getRouteShape,
   getScheduleMeta,
 } from "./gtfsData";
-import { getFlag } from "./featureFlags";
 import { belgradeNow, scheduledMapObjectsForRoute } from "./schedule";
 import { haversineDistanceMeters } from "./haversine";
 import type { WaitUntilCtx } from "./swrCache";
@@ -90,15 +89,13 @@ export async function getNearbyVehicles(
 
   // Schedule fallback Phase 2: add planned objects in transit now — but only for
   // lines that have NO live vehicle here, so a busy live viewport stays cheap
-  // (few candidates) and we never double a bus that's already live. Flag-gated,
-  // best-effort.
-  if (await getFlag(env, "schedule_map")) {
-    try {
-      const scheduled = await scheduledMapVehicles(env, stops, center, radius, byVehicle, asOf);
-      vehicles.push(...scheduled);
-    } catch (e) {
-      console.error("scheduled map objects failed", e);
-    }
+  // (few candidates, capped at MAX_SCHEDULED_ROUTES) and we never double a bus
+  // that's already live. Best-effort.
+  try {
+    const scheduled = await scheduledMapVehicles(env, stops, center, radius, byVehicle, asOf);
+    vehicles.push(...scheduled);
+  } catch (e) {
+    console.error("scheduled map objects failed", e);
   }
 
   return { vehicles, updated_at: asOf };

@@ -35,7 +35,6 @@ candidate; **fresh** = recently shipped, kept for instant rollback.
 | `nearby_sort_board` | "Nearby" ordered by time-to-board instead of bare ETA (backend) | ON | ON | 2026-07-12 | fresh (kept for rollback) |
 | `symbol_layer` | moving vehicles render as a MapLibre GPU symbol layer (client) | ON | ON | 2026-07-13 | rollout → removal candidate |
 | `live_position_only` | map draws only vehicles with a real live GPS (client) | ON | ON | 2026-07-13 | rollout → removal candidate |
-| `schedule_map` | scheduled objects on the map where a line has no live vehicle (backend) | ON | ON | 2026-07-14 | rollout → removal candidate |
 
 Config parameters (KV, not boolean flags):
 
@@ -45,8 +44,7 @@ Config parameters (KV, not boolean flags):
 
 Notes: the two analytics flags are independent on purpose — turn **collect** on
 early to accumulate history while **show** stays off. `nearby_sort_board` only
-matters when `nearby_list` is on. `schedule_map` needs `schedule_fallback` too for
-scheduled buses to appear on the map.
+matters when `nearby_list` is on.
 
 ### Registry maintenance (part of task DoD — see CLAUDE.md)
 
