@@ -19,11 +19,10 @@ overrides the default.
 
 ## Registry — the single source of truth (keep this current)
 
-Every flag in `backend/src/lib/featureFlags.ts` **must** have a row here. State as
-of **2026-07-14** (verified against prod/staging KV — see
-`docs/reports/2026-07-14-flags-audit.md`). Status: **permanent** = lives behind a
-flag by design; **rollout** = shipped & stable, flag now redundant → removal
-candidate; **fresh** = recently shipped, kept for instant rollback.
+Every flag in `backend/src/lib/featureFlags.ts` **must** have a row here. Status:
+**permanent** = lives behind a flag by design; **rollout** = shipped & stable,
+flag now redundant → removal candidate; **fresh** = recently shipped, kept for
+instant rollback.
 
 | flag | gates (feature / screen) | prod | staging | introduced | status |
 |---|---|---|---|---|---|
@@ -44,10 +43,10 @@ Notes: the two analytics flags are independent on purpose — turn **collect** o
 early to accumulate history while **show** stays off. `nearby_sort_board` only
 matters when `nearby_list` is on.
 
-### Registry maintenance (part of task DoD — see CLAUDE.md)
+### Registry maintenance
 
 - **New flag** → add it to `featureFlags.ts` **and** a row here (gates / prod /
-  staging / date / status) in the same task.
+  staging / date / status) in the same change.
 - **Feature stabilised, flag no longer needed** → when you remove the flag from
   code, remove its row here too (and delete the KV keys).
 - Keep the state column honest: it should match prod/staging KV. Re-verify during

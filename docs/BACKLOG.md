@@ -1,262 +1,94 @@
-# Бэклог и роадмап
+# Stigla — Roadmap
 
-Единственный источник приоритетов. Правится по мере выполнения задач.
-Статусы: ✅ в проде · 🚧 в работе / за флагом · ⏭️ следующее · 💡 идея · 🧊 icebox.
+Where the product is and where it's going. Status: ✅ shipped · 🚧 in progress /
+behind a flag · ⏭️ next · 💡 idea · 🧊 icebox.
 
-## Рамка продукта
+## Product frame
 
-Stigla — **не навигатор** (не строит маршруты A→B). Продукт отвечает пассажиру
-на остановке на два вопроса: **что и когда сюда едет** и **на чём именно я поеду
-и стоит ли этому верить**. Три кита: прибытия / машины / надёжность.
-Принцип приоритизации: вес фактора в решении пассажира × дешевизна данных ×
-независимость от масштаба аудитории. Данные, которые нельзя собрать задним
-числом, начинаем копить до того, как они понадобятся.
+Stigla is **not a journey planner** (no A→B routing). It answers the two
+questions a rider at a stop has: **what's coming and when**, and **which vehicle
+am I about to board — and can I trust it?** Three pillars: **arrivals /
+vehicles / reliability**. Priority ≈ how much a factor weighs in a rider's
+decision × how cheap the data is × how independent it is of audience size. Data
+that can't be collected retroactively, we start accumulating before we need it.
 
-## В проде (`main`)
+## Shipped
 
-- ✅ Карта в реальном времени: остановки, поиск, трекинг ТС (движение вдоль
-  маршрута, сглаживание, grace-period, «застрял» по таймауту).
-- ✅ Инлайн-подсветка маршрута по тапу на ТС; классификация трамвай/троллейбус/автобус.
-- ✅ Платформо-адаптивный UI (iOS Cupertino / Android Material / Web).
-- ✅ Идеи (фидбек), контекстные алерты линий.
-- ✅ Инфраструктура процесса: фиче-флаги (KV, env-aware), staging-контур,
-  парольная защита превью (`docs/staging.md`).
-- ✅ Аналитика — **сбор** (с 2026-07-10): наблюдения → D1, нормализация
-  `vehicle_id` (junk `P1–P999` исключён из борт-метрик), агрегаты
-  «линия × час×день» и «борт × линия × день недели (+first/last seen)».
-- ✅ Батч фиксов карты/UI (2026-07-11, `fix/map-ux-batch`, F1–F9): проекция ТС
-  на верный участок маршрута; тап по ТС без fitBounds; честные ошибки
-  геолокации + full-bleed iOS Safari; spiderfy совпадающих ТС; транспорт на
-  любом зуме (точки + хинт); фильтр пустых линий; чипы избранного без клипа;
-  **оба направления линии в поиске** (GTFS 241→453, фид пересобран); интервал
-  обновления зашит в 30 с. Отчёт: `docs/reports/2026-07-11-fix-map-ux-batch.md`.
-- ✅ Живая геолокация пользователя (2026-07-12, `fix/geolocation-stream`): маркер
-  «моя позиция» переведён с one-shot `getCurrentPosition` на непрерывный
-  position-стрим (distance-filter ~8 м, независимо от 30-секундного опроса ТС),
-  короткий easing к свежему фиксу; пауза в фоне / на экране Ideas, пересоздание
-  зависшего `watchPosition` (web/iOS Safari), тихое скрытие при отзыве доступа.
-  Отчёт: `docs/reports/2026-07-12-geolocation-stream.md`.
-- ✅ Перегрев iPhone на вебе (2026-07-12, `fix/ios-web-thermal`): веб рисовал
-  60 fps даже в полном покое. Устранены три источника непрерывных кадров —
-  вечный pulse-halo маркеров, всегда-работавший сэмплер слоя (`Timer.periodic
-  66 мс`), отсутствие паузы в фоне. В покое — ноль кадров, в фоне — ноль
-  активности; плавность движения ТС не тронута, рендерер/DPR не меняли.
-  Отчёт: `docs/reports/2026-07-12-ios-thermal.md`.
-- ✅ Галерея дизайн-слепков (2026-07-12, `feature/design-gallery`): статичная
-  HTML/CSS-реплика всех экранов и состояний (`design/gallery/`, по странице на
-  состояние, фрейм 390×844) для импорта в Figma плагином html.to.design.
-  Задеплоена на preview-алиас `preview-gallery`. Поддержание встроено в DoD
-  (правила — `design/gallery/README.md`). Отчёт:
-  `docs/reports/2026-07-12-design-gallery.md`.
-- ✅ Fleet-ID «на чём поедешь» (2026-07-12, `feature/fleet-id`): по гаражному
-  номеру — модель/класс и в списке прибытий бейджи (эко/❄️/♿/возраст), карточка
-  модели (модель + прозвище, атрибуты по §3, комфорт точками, производитель+
-  страна), сортировка «по комфорту» при ≥2 классах. Клиент-only, без новых
-  сетевых запросов. Контент локализован EN/RU/SR (заметки + прозвище: ru
-  кириллица / sr латиница / en ASCII, страны). Деградация при битом asset.
-  Данные `app/assets/data/fleet_models.json`. Спека `docs/FLEET_INTEGRATION.md`,
-  отчёт `docs/reports/2026-07-10-fleet-id.md`.
-- ✅ **Расписание-фолбэк, Фаза 1 (список) — В ПРОДЕ, флаг ON** (2026-07-14,
-  `schedule_fallback`). Экран остановки больше не пустует ночью/в межпик:
-  плановые прибытия из GTFS показываются хвостом за живыми («живой первый +
-  расписание»), помечены «По расписанию». Precompute per-stop индекс (минуты,
-  ~1 КБ gzip/запрос), сервис-на-дату (будни/сб/вс + праздники), таймзона
-  Белграда, overnight, окно 3-или-90 мин, дедуп по направлению
-  (`direction_route_id`). Контракт `docs/SCHEDULE_FALLBACK_CONTRACT.md`. Отчёт:
-  `docs/reports/2026-07-14-schedule-fallback.md`.
-- ✅ **Расписание-фолбэк, Фаза 2 (карта) — В ПРОДЕ, флаг `schedule_map` ON**
-  (2026-07-14). Где по линии нет живого ТС, карта рисует scheduled-объекты,
-  движущиеся по timed-`trajectory` (рендер — символьный слой; слито слитно с ним).
-  Per-route timed-индекс (`build-trips.mjs`, 797 файлов, ~2.3 МБ gzip), тянется
-  только для линий без live (кап 8) → плотный live-центр почти не читает
-  (самоограничение). Отдельный флаг `schedule_map` от `schedule_fallback` —
-  карту можно откатить, не трогая список. Отчёт: тот же.
-- ✅ **Фикс «ТС едет по домам» — В ПРОДЕ, флаг `vehicle_direction_shape` ON**
-  (2026-07-14). Бэкенд резолвит направление живого ТС из `all_stations` и
-  отдаёт точный `route_id`; карта ститчит по нему, а не по каноническому
-  направлению. Отчёт: `docs/reports/2026-07-14-vehicle-shape-stitching.md`.
-- ✅ **Данные остановок: рендер + иконка типа — В ПРОДЕ** (2026-07-14,
-  `fix/stop-data`). **BUG 1:** автобусные остановки системно не рисовались —
-  geobase `FeatureCollection.toText()` не экранирует кавычки, а 19 остановок
-  имеют `"` в названии (`Park "Tašmajdan"` и др.) → невалидный JSON → `setData(
-  JSON.parse)` падал → источник пуст. Сериализация переведена на `jsonEncode`;
-  стоп-слои — императивные (обходят позиционный LayerManager, слитно с символьным
-  слоем ТС). **BUG 2:** приоритет типов — трамвайная остановка всегда трамвайная
-  (трамвай доминирует над авто/троллейбусом), даже с ночными автобусами.
-  Регресс-тесты (`stop_geojson_test`, `map_support_test`). Гоча в CLAUDE.md
-  (консоль-первым-делом + `jsonEncode`≠`toText`). Отчёт:
-  `docs/reports/2026-07-14-stop-data.md`.
+- Real-time map: stops, search, vehicle tracking with smooth movement along the
+  route (extrapolation between fixes, GPS-anchored, "looks stuck" heuristic).
+- **GPU vehicle rendering** — moving vehicles as a single batched MapLibre symbol
+  layer (sub-linear in count), typed (bus / tram / trolleybus, with room for
+  more), positioned by a backend timed trajectory and interpolated on the GPU.
+- **Vehicle direction** — vehicles stitched to the shape of the direction
+  they're actually travelling, not the canonical one.
+- Inline route highlight on tapping a vehicle; type classification.
+- Platform-adaptive UI (iOS Cupertino / Android Material / Web).
+- **Fleet identification** — from a garage number, show the vehicle's model,
+  class, age and comfort (A/C, low-floor, eco), with a model card and a
+  comfort-based sort. Client-only, localized EN/RU/SR.
+- **Schedule fallback** — the arrivals list backfills GTFS scheduled departures
+  when live is thin (labeled "scheduled"), and the map shows scheduled vehicles
+  where a line has no live one, moved by the same timed trajectory.
+- **Nearby** — a location-first list of catchable lines around you (live +
+  schedule, so nearby stops are never empty), ordered by time-to-board.
+- **Coverage heatmap** on the main map when zoomed out (route density).
+- **Suburban lines** that transit the city added to city stops.
+- Feedback board and contextual line alerts.
+- Background arrival-history collection (for future reliability metrics).
 
-## За фиче-флагом (в `main`, скрыто)
+## In progress / behind a flag
 
-- 🚧 Экраны аналитики линии (heatmap / спарклайн / точечное облако / плашки) —
-  `analytics_show=OFF` на проде, ON на staging. Визуал черновой.
-- ✅ **Экран «Рядом» — В ПРОДЕ, флаги `nearby_list` + `nearby_sort_board` ON**
-  (2026-07-14, вариант B; откат `nearby_list=0` в KV мгновенно скрывает).
-  Draggable bottom sheet над картой (замещает строку поиска): линии вокруг
-  геопозиции, группировка линия+`direction_route_id`, дедуп до ближайшей
-  остановки, автообновление 30 с. Эндпоинт `/api/v1/arrivals/nearby`
-  **переиспользует** `getArrivals({includeSchedule})` + общий `nearbyStops`
-  fan-out (свой fan-out/грид-индекс удалены) — остановки рядом несут **живое +
-  расписание** и не пустуют. Расписание наследуется для ближайших N остановок
-  (дефолт 5, замерено на плотнейшей точке ≈26 мс CPU; настраивается в рантайме
-  KV-ключом `config:nearby_schedule_stops`, clamp 0..8) — дальние live-only,
-  чтобы не пробить лимит воркача (утренний 503). Направление — из надёжного
-  `direction_route_id` main (баг «→ None» практически ушёл). Сортировка за флагом
-  `nearby_sort_board`: ETA / время до посадки. Отложено: learning-сортировка,
-  реальный headway, пины избранного, Fleet-бейджи. Отчёт:
-  `docs/reports/2026-07-14-nearby-list.md`.
-- 🚧 Карта покрытия (V0) — отдельная вкладка-инфографика в Strava-heatmap-стиле:
-  тепловая карта плотности маршрутов (MapLibre heatmap по облаку точек из GTFS
-  shapes, наложение маршрутов = яркость), фильтр по типу ТС, легенда-градиент.
-  Предвычисленный GeoJSON точек (`scripts/build-coverage-points.mjs` →
-  `public/gtfs/coverage.geojson`), раздаётся через `GET /api/v1/coverage`;
-  схлопнутый счётчик коридоров (`coverage-weighted.geojson`) — задел под будущие
-  веса, вне рендера. `coverage_map_show=OFF` на проде, ON на staging.
-  Спека: `docs/COVERAGE_MAP.md`, отчёт: `docs/reports/2026-07-12-coverage-map.md`.
-- ✅ **Покрытие на основной карте — В ПРОДЕ, флаг `coverage_on_main_map` ON**
-  (включён 2026-07-14). При зум-ауте кластеры остановок плавно сменяются
-  heatmap-свечением покрытия (тот же слой, что на вкладке Coverage, но скромнее
-  по intensity/opacity); зум-ин — обратно. Порог по зуму с гистерезисом +
-  crossfade, lazy-load GeoJSON, живые ТС всегда поверх. Общий модуль слоя:
-  `app/lib/core/coverage_heatmap.dart`. Независим от `coverage_map_show` (вкладка
-  Coverage — по-прежнему OFF на проде). Откат: `coverage_on_main_map=0`. Отчёт:
-  `docs/reports/2026-07-12-coverage-on-main-map.md`.
-- ✅ **Символьный GPU-слой ТС (основной путь рендера)** — **в проде с 2026-07-14**
-  (`feature/symbol-layer` слит в main; `symbol_layer`+`timed_trajectory`=ON на
-  проде и staging). Движущиеся объекты на
-  главной карте рисуются одним батч-слоем MapLibre (`SymbolLayer`+`CircleLayer`
-  по GeoJSON-источнику) на GPU: стоимость **сублинейна** по числу объектов
-  (40 или 400 символов ≈ одна цена), в отличие от линейной стоимости
-  виджет-маркеров (замеры донора: ~40 ТС → 19 fps). Слой спроектирован под
-  **типизированные движущиеся объекты** (`MovingObjectKind`: bus/tram/trolley +
-  зарезервированы metro/train/scooter/bike): иконка/цвет выбираются data-driven
-  выражениями по типу — новый тип = цвет + иконка, без переписывания слоя.
-  Fleet-ID на маркер не пробрасывается (идентичность — в шторке по тапу).
-  Позиции двигает **timed-математика A′** (донор `timed-trajectory`), пишется в
-  GeoJSON-источник (`updateGeoJsonSource`), карта интерполирует на GPU.
-  `symbol_layer`+`timed_trajectory`=ON на проде и staging; **старый виджетный
-  путь остаётся фолбэком за флагом** (можно выключить `symbol_layer` без
-  редеплоя — откат мгновенный). Модуль: `app/lib/core/moving_object_layer.dart`.
-  Backend отдаёт план вперёд (`trajectory`+`as_of`) за флагом `timed_trajectory`.
-  Отчёты: `docs/reports/2026-07-13-symbol-layer.md` (разработка),
-  `docs/reports/2026-07-14-symbol-layer-prod.md` (непрерывность движения,
-  фикс хорды, мерж в прод).
-  - **Движение**: позиции двигает **timed-математика A′** (донор
-    `timed-trajectory`), пишется в GeoJSON-источник (`updateGeoJsonSource`),
-    карта интерполирует на GPU. Непрерывное предсказание, пока фикс свежий
-    (гейт устаревания 45с — предохранитель от «пролёта»); ход по геометрии
-    улицы (shape), не хордой; появление в предсказанной-сейчас точке без рывка.
-  - Цепочка доноров: `dead-reckoning` → `timed-trajectory` → **`symbol-layer`**.
-    `timed-trajectory` заморожена (в main не идёт): её вывод — виджет-рендер не
-    масштабируется; symbol-layer — принятое архитектурное решение взамен.
-  - **Не в этой ветке**: расписание-на-карте (Фаза 2, полупрозрачные
-    предсказанные ТС) — код `schedule_fallback` на map-пути отключён; флаг
-    влияет только на список остановки (Фаза 1). Отдельная задача.
+- 🚧 **Line analytics screens** (heatmap / sparkline / scatter / stat tiles) —
+  hidden on production, visible on staging; draft visuals.
+- 🚧 **Coverage tab (V0)** — a standalone Strava-style route-density infographic
+  (filter by vehicle type, gradient legend), hidden on production for now.
 
-## Следующее — свежесть GTFS + пригород (`feature/gtfs-freshness`)
+## Next
 
-Промпт со всеми фазами: `docs/prompts/prompt_gtfs_freshness.md`. Обоснование и
-данные сверки: `docs/reports/2026-07-13-line-data-audit.md`. Ход работ:
-`docs/reports/2026-07-13-gtfs-freshness.md`.
+### Data freshness & suburban coverage
+- ✅ Verified the city GTFS feed is already the latest official export (a rebuild
+  is byte-identical) — missing lines were structurally in a *different* dataset
+  (suburban), now handled.
+- 🧊 **Retiring GTFS "ghost" lines** — deferred until enough history accumulates
+  (~4–8 weeks). Measurement showed the real residue is tiny (most "unseen" lines
+  are night lines that simply don't run at night). A month+ of data makes
+  night/rare lines distinguishable from retired ones; build the classifier then.
 
-- ✅ **Городской фид уже свежайший — обновлять нечего** (2026-07-13, проверено
-  данными). Единственный официальный городской экспорт data.gov.rs
-  (`feed_version 24`, 2025-09-02) при пересборке даёт **побайтово идентичный**
-  бандл. Посылка «скачать свежий фид → починить stop→routes» опровергнута:
-  недостающие линии структурно в **другом** датасете (пригород, см. Фаза 3).
-- ✅ **Фикс «стоячих меток» — за флагом `live_position_only`, В ПРОДЕ ВКЛЮЧЁН**
-  (2026-07-13, в main). На карту выводим только ТС с реальной live-позицией;
-  плейсхолдеры источника (junk-гараж `P1..P999` / GPS на координате остановки)
-  остаются в списке прибытий, но без метки. Обе поверхности + локализованный хинт
-  пустой мини-карты. Флаг `live_position_only=ON` на проде (владелец включил).
-  Отчёт: `docs/reports/2026-07-13-gtfs-freshness.md`.
-- 🧊 **Фаза 2 — гашение GTFS-призраков — ОТЛОЖЕНА до накопления истории**
-  (решение 2026-07-13). Замер на 3 днях данных (аналитика с 2026-07-10) показал:
-  реальный остаток призраков **мал** — сырые 26.9% «не видели за 3 дня» на 99%
-  это **ночные линии** (суффикс `N`, ночью не ходят ≠ сняты) + нюанс
-  многоплатформенных узлов; настоящих сетевых призраков (номер не виден нигде) —
-  **≈2 линии**. **Известные кандидаты: `21A` (14 остановок) и трамвай `11`** —
-  проверить при возврате. Гейт возврата — **~4-8 недель истории** (как у
-  reliability-метрик, ~сентябрь 2026): на месячном+ окне ночные/редкие линии
-  станут отличимы от снятых, критерий калибруется на нём. Строить классификатор
-  на 3 днях рано и не на чем. Детали метода/цифр — в отчёте; спека — промпт,
-  раздел «Фаза 2».
-- ✅ **Фаза 3 — таргетный пригород — В ПРОДЕ** (2026-07-14). Пригородные линии,
-  идущие транзитом через город, добавлены к **городским** остановкам (критерий:
-  остановка в текущем бандле); 2155 чисто-пригородных остановок НЕ вливались
-  (не агломерационный продукт). Пригородные shapes полные, `stops[]` — городские.
-  Итог: 3248 остановок (0 новых), линий 241→474, +2115 stop→line. 600-е коллизии
-  идентичны (0 м). Coverage остался городским (пригород помечен `suburban`,
-  исключён из ресемпла). Аудит закрыт (Obrenovac AS/Baćevac/Riste Stefanovića
-  наполнились). Полный региональный merge — возможен потом отдельным решением.
-  Отчёт: `docs/reports/2026-07-13-gtfs-freshness.md`.
+### Fleet-ID tail
+- ⏭️ Close remaining roster gaps so fewer vehicles show as UNKNOWN.
+- ⏭️ Quarterly roster-refresh pipeline — use first/last-seen from accumulated
+  history to auto-detect retirements and new deliveries.
+- Interior-diagram hero for the model card (see "vehicle models" below).
 
-## Следующее — Fleet-ID: хвост (B6/B7)
+## Ideas
 
-B1–B5 в проде (см. «В проде»). Дифференциатор: этого нет ни у Moovit, ни у
-Google. Осталось:
+- 💡 **Reliability in the main UI** (needs ~4–8 weeks of history): a line
+  reliability badge, an honest ETA range when spread is high, "best/worst time
+  to ride" on the line card.
+- 💡 **Punctuality vs the GTFS schedule** — needs trip matching; unblocks the
+  reliability metrics above.
+- 💡 **Dropped-trips metric** — computable from current data.
+- 💡 **Coverage V2** — weight segments by time-of-day/day-of-week aggregates,
+  with a "how it usually is at this hour" slider (after enough history).
+- 💡 **Vehicle models, step 1 — interior diagrams** (AI-assisted): reference
+  class first, then the top classes by fleet size, integrated into the model
+  card.
+- 💡 **`maplibre` plugin upgrade** to drop two web workarounds and get clean
+  multi-map rendering (needs a full map-surface regression).
 
-- ⏭️ B6 Дыра Lasta: блоки 58xxx/76xxx/78xxx/79xxx + мини-блок 28201–28299
-  (~40 машин) сейчас дают честный UNKNOWN. Закрывается сохранением
-  fotobus-страницы «Lasta» и пересборкой карты диапазонов (спека §6).
-- ⏭️ B7 Квартальный пайплайн обновления ростеров: first/last seen из
-  борт-агрегата аналитики = автодетектор вывода машин и новых поставок (спека §7).
-- Визуальный герой карточки (схема салона) — ступень 1 «Модели транспорта» ниже;
-  сейчас в карточке зарезервирован слот.
+## Later
 
-## Потом
+- 💡 **Vehicle models, step 2 — a "spin around" view** (sprite frames or
+  lightweight 3D), top classes only, gated on step-1 engagement.
+- 💡 **Crowdsourcing** — reports attached to a *vehicle*, not a line (e.g. "A/C
+  broken" on a specific vehicle follows it across future trips), enabled once
+  there's a live audience.
+- 💡 Open the analytics screens to users once the visuals are polished.
 
-- ⏭️ **Мелочь: почистить `_tramLines` от отсутствующих в фиде номеров.**
-  `_tramLines` в `core/map_support.dart` захардкожен как `{2,3,5,6,7,9,10,11,12,
-  13,14}`, но линий **3/7/9** (и, напр., автобуса 62) в текущем GTFS-бандле нет —
-  `_loadTramRails` дёргает по ним `/lines/by-number/N/shape` → **404** (ловится
-  `catchError`, рельсы просто не рисуются; не краш). Всплыло при диагностике
-  `fix/stop-data` (2026-07-14). Варианты: строить набор трамвайных линий из
-  `lines.json` (по `vehicle_type=tram`) вместо хардкода, либо синхронизировать
-  список с фидом. Косметика (лишние 404 в консоли + недостающие трам-рельсы).
-- 💡 **Апгрейд `maplibre`-плагина (>0.3.5).** Сейчас в `app/web/index.html` два
-  JS-костыля поверх maplibre-gl-js: пере-`resize()` для 0-размерной карты и
-  `repaint`-до-`idle` для карт, созданных сразу с размером (без него вторая
-  карта — вкладка Coverage при включённом overlay — не рендерится). Оба —
-  компенсация связки Flutter platform view ↔ maplibre-gl. Новая версия плагина
-  может убрать костыли и дать честный мультикартовый рендер; требует регрессии
-  всей картовой части (основная карта, вкладка Coverage, экран линии).
-- 💡 **Модели транспорта, ступень 1 — схемы салона (AI-first, руками не рисуем).**
-  V0: референсный класс (CAF Urbos, есть официальные планировки) — промпт-пайплайн
-  «планировка производителя + стайлгайд → SVG». V1: топ-10 классов по fleet_size,
-  интеграция в карточку B3 (зоны, подписи, zoom). Хвост каталога — фоново.
-- 💡 **Надёжность в основном UI** (данные копятся с 2026-07-10, нужно 4–8 недель):
-  бейдж надёжности линии, честный ETA-интервал при большом разбросе,
-  «лучшее/худшее время ехать» в карточке линии.
-- 💡 Пунктуальность vs расписание GTFS — сейчас заглушка, нужен матчинг рейсов.
-  Разблокирует метрики надёжности выше.
-- 💡 Метрика «выпадающие рейсы» — вычислима из текущего сырья, схему менять не нужно.
-- 💡 **Покрытие V2**: вес сегментов из агрегатов «линия × час × день недели»,
-  режим «как обычно в это время» (слайдер часа/дня). Задел уже есть
-  (`coverage-weighted.geojson` + аналитические агрегаты) — включать после
-  накопления 4–8 недель данных (~сентябрь 2026).
+## Icebox (intentionally not doing; revisit condition in parentheses)
 
-## Позже
-
-- 💡 **Модели, ступень 2 — крутилка «со всех сторон»** (не полноценное 3D).
-  Пайплайн: фото → AI-3D (Tripo/Meshy/TRELLIS) → glTF во вьювере ИЛИ рендер
-  в 24–36 спрайт-кадров с drag-to-rotate (рабочая гипотеза — спрайты). Фолбэк —
-  статичная изометрия. Гейт: пилот на одном классе + вовлечённость карточек V1.
-  Только топ-5 массовых классов.
-- 💡 **Краудсорсинг**: отчёты привязываются к борту, не к линии («кондей не пашет»
-  у P93052 переносится на все будущие рейсы машины — критическая масса нужна
-  на порядок меньше). Baseline загруженности из прокси (интервалы + capacity) —
-  можно до крауда. Дизайн полей — при старте, включение — при живой аудитории.
-- 💡 Открытие экранов аналитики пользователям (снятие `analytics_show`) — после
-  доводки визуала.
-
-## Icebox (осознанно не делаем; условие пересмотра — в скобках)
-
-- 🧊 Навигаторское: маршрутизация A→B, пересадки, пешие плечи, погодные
-  модификаторы, OSM-инфраструктура остановок (если концепция расширится).
-- 🧊 Реалтайм-загруженность (нет датчиков; пересмотр — при масштабе аудитории).
-- 🧊 Безопасность районов/времени (этически скользко).
-- 🧊 Вынос слоя доступа к источнику в приватный модуль, ~0.5–1 день
-  (пересмотр — если источник начнёт сопротивляться: блокировки, смена формата).
-- 🧊 Тарифы (Белград бесплатный; максимум — FAQ-страница для туристов).
+- 🧊 Journey planning: A→B routing, transfers, walking legs, weather modifiers
+  (if the concept expands).
+- 🧊 Real-time crowding (no sensors; revisit at audience scale).
+- 🧊 Neighborhood/time safety (ethically fraught).
+- 🧊 Fares (Belgrade is free; at most a tourist FAQ page).

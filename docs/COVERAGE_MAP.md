@@ -1,94 +1,95 @@
-# Карта покрытия транспортом (Coverage Map)
+# Coverage Map
 
-Спека фичи. Ветка: `feature/coverage-map`. Промпт задачи: `docs/prompts/prompt_coverage_map.md`.
-Отчёт о реализации: `docs/reports/2026-07-12-coverage-map.md`.
+Feature spec.
 
-> Реализовано как **тепловая карта (MapLibre heatmap)**, а не дискретные линии.
-> Ниже — фактическое состояние; история эволюции подхода — в отчёте.
+> Implemented as a **MapLibre heatmap**, not discrete lines.
 
-## Зачем
+## Why
 
-Отдельная вкладка-инфографика: светящиеся коридоры маршрутов поверх тёмной
-карты (референс: Strava global heatmap). Отвечает на вопрос «куда вообще
-дотягивается транспорт и где его много». Играбельная, скриншотная, шерибельная —
-органический крючок в связке со screenshot badge.
+A standalone infographic tab: glowing route corridors over a dark map
+(reference: the Strava global heatmap). It answers "where does transit reach at
+all, and where is there a lot of it?" — playful, screenshot-friendly, shareable.
 
-Это **не навигация**: слой не участвует в основном сценарии «что едет к моей
-остановке», живёт на отдельном экране.
+It is **not navigation**: the layer plays no part in the core "what's coming to
+my stop" flow; it lives on its own screen.
 
-## Визуальный язык
+## Visual language
 
-V0 — **Strava-heatmap-стиль**: плотность точек маршрутов накапливается в
-тепловую карту. Наложение маршрутов = яркость (без per-feature веса).
+V0 is a **Strava-heatmap style**: the density of route points accumulates into a
+heatmap. Overlapping routes = brightness (no per-feature weight).
 
-- Подложка — та же, что в основной карте: `core/map_style.dart`, theme-synced
-  (светлая/тёмная). Отдельный стиль карты НЕ заводим.
-- На тёмной теме — тёплая рампа по плотности: прозрачный → тёмно-оранжевый →
-  оранжевый → белый (белое только у самых плотных коридоров: центр, мосты).
-  На светлой — читаемая синяя рампа (прозрачный → синий → тёмно-синий).
-- `heatmap-radius` и `heatmap-intensity` интерполируются по зуму: на дальнем
-  зуме коридоры сливаются в светящиеся зоны (радиус ≈ пешая доступность), на
-  ближнем — плотнее и чётче; intensity растёт с зумом, компенсируя разрежение
-  точек на пиксель, чтобы ядро оставалось белым, а окраины — тусклыми.
-- Критерий: на виде «весь Белград» глаз различает минимум три уровня —
-  тусклые одиночные ветки окраин / оранжевые средние коридоры / белое ядро.
+- Base map is the same as the main map (`core/map_style.dart`), theme-synced
+  (light/dark). No separate map style.
+- Dark theme uses a warm density ramp: transparent → dark orange → orange →
+  white (white only for the densest corridors: centre, bridges). Light theme
+  uses a legible blue ramp.
+- `heatmap-radius` and `heatmap-intensity` interpolate by zoom: at far zoom
+  corridors merge into glowing zones (radius ≈ walking reach); at near zoom
+  they're tighter and sharper. Intensity rises with zoom to compensate for
+  points thinning out per pixel, so the core stays white and the edges dim.
+- Criterion: on a "whole of Belgrade" view the eye can tell at least three
+  levels apart — dim single branches on the outskirts / orange mid corridors /
+  a white core.
 
-Фильтр по типу ТС — `filter` по property `type` на том же heatmap-слое.
+Vehicle-type filter is a `filter` on the `type` property of the same heatmap
+layer.
 
-## Данные и вес
+## Data and weight
 
-Источник геометрии — GTFS shapes (`public/gtfs/`, уже собраны). Бэкенд-рантайм
-в V0 не трогаем — только скрипт сборки + один CORS-роут раздачи.
+Geometry comes from GTFS shapes (`public/gtfs/`). V0 doesn't touch backend
+runtime — just a build script plus one CORS route to serve the file.
 
-Вес V0 = **плотность точек** (число маршрутов, проходящих рядом). Алгоритм:
+V0 weight = **point density** (how many routes run nearby). Algorithm:
 
-1. Взять shapes всех маршрутов (обе стороны каждой линии).
-2. Нарезать каждый shape в точки с шагом ~90 м вдоль геометрии
-   (`scripts/build-coverage-points.mjs` → `buildCoveragePoints`).
-3. Каждый маршрут даёт свои точки → там, где маршруты идут вместе, локальная
-   плотность точек выше. Отдельный подсчёт коридоров для рендера **не нужен** —
-   плотность и есть вес; heatmap-слой суммирует её в GPU.
-4. Результат — предвычисленный `public/gtfs/coverage.geojson` (Point-фичи,
-   property `type`), раздаётся статикой, отдаётся через `GET /api/v1/coverage`.
+1. Take the shapes of all routes (both directions of each line).
+2. Sample each shape into points every ~90 m along the geometry
+   (`scripts/build-coverage-points.mjs`).
+3. Each route contributes its own points → where routes run together, local
+   point density is higher. No separate corridor count is needed for rendering —
+   density *is* the weight, and the heatmap layer sums it on the GPU.
+4. The result is a precomputed `public/gtfs/coverage.geojson` (Point features,
+   `type` property), served statically via `GET /api/v1/coverage`.
 
-Отдельно сохраняется **схлопнутый счётчик коридоров**
-(`scripts/build-coverage.mjs` → `coverage-weighted.geojson`,
-property `routes_count` + `types`) — **вне рендер-пути**, как задел под будущие
-веса. Не раздаётся и не рисуется в V0.
+A collapsed corridor counter (`coverage-weighted.geojson`, `routes_count` +
+`types`) is also produced but kept **out of the render path** — groundwork for
+future weights. Not served or drawn in V0.
 
-V1 (не в этой задаче): вес = частота из GTFS-расписания; V2: вес = фактическая
-интенсивность из агрегатов «линия × час × день недели» + режим «как обычно в это
-время». Клиент читает данные из именованных property, так что добавление
-альтернативных весов файл/клиент не ломает.
+Future weights (not in V0): V1 = frequency from the GTFS timetable; V2 = actual
+intensity from time-of-day/day-of-week aggregates plus a "how it usually is at
+this hour" mode. The client reads named properties, so adding alternative
+weights doesn't break the file or the client.
 
 ## UI
 
-- Третий экран в `IndexedStack` (карта / идеи / покрытие), пункт в drawer.
-- Контролы V0: фильтр по типу ТС (чипы: все / трамвай / троллейбус / автобус,
-  мультивыбор) — через `filter` на слое, без пересборки источника. Заложено
-  место под будущий контрол «час дня» (не реализовано).
-- Легенда: **градиент плотности без чисел** («реже → чаще»), повторяет рампу
-  heatmap.
-- Камера по умолчанию — весь Белград; позиция/зум независимы от основной карты.
-- Фиче-флаг `coverage_map_show` (KV, по образцу `analytics_show`):
-  OFF на проде, ON на staging. Прячет пункт drawer, роут и саму секцию
-  `IndexedStack`.
+- A third screen in the `IndexedStack` (map / ideas / coverage), with a drawer
+  item.
+- V0 controls: vehicle-type filter (chips: all / tram / trolleybus / bus,
+  multi-select) via a layer `filter`, no source rebuild. Space is reserved for a
+  future "hour of day" control (not implemented).
+- Legend: a **density gradient without numbers** ("rarer → busier"), matching
+  the heatmap ramp.
+- Default camera is the whole of Belgrade; position/zoom independent of the main
+  map.
+- Feature flag `coverage_map_show` (KV, like `analytics_show`): OFF on
+  production, ON on staging. Hides the drawer item, the route, and the
+  `IndexedStack` section.
 
-## Производительность
+## Performance
 
-- GeoJSON точек грузится один раз, слой статичный — никакого поллинга.
-- Файл точек ~90 м: ~80k точек, ~8.6 МБ raw / ~0.5 МБ gzip (в пределах бюджета).
-  Если понадобится легче — крупнее шаг нарезки (`STEP_METRES`), либо два
-  источника (грубый для дальнего зума + детальный для ближнего).
-- Фильтр по типу — через `filter`/expression на слое, без пересборки источника.
-- Раздача кэшируется коротко на edge (`s-maxage=60`), клиент добавляет `?rev=`
-  к URL источника, чтобы обходить залипший CDN-кэш при смене модели данных.
+- The point GeoJSON loads once, the layer is static — no polling.
+- ~90 m sampling: ~80k points, ~8.6 MB raw / ~0.5 MB gzip (within budget). If it
+  needs to be lighter, use a coarser step (`STEP_METRES`) or two sources (coarse
+  for far zoom, detailed for near).
+- Type filtering is a layer `filter`/expression, no source rebuild.
+- Serving is briefly edge-cached (`s-maxage=60`); the client appends `?rev=` to
+  the source URL to bypass a stuck CDN cache when the data model changes.
 
-## DoD
+## Definition of done
 
-- На вкладке видна тепловая карта покрытия: густые коридоры очевидно ярче
-  одиночных линий; на виде «весь Белград» различимы три уровня плотности.
-- Фильтр по типу работает, тема переключается вместе с остальным приложением.
-- Файл покрытия собирается воспроизводимо из GTFS одним скриптом
-  (`npm run coverage:build`, входит в `gtfs:build`).
-- За фиче-флагом (`coverage_map_show=OFF` на проде), main релизопригоден.
+- The tab shows a coverage heatmap: dense corridors are clearly brighter than
+  single lines; three density levels are distinguishable on the whole-city view.
+- The type filter works; the theme switches with the rest of the app.
+- The coverage file builds reproducibly from GTFS with one script
+  (`npm run coverage:build`, part of `gtfs:build`).
+- Behind a feature flag (`coverage_map_show=OFF` on production); `main` stays
+  releasable.

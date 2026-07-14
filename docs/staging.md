@@ -99,8 +99,8 @@ consequences:
 
 - A branch that **changes the D1 schema or the meaning of a KV flag** must not
   just upload a version — it would mutate shared staging state under every other
-  branch's feet. Such a branch stops and coordinates it separately (that's a
-  **[STOP & ASK]** in its own task prompt), or works on its own copy of the DB.
+  branch's feet. Such a branch coordinates the change separately, or works on its
+  own copy of the DB.
 - The SWR cache is keyed by upstream request, so versions safely share cached
   upstream arrivals (same data, same 30s cap). But a branch that **changes the
   shape of the cached payload** can read an entry another version wrote and

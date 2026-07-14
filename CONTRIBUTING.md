@@ -54,6 +54,14 @@ data isolation and the promote-to-prod steps are in `docs/staging.md`.
 - Code and comments: English.
 - Keep changes scoped — avoid unrelated refactors in the same PR.
 
+## Keep the docs current
+
+- **Notable change → a line in [`CHANGELOG.md`](CHANGELOG.md)** (English,
+  product-facing: what a rider or developer got, not how it was debugged).
+- **Add or remove a feature flag → update the registry** in
+  `docs/feature-flags.md` in the same change (and delete its KV keys when a flag
+  is retired).
+
 ## Local setup
 
 See `backend/README.md` and `app/README.md` (added as those stages land).
