@@ -36,12 +36,6 @@ import type { Env } from "../env";
 //                       this on they stay in the arrivals *list* but are not drawn
 //                       as (stationary, stacked-on-the-stop) markers. Read
 //                       client-side. OFF on prod, ON on staging.
-//   schedule_map — the map (`/vehicles/nearby`) emits schedule-predicted vehicles
-//                       (Phase 2) where a line has no live vehicle, moved by the
-//                       same timed trajectory. Separate from schedule_fallback so
-//                       the map can be rolled back without killing the (proven)
-//                       list. Both it and schedule_fallback must be ON for
-//                       scheduled buses to appear on the map. OFF prod.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -51,7 +45,6 @@ export const FEATURE_FLAGS = [
   "coverage_on_main_map",
   "symbol_layer",
   "live_position_only",
-  "schedule_map",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

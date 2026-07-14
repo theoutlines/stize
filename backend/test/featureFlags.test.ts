@@ -28,7 +28,6 @@ describe("featureFlags", () => {
       "live_position_only",
       "nearby_list",
       "nearby_sort_board",
-      "schedule_map",
       "symbol_layer",
     ]);
   });
