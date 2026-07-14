@@ -29,10 +29,25 @@ const MAX_RADIUS_METERS = 1500;
 // one uncached subrequest per stop (+ a parse), and an 8-wide schedule fan-out is
 // the same shape of load that blew the map path's per-invocation CPU/subrequest
 // budget (→ 503). The nearest stops are exactly where "never empty" matters (you
-// walk to them), so schedule there buys the most for the least. This cap is
-// deliberately conservative and *measured* on staging (densest point) before any
-// raise — do not bump it on a hunch.
-export const NEARBY_SCHEDULE_STOPS = 3;
+// walk to them), so schedule there buys the most for the least.
+//
+// Measured on staging at Belgrade's densest point (Trg Republike, ~30 stops in
+// 500 m): cpuTime ≈ 26 ms at N=5, ≈ 53 ms at N=8 — and the Worker's CPU budget is
+// tight (~50 ms), which off-peak numbers understate. So the default is a
+// headroom-keeping 5, not the full 8.
+//
+// Runtime-tunable without a redeploy (like a feature flag): set the KV key
+// `config:nearby_schedule_stops` to raise/lower it if prod shows the farther
+// stops going empty. Clamped to [0, MAX_STOPS_FANOUT].
+export const NEARBY_SCHEDULE_STOPS_DEFAULT = 5;
+const SCHEDULE_STOPS_KV_KEY = "config:nearby_schedule_stops";
+
+export async function resolveNearbyScheduleStops(env: Env): Promise<number> {
+  const raw = await env.STIGLA_KV.get(SCHEDULE_STOPS_KV_KEY);
+  const n = raw === null ? NEARBY_SCHEDULE_STOPS_DEFAULT : parseInt(raw, 10);
+  if (Number.isNaN(n)) return NEARBY_SCHEDULE_STOPS_DEFAULT;
+  return Math.max(0, Math.min(MAX_STOPS_FANOUT, n));
+}
 
 // How many soonest departures to keep per row.
 const MAX_ETAS_PER_GROUP = 2;
@@ -160,11 +175,12 @@ export async function getNearbyArrivals(
   lat: number,
   lon: number,
   radiusMeters: number,
-  // Load cap (see NEARBY_SCHEDULE_STOPS): how many of the nearest stops inherit
-  // the schedule fallback. Overridable so a staging measurement can sweep it to
-  // find the 503 boundary at the densest point; production uses the default.
-  scheduleStops: number = NEARBY_SCHEDULE_STOPS,
+  // Load cap: how many of the nearest stops inherit the schedule fallback. When
+  // omitted, resolved from KV (default 5) — see resolveNearbyScheduleStops. The
+  // staging measurement passes an explicit value to sweep the 503 boundary.
+  scheduleStops?: number,
 ): Promise<NearbyArrivalsResponse> {
+  const cap = scheduleStops ?? (await resolveNearbyScheduleStops(env));
   const radius = Math.min(radiusMeters, MAX_RADIUS_METERS);
   const stops = (await nearbyStops(env, lat, lon, radius)).slice(0, MAX_STOPS_FANOUT);
 
@@ -175,7 +191,7 @@ export async function getNearbyArrivals(
     // live-only to keep the per-invocation schedule cost bounded.
     stops.map(async (stop, i): Promise<StopBoard | null> => {
       const board = await getArrivals(env, ctx, stop.stop_id, {
-        includeSchedule: i < scheduleStops,
+        includeSchedule: i < cap,
       }).catch(() => null);
       if (!board) return null;
       return {
