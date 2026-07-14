@@ -660,12 +660,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
         properties: {'stopId': s.stopId, 'name': s.name},
       );
-      final types = stopTypes(s);
-      if (types.length > 1) {
+      final type = stopMarkerType(s);
+      if (type == null) {
         mixed.add(feature); // one unified marker for multi-type stops (D2)
         return;
       }
-      switch (types.isEmpty ? VehicleType.bus : types.first) {
+      switch (type) {
         case VehicleType.tram:
           tram.add(feature);
         case VehicleType.trolleybus:
@@ -1194,6 +1194,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             const SizedBox.expand(),
           // Round action buttons at the top: menu (left), recenter (right).
           _topButtons(theme),
+          // Staging-only diagnostics for the "stop has no clickable pin" report
+          // (fix/stop-data): shows what the viewport fetch returned, how many
+          // markers were built, and whether the known Batutova stop_ids made it
+          // into `_areaStops`. Never shown in production (isStaging gate).
+          if (isStaging && _focus == null) _stopDiagnosticsOverlay(theme),
           // Far-out zoom with no vehicles in the bounded area: nudge the user to
           // zoom in rather than leaving them staring at a blank map (F5).
           if (_focus == null && _currentZoom < _minVehiclesZoom && !_hasVehicles)
@@ -1206,6 +1211,85 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             _focusPanel(theme),
         ],
       ),
+      ),
+    );
+  }
+
+  /// Known "Batutova" stop_ids on Bul. kralja Aleksandra × Batutova (Zvezdara),
+  /// the case under investigation. The 79 pair is 20091/22542; the tram pair is
+  /// 20096/20097. Used only by the staging diagnostics overlay to prove, on the
+  /// owner's own device, whether these reach `_areaStops` at all.
+  static const _batutovaProbeIds = ['20091', '22542', '20096', '20097'];
+
+  /// Staging-only overlay tracing the stop pipeline for the visible viewport:
+  /// where the last fetch was centred + its radius, how many stops came back,
+  /// how they split across the marker layers, and — for the Batutova probe ids —
+  /// whether each is present in `_areaStops` (and, if so, which marker bucket it
+  /// classified into). This makes "the pin never appears" answerable on the
+  /// device: either the id is absent from the fetch (data/request), or it is
+  /// present (so it must be rendering) — no guessing.
+  Widget _stopDiagnosticsOverlay(ThemeData theme) {
+    final center = _lastFetchCenter;
+    final byId = {for (final s in _areaStops) s.stopId: s};
+    final favIds = _favoriteIds;
+
+    String probeLine(String id) {
+      final stop = byId[id];
+      if (stop == null) return '$id: ABSENT from fetch';
+      final where = favIds.contains(id)
+          ? 'favorite'
+          : switch (stopMarkerType(stop)) {
+              VehicleType.tram => 'tram',
+              VehicleType.trolleybus => 'trolley',
+              VehicleType.bus => 'bus',
+              null => 'mixed',
+            };
+      return '$id: present → $where';
+    }
+
+    final lines = <String>[
+      'STOP DIAGNOSTICS (staging)',
+      'zoom ${_currentZoom.toStringAsFixed(2)}  minStops $_minStopsZoom  indiv $_individualZoom',
+      center == null
+          ? 'last fetch: none yet (zoom < $_minStopsZoom?)'
+          : 'fetch @ ${center.latitude.toStringAsFixed(5)},${center.longitude.toStringAsFixed(5)} r=${_lastFetchRadius.toStringAsFixed(0)}m',
+      'returned ${_areaStops.length} stops (cap 50)',
+      'markers: bus ${_busPts.length} tram ${_tramPts.length} '
+          'trolley ${_trolleyPts.length} mixed ${_mixedPts.length} '
+          'cluster ${_clusterPts.length}',
+      'Batutova probe:',
+      for (final id in _batutovaProbeIds) '  ${probeLine(id)}',
+    ];
+
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: IgnorePointer(
+          child: Container(
+            margin: const EdgeInsets.only(top: 72, left: 8, right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final line in lines)
+                  Text(
+                    line,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      height: 1.35,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

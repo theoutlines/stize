@@ -44,4 +44,42 @@ void main() {
       expect(stopPrimaryType(_stop(['79', '304', '26'])), VehicleType.bus);
     });
   });
+
+  group('stopMarkerType (type priority — tram dominates)', () {
+    test('tram + night bus reads as tram, not mixed', () {
+      // Real case: "Batutova" on Bul. kralja Aleksandra — trams 5/6/7L/14 plus
+      // night buses 302N/307N. It must stay a tram stop.
+      expect(stopMarkerType(_stop(['5', '6', '7L', '14', '302N', '307N'])), VehicleType.tram);
+    });
+
+    test('tram + trolley + bus still reads as tram', () {
+      expect(stopMarkerType(_stop(['3', '29', '79'])), VehicleType.tram);
+    });
+
+    test('pure bus stop is a bus stop', () {
+      expect(stopMarkerType(_stop(['79', '304N'])), VehicleType.bus);
+    });
+
+    test('pure tram stop is a tram stop', () {
+      expect(stopMarkerType(_stop(['5', '6', '14'])), VehicleType.tram);
+    });
+
+    test('bus + trolley (no tram) is still the unified mixed marker', () {
+      expect(stopMarkerType(_stop(['79', '29'])), isNull);
+    });
+  });
+
+  group('stopImageFor', () {
+    test('tram + night bus uses the tram image, not the mixed image', () {
+      expect(stopImageFor(_stop(['5', '302N'])), MapImages.tram);
+    });
+
+    test('bus + trolley uses the mixed image', () {
+      expect(stopImageFor(_stop(['79', '29'])), MapImages.mixedStop);
+    });
+
+    test('pure bus uses the bus image', () {
+      expect(stopImageFor(_stop(['79'])), MapImages.bus);
+    });
+  });
 }
