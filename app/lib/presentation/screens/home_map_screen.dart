@@ -110,7 +110,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // the buggy LayerManager never touches them. Focus mode still uses the
   // declarative list (a clean, user-initiated 2-layer swap).
   bool _stopLayersAdded = false; // layers+sources present in the current style
-  final Map<String, String> _lastStopSourceText = {}; // dedup redundant setData
+  bool _stopLayersAdding = false; // add in flight (guards the ready flag window)
   static const _railsLayerId = 'stg-stops-rails';
   static const _clusterLayerId = 'stg-stops-cluster';
   static const _busLayerId = 'stg-stops-bus';
@@ -361,7 +361,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // the stop layers and heatmap must be (re)added.
     _coverageAdded = false;
     _stopLayersAdded = false;
-    _lastStopSourceText.clear();
     await registerStigmaImages(style, _scheme);
     if (!mounted) return;
     await _addStopLayers(style);
@@ -677,8 +676,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// [_pushStopSources]; the layers themselves are never removed/re-added, so the
   /// buggy positional reconcile can't drop them.
   Future<void> _addStopLayers(StyleController style) async {
-    if (_stopLayersAdded) return;
-    _stopLayersAdded = true;
+    if (_stopLayersAdded || _stopLayersAdding) return;
+    _stopLayersAdding = true;
     MarkerLayer pin(String image, {IconAnchor anchor = IconAnchor.center}) =>
         MarkerLayer(
           points: const [],
@@ -733,16 +732,23 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               );
         await style.addLayer(layer);
       }
+      // Flip the ready flag ONLY once every source exists, so a camera-idle
+      // firing mid-add can't call updateGeoJsonSource on a not-yet-created
+      // source (that used to throw and poison the whole push — the stop pins
+      // then never came back until the data happened to change).
+      _stopLayersAdded = true;
     } catch (_) {
       // Style torn down mid-add (e.g. a theme flip) — allow a later retry.
       _stopLayersAdded = false;
+    } finally {
+      _stopLayersAdding = false;
     }
   }
 
   /// Pushes the current marker feature lists into the imperative stop layers'
   /// sources. Only source *data* changes — no layers are added or removed — so
-  /// the reconcile bug can never drop a layer. Dedups redundant `setData` so the
-  /// per-tick rebuilds don't re-parse identical GeoJSON.
+  /// the reconcile bug can never drop a layer. Every source is (re)pushed on
+  /// each call so a source can never get stuck on stale/empty data.
   void _pushStopSources() {
     final style = _style;
     if (style == null || !_stopLayersAdded) return;
@@ -789,13 +795,20 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                 Feature<Point>(geometry: Point(place)),
             ]).toText(),
     };
+    // Always push every source (no dedup cache): `updateGeoJsonSource` is a
+    // synchronous `setData` on web, so re-pushing unchanged data on a camera
+    // idle is cheap, and it guarantees a source that briefly failed an earlier
+    // push (or was reset) always recovers on the next one. Each update is
+    // isolated so one failure can't abort the rest of the loop.
     for (final entry in data.entries) {
-      if (_lastStopSourceText[entry.key] == entry.value) continue;
-      _lastStopSourceText[entry.key] = entry.value;
-      style.updateGeoJsonSource(
-        id: _stopSourceId(entry.key),
-        data: entry.value,
-      );
+      try {
+        style.updateGeoJsonSource(
+          id: _stopSourceId(entry.key),
+          data: entry.value,
+        );
+      } catch (_) {
+        // Source momentarily absent (mid style reload) — the next push retries.
+      }
     }
   }
 
