@@ -118,6 +118,17 @@ describe("groupNearbyArrivals", () => {
   it("returns nothing for stops with no arrivals", () => {
     expect(groupNearbyArrivals([board("A", "Stop A", 100, [])])).toEqual([]);
   });
+
+  it("carries the scheduled/live source through to each eta (never-empty tail)", () => {
+    const groups = groupNearbyArrivals([
+      board("A", "Stop A", 100, [
+        arrival("83", "Kneževac", 3, { source: "live" }),
+        arrival("83", "Kneževac", 12, { source: "scheduled" }),
+      ]),
+    ]);
+    expect(groups.length).toBe(1);
+    expect(groups[0].arrivals.map((a) => a.source)).toEqual(["live", "scheduled"]);
+  });
 });
 
 describe("timeToBoardMinutes", () => {

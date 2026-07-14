@@ -24,6 +24,16 @@ import type { WaitUntilCtx } from "./swrCache";
 const MAX_STOPS_FANOUT = 8;
 const MAX_RADIUS_METERS = 1500;
 
+// Schedule (getArrivals includeSchedule:true) is inherited only for the nearest
+// N stops of the fan-out — the rest stay live-only. Rationale: getStopSchedule is
+// one uncached subrequest per stop (+ a parse), and an 8-wide schedule fan-out is
+// the same shape of load that blew the map path's per-invocation CPU/subrequest
+// budget (→ 503). The nearest stops are exactly where "never empty" matters (you
+// walk to them), so schedule there buys the most for the least. This cap is
+// deliberately conservative and *measured* on staging (densest point) before any
+// raise — do not bump it on a hunch.
+export const NEARBY_SCHEDULE_STOPS = 3;
+
 // How many soonest departures to keep per row.
 const MAX_ETAS_PER_GROUP = 2;
 
@@ -150,20 +160,22 @@ export async function getNearbyArrivals(
   lat: number,
   lon: number,
   radiusMeters: number,
+  // Load cap (see NEARBY_SCHEDULE_STOPS): how many of the nearest stops inherit
+  // the schedule fallback. Overridable so a staging measurement can sweep it to
+  // find the 503 boundary at the densest point; production uses the default.
+  scheduleStops: number = NEARBY_SCHEDULE_STOPS,
 ): Promise<NearbyArrivalsResponse> {
   const radius = Math.min(radiusMeters, MAX_RADIUS_METERS);
   const stops = (await nearbyStops(env, lat, lon, radius)).slice(0, MAX_STOPS_FANOUT);
 
   const center = { lat, lon };
   const boards = await Promise.all(
-    stops.map(async (stop): Promise<StopBoard | null> => {
-      // Live-only per stop for now: the schedule fallback (which makes nearby
-      // stops "never empty") is added in a follow-up with an explicit fan-out cap,
-      // because getStopSchedule is one uncached subrequest per stop and an
-      // 8-stop-wide schedule fan-out risks the same CPU/subrequest limit the map
-      // path hit (→ 503). See getArrivals' includeSchedule note.
+    // `stops` is nearest-first, so index < scheduleStops selects the nearest N to
+    // carry planned departures (never-empty where you'd walk); farther stops stay
+    // live-only to keep the per-invocation schedule cost bounded.
+    stops.map(async (stop, i): Promise<StopBoard | null> => {
       const board = await getArrivals(env, ctx, stop.stop_id, {
-        includeSchedule: false,
+        includeSchedule: i < scheduleStops,
       }).catch(() => null);
       if (!board) return null;
       return {

@@ -191,6 +191,14 @@ app.get("/api/v1/arrivals/nearby", async (c) => {
     service_status: "unavailable",
   };
   if (await isServiceKilled(c.env)) return c.json(emptyKilled);
+  // Staging-only measurement knob: sweep how many nearest stops inherit the
+  // schedule fallback to find the per-invocation 503 boundary at a dense point
+  // (see NEARBY_SCHEDULE_STOPS). Ignored on prod, which always uses the default.
+  let scheduleStops: number | undefined;
+  if (c.env.ENVIRONMENT === "staging") {
+    const raw = parseInt(c.req.query("schedule_stops") ?? "", 10);
+    if (!Number.isNaN(raw)) scheduleStops = Math.max(0, Math.min(8, raw));
+  }
   try {
     const body = await getNearbyArrivals(
       c.env,
@@ -198,6 +206,7 @@ app.get("/api/v1/arrivals/nearby", async (c) => {
       lat,
       lon,
       Number.isNaN(radius) ? 500 : radius,
+      scheduleStops,
     );
     return c.json(body);
   } catch (err) {
