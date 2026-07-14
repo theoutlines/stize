@@ -20,7 +20,12 @@ export async function getArrivals(
   env: Env,
   ctx: WaitUntilCtx,
   stopId: string,
+  // The nearby-vehicles fan-out only needs live rows; it passes false to skip the
+  // per-stop schedule list (and its flag/asset reads), which would otherwise
+  // multiply subrequests across the 12-stop fan-out.
+  opts: { includeScheduleList?: boolean } = {},
 ): Promise<ArrivalsResponse | null> {
+  const includeScheduleList = opts.includeScheduleList ?? true;
   const stop = await getStopById(env, stopId);
   if (!stop) return null;
 
@@ -87,7 +92,7 @@ export async function getArrivals(
   // board (night, inter-peak) still shows what's coming, deduped against the
   // live rows so a bus with a live vehicle isn't doubled. Flag-gated; any
   // failure degrades silently to the live-only board.
-  if (await getFlag(env, "schedule_fallback")) {
+  if (includeScheduleList && (await getFlag(env, "schedule_fallback"))) {
     try {
       const [meta, schedule] = await Promise.all([
         getScheduleMeta(env),

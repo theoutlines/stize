@@ -173,16 +173,27 @@ export async function getStopSchedule(env: Env, stopId: string): Promise<StopSch
 
 // A route's timetable trips (Phase 2 — scheduled map objects), fetched per route
 // only for lines that lack a live vehicle, so a busy live viewport stays cheap.
+// Cached per isolate (immutable per deploy) so repeated map refreshes don't
+// re-fetch — the nearby path is subrequest-sensitive.
+const routeTripsCache = new Map<string, TripTimed[] | null>();
 export async function getRouteTrips(env: Env, routeId: string): Promise<TripTimed[] | null> {
+  if (routeTripsCache.has(routeId)) return routeTripsCache.get(routeId)!;
   const res = await fetchAsset(env, `/gtfs/trips/${encodeURIComponent(routeId)}.json`);
-  if (!res.ok) return null;
-  const body = (await res.json()) as { trips: TripTimed[] };
-  return body.trips;
+  const trips = res.ok ? ((await res.json()) as { trips: TripTimed[] }).trips : null;
+  routeTripsCache.set(routeId, trips);
+  return trips;
 }
 
+const routeShapeCache = new Map<string, RouteShapeResponse | null>();
 export async function getRouteShape(env: Env, routeId: string): Promise<RouteShapeResponse | null> {
+  if (routeShapeCache.has(routeId)) return routeShapeCache.get(routeId)!;
   const res = await fetchAsset(env, `/gtfs/shapes/${encodeURIComponent(routeId)}.json`);
-  if (res.status === 404) return null;
+  if (res.status === 404) {
+    routeShapeCache.set(routeId, null);
+    return null;
+  }
   if (!res.ok) throw new Error(`Failed to load shape for ${routeId}: ${res.status}`);
-  return (await res.json()) as RouteShapeResponse;
+  const shape = (await res.json()) as RouteShapeResponse;
+  routeShapeCache.set(routeId, shape);
+  return shape;
 }

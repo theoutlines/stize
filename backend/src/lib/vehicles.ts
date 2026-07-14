@@ -25,7 +25,7 @@ const MAX_RADIUS_METERS = 1500;
 // Cap how many routes we pull the timetable for in one viewport, so a pathological
 // zoomed-out request can't fetch hundreds of trip files. In practice far fewer:
 // only lines *without* a live vehicle are candidates (a busy live centre => few).
-const MAX_SCHEDULED_ROUTES = 25;
+const MAX_SCHEDULED_ROUTES = 8;
 
 export async function getNearbyVehicles(
   env: Env,
@@ -38,7 +38,9 @@ export async function getNearbyVehicles(
   const stops = (await nearbyStops(env, lat, lon, radius)).slice(0, MAX_STOPS_FANOUT);
 
   const boards = await Promise.all(
-    stops.map((s) => getArrivals(env, ctx, s.stop_id).catch(() => null)),
+    stops.map((s) =>
+      getArrivals(env, ctx, s.stop_id, { includeScheduleList: false }).catch(() => null),
+    ),
   );
 
   const center = { lat, lon };
