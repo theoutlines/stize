@@ -44,7 +44,7 @@ export async function getArrivals(
     () =>
       provider.fetchArrivals(stopId).then((raw) => {
         ctx.waitUntil(
-          logObservations(env, stopId, raw).catch((e) =>
+          logObservations(env, ctx, stopId, raw).catch((e) =>
             console.error("analytics log failed", e),
           ),
         );
