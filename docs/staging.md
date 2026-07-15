@@ -55,6 +55,15 @@ default, in either environment. `/api/v1/config` reports `environment` + `flags`
 
 ## A branch = its own preview pair (no shared staging slot)
 
+> **The rule, in one line.** A feature branch's stand is **only** an isolated
+> pair: `npm run staging:version` (`versions upload` → a worker preview URL) +
+> a Pages preview **built against that URL**. **Never** touch the shared staging
+> domain from a feature branch — `npm run deploy:staging` /
+> `wrangler deploy --env staging` overwrites other branches' stands (and their
+> flags) on `stigla-api-staging.theoutlines.xyz`. (Learned the hard way on
+> 2026-07-15: an analytics-fix branch deployed to the shared domain and wiped the
+> `feature/vehicles-on-demand` stand + its `vehicles_on_demand` flag.)
+
 There is **no shared staging slot to deploy into anymore.** Do **not** run
 `wrangler deploy --env staging` (`npm run deploy:staging`) from a feature
 branch — that overwrites whatever version another branch put on
