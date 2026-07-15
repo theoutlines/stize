@@ -121,6 +121,16 @@ const String movingObjectsLabelLayerId = 'moving-objects-label';
 /// zoom (it's the dot far out and the coin up close), so it alone is enough.
 const List<String> movingObjectsTapLayerIds = [movingObjectsBadgeLayerId];
 
+/// The moving-object symbol layers in paint order, **bottom to top** — the order
+/// [addLayer] is called in. Anything that must render *under* the vehicles (e.g.
+/// a focused-line route highlight) inserts below `.first` (the badge), which is
+/// the lowest of the three.
+const List<String> movingObjectsLayersBottomToTop = [
+  movingObjectsBadgeLayerId,
+  movingObjectsArrowLayerId,
+  movingObjectsLabelLayerId,
+];
+
 /// At/above this zoom the full coin (glyph + number + direction arrow) is drawn;
 /// below it only the coloured badge dot shows (progressive detail, on the GPU —
 /// no Flutter rebuild on zoom). Mirrors the widget path's dot→pill threshold.
