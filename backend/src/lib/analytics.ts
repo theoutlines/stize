@@ -1,7 +1,8 @@
 import type { Env } from "../env";
 import type { AnalyticsBucket, LineAnalyticsResponse } from "../types";
 import type { RawArrival } from "./transitProvider";
-import { getFlag } from "./featureFlags";
+import { getFlagMemoized } from "./featureFlags";
+import type { WaitUntilCtx } from "./swrCache";
 
 // How long raw observations are kept before the aggregator prunes them. The
 // rolled-up per-line metrics survive; only the bulky raw rows are dropped.
@@ -114,13 +115,20 @@ export function vehicleIdOf(garageNo: string | null): string | null {
  * Flag-gated (`analytics_collect`) and meant to be called inside
  * `ctx.waitUntil` from the *fresh-fetch* path only — so it records exactly the
  * data we already pulled to serve the user, adding **zero** load on the source.
+ * The flag read is memoized per invocation (keyed by `ctx`): a map fan-out logs
+ * many stops in one request but reads the flag from KV once, not per stop.
  *
  * Every arrival is logged (a missing garage number is fine — the observation is
  * still valid for line-level metrics). `garage_no` is stored raw; `vehicle_id`
  * is the normalised id (null for missing/junk) used for all per-vehicle work.
  */
-export async function logObservations(env: Env, stopId: string, raw: RawArrival[]): Promise<void> {
-  if (!(await getFlag(env, "analytics_collect"))) return;
+export async function logObservations(
+  env: Env,
+  ctx: WaitUntilCtx,
+  stopId: string,
+  raw: RawArrival[],
+): Promise<void> {
+  if (!(await getFlagMemoized(env, ctx, "analytics_collect"))) return;
   if (raw.length === 0) return;
 
   const now = Math.floor(Date.now() / 1000);
