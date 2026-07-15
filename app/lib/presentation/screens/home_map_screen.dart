@@ -14,6 +14,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
 import '../../core/coverage_heatmap.dart';
+import '../../core/follow_camera.dart';
 import '../../core/fps_overlay.dart';
 import '../../core/live_position.dart';
 import '../../core/map_style.dart';
@@ -126,6 +127,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   static const _mixedLayerId = 'stg-stops-mixed';
   static const _favLayerId = 'stg-stops-fav';
   static const _placeLayerId = 'stg-stops-place';
+  // Focused-line view (route highlight + that line's stops). Added imperatively
+  // — like the stop layers, and unlike the old declarative path — so they can be
+  // inserted *below* the moving-object symbol layers (belowLayerId), keeping the
+  // route from painting over the vehicle coin the user is following.
+  static const _focusRouteLayerId = 'stg-focus-route';
+  static const _focusStopsLayerId = 'stg-focus-stops';
+  bool _focusLayersAdded = false;
   static const _emptyFeatureCollection =
       '{"type":"FeatureCollection","features":[]}';
 
@@ -256,14 +264,18 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // closed (return to B); null → fall back to A.
   String? _returnToStopId;
 
-  // Follow mode: the camera keeps the selected vehicle in view as it moves. Any
-  // manual pan/zoom gesture breaks it (the marker and highlight stay — the
-  // Google Maps / Flightradar pattern). `_followZoom` is the zoom the follow
-  // holds; `_followEngaged` gates the per-frame nudge so an entry fly-to plays
-  // out first before continuous tracking takes over.
+  // Follow mode: the camera pans to keep the selected vehicle screen-fixed as it
+  // moves. Any manual pan/zoom gesture breaks it (the marker and highlight stay
+  // — the Google Maps / Flightradar pattern). `_followEngaged` gates the
+  // per-frame pan so an entry fly-to settles first; `_lastFollowMarkerPos` is
+  // the marker position the last pan was measured from (delta-panning).
+  // `_selfCameraMove` marks a camera move the app itself issued, so the
+  // move-start it triggers isn't mistaken for a user gesture and doesn't break
+  // follow (the classic self-cancelling-follow bug).
   bool _following = false;
-  double? _followZoom;
   bool _followEngaged = false;
+  ll.LatLng? _lastFollowMarkerPos;
+  bool _selfCameraMove = false;
 
   @override
   void initState() {
@@ -442,6 +454,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _coverageAdded = false;
     _stopLayersAdded = false;
     _vehLayerAdded = false;
+    _focusLayersAdded = false;
     await registerStigmaImages(style, _scheme);
     if (!mounted) return;
     // Stops FIRST so they sit *under* the vehicle symbols added next — moving
@@ -456,6 +469,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // before a location fix — transport shows up right away. Re-push any data
     // already in hand (e.g. tram rails, area stops) onto the fresh sources.
     _pushStopSources();
+    // Re-add the focused-line layers (below the vehicle symbols) if a line is
+    // focused across this style (re)load — e.g. a theme flip mid-follow.
+    if (_focus != null) _syncFocusLayers();
     _loadStopsForVisibleArea();
     _loadVehiclesForVisibleArea(force: true);
     _loadTramRails();
@@ -720,16 +736,26 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   void _onEvent(MapEvent event) {
     if (event is MapEventCameraIdle) {
+      // While following, the camera is being panned every frame by us — don't
+      // treat those idles as browsing (they'd hammer the stop/vehicle reload).
+      if (_following) return;
       _loadStopsForVisibleArea();
       _loadVehiclesForVisibleArea();
       _reconcileCoverageLayer();
     } else if (event is MapEventClick) {
       _handleTap(event.point);
     } else if (event is MapEventStartMoveCamera) {
-      // A manual pan/zoom gesture breaks follow (the marker + highlight stay).
-      // Programmatic moves (the entry fly-to, the per-frame follow nudge) are
-      // developer/api animations, not apiGesture, so they never break it.
-      if (event.reason == CameraChangeReason.apiGesture) _stopFollow();
+      // Break follow only on a genuine user pan/zoom (the marker + highlight
+      // stay). Our own programmatic pans are bracketed by [_selfCameraMove] so
+      // they never count — even if the platform mislabels one as a gesture — so
+      // the per-frame follow pan can't cancel its own follow.
+      if (shouldBreakFollow(
+        following: _following,
+        selfMove: _selfCameraMove,
+        reason: event.reason,
+      )) {
+        _stopFollow();
+      }
     }
   }
 
@@ -1475,6 +1501,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         );
       });
       _pushStopSources(); // hide the ambient stop layers behind the focused line
+      _syncFocusLayers(); // draw the route + its stops UNDER the vehicle symbols
       // Refresh the vehicle set so the focused line's buses show right away.
       if (refreshVehicles) _loadVehiclesForVisibleArea(force: true);
     } catch (_) {
@@ -1505,31 +1532,47 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     );
   }
 
+  /// Run a programmatic camera move bracketed so its resulting move-start event
+  /// (fired synchronously on web) is recognised as ours, not a user gesture.
+  void _selfMove(void Function() move) {
+    _selfCameraMove = true;
+    try {
+      move();
+    } finally {
+      _selfCameraMove = false;
+    }
+  }
+
   /// Start following [key]. [flyTo] true (entry from a list row) flies the camera
-  /// to the vehicle and zooms to a readable pill first, then hands over to the
-  /// per-frame nudge; false (a marker tap) starts tracking from where the camera
-  /// already is — no jump, no zoom change (§C.2, don't regress F2).
+  /// to the vehicle and zooms to a readable pill first, then — once the fly-to
+  /// settles — hands over to the continuous per-frame pan; false (a marker tap)
+  /// starts tracking from where the camera already is, no jump, no zoom change
+  /// (§C.2, don't regress F2).
   void _startFollow(String key, {required ll.LatLng target, required bool flyTo}) {
     final controller = _controller;
     _following = true;
     _selectedVehicleKey = key;
+    _lastFollowMarkerPos = null; // (re)seed on the first follow tick
     if (flyTo && controller != null) {
       final zoom = math.max(controller.getCamera().zoom, kMovingObjectDetailZoom);
-      _followZoom = zoom;
       _followEngaged = false;
-      controller.animateCamera(
-        center: Geographic(lon: target.longitude, lat: target.latitude),
-        zoom: zoom,
-      );
-      // Let the fly-to settle before the per-frame nudge takes over, so the two
-      // don't fight.
-      Future.delayed(const Duration(milliseconds: 450), () {
+      Future<void>? flight;
+      _selfMove(() {
+        flight = controller.animateCamera(
+          center: Geographic(lon: target.longitude, lat: target.latitude),
+          zoom: zoom,
+        );
+      });
+      // Engage the continuous pan only once the fly-to has actually settled, so
+      // the two never fight; re-seed at the settled spot so the first pan tick
+      // doesn't apply a stale delta.
+      flight?.whenComplete(() {
         if (mounted && _following && _selectedVehicleKey == key) {
+          _lastFollowMarkerPos = null;
           _followEngaged = true;
         }
       });
     } else {
-      _followZoom = controller?.getCamera().zoom;
       _followEngaged = true;
     }
     // Ensure the layer paints (and the follow tick fires) even if the vehicle is
@@ -1542,38 +1585,42 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (!_following) return;
     _following = false;
     _followEngaged = false;
-    _followZoom = null;
+    _lastFollowMarkerPos = null;
   }
 
-  /// One follow step: keep the followed marker comfortably on screen. Like the
-  /// old nudge, it only moves the camera when the marker approaches the viewport
-  /// edge (so a vehicle sitting mid-screen isn't chased pixel-by-pixel), and it
-  /// never changes zoom. A vanished vehicle (dropped/grace) holds the camera
-  /// still rather than jumping.
+  /// One follow step: pan the camera by exactly how far the marker moved since
+  /// the last tick, so the marker stays put on screen as it travels — a
+  /// continuous pan, Flightradar-style. The zoom is never touched (the user's
+  /// zoom is respected), and the first tick only seeds the reference position so
+  /// engaging follow causes no jump. A vanished vehicle (grace/dropped) holds the
+  /// camera still and re-seeds on return so it doesn't lurch.
   void _followTick() {
     if (!_following || !_followEngaged) return;
     final key = _selectedVehicleKey;
     final controller = _controller;
     if (key == null || controller == null) return;
-    if (_vehAnimator.trackFor(key) == null) return; // vanished — hold still
-    final pos = _vehAnimator.positionOf(key, _vehAnim.value);
-    final geo = Geographic(lon: pos.longitude, lat: pos.latitude);
-    const margin = 120.0;
-    try {
-      final size = MediaQuery.of(context).size;
-      final screen = controller.toScreenLocation(geo);
-      final outside = screen.dx < margin ||
-          screen.dx > size.width - margin ||
-          screen.dy < margin ||
-          screen.dy > size.height - margin;
-      if (!outside) return;
-    } catch (_) {
-      // Projection unavailable — fall through and recenter.
+    if (_vehAnimator.trackFor(key) == null) {
+      _lastFollowMarkerPos = null; // vanished — re-seed on return, no lurch
+      return;
     }
-    controller.moveCamera(
-      center: geo,
-      zoom: _followZoom ?? controller.getCamera().zoom,
-    );
+    final pos = _vehAnimator.positionOf(key, _vehAnim.value);
+    final last = _lastFollowMarkerPos;
+    _lastFollowMarkerPos = pos;
+    if (last == null) return; // first tick after engage/return: seed only
+    final dLat = pos.latitude - last.latitude;
+    final dLon = pos.longitude - last.longitude;
+    if (dLat.abs() < 1e-7 && dLon.abs() < 1e-7) return; // not moving
+    final cam = controller.getCamera();
+    // Pan the camera by the marker's own delta → the marker stays screen-fixed.
+    _selfMove(() {
+      controller.moveCamera(
+        center: Geographic(
+          lon: cam.center.lon + dLon,
+          lat: cam.center.lat + dLat,
+        ),
+        zoom: cam.zoom, // keep the user's zoom
+      );
+    });
   }
 
   // ---- On-demand stop context (state B) ------------------------------------
@@ -1709,6 +1756,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _selectedVehicleKey = null;
     });
     _pushStopSources(); // restore the ambient stop layers
+    _syncFocusLayers(); // remove the focus route/stops layers
     // Drop the tap highlight on the symbol layer.
     _writeVehiclesToSource();
   }
@@ -2437,56 +2485,118 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     );
   }
 
-  // The ambient stop layers (rails · clusters · bus/tram/trolley/mixed pins ·
-  // favourites · pinned place) are NOT here — they're added imperatively once
-  // per style load and updated via [_pushStopSources] (see _addStopLayers), to
-  // dodge maplibre 0.3.5's positional LayerManager, which reconciles the
-  // declarative list by index with unawaited add/remove and deterministically
-  // dropped whole stop layers (a pure-bus stop lost its pin on prod). Only the
-  // focused-line view still uses the declarative list — a clean, user-initiated
-  // swap of at most two layers. "My position" is a WidgetLayer marker (in build)
-  // so it can't be culled at low zoom (X2).
-  List<Layer> _buildLayers() {
-    final focus = _focus;
-    return focus != null ? _focusLayers(focus) : const [];
-  }
+  // No declarative layers. The ambient stop layers AND the focused-line view are
+  // both added imperatively (see [_addStopLayers] / [_syncFocusLayers]) to dodge
+  // maplibre 0.3.5's positional LayerManager, which reconciles the declarative
+  // list by index with unawaited add/remove and deterministically dropped whole
+  // layers (a pure-bus stop lost its pin on prod). Going imperative also lets the
+  // focus route be inserted *below* the vehicle symbols (belowLayerId), so it
+  // never paints over the coin being followed. "My position" is a WidgetLayer
+  // marker (in build) so it can't be culled at low zoom (X2).
+  List<Layer> _buildLayers() => const [];
 
-  /// Layers for the focused-line view: just that route (highlighted in its type
-  /// colour) and its own stops — every other stop/cluster is hidden so the line
-  /// reads cleanly, like tapping a vehicle in Yandex/Google transit.
-  List<Layer> _focusLayers(_LineFocus focus) {
-    return [
-      if (focus.polyline.length >= 2)
-        PolylineLayer(
-          polylines: [
-            Feature<LineString>(
-              geometry: LineString.from([
-                for (final p in focus.polyline) Geographic(lon: p[1], lat: p[0]),
-              ]),
-            ),
-          ],
+  /// (Re)build the focused-line layers imperatively: the route line (in its type
+  /// colour) and that line's own stops, both inserted *below* the vehicle badge
+  /// so the followed coin stays on top. Removes them when there's no focus. The
+  /// route layer is recreated per focus because its colour is baked into the
+  /// layer paint. Best-effort: a failure just leaves the route un-highlighted.
+  Future<void> _syncFocusLayers() async {
+    final style = _style;
+    if (style == null) return;
+    // Tear down any previous focus layers first (colour/route may have changed).
+    if (_focusLayersAdded) {
+      for (final id in const [_focusRouteLayerId, _focusStopsLayerId]) {
+        try {
+          await style.removeLayer(id);
+        } catch (_) {}
+        try {
+          await style.removeSource(_stopSourceId(id));
+        } catch (_) {}
+      }
+      _focusLayersAdded = false;
+    }
+    final focus = _focus;
+    if (focus == null) return;
+    final below = focusInsertBelowLayerId(vehicleLayersAdded: _vehLayerAdded);
+    try {
+      if (focus.polyline.length >= 2) {
+        final srcId = _stopSourceId(_focusRouteLayerId);
+        await style.addSource(
+          GeoJsonSource(id: srcId, data: _focusRouteGeoJson(focus)),
+        );
+        final line = PolylineLayer(
+          polylines: const [],
           color: vehicleColor(focus.type),
           width: 5,
-        ),
-      MarkerLayer(
-        points: [
-          for (final s in focus.stops)
-            Feature<Point>(
-              geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
-              // No `name` here: the focus layer is declarative, so the maplibre
-              // LayerManager serialises it with geobase's `toText()`, which does
-              // not escape `"` in string properties (see _pushStopSources). The
-              // tap handler only needs `stopId`, so omitting the name keeps this
-              // path's JSON valid even for stops like `Park "Tašmajdan"`.
-              properties: {'stopId': s.stopId},
-            ),
-        ],
+        );
+        await style.addLayer(
+          LineStyleLayer(
+            id: _focusRouteLayerId,
+            sourceId: srcId,
+            layout: line.getLayout(),
+            paint: line.getPaint(),
+          ),
+          belowLayerId: below,
+        );
+      }
+      final stopsSrc = _stopSourceId(_focusStopsLayerId);
+      await style.addSource(
+        GeoJsonSource(id: stopsSrc, data: _focusStopsGeoJson(focus)),
+      );
+      final pin = MarkerLayer(
+        points: const [],
         iconImage: MapImages.forStop(focus.type),
         iconSize: _iconSize,
         iconAllowOverlap: true,
-      ),
-    ];
+      );
+      await style.addLayer(
+        SymbolStyleLayer(
+          id: _focusStopsLayerId,
+          sourceId: stopsSrc,
+          layout: pin.getLayout(),
+          paint: pin.getPaint(),
+        ),
+        belowLayerId: below,
+      );
+      _focusLayersAdded = true;
+    } catch (_) {
+      _focusLayersAdded = false;
+    }
   }
+
+  String _focusRouteGeoJson(_LineFocus focus) => jsonEncode({
+    'type': 'FeatureCollection',
+    'features': [
+      {
+        'type': 'Feature',
+        'geometry': {
+          'type': 'LineString',
+          // focus.polyline is [lat, lon]; GeoJSON is [lon, lat].
+          'coordinates': [
+            for (final p in focus.polyline) [p[1], p[0]],
+          ],
+        },
+        'properties': const <String, dynamic>{},
+      },
+    ],
+  });
+
+  String _focusStopsGeoJson(_LineFocus focus) => jsonEncode({
+    'type': 'FeatureCollection',
+    'features': [
+      for (final s in focus.stops)
+        {
+          'type': 'Feature',
+          'geometry': {
+            'type': 'Point',
+            'coordinates': [s.lon, s.lat],
+          },
+          // Only stopId (the tap handler looks the name up) — jsonEncode escapes
+          // it correctly regardless, but the name isn't needed here.
+          'properties': {'stopId': s.stopId},
+        },
+    ],
+  });
 
   // Widget-rendered marker images are captured at device pixel ratio, so they
   // come out larger than their logical size — scale down to taste.
