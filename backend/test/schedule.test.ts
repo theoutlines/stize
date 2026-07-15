@@ -136,6 +136,30 @@ describe("scheduledMapObjectsForRoute", () => {
     expect(scheduledMapObjectsForRoute(sundayTrip, coords, meta, weekday)).toHaveLength(0);
   });
 
+  it("places a trip sitting exactly on its final timepoint at the terminus (no throw)", () => {
+    // now === last stop time (10:20). Previously the segment loop overran and
+    // reading pts[i+1].t threw a TypeError, dropping every scheduled object.
+    const atTerminus: NowContext = { dateISO: "2026-01-02", yesterdayISO: "2026-01-01", minutes: 620 };
+    const objs = scheduledMapObjectsForRoute(trips, coords, meta, atTerminus);
+    expect(objs).toHaveLength(1);
+    expect(objs[0].lon).toBeCloseTo(20.44, 3); // last stop
+    expect(objs[0].trajectory[0].eta_seconds).toBe(0);
+  });
+
+  it("mixes normal + at-terminus + not-in-transit trips without one edge dropping the rest", () => {
+    // Regression for the swallowed TypeError: a route whose trip list mixes a
+    // mid-segment trip (renders), a trip exactly at its terminus (used to throw),
+    // and a trip not in transit (skipped) must return both renderable objects.
+    const now: NowContext = { dateISO: "2026-01-02", yesterdayISO: "2026-01-01", minutes: 620 }; // 10:20
+    const mixed: TripTimed[] = [
+      { trip_id: "MID", service: "RD", times: [615, 625, 635] }, // 10:15..10:35, mid first segment
+      { trip_id: "END", service: "RD", times: [600, 610, 620] }, // 10:00..10:20, exactly at terminus
+      { trip_id: "GONE", service: "RD", times: [500, 510, 520] }, // already finished
+    ];
+    const objs = scheduledMapObjectsForRoute(mixed, coords, meta, now);
+    expect(objs.map((o) => o.trip_id).sort()).toEqual(["END", "MID"]);
+  });
+
   it("runs yesterday's overnight trip in today's small hours", () => {
     // Friday(RD) trip 24:00/24:10/24:20 -> runs Sat 00:00..00:20.
     const overnight: TripTimed[] = [{ trip_id: "O1", service: "RD", times: [1440, 1450, 1460] }];
