@@ -21,6 +21,7 @@ class Arrival {
     required this.routeId,
     required this.gps,
     required this.garageNo,
+    this.directionRouteId,
     this.heading,
     this.trajectory,
     this.scheduled = false,
@@ -33,6 +34,14 @@ class Arrival {
   final String routeId;
   final LatLon? gps;
   final String? garageNo;
+
+  /// route_id of the direction this vehicle is *actually* travelling
+  /// (backend-resolved, same field `/vehicles/nearby` carries). Lets the map
+  /// stitch a stop-context / followed vehicle to the right direction's shape and
+  /// highlight that direction — not always the canonical [routeId]. Falls back
+  /// to [routeId] when the backend couldn't resolve a direction.
+
+  final String? directionRouteId;
 
   /// Travel direction in degrees (0 = north, clockwise), or null if unknown.
   final double? heading;
@@ -55,6 +64,7 @@ class Arrival {
       routeId: json['route_id'] as String,
       gps: json['gps'] == null ? null : LatLon.fromJson(json['gps'] as Map<String, dynamic>),
       garageNo: json['garage_no'] as String?,
+      directionRouteId: json['direction_route_id'] as String?,
       heading: (json['heading'] as num?)?.toDouble(),
       trajectory: TrajectoryPoint.listFromJson(json['trajectory']),
       scheduled: json['source'] == 'scheduled',

@@ -6,6 +6,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
 import '../../core/fleet_matcher.dart';
+import '../../core/live_position.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
@@ -29,7 +30,7 @@ Future<void> showStopSheet(
   BuildContext context, {
   required String stopId,
   String? stopName,
-  void Function(double lat, double lon)? onFocusVehicle,
+  void Function(Arrival arrival, DateTime asOf)? onFocusVehicle,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -56,9 +57,12 @@ class _StopSheet extends ConsumerStatefulWidget {
   final String stopId;
   final String? initialStopName;
 
-  /// Called with a vehicle's position when its arrival row is tapped, so the
-  /// caller (the map) can pan to it. The sheet closes itself first.
-  final void Function(double lat, double lon)? onFocusVehicle;
+  /// Called with the tapped arrival (and the board's as-of time, which anchors
+  /// its timed-trajectory plan) when its row is selected, so the caller (the
+  /// map) can build a guaranteed marker from the arrival's own data (gps +
+  /// trajectory + direction), highlight the route and follow the vehicle —
+  /// without waiting on an independent viewport fan-out. The sheet closes first.
+  final void Function(Arrival arrival, DateTime asOf)? onFocusVehicle;
 
   @override
   ConsumerState<_StopSheet> createState() => _StopSheetState();
@@ -156,11 +160,13 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
         // through to the MapLibre platform view underneath (which would zoom the
         // map) on web. No-op on mobile.
         return PointerInterceptor(
-          child: Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
+          // A Material (not a plain coloured Container) so the arrival rows'
+          // ListTiles paint their ink splashes on it — a bare DecoratedBox
+          // background hides them (and trips a debug assertion for a tappable
+          // row).
+          child: Material(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           clipBehavior: Clip.antiAlias,
           child: Column(
             children: [
@@ -424,14 +430,17 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
                           garageNo: visibleArrivals[i].garageNo,
                         )
                     : null,
-            // Tap a vehicle row → close the sheet and pan the map to it.
-            onTap: (visibleArrivals[i].gps == null ||
+            // Tap a vehicle row → close the sheet, then hand the whole arrival
+            // to the map so it can guarantee a marker, highlight the route and
+            // follow (no dependence on a viewport fan-out). Placeholder rows
+            // (P1..P999, no real fix) stay list-only, so they aren't tappable.
+            onTap: (!arrivalHasLivePosition(visibleArrivals[i]) ||
                     widget.onFocusVehicle == null)
                 ? null
                 : () {
-                    final gps = visibleArrivals[i].gps!;
+                    final arrival = visibleArrivals[i];
                     Navigator.of(context).maybePop();
-                    widget.onFocusVehicle!.call(gps.lat, gps.lon);
+                    widget.onFocusVehicle!.call(arrival, board.updatedAt);
                   },
           ),
         const SizedBox(height: 12),

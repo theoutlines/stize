@@ -189,10 +189,18 @@ class VehicleTrackAnimator {
 
   /// Generic form of [sync] for any moving-vehicle source (e.g. the map-wide
   /// "vehicles in the visible area" feed). Same conservative-easing rule.
+  ///
+  /// [prune] governs what happens to tracks *absent* from [samples]: with the
+  /// default `true` they age out over the grace period (a full refresh replaces
+  /// the whole set). Pass `false` to **upsert** — add/update the given samples
+  /// and leave every other track untouched — which the on-demand map uses to
+  /// inject a single followed vehicle (built from a tapped arrival row) without
+  /// disturbing the stop-context markers already shown.
   void syncSamples(
     Iterable<VehicleSample> samples,
     double currentT, {
     DateTime? now,
+    bool prune = true,
   }) {
     final at = now ?? _clock();
     final seen = <String>{};
@@ -289,6 +297,11 @@ class VehicleTrackAnimator {
         existing.to = s.position;
       }
     }
+
+    // Upsert mode ([prune] false): the caller handed us a partial set (e.g. one
+    // injected vehicle), so leave every unseen track exactly as it was — don't
+    // age it toward removal.
+    if (!prune) return;
 
     // Grace period: age out vehicles missing from this update rather than
     // dropping them the instant they blink out of the feed (X6).

@@ -33,4 +33,20 @@ void main() {
     );
     expect(board.arrivals.length, 2);
   });
+
+  test('parses direction_route_id (used to stitch a followed vehicle to the '
+      'right direction shape / highlight)', () {
+    final a = Arrival.fromJson({
+      ..._arrival('79'),
+      'route_id': '00079',
+      'direction_route_id': '00079-B',
+    });
+    expect(a.routeId, '00079');
+    expect(a.directionRouteId, '00079-B');
+  });
+
+  test('direction_route_id is null when absent (older payload)', () {
+    final a = Arrival.fromJson(_arrival('79'));
+    expect(a.directionRouteId, isNull);
+  });
 }

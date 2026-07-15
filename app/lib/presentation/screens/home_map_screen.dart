@@ -24,6 +24,7 @@ import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_track_animator.dart';
 import '../../data/location/location_service.dart';
 import '../../domain/models/area_vehicle.dart';
+import '../../domain/models/arrival.dart';
 import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/pinned_line.dart';
@@ -238,6 +239,32 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // screen. Null = normal browsing.
   _LineFocus? _focus;
 
+  // ---- On-demand map context (vehicles_on_demand) --------------------------
+  // With the flag on the map draws NO background "aquarium" of vehicles; they
+  // appear only in context. `_onDemand` mirrors the remote flag (read in build).
+  // Three states:
+  //   A — no context: empty vehicle layer, no /vehicles/nearby fetch. Default.
+  //   B — stop context (`_stopContextId` set): the tapped stop's live arrivals
+  //       are the only markers, fed from the SAME arrivals provider the sheet
+  //       polls (no second fan-out) and refreshed on its 30s cadence.
+  //   C — vehicle context (`_following` + `_focus`): one vehicle is followed
+  //       with its direction's route highlighted. Works at BOTH flag values.
+  bool _onDemand = false;
+  String? _stopContextId; // stop feeding the markers (state B); null = not in B
+  ProviderSubscription<AsyncValue<ArrivalsBoard>>? _stopArrivalsSub;
+  // The stop context to restore when a vehicle context opened *from* a stop is
+  // closed (return to B); null → fall back to A.
+  String? _returnToStopId;
+
+  // Follow mode: the camera keeps the selected vehicle in view as it moves. Any
+  // manual pan/zoom gesture breaks it (the marker and highlight stay — the
+  // Google Maps / Flightradar pattern). `_followZoom` is the zoom the follow
+  // holds; `_followEngaged` gates the per-frame nudge so an entry fly-to plays
+  // out first before continuous tracking takes over.
+  bool _following = false;
+  double? _followZoom;
+  bool _followEngaged = false;
+
   @override
   void initState() {
     super.initState();
@@ -278,6 +305,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _positionSub?.cancel();
     _meAnim.dispose();
     _searchDebounce?.cancel();
+    _stopArrivalsSub?.close();
     _vehiclesTimer?.cancel();
     _shapeResyncTimer?.cancel();
     _stopVehDriver();
@@ -504,6 +532,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       id: movingObjectsSourceId,
       data: movingObjectsGeoJson(placed),
     );
+    // Follow mode: keep the selected vehicle in view as its marker moves. Runs
+    // on the same cadence as the layer repaint so the camera tracks smoothly.
+    if (_following) _followTick();
   }
 
   /// Arranges the vehicle set for the symbol source with two distinct behaviours,
@@ -694,6 +725,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _reconcileCoverageLayer();
     } else if (event is MapEventClick) {
       _handleTap(event.point);
+    } else if (event is MapEventStartMoveCamera) {
+      // A manual pan/zoom gesture breaks follow (the marker + highlight stay).
+      // Programmatic moves (the entry fly-to, the per-frame follow nudge) are
+      // developer/api animations, not apiGesture, so they never break it.
+      if (event.reason == CameraChangeReason.apiGesture) _stopFollow();
     }
   }
 
@@ -832,6 +868,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   }
 
   Future<void> _recenterOnMe() async {
+    // Recentring on the user is an explicit camera intent — it ends any follow
+    // (the vehicle marker + route highlight stay put).
+    _stopFollow();
     // Recenter immediately on the best position we already have (instant
     // feedback), then always kick off a fresh fix that recenters again — so the
     // button reliably moves the camera to the user on every tap, and a stale
@@ -1219,6 +1258,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (_currentZoom != camera.zoom) {
       setState(() => _currentZoom = camera.zoom);
     }
+    // On-demand mode (vehicles_on_demand): no background "aquarium" — the map
+    // fetches and renders no vehicles without a context. Markers come only from
+    // a stop context (the arrivals listener) or an injected followed vehicle, so
+    // the map fan-out load (× every open client × 30s) is dropped entirely here.
+    if (_onDemand) return;
     // No zoom gate on fetching (F5): the request is always bounded to ≤1 km /
     // ≤12 stops (see _vehiclesMaxRadius and the backend fan-out cap) regardless
     // of zoom, so a zoomed-out view never fans the source out wider. Keeping it
@@ -1383,18 +1427,20 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   }
 
   /// Highlight a line's route on this same map (hiding the rest) instead of
-  /// pushing a separate screen — driven by a vehicle tap or a favourite-line
-  /// tap. Closing the focus panel restores normal browsing.
+  /// pushing a separate screen — driven by a vehicle tap, a followed vehicle, or
+  /// a favourite-line tap. Closing the focus panel restores normal browsing.
   ///
-  /// The camera deliberately stays where the user left it (F2): tapping a
-  /// vehicle must not yank them out to a whole-route fitBounds. The route is
-  /// drawn as a highlighted layer, so panning/zooming out reveals all of it;
-  /// [focusOn] (the tapped vehicle's position) only triggers a gentle pan when
-  /// the vehicle sits at/off the viewport edge, never a zoom change.
+  /// The camera deliberately stays where the user left it (F2): highlighting a
+  /// route must not yank the user out to a whole-route fitBounds. The camera is
+  /// handled by the caller (follow mode / none), never here.
+  ///
+  /// [refreshVehicles] refetches the viewport vehicle set so the focused line's
+  /// buses show at once; the §C path passes false so a just-injected followed
+  /// marker can't be pruned by a fan-out that doesn't (yet) contain it.
   Future<void> _openVehicleLine(
     String line, {
-    ll.LatLng? focusOn,
     bool scheduled = false,
+    bool refreshVehicles = true,
   }) async {
     _clearSearch();
     try {
@@ -1429,36 +1475,231 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         );
       });
       _pushStopSources(); // hide the ambient stop layers behind the focused line
-      if (focusOn != null) _nudgeIntoView(focusOn);
       // Refresh the vehicle set so the focused line's buses show right away.
-      _loadVehiclesForVisibleArea(force: true);
+      if (refreshVehicles) _loadVehiclesForVisibleArea(force: true);
     } catch (_) {
       // Best-effort: a failed shape lookup just doesn't open the route.
     }
   }
 
-  /// Gently pan the camera (keeping the current zoom) so [point] is comfortably
-  /// on screen, but only when it's near/off the viewport edge — a selected
-  /// vehicle that's already well within view isn't moved at all (F2).
-  void _nudgeIntoView(ll.LatLng point) {
+  // ---- Follow mode ----------------------------------------------------------
+
+  /// Build one animator sample from an arrival's own data. The [shapeKey] is the
+  /// direction route_id whose geometry the marker moves along; [asOf] anchors the
+  /// timed-trajectory plan (the arrivals board's `updated_at`).
+  VehicleSample _sampleFromArrival(
+    Arrival a,
+    String shapeKey, {
+    DateTime? asOf,
+  }) {
+    return VehicleSample(
+      key: VehicleTrackAnimator.keyFor(a),
+      position: ll.LatLng(a.gps!.lat, a.gps!.lon),
+      line: a.line,
+      type: classifyLine(a.line),
+      heading: a.heading,
+      path: _shapeCache[shapeKey],
+      trajectory: a.trajectory,
+      asOf: asOf,
+      source: a.scheduled ? VehicleSource.scheduled : VehicleSource.live,
+    );
+  }
+
+  /// Start following [key]. [flyTo] true (entry from a list row) flies the camera
+  /// to the vehicle and zooms to a readable pill first, then hands over to the
+  /// per-frame nudge; false (a marker tap) starts tracking from where the camera
+  /// already is — no jump, no zoom change (§C.2, don't regress F2).
+  void _startFollow(String key, {required ll.LatLng target, required bool flyTo}) {
     final controller = _controller;
-    if (controller == null) return;
-    final geo = Geographic(lon: point.longitude, lat: point.latitude);
-    final size = MediaQuery.of(context).size;
-    // Keep clear of the top buttons and the bottom line panel.
-    const margin = 96.0;
-    try {
-      final screen = controller.toScreenLocation(geo);
-      final inside =
-          screen.dx >= margin &&
-          screen.dx <= size.width - margin &&
-          screen.dy >= margin &&
-          screen.dy <= size.height - margin;
-      if (inside) return;
-    } catch (_) {
-      // If the projection isn't available, fall through and recenter.
+    _following = true;
+    _selectedVehicleKey = key;
+    if (flyTo && controller != null) {
+      final zoom = math.max(controller.getCamera().zoom, kMovingObjectDetailZoom);
+      _followZoom = zoom;
+      _followEngaged = false;
+      controller.animateCamera(
+        center: Geographic(lon: target.longitude, lat: target.latitude),
+        zoom: zoom,
+      );
+      // Let the fly-to settle before the per-frame nudge takes over, so the two
+      // don't fight.
+      Future.delayed(const Duration(milliseconds: 450), () {
+        if (mounted && _following && _selectedVehicleKey == key) {
+          _followEngaged = true;
+        }
+      });
+    } else {
+      _followZoom = controller?.getCamera().zoom;
+      _followEngaged = true;
     }
-    controller.animateCamera(center: geo, zoom: controller.getCamera().zoom);
+    // Ensure the layer paints (and the follow tick fires) even if the vehicle is
+    // momentarily still; a moving vehicle keeps the driver alive on its own.
+    _startVehDriver();
+    _paintVehicles();
+  }
+
+  void _stopFollow() {
+    if (!_following) return;
+    _following = false;
+    _followEngaged = false;
+    _followZoom = null;
+  }
+
+  /// One follow step: keep the followed marker comfortably on screen. Like the
+  /// old nudge, it only moves the camera when the marker approaches the viewport
+  /// edge (so a vehicle sitting mid-screen isn't chased pixel-by-pixel), and it
+  /// never changes zoom. A vanished vehicle (dropped/grace) holds the camera
+  /// still rather than jumping.
+  void _followTick() {
+    if (!_following || !_followEngaged) return;
+    final key = _selectedVehicleKey;
+    final controller = _controller;
+    if (key == null || controller == null) return;
+    if (_vehAnimator.trackFor(key) == null) return; // vanished — hold still
+    final pos = _vehAnimator.positionOf(key, _vehAnim.value);
+    final geo = Geographic(lon: pos.longitude, lat: pos.latitude);
+    const margin = 120.0;
+    try {
+      final size = MediaQuery.of(context).size;
+      final screen = controller.toScreenLocation(geo);
+      final outside = screen.dx < margin ||
+          screen.dx > size.width - margin ||
+          screen.dy < margin ||
+          screen.dy > size.height - margin;
+      if (!outside) return;
+    } catch (_) {
+      // Projection unavailable — fall through and recenter.
+    }
+    controller.moveCamera(
+      center: geo,
+      zoom: _followZoom ?? controller.getCamera().zoom,
+    );
+  }
+
+  // ---- On-demand stop context (state B) ------------------------------------
+
+  /// Enter (or re-enter) stop context: the tapped stop's live arrivals become
+  /// the only vehicle markers. Fed from the SAME arrivals provider the sheet
+  /// polls — subscribing here shares that fetch (no second fan-out), and the
+  /// sheet's 30s invalidation refreshes both list and markers. No-op unless the
+  /// flag is on. Applies whatever the provider already holds immediately.
+  void _enterStopContext(String stopId) {
+    if (!_onDemand) return;
+    if (_stopContextId != stopId || _stopArrivalsSub == null) {
+      _stopArrivalsSub?.close();
+      _stopContextId = stopId;
+      _stopArrivalsSub = ref.listenManual<AsyncValue<ArrivalsBoard>>(
+        arrivalsProvider(stopId),
+        (_, next) {
+          final board = next.valueOrNull;
+          if (board != null) _applyStopContextMarkers(board);
+        },
+      );
+    }
+    _returnToStopId = null;
+    final current = _stopArrivalsSub!.read().valueOrNull;
+    if (current != null) _applyStopContextMarkers(current);
+  }
+
+  /// Replace the vehicle set with this stop's live-position arrivals (schedule
+  /// rows and P1..P999 placeholders have no real fix and stay list-only). Same
+  /// animator/driver path as the background feed, so motion/timed-trajectory and
+  /// spiderfy behave identically.
+  void _applyStopContextMarkers(ArrivalsBoard board) {
+    if (!_onDemand || _stopContextId != board.stopId) return;
+    final samples = <VehicleSample>[];
+    final shapeKeys = <String>[];
+    for (final a in board.arrivals) {
+      if (!arrivalHasLivePosition(a)) continue;
+      final dirId = a.directionRouteId ?? a.routeId;
+      shapeKeys.add(dirId);
+      samples.add(_sampleFromArrival(a, dirId, asOf: board.updatedAt));
+    }
+    _ensureShapesFor(shapeKeys, byRouteId: true);
+    _vehAnimator.syncSamples(samples, _vehAnim.value);
+    if (!_paused && _vehAnimator.hasPendingMotion) {
+      _vehAnim.forward(from: 0);
+      _startVehDriver();
+    } else {
+      _stopVehDriver();
+      _vehAnim.value = 1;
+    }
+    _paintVehicles();
+    setState(() => _hasVehicles = _vehAnimator.tracks.isNotEmpty);
+  }
+
+  /// Leave stop context. Drops the subscription; clears the markers only when no
+  /// vehicle is being followed (a followed vehicle keeps its injected marker).
+  void _exitStopContext() {
+    _stopArrivalsSub?.close();
+    _stopArrivalsSub = null;
+    _stopContextId = null;
+    if (_selectedVehicleKey == null) {
+      _vehAnimator.clear();
+      _paintVehicles();
+      setState(() => _hasVehicles = false);
+    }
+  }
+
+  /// React to the flag flipping (usually once, when remote config resolves).
+  void _onOnDemandChanged() {
+    if (!mounted) return;
+    if (_onDemand) {
+      // Entering on-demand with no active context: clear the background aquarium.
+      if (_stopContextId == null && _selectedVehicleKey == null) {
+        _vehAnimator.clear();
+        _paintVehicles();
+        setState(() => _hasVehicles = false);
+      }
+    } else {
+      // Left on-demand → repopulate the background set for the viewport.
+      _loadVehiclesForVisibleArea(force: true);
+    }
+  }
+
+  /// Close the vehicle context (line panel / back). Stops following, clears the
+  /// route highlight, and — when on-demand — returns to the stop context it was
+  /// opened from (state B) or to the empty map (state A).
+  void _closeVehicleContext() {
+    _stopFollow();
+    _clearFocus();
+    if (!_onDemand) return;
+    final returnStop = _returnToStopId;
+    _returnToStopId = null;
+    if (returnStop != null) {
+      _openStopById(returnStop);
+    } else {
+      _exitStopContext();
+    }
+  }
+
+  /// Enter vehicle context from a tapped arrival row (§C). Builds a guaranteed
+  /// marker from the arrival's own data (gps + trajectory + direction) so the
+  /// vehicle appears immediately — never waiting on a viewport fan-out, which was
+  /// the root of the old bug — highlights its direction's route, flies to it and
+  /// follows. Works at both flag values.
+  void _focusVehicleFromArrival(Arrival a, DateTime asOf) {
+    final gps = a.gps;
+    if (gps == null) return;
+    _clearSearch();
+    _returnToStopId = _onDemand ? _stopContextId : null;
+    final key = VehicleTrackAnimator.keyFor(a);
+    final pos = ll.LatLng(gps.lat, gps.lon);
+    final dirId = a.directionRouteId ?? a.routeId;
+    _ensureShapesFor([dirId], byRouteId: true);
+    // Guaranteed marker: upsert this one vehicle without disturbing others.
+    _vehAnimator.syncSamples(
+      [_sampleFromArrival(a, dirId, asOf: asOf)],
+      _vehAnim.value,
+      prune: false,
+    );
+    setState(() => _selectedVehicleKey = key);
+    if (!_paused && _vehAnimator.hasPendingMotion) _startVehDriver();
+    _paintVehicles();
+    _startFollow(key, target: pos, flyTo: true);
+    // Highlight the route (line panel). refreshVehicles:false so a fan-out can't
+    // prune the marker we just injected.
+    _openVehicleLine(a.line, scheduled: a.scheduled, refreshVehicles: false);
   }
 
   void _clearFocus() {
@@ -1497,11 +1738,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               _vehAnimator.trackFor(keyStr)?.source == VehicleSource.scheduled;
           setState(() => _selectedVehicleKey = keyStr);
           _writeVehiclesToSource();
-          _openVehicleLine(
-            line,
-            focusOn: ll.LatLng(point.lat, point.lon),
-            scheduled: scheduled,
-          );
+          // §C.2: highlight the route + line panel as today, and start following
+          // — but the camera does NOT jump or zoom (don't regress F2).
+          _returnToStopId = _onDemand ? _stopContextId : null;
+          _openVehicleLine(line, scheduled: scheduled);
+          if (keyStr != null) {
+            _startFollow(
+              keyStr,
+              target: ll.LatLng(point.lat, point.lon),
+              flyTo: false,
+            );
+          }
           return;
         }
       }
@@ -1592,37 +1839,39 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     });
   }
 
-  void _openStop(Stop stop) {
-    _clearSearch();
-    // Seamless (A1): overlay the arrivals on the same map instead of pushing a
-    // whole new screen with its own map.
-    showStopSheet(
-      context,
-      stopId: stop.stopId,
-      stopName: stop.name,
-      // Tapping a vehicle row pans the map to it (zoom in past the dot→pill
-      // threshold so its marker is visible).
-      onFocusVehicle: (lat, lon) => _controller?.animateCamera(
-        center: Geographic(lon: lon, lat: lat),
-        zoom: 16.5,
-      ),
-    );
-  }
+  void _openStop(Stop stop) => _openStopById(stop.stopId, stopName: stop.name);
 
   // Open a stop's arrivals from a "Nearby" row — the group carries the nearest
   // serving stop's id/name, so we can go straight to its sheet (same overlay as
   // tapping a stop pin), no stop lookup needed.
-  void _openNearbyStop(NearbyGroup group) {
+  void _openNearbyStop(NearbyGroup group) =>
+      _openStopById(group.stopId, stopName: group.stopName);
+
+  /// Shared stop-opening path (pin tap, Nearby row, or returning to a stop
+  /// context after a follow). Seamless (A1): overlays the arrivals on the same
+  /// map. When on-demand, entering stop context makes that stop's arrivals the
+  /// map's markers (state B); closing the sheet (unless a vehicle was tapped)
+  /// clears them back to A.
+  void _openStopById(String stopId, {String? stopName}) {
     _clearSearch();
+    if (_onDemand) _enterStopContext(stopId);
     showStopSheet(
       context,
-      stopId: group.stopId,
-      stopName: group.stopName,
-      onFocusVehicle: (lat, lon) => _controller?.animateCamera(
-        center: Geographic(lon: lon, lat: lat),
-        zoom: 16.5,
-      ),
-    );
+      stopId: stopId,
+      stopName: stopName,
+      // Tapping a vehicle row hands the whole arrival to the map so it builds a
+      // guaranteed marker, highlights the route and follows (§C).
+      onFocusVehicle: _focusVehicleFromArrival,
+    ).then((_) => _onStopSheetClosed(stopId));
+  }
+
+  /// The stop sheet was dismissed. If a vehicle from this stop is now being
+  /// followed, keep the stop context alive so closing the line panel can return
+  /// to it; otherwise leave state B for A.
+  void _onStopSheetClosed(String stopId) {
+    if (!_onDemand) return;
+    if (_returnToStopId == stopId && (_focus != null || _following)) return;
+    if (_stopContextId == stopId) _exitStopContext();
   }
 
   bool _isLinePinned(String line) {
@@ -1732,12 +1981,20 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       }
     }
 
+    // On-demand flag: usually flips false→true once remote config resolves.
+    // Reconcile after the frame (clear the background aquarium, or repopulate).
+    final onDemand = ref.watch(vehiclesOnDemandEnabledProvider);
+    if (onDemand != _onDemand) {
+      _onDemand = onDemand;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _onOnDemandChanged());
+    }
+
     return PopScope(
-      // While a line is focused, Android back closes the focus overlay instead
+      // While a line is focused, Android back closes the vehicle context instead
       // of leaving the map.
       canPop: _focus == null,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _clearFocus();
+        if (!didPop) _closeVehicleContext();
       },
       child: Scaffold(
       body: Stack(
@@ -1802,7 +2059,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           if (isStaging && _focus == null) _stopDiagnosticsOverlay(theme),
           // Far-out zoom with no vehicles in the bounded area: nudge the user to
           // zoom in rather than leaving them staring at a blank map (F5).
-          if (_focus == null && _currentZoom < _minVehiclesZoom && !_hasVehicles)
+          // On-demand mode has no background vehicle layer, so the "zoom in to
+          // see transport" hint (which is about that empty layer) doesn't apply.
+          if (_focus == null &&
+              !_onDemand &&
+              _currentZoom < _minVehiclesZoom &&
+              !_hasVehicles)
             _zoomHint(l10n, theme),
           // Bottom UI: while a line is focused, a compact line panel with a close
           // button. Otherwise the experimental "Nearby" sheet when its flag is on
@@ -2067,7 +2329,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: _clearFocus,
+                  onPressed: _closeVehicleContext,
                   tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                 ),
               ],

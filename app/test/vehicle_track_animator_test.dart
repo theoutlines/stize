@@ -365,4 +365,43 @@ void main() {
     animator.sync([noGps], 0);
     expect(animator.tracks, isEmpty);
   });
+
+  group('upsert (prune: false) — inject a followed vehicle in isolation', () {
+    VehicleSample sample(String key, double lat, double lon) => VehicleSample(
+          key: key,
+          position: ll.LatLng(lat, lon),
+          line: '79',
+          type: VehicleType.bus,
+        );
+
+    test('adds a new vehicle without ageing out the others', () {
+      final animator = VehicleTrackAnimator();
+      // A stop context already shows two vehicles.
+      animator.syncSamples([
+        sample('P1', 44.80, 20.50),
+        sample('P2', 44.81, 20.51),
+      ], 0);
+
+      // The §C list tap injects ONE vehicle (built from the tapped arrival),
+      // upserting without touching the rest.
+      animator.syncSamples([sample('P3', 44.82, 20.52)], 0, prune: false);
+
+      expect(animator.tracks.keys, containsAll(<String>['P1', 'P2', 'P3']));
+      // The absent ones aren't even nudged toward the grace fade.
+      expect(animator.trackFor('P1')!.missingCount, 0);
+      expect(animator.trackFor('P2')!.missingCount, 0);
+    });
+
+    test('a normal (pruning) sync still ages out the injected extra', () {
+      final animator = VehicleTrackAnimator();
+      animator.syncSamples([sample('P1', 44.80, 20.50)], 0);
+      animator.syncSamples([sample('P3', 44.82, 20.52)], 0, prune: false);
+      expect(animator.tracks.keys, containsAll(<String>['P1', 'P3']));
+
+      // The next full refresh (the stop's arrivals) doesn't include P3 → it
+      // starts ageing out on the normal grace path.
+      animator.syncSamples([sample('P1', 44.80, 20.50)], 0);
+      expect(animator.trackFor('P3')!.missingCount, 1);
+    });
+  });
 }

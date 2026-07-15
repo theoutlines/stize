@@ -78,6 +78,14 @@ final coverageOnMainMapEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.coverageOnMainMap ?? false,
 );
 
+/// Whether the main map renders vehicles on demand (in context) instead of the
+/// background "aquarium" (remote `vehicles_on_demand` flag). Defaults to false
+/// until config resolves, so the map keeps its current behaviour if config is
+/// unreachable.
+final vehiclesOnDemandEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.vehiclesOnDemand ?? false,
+);
+
 
 
 

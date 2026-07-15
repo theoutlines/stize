@@ -25,6 +25,13 @@ import type { Env } from "../env";
 //                       stop clusters). Independent of coverage_map_show: the
 //                       tab can be off while the overlay is on, and vice-versa.
 //                       OFF on prod, ON on staging.
+//   vehicles_on_demand — the main map stops rendering the whole "aquarium" of
+//                       background vehicles. Instead vehicles appear only in
+//                       context: the markers of a tapped stop's arrivals, and a
+//                       followed vehicle. Purely a client-render flag — the
+//                       worker is unchanged; the client simply stops calling
+//                       /vehicles/nearby while there's no context, which drops
+//                       the map fan-out load. OFF on prod, ON on staging.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -32,6 +39,7 @@ export const FEATURE_FLAGS = [
   "nearby_sort_board",
   "coverage_map_show",
   "coverage_on_main_map",
+  "vehicles_on_demand",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
