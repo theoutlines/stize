@@ -55,6 +55,21 @@ export async function getFlag(env: Env, flag: FeatureFlag): Promise<boolean> {
   return value === "1";
 }
 
+// Per-invocation flag memo. Keyed by a request-unique object (`scope` — the
+// Worker's per-request ctx), so within ONE invocation a flag is read from KV
+// once even across a fan-out (the map path's 18 per-stop analytics logs used to
+// fire 18 identical KV reads → 18 subrequests). It is deliberately NOT a global
+// or TTL cache: a fresh request gets a fresh scope, so a KV flag flip is still
+// picked up on the very next request (instant-flip semantics preserved).
+const invocationFlagCache = new WeakMap<object, Map<FeatureFlag, Promise<boolean>>>();
+export function getFlagMemoized(env: Env, scope: object, flag: FeatureFlag): Promise<boolean> {
+  let byFlag = invocationFlagCache.get(scope);
+  if (!byFlag) invocationFlagCache.set(scope, (byFlag = new Map()));
+  let pending = byFlag.get(flag);
+  if (!pending) byFlag.set(flag, (pending = getFlag(env, flag)));
+  return pending;
+}
+
 export async function setFlag(env: Env, flag: FeatureFlag, on: boolean): Promise<void> {
   await env.STIGLA_KV.put(kvKey(flag), on ? "1" : "0");
 }

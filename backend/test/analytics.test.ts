@@ -64,9 +64,13 @@ describe("analytics.logObservations", () => {
     { lineNumber: "79", etaSeconds: 30, stopsRemaining: 0, garageNo: "P5", gps: null, heading: null, trajectory: null, routeStations: [] },
   ];
 
+  // Each call gets its own per-invocation scope (like a fresh request ctx), so
+  // the memoized flag read never leaks across tests / flag flips.
+  const ctx = () => ({ waitUntil() {} });
+
   it("writes nothing while analytics_collect is off", async () => {
     await setFlag(env, "analytics_collect", false);
-    await logObservations(env, "S1", raw);
+    await logObservations(env, ctx(), "S1", raw);
     const { results } = await env.STIGLA_ANALYTICS_DB.prepare(
       "SELECT COUNT(*) AS n FROM raw_observations",
     ).all<{ n: number }>();
@@ -75,7 +79,7 @@ describe("analytics.logObservations", () => {
 
   it("logs every arrival (garage optional) and normalises vehicle_id", async () => {
     await setFlag(env, "analytics_collect", true);
-    await logObservations(env, "S1", raw);
+    await logObservations(env, ctx(), "S1", raw);
     const { results } = await env.STIGLA_ANALYTICS_DB.prepare(
       "SELECT garage_no, vehicle_id FROM raw_observations",
     ).all<{ garage_no: string | null; vehicle_id: string | null }>();
@@ -101,7 +105,7 @@ describe("analytics.logObservations", () => {
       trajectory: null,
       routeStations: [],
     }));
-    await logObservations(env, "S1", many);
+    await logObservations(env, ctx(), "S1", many);
     const { results } = await env.STIGLA_ANALYTICS_DB.prepare(
       "SELECT COUNT(*) AS n FROM raw_observations",
     ).all<{ n: number }>();

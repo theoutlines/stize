@@ -61,6 +61,19 @@ that can't be collected retroactively, we start accumulating before we need it.
   are night lines that simply don't run at night). A month+ of data makes
   night/rare lines distinguishable from retired ones; build the classifier then.
 
+### Plumbing / reliability
+- 🚧 **Scheduled map objects TypeError** — `scheduledMapObjectsForRoute` threw on
+  the edge input `now.minutes === last stop time`, and one bad route dropped the
+  *whole* scheduled layer of a `/vehicles/nearby` response (silent). Root fix +
+  per-route isolation on `fix/scheduled-map-typeerror`, green, awaiting owner
+  merge. Report: `docs/reports/2026-07-16-scheduled-map-typeerror.md`.
+- 🚧 **Cold `/vehicles/nearby` subrequest budget** — worst-case cold path was
+  ≈70–73 subrequests, over the 50/invocation tier. Done on the branch above:
+  per-invocation memo of `getFlag("analytics_collect")` (18 per-stop KV reads →
+  1, cold worst-case ~70 → ~53). Still over on a fully cold isolate; the larger,
+  architectural levers (fan-out reduction, upstream cache policy) are deferred.
+  Full decomposition in the report above.
+
 ### Fleet-ID tail
 - ⏭️ Close remaining roster gaps so fewer vehicles show as UNKNOWN.
 - ⏭️ Quarterly roster-refresh pipeline — use first/last-seen from accumulated
