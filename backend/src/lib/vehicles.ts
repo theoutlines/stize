@@ -125,28 +125,36 @@ async function scheduledMapVehicles(
   const out: VehicleDto[] = [];
   await Promise.all(
     candidateRoutes.map(async (routeId) => {
-      const [trips, shape, meta2] = [
-        await getRouteTrips(env, routeId),
-        await getRouteShape(env, routeId),
-        await getLineDtoByRouteId(env, routeId),
-      ];
-      if (!trips || !shape || !meta2) return;
-      const coords = shape.stops.map((s) => ({ lat: s.lat, lon: s.lon }));
-      for (const obj of scheduledMapObjectsForRoute(trips, coords, meta, now)) {
-        if (haversineDistanceMeters(center, { lat: obj.lat, lon: obj.lon }) > radius) continue;
-        out.push({
-          line: meta2.line,
-          vehicle_type: meta2.vehicle_type,
-          garage_no: null,
-          lat: obj.lat,
-          lon: obj.lon,
-          heading: obj.heading,
-          route_id: routeId,
-          source: "scheduled",
-          trip_id: obj.trip_id,
-          as_of: asOf,
-          trajectory: obj.trajectory,
-        });
+      // Isolate each route: a single route's failure (bad shape/trip data)
+      // must not reject the whole Promise.all and drop *every* scheduled object
+      // for the viewport. Leave a visible warn naming the route instead of a
+      // silent swallow, so a recurring offender is diagnosable in `wrangler tail`.
+      try {
+        const [trips, shape, meta2] = [
+          await getRouteTrips(env, routeId),
+          await getRouteShape(env, routeId),
+          await getLineDtoByRouteId(env, routeId),
+        ];
+        if (!trips || !shape || !meta2) return;
+        const coords = shape.stops.map((s) => ({ lat: s.lat, lon: s.lon }));
+        for (const obj of scheduledMapObjectsForRoute(trips, coords, meta, now)) {
+          if (haversineDistanceMeters(center, { lat: obj.lat, lon: obj.lon }) > radius) continue;
+          out.push({
+            line: meta2.line,
+            vehicle_type: meta2.vehicle_type,
+            garage_no: null,
+            lat: obj.lat,
+            lon: obj.lon,
+            heading: obj.heading,
+            route_id: routeId,
+            source: "scheduled",
+            trip_id: obj.trip_id,
+            as_of: asOf,
+            trajectory: obj.trajectory,
+          });
+        }
+      } catch (e) {
+        console.warn("scheduled map objects failed for route", routeId, e);
       }
     }),
   );
