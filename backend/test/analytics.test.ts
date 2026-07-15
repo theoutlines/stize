@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
-import { aggregate, getLineAnalytics, logObservations, vehicleIdOf } from "../src/lib/analytics";
+import {
+  aggregate,
+  getLineAnalytics,
+  logObservations,
+  maxRowsPerInsert,
+  vehicleIdOf,
+} from "../src/lib/analytics";
 import { setFlag } from "../src/lib/featureFlags";
 import type { RawArrival } from "../src/lib/transitProvider";
 
@@ -26,6 +32,19 @@ async function seed(
 beforeEach(async () => {
   await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM raw_observations").run();
   await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM agg_line_time").run();
+});
+
+describe("maxRowsPerInsert", () => {
+  it("derives rows-per-statement from the column count and D1's 100-param cap", () => {
+    // raw_observations is 7 columns: floor(100/7) = 14 rows → 98 params (< 100).
+    expect(maxRowsPerInsert(7)).toBe(14);
+    // Boundary — exactly at the cap: 10 columns × 10 rows = 100 params fits.
+    expect(maxRowsPerInsert(10)).toBe(10);
+    // Boundary — one param over: 11 columns can only take 9 rows (99), not 10 (110).
+    expect(maxRowsPerInsert(11)).toBe(9);
+    // Never collapses to a zero-row (infinite-loop) chunk, even absurdly wide.
+    expect(maxRowsPerInsert(101)).toBe(1);
+  });
 });
 
 describe("vehicleIdOf", () => {
@@ -64,6 +83,37 @@ describe("analytics.logObservations", () => {
     expect(results.find((r) => r.garage_no === "P93001")?.vehicle_id).toBe("P93001");
     expect(results.find((r) => r.garage_no === null)?.vehicle_id).toBeNull();
     expect(results.find((r) => r.garage_no === "P5")?.vehicle_id).toBeNull(); // junk
+    await setFlag(env, "analytics_collect", false);
+  });
+
+  it("chunks a busy stop past the D1 param cap without 'too many SQL variables'", async () => {
+    await setFlag(env, "analytics_collect", true);
+    // 200 rows × 7 params = 1400 bind vars — 14× over D1's 100/statement cap and
+    // well past the 142-row threshold from the 2026-07-13 regression. The single
+    // unchunked statement the old code built here is exactly what threw.
+    const many: RawArrival[] = Array.from({ length: 200 }, (_, i) => ({
+      lineNumber: "79",
+      etaSeconds: 60,
+      stopsRemaining: i % 5,
+      garageNo: `P${1000 + i}`, // all real ids → also 200 rows in the aggregates
+      gps: null,
+      heading: null,
+      trajectory: null,
+      routeStations: [],
+    }));
+    await logObservations(env, "S1", many);
+    const { results } = await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT COUNT(*) AS n FROM raw_observations",
+    ).all<{ n: number }>();
+    expect(results[0].n).toBe(200);
+
+    // The aggregate write-back (agg_line_time + per-vehicle tables, one row per
+    // vehicle) must survive the same wide result set — the second insert path.
+    await aggregate(env);
+    const agg = await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT COUNT(*) AS n FROM agg_vehicle_line",
+    ).all<{ n: number }>();
+    expect(agg.results[0].n).toBe(200);
     await setFlag(env, "analytics_collect", false);
   });
 });
