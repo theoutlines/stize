@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/arrival_display.dart';
+import '../../core/eta_format.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/map_support.dart';
 import '../../domain/models/arrival.dart';
@@ -81,7 +82,8 @@ class ArrivalTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  arrival.etaMinutes <= 0 ? l10n.arrivalEtaNow : l10n.arrivalEtaMinutes(arrival.etaMinutes),
+                  etaLabel(l10n, Localizations.localeOf(context).toString(),
+                      arrival.etaMinutes),
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
