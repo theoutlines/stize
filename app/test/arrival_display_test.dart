@@ -55,6 +55,29 @@ void main() {
       });
     }
 
+    test('every Zeleni venac row is classified — none is a blank/void status', () {
+      final board = _load('arrivals_zeleni_venac');
+      expect(board.arrivals, isNotEmpty);
+      var sawExpected = false;
+      for (final a in board.arrivals) {
+        final status = arrivalRowStatus(a);
+        // The classifier is total: every row gets live | expected | scheduled,
+        // so no row can render blank the way placeholder rows used to.
+        expect(ArrivalRowStatus.values, contains(status));
+        // Clickability == live, everywhere.
+        expect(status == ArrivalRowStatus.live, arrivalHasLivePosition(a),
+            reason: '${a.line}/${a.garageNo}');
+        // The placeholder class (valid ETA, no live position) is "expected", not
+        // blank and not a live lie.
+        if (!a.scheduled && !arrivalHasLivePosition(a)) {
+          expect(status, ArrivalRowStatus.expected);
+          sawExpected = true;
+        }
+      }
+      expect(sawExpected, isTrue,
+          reason: 'Zeleni venac carries the placeholder (expected) class');
+    });
+
     test('Zeleni venac: the junk 0-stops rows are the placeholder class (P1/P2), '
         'no longer "here", and correctly non-clickable', () {
       final board = _load('arrivals_zeleni_venac');

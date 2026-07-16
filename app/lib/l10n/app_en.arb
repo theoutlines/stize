@@ -34,6 +34,8 @@
   "nearbyStopsEmpty": "Turn on location, or search for a stop, street, or line above.",
   "mapZoomInForVehicles": "Zoom in to see live transport",
   "vehicleScheduled": "By schedule — not a live position",
+  "arrivalExpected": "Expected",
+  "@arrivalExpected": {"description": "Row with a valid ETA but no live GPS position yet (placeholder vehicle)"},
   "vehicleLost": "Vehicle no longer tracked",
   "@vehicleLost": {"description": "Shown when a followed vehicle drops out of the live feed"},
   "noLiveVehiclesOnMap": "No live-tracked vehicles to map right now — see the arrivals below.",

@@ -323,8 +323,8 @@ void main() {
       'stop_name': 'Baćevac',
       'updated_at': DateTime.now().toUtc().toIso8601String(),
       'arrivals': [
-        {'line': '401', 'vehicle_type': 'bus', 'eta_minutes': 6, 'stops_remaining': 3, 'route_id': '00401'},
-        {'line': '405', 'vehicle_type': 'bus', 'eta_minutes': 9, 'stops_remaining': 7, 'route_id': '00405'},
+        {'line': '401', 'vehicle_type': 'bus', 'eta_minutes': 6, 'stops_remaining': 3, 'route_id': '00401', 'gps': {'lat': 44.65, 'lon': 20.28}},
+        {'line': '405', 'vehicle_type': 'bus', 'eta_minutes': 9, 'stops_remaining': 7, 'route_id': '00405', 'gps': {'lat': 44.66, 'lon': 20.29}},
       ],
       'service_status': 'ok',
     });

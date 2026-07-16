@@ -36,40 +36,65 @@ class ArrivalTile extends StatelessWidget {
   /// a silently shifting number doesn't quietly erode trust.
   final int? etaDeltaMinutes;
 
+  /// Opacity for a non-clickable row (Expected / Scheduled). Brightness is the
+  /// single, at-a-glance signal for "can I tap this?" — dim == not tappable.
+  static const double _dimOpacity = 0.58;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final status = arrivalRowStatus(arrival);
+    // Clickability == live. A dimmed row + missing chevron means "not a vehicle
+    // you can follow" (Expected placeholder / Scheduled fallback) without the
+    // user having to read the subtitle to find out.
+    final clickable = status == ArrivalRowStatus.live;
+    final dim = clickable ? 1.0 : _dimOpacity;
 
     return ListTile(
       onTap: onTap,
       // Match the map's transport palette so a line reads the same colour here
       // as its marker on the map (bus blue, trolley orange, tram red).
-      leading: CircleAvatar(
-        backgroundColor: vehicleColor(arrival.vehicleType),
-        child: vehicleGlyph(
-          arrival.vehicleType,
-          size: 22,
-          color: Colors.white,
+      leading: Opacity(
+        opacity: dim,
+        child: CircleAvatar(
+          backgroundColor: vehicleColor(arrival.vehicleType),
+          child: vehicleGlyph(
+            arrival.vehicleType,
+            size: 22,
+            color: Colors.white,
+          ),
         ),
       ),
-      title: Text(arrival.line, style: theme.textTheme.titleMedium),
-      subtitle: _subtitle(context, l10n),
-      trailing: Column(
+      title: Opacity(
+        opacity: dim,
+        child: Text(arrival.line, style: theme.textTheme.titleMedium),
+      ),
+      subtitle: _subtitle(context, l10n, status),
+      trailing: Row(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(
-            arrival.etaMinutes <= 0 ? l10n.arrivalEtaNow : l10n.arrivalEtaMinutes(arrival.etaMinutes),
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              // Planned arrivals read dimmer than live ones (they're a fallback,
-              // not a tracked vehicle).
-              color: arrival.scheduled ? theme.colorScheme.onSurfaceVariant : null,
+          Opacity(
+            opacity: dim,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  arrival.etaMinutes <= 0 ? l10n.arrivalEtaNow : l10n.arrivalEtaMinutes(arrival.etaMinutes),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (etaDeltaMinutes != null && etaDeltaMinutes != 0)
+                  _EtaChangeBadge(deltaMinutes: etaDeltaMinutes!),
+              ],
             ),
           ),
-          if (etaDeltaMinutes != null && etaDeltaMinutes != 0)
-            _EtaChangeBadge(deltaMinutes: etaDeltaMinutes!),
+          // The chevron is the drill-in affordance: only a live vehicle can be
+          // opened and followed on the map.
+          if (clickable)
+            Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
         ],
       ),
     );
@@ -77,50 +102,59 @@ class ArrivalTile extends StatelessWidget {
 
   /// Second line of the tile: the "N stops away" text and the Fleet-ID badge
   /// strip, kept on a single row so a badge never turns one row into two (B2).
-  Widget? _subtitle(BuildContext context, AppLocalizations l10n) {
+  Widget? _subtitle(BuildContext context, AppLocalizations l10n, ArrivalRowStatus status) {
     final theme = Theme.of(context);
-    // Planned (timetable) arrival: a clear "по расписанию" marker instead of
-    // "N stops away" / fleet badges (which only exist for a live vehicle).
-    if (arrival.scheduled) {
-      return Row(
+    // A clock + honest status label, so no row renders blank and none pretends
+    // to be a tappable live vehicle:
+    //   * Scheduled → "Scheduled" (timetable fallback, no vehicle at all).
+    //   * Expected  → "Expected"  (valid ETA, no live position yet — the
+    //                 placeholder class; reclassification is arrivals-dedup's).
+    // The clock keeps its normal muted colour ("as now"); the row-level dimming
+    // is applied to the line icon + ETA in build().
+    final Widget? statusChip;
+    if (status == ArrivalRowStatus.scheduled || status == ArrivalRowStatus.expected) {
+      statusChip = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.schedule, size: 14, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 4),
           Text(
-            l10n.arrivalScheduled,
+            status == ArrivalRowStatus.scheduled ? l10n.arrivalScheduled : l10n.arrivalExpected,
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
       );
+    } else {
+      // Live: describe proximity, but don't trust stops_remaining blindly — the
+      // upstream emits 0 as junk for some rows even with a 10-20 min ETA, so
+      // "here" would lie. Only show it when it agrees with the ETA.
+      final stopsText = switch (arrivalProximity(
+        stopsRemaining: arrival.stopsRemaining,
+        etaMinutes: arrival.etaMinutes,
+      )) {
+        ArrivalProximity.here => l10n.arrivalStopsAway(0),
+        ArrivalProximity.stopsAway => l10n.arrivalStopsAway(arrival.stopsRemaining!),
+        ArrivalProximity.unknown => null,
+      };
+      statusChip = stopsText == null
+          ? null
+          : Flexible(child: Text(stopsText, overflow: TextOverflow.ellipsis));
     }
-    // Don't trust stops_remaining blindly: the upstream emits 0 as junk for some
-    // rows (placeholder P1..P999 vehicles pinned to the stop) even with a 10-20
-    // min ETA — "here" would lie. Only show it when it agrees with the ETA.
-    final stopsText = switch (arrivalProximity(
-      stopsRemaining: arrival.stopsRemaining,
-      etaMinutes: arrival.etaMinutes,
-    )) {
-      ArrivalProximity.here => l10n.arrivalStopsAway(0),
-      ArrivalProximity.stopsAway =>
-        l10n.arrivalStopsAway(arrival.stopsRemaining!),
-      ArrivalProximity.unknown => null,
-    };
-    final strip = fleet == null
+    // Fleet badges belong to a vehicle identified by garage number — present for
+    // both live AND expected (placeholder) rows, but never for a scheduled row
+    // (no vehicle exists yet), matching the prior behaviour for scheduled.
+    final strip = (fleet == null || status == ArrivalRowStatus.scheduled)
         ? null
         : FleetBadgeStrip(
             fleet: fleet!,
             garageNo: arrival.garageNo,
             onTap: fleet!.hasInfo ? onOpenFleetCard : null,
           );
-    if (stopsText == null && strip == null) return null;
+    if (statusChip == null && strip == null) return null;
     return Row(
       children: [
-        if (stopsText != null)
-          Flexible(
-            child: Text(stopsText, overflow: TextOverflow.ellipsis),
-          ),
-        if (stopsText != null && strip != null) const SizedBox(width: 10),
+        if (statusChip != null) statusChip,
+        if (statusChip != null && strip != null) const SizedBox(width: 10),
         ?strip,
       ],
     );

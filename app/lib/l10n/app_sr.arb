@@ -32,6 +32,7 @@
   "nearbyStopsEmpty": "Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.",
   "mapZoomInForVehicles": "Uvećaj mapu da vidiš prevoz uživo",
   "vehicleScheduled": "Po redu vožnje — nije pozicija uživo",
+  "arrivalExpected": "Očekuje se",
   "vehicleLost": "Vozilo se više ne prati",
   "noLiveVehiclesOnMap": "Trenutno nema vozila uživo na mapi — pogledaj dolaske ispod.",
 
