@@ -52,6 +52,19 @@ that can't be collected retroactively, we start accumulating before we need it.
 
 ## In progress / behind a flag
 
+- 🚧 **Arrivals dedup — live/scheduled + scheduled roll-up** (`feature/arrivals-dedup`,
+  staging preview, merge owner-gated) — with the schedule fallback ON the stop
+  shutter double-counted: live boards and Scheduled rows of the same line
+  duplicated each other. Now the list is grouped by **line×direction**; while a
+  group has live vehicles, its non-live rows (Expected *and* Scheduled) at/under
+  the latest live ETA are suppressed (same physical vehicles), and the surviving
+  Scheduled collapse into **one** dimmed “<line> · Scheduled” cell (nearest +
+  two, max three). Expected keeps its own per-vehicle row; live rows / comfort
+  sort / per-line filter untouched. Pure `groupArrivals` (unit-tested) + a cell
+  widget; client-only, backend untouched. Contract brought into git
+  (`SCHEDULE_FALLBACK_CONTRACT.md`, display-rules section). Report:
+  `docs/reports/2026-07-16-arrivals-dedup.md`.
+
 - ✅ **Analytics insert hardening** (`fix/analytics-sql-variables`, влито в `main`
   2026-07-16) — размер чанка вставки в analytics-D1 выводится из числа колонок под
   документированный лимит D1 (100 bind-параметров), одной утилитой для всех путей
