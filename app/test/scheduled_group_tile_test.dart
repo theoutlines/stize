@@ -41,7 +41,7 @@ void main() {
     expect(find.textContaining('·'), findsNothing);
   });
 
-  testWidgets('a far ETA (>= 90 min) renders as a clock time, not "N min" — '
+  testWidgets('a far ETA (>= 60 min) renders as a clock time, not "N min" — '
       'including the cell\'s secondary times', (tester) async {
     await tester.pumpWidget(_wrap(const ScheduledGroupCell(
       line: '29N',

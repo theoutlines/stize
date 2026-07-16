@@ -2,10 +2,11 @@ import 'package:intl/intl.dart';
 
 import '../l10n/app_localizations.dart';
 
-/// Beyond this ETA, a minute count ("158 min") stops being legible — show the
-/// clock arrival time ("02:45", 24h) instead. Applied everywhere an ETA renders
-/// (arrivals list, nearby, the collapsed Scheduled cell's times).
-const int kFarEtaMinutes = 90;
+/// Beyond this ETA, a minute count ("75 min") stops being legible — you no
+/// longer do the arithmetic in your head — so show the clock arrival time
+/// ("02:45", 24h) instead. Applied everywhere an ETA renders (arrivals list,
+/// nearby, the collapsed Scheduled cell's times).
+const int kFarEtaMinutes = 60;
 
 /// The label for an arrival ETA:
 ///  * "Now" for a due/past arrival (≤ 0),
