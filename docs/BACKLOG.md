@@ -59,10 +59,14 @@ that can't be collected retroactively, we start accumulating before we need it.
   group has live vehicles, its non-live rows (Expected *and* Scheduled) at/under
   the latest live ETA are suppressed (same physical vehicles), and the surviving
   Scheduled collapse into **one** dimmed “<line> · Scheduled” cell (nearest +
-  two, max three). Expected keeps its own per-vehicle row; live rows / comfort
-  sort / per-line filter untouched. Pure `groupArrivals` (unit-tested) + a cell
-  widget; client-only, backend untouched. Contract brought into git
-  (`SCHEDULE_FALLBACK_CONTRACT.md`, display-rules section). Report:
+  two, max three). Within a group **live always sits above non-live**; groups
+  sort by nearest live ETA. Expected keeps its own per-vehicle row; live rows /
+  comfort sort / per-line filter untouched. Applied on the **in-app** shutter
+  (`stop_sheet.dart`) and mirrored in `StopScreen`; the **Nearby** card gets the
+  same per-time dedup + distinguishable live/scheduled status. Pure
+  `groupArrivals` / `visibleNearbyEtas` (unit-tested) + a cell widget;
+  client-only, backend untouched. Visually verified on the preview (Batutova).
+  Contract in git (`SCHEDULE_FALLBACK_CONTRACT.md`). Report:
   `docs/reports/2026-07-16-arrivals-dedup.md`.
 
 - ✅ **Analytics insert hardening** (`fix/analytics-sql-variables`, влито в `main`
