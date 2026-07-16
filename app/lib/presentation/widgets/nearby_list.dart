@@ -119,7 +119,11 @@ class _NearbyCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Opacity(opacity: dim, child: _EtaColumn(arrivals: group.arrivals)),
+              // The eta column is NOT dimmed at the group level — each time
+              // carries its own status (live bright, scheduled dimmed + clock)
+              // so a mixed "live / scheduled" card is legible, and scheduled
+              // times earlier than a live one are dropped (visibleNearbyEtas).
+              _EtaColumn(etas: visibleNearbyEtas(group)),
               // Drill-in affordance: only a live, followable group gets a chevron.
               if (hasLive)
                 Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
@@ -172,46 +176,58 @@ class _LineBadge extends StatelessWidget {
   }
 }
 
-/// Up to two soonest departures, the first emphasised.
+/// Up to two soonest departures, the first emphasised. Each time carries its
+/// own status: a live vehicle reads bright; a scheduled/placeholder time reads
+/// dimmed with a small clock, so a mixed card doesn't leave "which time is the
+/// bus?" ambiguous.
 class _EtaColumn extends StatelessWidget {
-  const _EtaColumn({required this.arrivals});
+  const _EtaColumn({required this.etas});
 
-  final List<NearbyEta> arrivals;
+  final List<NearbyEta> etas;
+
+  static const double _dimOpacity = 0.58;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    if (arrivals.isEmpty) {
+    if (etas.isEmpty) {
       return Text('—', style: theme.textTheme.titleMedium);
     }
     String label(NearbyEta e) =>
         e.etaMinutes <= 0 ? l10n.arrivalEtaNow : l10n.arrivalEtaMinutes(e.etaMinutes);
+
+    Widget etaRow(NearbyEta e, TextStyle? style) {
+      final live = nearbyEtaIsLive(e);
+      return Opacity(
+        opacity: live ? 1.0 : _dimOpacity,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // A clock marks a non-live time so it isn't read as a tracked bus.
+            if (!live) ...[
+              Icon(Icons.schedule, size: 13, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 3),
+            ],
+            Text(label(e), style: style),
+          ],
+        ),
+      );
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(
-          label(arrivals.first),
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        etaRow(
+          etas.first,
+          theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
-        if (arrivals.length > 1)
-          Text(
-            label(arrivals[1]),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        // When the soonest departure has no live vehicle yet, it's a planned
-        // (schedule) time — flag it so the ETA isn't read as a tracked bus. This
-        // is why a nearby stop is never empty (live + schedule tail).
-        if (arrivals.first.isScheduled)
-          Text(
-            l10n.arrivalScheduled,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontStyle: FontStyle.italic,
-            ),
+        if (etas.length > 1)
+          etaRow(
+            etas[1],
+            theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
       ],
     );

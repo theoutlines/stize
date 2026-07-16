@@ -173,5 +173,36 @@ void main() {
     test('empty board → empty list', () {
       expect(groupArrivals(const []), isEmpty);
     });
+
+    test('within a group, a live vehicle always sits above scheduled/expected', () {
+      // Live at 9; scheduled 18 survives the horizon. The scheduled cell must
+      // still come after the live row — never above it.
+      final entries = groupArrivals([
+        _scheduled('79', 18),
+        _live('79', 9),
+      ]);
+      expect(entries.first, isA<ArrivalRow>());
+      expect((entries.first as ArrivalRow).arrival.etaMinutes, 9);
+      expect(entries.last, isA<ScheduledGroupCell>());
+    });
+
+    test('a live group sorts by its nearest LIVE eta, not a sooner scheduled '
+        'sibling of another group', () {
+      // Group 79: live 9 (+ scheduled 18 survivor). Group 83: scheduled-only 5.
+      // 83 (schedule-only, 5) is sooner → first; 79 ordered by its live 9.
+      final entries = groupArrivals([
+        _live('79', 9),
+        _scheduled('79', 18),
+        _scheduled('83', 5),
+      ]);
+      // First entry belongs to line 83 (the schedule-only, sooner group).
+      expect(entries.first, isA<ScheduledGroupCell>());
+      expect((entries.first as ScheduledGroupCell).line, '83');
+      // Then line 79: live row before its scheduled cell.
+      expect(entries[1], isA<ArrivalRow>());
+      expect((entries[1] as ArrivalRow).arrival.line, '79');
+      expect(entries[2], isA<ScheduledGroupCell>());
+      expect((entries[2] as ScheduledGroupCell).line, '79');
+    });
   });
 }
