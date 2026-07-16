@@ -110,6 +110,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get vehicleScheduled => 'По расписанию — не живая позиция';
 
   @override
+  String get vehicleLost => 'Транспорт больше не отслеживается';
+
+  @override
   String get noLiveVehiclesOnMap =>
       'Нет машин с live-позицией — смотри список прибытий ниже.';
 

@@ -260,11 +260,23 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   //   C — vehicle context (`_following` + `_focus`): one vehicle is followed
   //       with its direction's route highlighted. Works at BOTH flag values.
   bool _onDemand = false;
+  // Staging-overlay diagnostics for the on-demand context (debugPrint is stripped
+  // in release web, so these surface on the on-screen diagnostics panel instead).
+  int? _lastCtxBoardAgeSec; // freshness of the last context board applied
+  int _lastCtxLive = 0; // live rows in it
+  int _lastCtxWithTraj = 0; // how many carried a timing plan
+  int _refreshTicks = 0; // 30s refresh ticks fired
+  int _pumpCount = 0; // vehicle-driver frames pumped
   // A stop arrivals sheet is currently up. The bottom UI (Nearby panel / search)
   // is hidden while it is, so the two never overlap (#7).
   bool _stopSheetOpen = false;
   String? _stopContextId; // stop feeding the markers (state B); null = not in B
   ProviderSubscription<AsyncValue<ArrivalsBoard>>? _stopArrivalsSub;
+  // SWR "second tap": after a stale board (or a 503), a one-shot fetch a beat
+  // later grabs the revalidated fresh copy, so the context board stays under the
+  // 45s timed-playback staleness gate and the markers keep moving (see
+  // contextBoardNeedsRefetch). One pending at a time.
+  Timer? _ctxRefetchTimer;
   // The stop context to restore when a vehicle context opened *from* a stop is
   // closed (return to B); null → fall back to A.
   String? _returnToStopId;
@@ -329,6 +341,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _meAnim.dispose();
     _searchDebounce?.cancel();
     _stopArrivalsSub?.close();
+    _ctxRefetchTimer?.cancel();
     _vehiclesTimer?.cancel();
     _shapeResyncTimer?.cancel();
     _stopVehDriver();
@@ -403,7 +416,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// This runs regardless of follow, so following never freezes the data. When
   /// off-demand it drives the viewport aquarium exactly as before.
   void _refreshTick() {
-    switch (mapRefreshAction(onDemand: _onDemand, stopContextId: _stopContextId)) {
+    final action = mapRefreshAction(onDemand: _onDemand, stopContextId: _stopContextId);
+    _refreshTicks++;
+    switch (action) {
       case MapRefresh.aquarium:
         _loadVehiclesForVisibleArea(force: true);
       case MapRefresh.pollStop:
@@ -432,6 +447,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // stop the driver and settle on the final frame.
   void _pumpVehLayer() {
     _vehAnimator.advanceTimed(DateTime.now());
+    _pumpCount++;
     if (_vehAnim.isAnimating || _vehAnimator.hasPendingMotion) {
       _paintVehicles();
     } else {
@@ -1637,6 +1653,26 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _lastFollowMarkerPos = null;
   }
 
+  /// A brief "vehicle no longer tracked" notice — shown when we can't build a
+  /// followed marker, or the followed vehicle drops out of the feed.
+  void _showVehicleLost() {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.hideCurrentSnackBar();
+    messenger?.showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context).vehicleLost)),
+    );
+  }
+
+  /// The followed vehicle vanished mid-follow: notify and leave the vehicle
+  /// context (back to the stop it came from, or the map), so follow never
+  /// continues over an empty map.
+  void _onFollowedVehicleLost() {
+    if (!_following) return;
+    _showVehicleLost();
+    _closeVehicleContext();
+  }
+
   // Follow re-centres at ~15fps, not every render frame. Panning the whole map
   // with a jumpTo on every one of ~60 fps thrashes the tile/label renderer and
   // the neighbouring GL layers visibly jitter (pins, street labels) against a
@@ -1659,7 +1695,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final controller = _controller;
     if (key == null || controller == null) return;
     if (_vehAnimator.trackFor(key) == null) {
-      _lastFollowMarkerPos = null; // vanished — re-seed on return, no lurch
+      // The vehicle dropped out of the feed for good (past the grace period).
+      // Follow without a marker shouldn't exist — surface "vehicle lost" and
+      // leave follow rather than chase an empty map (deferred so we don't mutate
+      // navigation mid-paint).
+      _lastFollowMarkerPos = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _onFollowedVehicleLost());
       return;
     }
     final now = DateTime.now();
@@ -1710,7 +1751,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         arrivalsProvider(stopId),
         (_, next) {
           final board = next.valueOrNull;
-          if (board != null) _applyStopContextMarkers(board);
+          if (board != null) {
+            _applyStopContextMarkers(board);
+          } else if (next.hasError && _stopContextId == stopId) {
+            // 503 / transient error left the board un-updated — try again shortly
+            // rather than sit frozen until the 30s poll.
+            _scheduleContextRefetch(stopId);
+          }
         },
       );
     }
@@ -1738,7 +1785,29 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
     _ensureShapesFor(shapeKeys, byRouteId: true);
     _vehAnimator.syncSamples(samples, _vehAnim.value);
-    if (!_paused && _vehAnimator.hasPendingMotion) {
+    // Diagnostics (staging overlay): board freshness + how many of this stop's
+    // rows carried a timing plan, so a "frozen markers" report can be read off
+    // the screen without a console (debugPrint is stripped in release web).
+    _lastCtxBoardAgeSec =
+        DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
+    _lastCtxLive = samples.length;
+    _lastCtxWithTraj = samples.where((s) => s.trajectory != null).length;
+    // Stale board (SWR served a >TTL entry while it revalidates): pull the fresh
+    // copy a beat later so `as_of` drops back under the 45s playback gate.
+    if (contextBoardNeedsRefetch(_lastCtxBoardAgeSec!)) {
+      _scheduleContextRefetch(board.stopId);
+    }
+    // Keep the driver alive for the whole poll interval whenever this context has
+    // live timed markers — the timed players are advanced by wall-clock each
+    // frame, and `hasForwardMotion` can momentarily read false as a fix converges
+    // (especially near the 45s staleness gate). Parking the ticker on that flicker
+    // is exactly what froze the markers mid-interval. Running the ease controller
+    // holds `isAnimating` true across the interval so the ticker keeps advancing
+    // them; a genuinely stale/stationary marker just repaints in place. (A context
+    // is a handful of vehicles the user is watching, so this doesn't touch the
+    // whole-city "idle = 0 frames" thermal budget.)
+    final hasLiveTimed = _lastCtxWithTraj > 0;
+    if (!_paused && (hasLiveTimed || _vehAnimator.hasPendingMotion)) {
       _vehAnim.forward(from: 0);
       _startVehDriver();
     } else {
@@ -1749,11 +1818,23 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     setState(() => _hasVehicles = _vehAnimator.tracks.isNotEmpty);
   }
 
+  /// One SWR "second tap": re-fetch this stop a beat after a stale board so we
+  /// pick up the freshly-revalidated copy. One pending at a time; a no-op once
+  /// the context has moved on.
+  void _scheduleContextRefetch(String stopId) {
+    if (_ctxRefetchTimer?.isActive ?? false) return;
+    _ctxRefetchTimer = Timer(const Duration(milliseconds: 2500), () {
+      if (!mounted || _stopContextId != stopId) return;
+      ref.invalidate(arrivalsProvider(stopId));
+    });
+  }
+
   /// Leave stop context. Drops the subscription; clears the markers only when no
   /// vehicle is being followed (a followed vehicle keeps its injected marker).
   void _exitStopContext() {
     _stopArrivalsSub?.close();
     _stopArrivalsSub = null;
+    _ctxRefetchTimer?.cancel();
     _stopContextId = null;
     if (_selectedVehicleKey == null) {
       _vehAnimator.clear();
@@ -1784,8 +1865,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _closeVehicleContext() {
     _stopFollow();
     _clearFocus();
-    // Ease back to where the user came from, instead of leaving them wherever the
-    // vehicle wandered off to.
+    final returnStop = _onDemand ? _returnToStopId : null;
+    _returnToStopId = null;
+    if (returnStop != null) {
+      // Returning to the stop: reopening it re-pans the camera so the stop sits
+      // above the sheet — don't also restore the pre-follow centre (it would
+      // fight that), just reopen.
+      _preFollowCenter = null;
+      _preFollowZoom = null;
+      _openStopById(returnStop);
+      return;
+    }
+    // No stop to return to: ease back to where the user came from, instead of
+    // leaving them wherever the vehicle wandered off to.
     final center = _preFollowCenter;
     if (center != null) {
       _selfMove(() {
@@ -1794,14 +1886,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
     _preFollowCenter = null;
     _preFollowZoom = null;
-    if (!_onDemand) return;
-    final returnStop = _returnToStopId;
-    _returnToStopId = null;
-    if (returnStop != null) {
-      _openStopById(returnStop);
-    } else {
-      _exitStopContext();
-    }
+    if (_onDemand) _exitStopContext();
   }
 
   /// Enter vehicle context from a tapped arrival row (§C). Builds a guaranteed
@@ -1811,7 +1896,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// follows. Works at both flag values.
   void _focusVehicleFromArrival(Arrival a, DateTime asOf) {
     final gps = a.gps;
-    if (gps == null) return;
+    // No live fix → no marker → don't enter follow (it would be a follow over an
+    // empty map). Surface "vehicle lost" instead.
+    if (gps == null || !arrivalHasLivePosition(a)) {
+      _showVehicleLost();
+      return;
+    }
     _clearSearch();
     _returnToStopId = _onDemand ? _stopContextId : null;
     final key = VehicleTrackAnimator.keyFor(a);
@@ -1824,6 +1914,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _vehAnim.value,
       prune: false,
     );
+    // The marker must actually exist before we commit to follow.
+    if (_vehAnimator.trackFor(key) == null) {
+      _showVehicleLost();
+      return;
+    }
     setState(() => _selectedVehicleKey = key);
     if (!_paused && _vehAnimator.hasPendingMotion) _startVehDriver();
     _paintVehicles();
@@ -1971,7 +2066,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     });
   }
 
-  void _openStop(Stop stop) => _openStopById(stop.stopId, stopName: stop.name);
+  void _openStop(Stop stop) => _openStopById(
+        stop.stopId,
+        stopName: stop.name,
+        at: ll.LatLng(stop.lat, stop.lon),
+      );
 
   /// Tap a "Nearby" row → follow that line+direction's soonest **live** vehicle
   /// (#5, owner variant 3). A NearbyGroup carries no gps/trajectory, so we resolve
@@ -2015,9 +2114,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// map. When on-demand, entering stop context makes that stop's arrivals the
   /// map's markers (state B); closing the sheet (unless a vehicle was tapped)
   /// clears them back to A.
-  void _openStopById(String stopId, {String? stopName}) {
+  void _openStopById(String stopId, {String? stopName, ll.LatLng? at}) {
     _clearSearch();
     if (_onDemand) _enterStopContext(stopId);
+    // Shift the stop up into the visible strip ABOVE the sheet, so it isn't
+    // hidden under it (and so returning from a follow lands on a visible stop).
+    _bringStopIntoView(stopId, at);
     // Hide the bottom UI (Nearby panel / search) while the sheet is up so they
     // don't overlap (#7).
     setState(() => _stopSheetOpen = true);
@@ -2032,6 +2134,35 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       if (mounted) setState(() => _stopSheetOpen = false);
       _onStopSheetClosed(stopId);
     });
+  }
+
+  /// Pan [stopId] into the strip of map visible above the arrivals sheet (the
+  /// sheet covers the lower ~half), zooming in to at least the individual-stop
+  /// level. Resolves the coordinate from the tap ([at]) or the GTFS mirror.
+  Future<void> _bringStopIntoView(String stopId, ll.LatLng? at) async {
+    final pos = at ?? await _resolveStopLatLng(stopId);
+    if (pos == null || !mounted) return;
+    final controller = _controller;
+    if (controller == null) return;
+    final zoom = math.max(controller.getCamera().zoom, _individualZoom);
+    final bottomPad = MediaQuery.of(context).size.height * 0.5;
+    _selfMove(() {
+      controller.animateCamera(
+        center: Geographic(lon: pos.longitude, lat: pos.latitude),
+        zoom: zoom,
+        padding: EdgeInsets.only(bottom: bottomPad),
+      );
+    });
+  }
+
+  Future<ll.LatLng?> _resolveStopLatLng(String stopId) async {
+    final known = _stopById(stopId);
+    if (known != null) return ll.LatLng(known.lat, known.lon);
+    try {
+      final stop = await ref.read(stopLocationProvider(stopId).future);
+      if (stop != null) return ll.LatLng(stop.lat, stop.lon);
+    } catch (_) {}
+    return null;
   }
 
   /// The stop sheet was dismissed. If a vehicle from this stop is now being
@@ -2225,7 +2356,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // Staging-only stop-render diagnostics (isStaging; invisible in prod).
           // The one reliable render-observation channel on Flutter-CanvasKit —
           // see _stopDiagnosticsOverlay and the map-render gotchas.
-          if (isStaging && _focus == null) _stopDiagnosticsOverlay(theme),
+          if (isStaging) _stopDiagnosticsOverlay(theme),
           // Far-out zoom with no vehicles in the bounded area: nudge the user to
           // zoom in rather than leaving them staring at a blank map (F5).
           // On-demand mode has no background vehicle layer, so the "zoom in to
@@ -2340,6 +2471,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // Does each type's layer actually draw at its first stop's pixel?
       'renders: ${renders('bus', _busPts)} ${renders('tram', _tramPts)} '
           '${renders('trolley', _trolleyPts)} ${renders('mixed', _mixedPts)}',
+      // Vehicle-animation state (on-demand context / follow diagnosis).
+      'VEH onDemand $_onDemand stopCtx ${_stopContextId ?? "-"} '
+          'following $_following sel ${_selectedVehicleKey ?? "-"}',
+      'VEH tracks ${_vehAnimator.tracks.length} '
+          'timed ${_vehAnimator.tracks.values.where((t) => t.timed != null).length} '
+          'movingNow ${_vehAnimator.tracks.keys.where(_vehAnimator.hasMotion).length} '
+          'pending ${_vehAnimator.hasPendingMotion}',
+      'VEH ticker ${_vehTicker?.isActive ?? false} animV ${_vehAnim.value.toStringAsFixed(2)} '
+          'paused $_paused refreshTicks $_refreshTicks pumps $_pumpCount',
+      'VEH lastCtx ageSec ${_lastCtxBoardAgeSec ?? "-"} '
+          'live $_lastCtxLive withTraj $_lastCtxWithTraj',
     ];
 
     return SafeArea(

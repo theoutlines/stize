@@ -262,6 +262,12 @@ abstract class AppLocalizations {
   /// **'By schedule — not a live position'**
   String get vehicleScheduled;
 
+  /// Shown when a followed vehicle drops out of the live feed
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle no longer tracked'**
+  String get vehicleLost;
+
   /// No description provided for @noLiveVehiclesOnMap.
   ///
   /// In en, this message translates to:

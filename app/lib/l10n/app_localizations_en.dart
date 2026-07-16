@@ -106,6 +106,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleScheduled => 'By schedule — not a live position';
 
   @override
+  String get vehicleLost => 'Vehicle no longer tracked';
+
+  @override
   String get noLiveVehiclesOnMap =>
       'No live-tracked vehicles to map right now — see the arrivals below.';
 

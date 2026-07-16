@@ -107,6 +107,9 @@ class AppLocalizationsSr extends AppLocalizations {
   String get vehicleScheduled => 'Po redu vožnje — nije pozicija uživo';
 
   @override
+  String get vehicleLost => 'Vozilo se više ne prati';
+
+  @override
   String get noLiveVehiclesOnMap =>
       'Trenutno nema vozila uživo na mapi — pogledaj dolaske ispod.';
 
