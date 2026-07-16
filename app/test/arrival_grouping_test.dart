@@ -174,35 +174,49 @@ void main() {
       expect(groupArrivals(const []), isEmpty);
     });
 
-    test('within a group, a live vehicle always sits above scheduled/expected', () {
-      // Live at 9; scheduled 18 survives the horizon. The scheduled cell must
-      // still come after the live row — never above it.
+    test('GLOBAL two sections: every live row precedes every non-live entry, '
+        'even a sooner scheduled of another line', () {
+      // Line 5: live at 8. Line 7L: scheduled-only "Now" (0). Under the global
+      // rule the live 5 row is above the 7L Scheduled cell despite 0 < 8.
+      // (Owner violators: Pijaca Đeram "7L Scheduled Now" over live 5.)
       final entries = groupArrivals([
-        _scheduled('79', 18),
-        _live('79', 9),
+        _scheduled('7L', 0),
+        _live('5', 8),
       ]);
       expect(entries.first, isA<ArrivalRow>());
-      expect((entries.first as ArrivalRow).arrival.etaMinutes, 9);
+      expect((entries.first as ArrivalRow).arrival.line, '5');
       expect(entries.last, isA<ScheduledGroupCell>());
+      expect((entries.last as ScheduledGroupCell).line, '7L');
     });
 
-    test('a live group sorts by its nearest LIVE eta, not a sooner scheduled '
-        'sibling of another group', () {
-      // Group 79: live 9 (+ scheduled 18 survivor). Group 83: scheduled-only 5.
-      // 83 (schedule-only, 5) is sooner → first; 79 ordered by its live 9.
+    test('GLOBAL: a scheduled cell never lands between live rows of other lines', () {
+      // Live 46 and live 55 (different lines); a line 22 scheduled at 8 must not
+      // sit between them. (Owner violator: Škola Vojislav Ilić.)
       final entries = groupArrivals([
-        _live('79', 9),
-        _scheduled('79', 18),
-        _scheduled('83', 5),
+        _live('46', 46, route: 'r46'),
+        _scheduled('22', 8, route: 'r22'),
+        _live('55', 55, route: 'r55'),
       ]);
-      // First entry belongs to line 83 (the schedule-only, sooner group).
-      expect(entries.first, isA<ScheduledGroupCell>());
-      expect((entries.first as ScheduledGroupCell).line, '83');
-      // Then line 79: live row before its scheduled cell.
-      expect(entries[1], isA<ArrivalRow>());
-      expect((entries[1] as ArrivalRow).arrival.line, '79');
-      expect(entries[2], isA<ScheduledGroupCell>());
-      expect((entries[2] as ScheduledGroupCell).line, '79');
+      // Section A: both live rows, sorted by ETA; Section B: the scheduled cell.
+      expect(entries.map((e) => e is ArrivalRow ? 'L' : 'S').toList(),
+          ['L', 'L', 'S']);
+      expect((entries[0] as ArrivalRow).arrival.line, '46');
+      expect((entries[1] as ArrivalRow).arrival.line, '55');
+      expect((entries[2] as ScheduledGroupCell).line, '22');
+    });
+
+    test('GLOBAL: non-live section (expected rows + scheduled cells) sorts by '
+        'nearest ETA', () {
+      final entries = groupArrivals([
+        _live('5', 3),
+        _scheduled('7L', 20, route: 'r7'), // scheduled cell @20
+        _expected('9', 12, route: 'r9'), // expected row @12
+      ]);
+      // Live 5 first; then non-live by ETA: expected 9 (12) before 7L cell (20).
+      expect(entries[0], isA<ArrivalRow>());
+      expect((entries[0] as ArrivalRow).arrival.line, '5');
+      expect((entries[1] as ArrivalRow).arrival.line, '9'); // expected, @12
+      expect((entries[2] as ScheduledGroupCell).line, '7L'); // @20
     });
   });
 }

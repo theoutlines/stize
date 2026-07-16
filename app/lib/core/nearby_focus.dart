@@ -32,25 +32,39 @@ bool nearbyGroupHasLive(NearbyGroup group) => group.arrivals
 bool nearbyEtaIsLive(NearbyEta e) =>
     !e.isScheduled && !isPlaceholderGarage(e.garageNo);
 
-/// The departures a Nearby card should actually show, after the same
-/// live/scheduled dedup the arrivals list uses: when the group has live
-/// departures, any non-live (scheduled/placeholder) eta at or before the
-/// group's latest live eta is dropped — it's the same physical vehicle already
-/// represented live, so "6 min / 24 min" can't leave you guessing which is
-/// which. A schedule-only group is returned unchanged (never emptied — that's
-/// what keeps a nearby stop from looking dead). Order is preserved (ascending).
+/// The departures a Nearby card should actually show. A Nearby card must **not
+/// mix** live and scheduled: when the group has any live departure, the card
+/// shows **only** its live times (nearest + next live) — no scheduled tail, so
+/// "2 min / 11 min" can't leave you guessing which is the bus. A group with no
+/// live departure is returned unchanged (its scheduled tail is what keeps a
+/// nearby stop from looking dead). Order is preserved (ascending).
 List<NearbyEta> visibleNearbyEtas(NearbyGroup group) {
-  final liveEtas =
-      group.arrivals.where(nearbyEtaIsLive).map((e) => e.etaMinutes);
-  if (liveEtas.isEmpty) return group.arrivals;
-  final horizon = liveEtas.reduce((a, b) => a > b ? a : b);
-  final kept = group.arrivals
-      .where((e) => nearbyEtaIsLive(e) || e.etaMinutes > horizon)
-      .toList();
-  // Defensive: never return empty for a group that has live departures.
-  return kept.isEmpty
-      ? group.arrivals.where(nearbyEtaIsLive).toList()
-      : kept;
+  final live = group.arrivals.where(nearbyEtaIsLive).toList();
+  return live.isEmpty ? group.arrivals : live;
+}
+
+/// The nearest ETA a Nearby card sorts by: its soonest **live** departure when
+/// it has one, else its soonest departure overall. Used by [orderNearbyGroups].
+int _nearbySortEta(NearbyGroup group) {
+  final live = group.arrivals.where(nearbyEtaIsLive).map((e) => e.etaMinutes);
+  if (live.isNotEmpty) return live.reduce((a, b) => a < b ? a : b);
+  if (group.arrivals.isEmpty) return 1 << 30;
+  return group.arrivals.map((e) => e.etaMinutes).reduce((a, b) => a < b ? a : b);
+}
+
+/// Order Nearby cards by the same global rule as the arrivals list: **every live
+/// card first** (by nearest live ETA), then every schedule-only card (by nearest
+/// ETA). A schedule-only line, however soon, never sits above a line you can
+/// actually catch live. Stable: equal keys keep their incoming (backend) order.
+List<NearbyGroup> orderNearbyGroups(List<NearbyGroup> groups) {
+  final indexed = [for (var i = 0; i < groups.length; i++) (i, groups[i])];
+  indexed.sort((a, b) {
+    final la = nearbyGroupHasLive(a.$2), lb = nearbyGroupHasLive(b.$2);
+    if (la != lb) return la ? -1 : 1; // live section first
+    final byEta = _nearbySortEta(a.$2).compareTo(_nearbySortEta(b.$2));
+    return byEta != 0 ? byEta : a.$1.compareTo(b.$1); // stable tie-break
+  });
+  return [for (final e in indexed) e.$2];
 }
 
 Arrival? nearbyFollowTarget(NearbyGroup group, List<Arrival> boardArrivals) {
