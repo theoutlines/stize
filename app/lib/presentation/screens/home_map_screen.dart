@@ -400,8 +400,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _startVehiclesTimer();
     // Refresh right away on resume (both modes): the aquarium off-demand, or the
     // active stop/vehicle context on-demand — so a vehicle isn't left on a stale
-    // fix after the tab comes back.
+    // fix after the tab comes back. The fresh board then re-anchors the timed
+    // players and the marker catches up to its real position.
     _refreshTick();
+    // Restart the driver so the timed players advance the moment we're back —
+    // otherwise the marker sits frozen until the refetch lands (and a stale/503
+    // board would leave it frozen with no ticker running at all).
+    if (_vehAnimator.tracks.isNotEmpty) {
+      _startVehDriver();
+      _paintVehicles();
+    }
   }
 
   void _startVehiclesTimer() {
