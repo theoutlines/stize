@@ -272,11 +272,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   bool _stopSheetOpen = false;
   String? _stopContextId; // stop feeding the markers (state B); null = not in B
   ProviderSubscription<AsyncValue<ArrivalsBoard>>? _stopArrivalsSub;
-  // SWR "second tap": after a stale board (or a 503), a one-shot fetch a beat
-  // later grabs the revalidated fresh copy, so the context board stays under the
-  // 45s timed-playback staleness gate and the markers keep moving (see
-  // contextBoardNeedsRefetch). One pending at a time.
-  Timer? _ctxRefetchTimer;
   // The stop context to restore when a vehicle context opened *from* a stop is
   // closed (return to B); null → fall back to A.
   String? _returnToStopId;
@@ -341,7 +336,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _meAnim.dispose();
     _searchDebounce?.cancel();
     _stopArrivalsSub?.close();
-    _ctxRefetchTimer?.cancel();
     _vehiclesTimer?.cancel();
     _shapeResyncTimer?.cancel();
     _stopVehDriver();
@@ -1751,13 +1745,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         arrivalsProvider(stopId),
         (_, next) {
           final board = next.valueOrNull;
-          if (board != null) {
-            _applyStopContextMarkers(board);
-          } else if (next.hasError && _stopContextId == stopId) {
-            // 503 / transient error left the board un-updated — try again shortly
-            // rather than sit frozen until the 30s poll.
-            _scheduleContextRefetch(stopId);
-          }
+          if (board != null) _applyStopContextMarkers(board);
         },
       );
     }
@@ -1792,11 +1780,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
     _lastCtxLive = samples.length;
     _lastCtxWithTraj = samples.where((s) => s.trajectory != null).length;
-    // Stale board (SWR served a >TTL entry while it revalidates): pull the fresh
-    // copy a beat later so `as_of` drops back under the 45s playback gate.
-    if (contextBoardNeedsRefetch(_lastCtxBoardAgeSec!)) {
-      _scheduleContextRefetch(board.stopId);
-    }
     // Keep the driver alive for the whole poll interval whenever this context has
     // live timed markers — the timed players are advanced by wall-clock each
     // frame, and `hasForwardMotion` can momentarily read false as a fix converges
@@ -1818,23 +1801,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     setState(() => _hasVehicles = _vehAnimator.tracks.isNotEmpty);
   }
 
-  /// One SWR "second tap": re-fetch this stop a beat after a stale board so we
-  /// pick up the freshly-revalidated copy. One pending at a time; a no-op once
-  /// the context has moved on.
-  void _scheduleContextRefetch(String stopId) {
-    if (_ctxRefetchTimer?.isActive ?? false) return;
-    _ctxRefetchTimer = Timer(const Duration(milliseconds: 2500), () {
-      if (!mounted || _stopContextId != stopId) return;
-      ref.invalidate(arrivalsProvider(stopId));
-    });
-  }
-
   /// Leave stop context. Drops the subscription; clears the markers only when no
   /// vehicle is being followed (a followed vehicle keeps its injected marker).
   void _exitStopContext() {
     _stopArrivalsSub?.close();
     _stopArrivalsSub = null;
-    _ctxRefetchTimer?.cancel();
     _stopContextId = null;
     if (_selectedVehicleKey == null) {
       _vehAnimator.clear();

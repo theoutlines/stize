@@ -22,20 +22,3 @@ MapRefresh mapRefreshAction({
   if (!onDemand) return MapRefresh.aquarium;
   return stopContextId != null ? MapRefresh.pollStop : MapRefresh.none;
 }
-
-/// Whether a freshly-fetched context board is stale enough that we should pull
-/// the SWR-revalidated copy a beat later.
-///
-/// The backend serves `/arrivals` stale-while-revalidate over a 30s cache: a
-/// *single* fetch can return an entry older than its TTL (and trigger a
-/// background revalidation that only the NEXT fetch sees). A 30s-only client poll
-/// therefore oscillates the board's `as_of` between ~fresh and ~60s — and once it
-/// crosses the timed-playback staleness gate (45s, see TimedTrajectory) the
-/// markers stop predicting and freeze. So after any board older than the SWR TTL
-/// we do one quick follow-up fetch to grab the revalidated fresh copy. The
-/// threshold sits just above the 30s TTL (a board within TTL is already as fresh
-/// as SWR will hand out) and well under the 45s gate.
-const int kContextRefetchThresholdSeconds = 32;
-
-bool contextBoardNeedsRefetch(int boardAgeSeconds) =>
-    boardAgeSeconds > kContextRefetchThresholdSeconds;
