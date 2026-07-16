@@ -384,7 +384,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _hiddenAt = null;
     }
     _startVehiclesTimer();
-    _loadVehiclesForVisibleArea(force: true);
+    // Refresh right away on resume (both modes): the aquarium off-demand, or the
+    // active stop/vehicle context on-demand — so a vehicle isn't left on a stale
+    // fix after the tab comes back.
+    _refreshTick();
   }
 
   void _startVehiclesTimer() {
