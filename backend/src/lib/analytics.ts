@@ -1,14 +1,100 @@
 import type { Env } from "../env";
 import type { AnalyticsBucket, LineAnalyticsResponse } from "../types";
 import type { RawArrival } from "./transitProvider";
-import { getFlag } from "./featureFlags";
+import { getFlagMemoized } from "./featureFlags";
+import type { WaitUntilCtx } from "./swrCache";
 
 // How long raw observations are kept before the aggregator prunes them. The
 // rolled-up per-line metrics survive; only the bulky raw rows are dropped.
 const RAW_RETENTION_DAYS = 30;
 
-// D1 caps bound parameters per statement; chunk large writes well under it.
-const INSERT_CHUNK = 40;
+// D1 caps bound parameters at 100 per statement — far below SQLite's own 999
+// default. The 2026-07-13 fix chunked by a fixed 40 *rows*, which for a 7-column
+// insert is 280 params (2.8× the real cap): still "too many SQL variables". So
+// the chunk must be derived from the column count, not a magic row constant.
+const D1_MAX_BOUND_PARAMS = 100;
+
+// Column lists for every analytics insert, kept next to the chunker so the
+// rows-per-statement is always computed from the true width.
+const RAW_OBSERVATION_COLUMNS = [
+  "line",
+  "stop_id",
+  "garage_no",
+  "vehicle_id",
+  "eta_minutes",
+  "stops_remaining",
+  "observed_at",
+] as const;
+
+const AGG_LINE_TIME_COLUMNS = [
+  "line",
+  "dow",
+  "hour",
+  "samples",
+  "arrivals",
+  "headway_count",
+  "headway_secs_sum",
+  "speed_count",
+  "speed_stops_per_min_sum",
+  "updated_at",
+] as const;
+
+const AGG_VEHICLE_LINE_COLUMNS = [
+  "vehicle_id",
+  "line",
+  "samples",
+  "arrivals",
+  "first_seen",
+  "last_seen",
+  "updated_at",
+] as const;
+
+const AGG_VEHICLE_LINE_DOW_COLUMNS = [
+  "vehicle_id",
+  "line",
+  "dow",
+  "samples",
+  "arrivals",
+  "speed_count",
+  "speed_stops_per_min_sum",
+  "updated_at",
+] as const;
+
+/**
+ * Largest row count that keeps a multi-row INSERT within D1's bound-parameter
+ * cap, given how many columns (= bind params) each row carries. Floors so the
+ * chunk never exceeds the cap; never returns 0 even for an absurdly wide row.
+ */
+export function maxRowsPerInsert(columnsPerRow: number): number {
+  return Math.max(1, Math.floor(D1_MAX_BOUND_PARAMS / columnsPerRow));
+}
+
+/**
+ * Insert many rows into `table(columns)` as chunked multi-row statements, each
+ * kept under D1's per-statement bound-parameter cap. The single choke point for
+ * every analytics insert (raw observations, aggregates, future tables) so the
+ * "too many SQL variables" bug can't come back one table at a time.
+ */
+async function chunkedInsert(
+  db: D1Database,
+  table: string,
+  columns: readonly string[],
+  rows: readonly (string | number | null)[][],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const rowsPerChunk = maxRowsPerInsert(columns.length);
+  const rowPlaceholder = `(${columns.map(() => "?").join(",")})`;
+  const columnList = columns.join(",");
+  for (let i = 0; i < rows.length; i += rowsPerChunk) {
+    const chunk = rows.slice(i, i + rowsPerChunk);
+    const placeholders = chunk.map(() => rowPlaceholder).join(",");
+    const binds = chunk.flat();
+    await db
+      .prepare(`INSERT INTO ${table} (${columnList}) VALUES ${placeholders}`)
+      .bind(...binds)
+      .run();
+  }
+}
 
 /**
  * Normalised vehicle id, or null when the garage number doesn't identify a real
@@ -29,41 +115,33 @@ export function vehicleIdOf(garageNo: string | null): string | null {
  * Flag-gated (`analytics_collect`) and meant to be called inside
  * `ctx.waitUntil` from the *fresh-fetch* path only — so it records exactly the
  * data we already pulled to serve the user, adding **zero** load on the source.
+ * The flag read is memoized per invocation (keyed by `ctx`): a map fan-out logs
+ * many stops in one request but reads the flag from KV once, not per stop.
  *
  * Every arrival is logged (a missing garage number is fine — the observation is
  * still valid for line-level metrics). `garage_no` is stored raw; `vehicle_id`
  * is the normalised id (null for missing/junk) used for all per-vehicle work.
  */
-export async function logObservations(env: Env, stopId: string, raw: RawArrival[]): Promise<void> {
-  if (!(await getFlag(env, "analytics_collect"))) return;
+export async function logObservations(
+  env: Env,
+  ctx: WaitUntilCtx,
+  stopId: string,
+  raw: RawArrival[],
+): Promise<void> {
+  if (!(await getFlagMemoized(env, ctx, "analytics_collect"))) return;
   if (raw.length === 0) return;
 
   const now = Math.floor(Date.now() / 1000);
-  // Chunk the insert: 7 bound params per row, and D1/SQLite caps parameters per
-  // statement (~999), so a busy stop (>142 rows) in a single statement throws
-  // "too many SQL variables". [INSERT_CHUNK] keeps each statement well under it.
-  for (let i = 0; i < raw.length; i += INSERT_CHUNK) {
-    const chunk = raw.slice(i, i + INSERT_CHUNK);
-    const placeholders = chunk.map(() => "(?,?,?,?,?,?,?)").join(",");
-    const binds: (string | number | null)[] = [];
-    for (const r of chunk) {
-      binds.push(
-        r.lineNumber,
-        stopId,
-        r.garageNo,
-        vehicleIdOf(r.garageNo),
-        r.etaSeconds != null ? Math.round(r.etaSeconds / 60) : null,
-        r.stopsRemaining,
-        now,
-      );
-    }
-    await env.STIGLA_ANALYTICS_DB.prepare(
-      `INSERT INTO raw_observations (line, stop_id, garage_no, vehicle_id, eta_minutes, stops_remaining, observed_at)
-       VALUES ${placeholders}`,
-    )
-      .bind(...binds)
-      .run();
-  }
+  const rows = raw.map((r) => [
+    r.lineNumber,
+    stopId,
+    r.garageNo,
+    vehicleIdOf(r.garageNo),
+    r.etaSeconds != null ? Math.round(r.etaSeconds / 60) : null,
+    r.stopsRemaining,
+    now,
+  ]);
+  await chunkedInsert(env.STIGLA_ANALYTICS_DB, "raw_observations", RAW_OBSERVATION_COLUMNS, rows);
 }
 
 interface Bucket {
@@ -169,29 +247,24 @@ export async function aggregate(env: Env): Promise<{ buckets: number }> {
 
   // Rewrite the aggregate table from the freshly computed buckets.
   await db.prepare("DELETE FROM agg_line_time").run();
-  await chunkedBatch(
+  await chunkedInsert(
     db,
+    "agg_line_time",
+    AGG_LINE_TIME_COLUMNS,
     [...map.entries()].map(([key, b]) => {
       const [line, dow, hour] = key.split("|");
-      return db
-        .prepare(
-          `INSERT INTO agg_line_time
-             (line, dow, hour, samples, arrivals, headway_count, headway_secs_sum,
-              speed_count, speed_stops_per_min_sum, updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?)`,
-        )
-        .bind(
-          line,
-          Number(dow),
-          Number(hour),
-          b.samples,
-          b.arrivals,
-          b.headway_count,
-          b.headway_secs_sum,
-          b.speed_count,
-          b.speed_stops_per_min_sum,
-          now,
-        );
+      return [
+        line,
+        Number(dow),
+        Number(hour),
+        b.samples,
+        b.arrivals,
+        b.headway_count,
+        b.headway_secs_sum,
+        b.speed_count,
+        b.speed_stops_per_min_sum,
+        now,
+      ];
     }),
   );
 
@@ -208,13 +281,6 @@ export async function aggregate(env: Env): Promise<{ buckets: number }> {
     .run();
 
   return { buckets: map.size };
-}
-
-async function chunkedBatch(db: D1Database, stmts: D1PreparedStatement[]): Promise<void> {
-  for (let i = 0; i < stmts.length; i += INSERT_CHUNK) {
-    const chunk = stmts.slice(i, i + INSERT_CHUNK);
-    if (chunk.length) await db.batch(chunk);
-  }
 }
 
 /**
@@ -298,30 +364,35 @@ async function aggregateVehicles(db: D1Database, now: number): Promise<void> {
   await db.prepare("DELETE FROM agg_vehicle_line").run();
   await db.prepare("DELETE FROM agg_vehicle_line_dow").run();
 
-  await chunkedBatch(
+  await chunkedInsert(
     db,
-    pairs.results.map((p) =>
-      db
-        .prepare(
-          `INSERT INTO agg_vehicle_line
-             (vehicle_id, line, samples, arrivals, first_seen, last_seen, updated_at)
-           VALUES (?,?,?,?,?,?,?)`,
-        )
-        .bind(p.vehicle_id, p.line, p.samples, p.arrivals ?? 0, p.first_seen, p.last_seen, now),
-    ),
+    "agg_vehicle_line",
+    AGG_VEHICLE_LINE_COLUMNS,
+    pairs.results.map((p) => [
+      p.vehicle_id,
+      p.line,
+      p.samples,
+      p.arrivals ?? 0,
+      p.first_seen,
+      p.last_seen,
+      now,
+    ]),
   );
 
-  await chunkedBatch(
+  await chunkedInsert(
     db,
-    [...dowMap.values()].map((b) =>
-      db
-        .prepare(
-          `INSERT INTO agg_vehicle_line_dow
-             (vehicle_id, line, dow, samples, arrivals, speed_count, speed_stops_per_min_sum, updated_at)
-           VALUES (?,?,?,?,?,?,?,?)`,
-        )
-        .bind(b.vehicle_id, b.line, b.dow, b.samples, b.arrivals, b.speedCount, b.speedSum, now),
-    ),
+    "agg_vehicle_line_dow",
+    AGG_VEHICLE_LINE_DOW_COLUMNS,
+    [...dowMap.values()].map((b) => [
+      b.vehicle_id,
+      b.line,
+      b.dow,
+      b.samples,
+      b.arrivals,
+      b.speedCount,
+      b.speedSum,
+      now,
+    ]),
   );
 }
 
