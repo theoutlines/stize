@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
 import '../../core/api_config.dart';
+import '../../core/arrival_grouping.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/live_position.dart';
 import '../../data/api/api_exceptions.dart';
@@ -20,6 +21,7 @@ import '../widgets/empty_state.dart';
 import '../widgets/fleet_model_card.dart';
 import '../widgets/live_vehicles_map.dart';
 import '../widgets/route_alerts_strip.dart';
+import '../widgets/scheduled_group_tile.dart';
 
 class StopScreen extends ConsumerStatefulWidget {
   const StopScreen({super.key, required this.stopId, this.initialStopName});
@@ -190,6 +192,12 @@ class _StopScreenState extends ConsumerState<StopScreen> {
       });
     }
 
+    // Default (time) order: group by line×direction, drop non-live rows the
+    // live vehicles already cover, and fold each group's surviving Scheduled
+    // into one cell (arrivals-dedup — see SCHEDULE_FALLBACK_CONTRACT). The
+    // comfort sort is a deliberately flat, live-only reorder and stays untouched.
+    final groupedEntries = groupArrivals(visibleArrivals);
+
     // Keep the schedule-derived placeholder rows (junk garage, GPS pinned to
     // this stop) off the map — otherwise they render as a motionless stack on
     // the stop pin. They stay in the arrivals list below regardless.
@@ -282,20 +290,34 @@ class _StopScreenState extends ConsumerState<StopScreen> {
               ],
             ),
           ),
-        for (final i in order)
-          ArrivalTile(
-            arrival: visibleArrivals[i],
-            fleet: fleetByIndex[i],
-            onOpenFleetCard: fleetByIndex[i] != null && fleetByIndex[i]!.hasInfo
-                ? () => showFleetModelCard(
-                      context,
-                      fleet: fleetByIndex[i]!,
-                      fallbackType: visibleArrivals[i].vehicleType,
-                      garageNo: visibleArrivals[i].garageNo,
-                    )
-                : null,
-          ),
+        // Comfort sort keeps its flat, per-vehicle list; the default view uses
+        // the grouped/deduped/collapsed entries.
+        if (sortByComfort)
+          for (final i in order) _arrivalTile(context, visibleArrivals[i], fleetByIndex[i])
+        else
+          for (final entry in groupedEntries)
+            switch (entry) {
+              ArrivalRow(:final arrival, :final index) =>
+                _arrivalTile(context, arrival, fleetByIndex[index]),
+              ScheduledGroupCell() => ScheduledGroupTile(cell: entry),
+            },
       ],
+    );
+  }
+
+  /// One live/expected vehicle row, wired to open its fleet card when known.
+  Widget _arrivalTile(BuildContext context, Arrival arrival, FleetVehicle? fleet) {
+    return ArrivalTile(
+      arrival: arrival,
+      fleet: fleet,
+      onOpenFleetCard: fleet != null && fleet.hasInfo
+          ? () => showFleetModelCard(
+                context,
+                fleet: fleet,
+                fallbackType: arrival.vehicleType,
+                garageNo: arrival.garageNo,
+              )
+          : null,
     );
   }
 

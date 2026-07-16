@@ -52,6 +52,29 @@ that can't be collected retroactively, we start accumulating before we need it.
 
 ## In progress / behind a flag
 
+- 🚧 **Arrivals dedup — live/scheduled + scheduled roll-up** (`feature/arrivals-dedup`,
+  staging preview, merge owner-gated) — with the schedule fallback ON the stop
+  shutter double-counted: live boards and Scheduled rows of the same line
+  duplicated each other. Now the list is grouped by **line×direction**; while a
+  group has live vehicles, its non-live rows (Expected *and* Scheduled) at/under
+  the latest live ETA are suppressed (same physical vehicles), and the surviving
+  Scheduled collapse into **one** dimmed “<line> · Scheduled” cell (nearest +
+  two, max three). Suppression stacks a **global** horizon (any non-live entry
+  below the board's soonest live ETA is a phantom — hidden, any line; no live →
+  nothing suppressed) on the per-line one. The list is then two **global**
+  sections — **all** live rows (by ETA) then **all** non-live (Expected rows +
+  Scheduled cells by nearest) — so no scheduled/expected ever sits above any
+  live. Far ETAs (≥ 90 min) render as a 24h clock arrival time, not an
+  unreadable minute count. Expected keeps its own per-vehicle row; live rows /
+  comfort sort / per-line filter untouched. Applied on the **in-app** shutter
+  (`stop_sheet.dart`) and mirrored in `StopScreen`; the **Nearby** card shows a
+  line's live times only when it has live (no scheduled tail), and live cards
+  sort above schedule-only cards. Pure
+  `groupArrivals` / `visibleNearbyEtas` / `orderNearbyGroups` (unit-tested) + a cell widget;
+  client-only, backend untouched. Visually verified on the preview (Batutova).
+  Contract in git (`SCHEDULE_FALLBACK_CONTRACT.md`). Report:
+  `docs/reports/2026-07-16-arrivals-dedup.md`.
+
 - ✅ **Analytics insert hardening** (`fix/analytics-sql-variables`, влито в `main`
   2026-07-16) — размер чанка вставки в analytics-D1 выводится из числа колонок под
   документированный лимит D1 (100 bind-параметров), одной утилитой для всех путей
@@ -102,6 +125,15 @@ that can't be collected retroactively, we start accumulating before we need it.
   to ride" on the line card.
 - 💡 **Punctuality vs the GTFS schedule** — needs trip matching; unblocks the
   reliability metrics above.
+- 💡 **Expected-конверсия (диагностика).** По аналитике (наблюдения с
+  2026-07-10) посчитать, какая доля placeholder-прогнозов (гараж `P1..P999`)
+  конвертируется в реальный live-борт, в разрезе диапазонов ETA (0–5 / 5–15 /
+  15+ мин) и времени суток (день/ночь). Цель: данными подтвердить или
+  опровергнуть доверие к статусу **Expected** при малых ETA; если конверсия при
+  ETA < N мин близка к нулю — обосновать правило скрытия. Кандидат на первый
+  кейс reliability-pillar (показ надёжности прогноза пользователю). Чисто
+  аналитическая задача, продукт не трогает. Контекст: вопрос владельца
+  2026-07-17 «7 минут Expected — выглядит так, будто уже не приедет».
 - 💡 **Dropped-trips metric** — computable from current data.
 - 💡 **Coverage V2** — weight segments by time-of-day/day-of-week aggregates,
   with a "how it usually is at this hour" slider (after enough history).

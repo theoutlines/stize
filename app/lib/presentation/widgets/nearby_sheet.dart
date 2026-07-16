@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart' as ll;
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
+import '../../core/nearby_focus.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../l10n/app_localizations.dart';
@@ -159,14 +160,18 @@ class _NearbySheetState extends ConsumerState<NearbySheet> {
   List<NearbyGroup> get _filtered {
     final all = _groups ?? const <NearbyGroup>[];
     final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return all;
-    return [
-      for (final g in all)
-        if (g.line.toLowerCase().contains(q) ||
-            (g.destination ?? '').toLowerCase().contains(q) ||
-            g.stopName.toLowerCase().contains(q))
-          g,
-    ];
+    final matched = q.isEmpty
+        ? all
+        : [
+            for (final g in all)
+              if (g.line.toLowerCase().contains(q) ||
+                  (g.destination ?? '').toLowerCase().contains(q) ||
+                  g.stopName.toLowerCase().contains(q))
+                g,
+          ];
+    // Global two-section order: live cards first, schedule-only cards after
+    // (arrivals-dedup) — a schedule-only line never sits above a catchable one.
+    return orderNearbyGroups(matched);
   }
 
   @override

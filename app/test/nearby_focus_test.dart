@@ -87,4 +87,69 @@ void main() {
       expect(nearbyFollowTarget(group, board), isNull);
     });
   });
+
+  group('visibleNearbyEtas — a live card never mixes in scheduled times', () {
+    test('a live group shows ONLY live times; scheduled tail is dropped', () {
+      // Owner: "7L → Ustanička · 2 min / 11 min (clock)" — the 11 must go.
+      final group = _group(arrivals: [
+        _eta(scheduled: false, garageNo: 'P70260', eta: 2),
+        _eta(scheduled: true, eta: 11), // scheduled → not on a live card
+      ]);
+      final visible = visibleNearbyEtas(group);
+      expect(visible.map((e) => e.etaMinutes), [2]);
+      expect(visible.every(nearbyEtaIsLive), isTrue);
+    });
+
+    test('two live departures are both kept', () {
+      final group = _group(arrivals: [
+        _eta(scheduled: false, garageNo: 'P70260', eta: 2),
+        _eta(scheduled: false, garageNo: 'P70261', eta: 9),
+      ]);
+      expect(visibleNearbyEtas(group).map((e) => e.etaMinutes), [2, 9]);
+    });
+
+    test('a placeholder time is not "live" and is dropped from a live card', () {
+      final group = _group(arrivals: [
+        _eta(scheduled: false, garageNo: 'P70260', eta: 2), // real live
+        _eta(scheduled: false, garageNo: 'P2', eta: 9), // placeholder → dropped
+      ]);
+      expect(visibleNearbyEtas(group).map((e) => e.etaMinutes), [2]);
+    });
+
+    test('a schedule-only group is returned unchanged (never emptied)', () {
+      final group = _group(arrivals: [
+        _eta(scheduled: true, eta: 6),
+        _eta(scheduled: true, eta: 24),
+      ]);
+      expect(visibleNearbyEtas(group).map((e) => e.etaMinutes), [6, 24]);
+    });
+  });
+
+  group('orderNearbyGroups — live cards first, then schedule-only, each by ETA', () {
+    NearbyGroup g(String line, {required bool live, required int eta}) => _group(
+          line: line,
+          routeId: '$line-0',
+          arrivals: [
+            _eta(scheduled: !live, garageNo: live ? 'P70260' : null, eta: eta),
+          ],
+        );
+
+    test('a schedule-only card, however soon, sorts below every live card', () {
+      final ordered = orderNearbyGroups([
+        g('7L', live: false, eta: 1), // schedule-only, soonest overall
+        g('79', live: true, eta: 9),
+        g('5', live: true, eta: 4),
+      ]);
+      // Live section first (by ETA: 5@4, 79@9), then schedule-only 7L.
+      expect(ordered.map((x) => x.line), ['5', '79', '7L']);
+    });
+
+    test('stable within a section for equal ETAs (keeps incoming order)', () {
+      final ordered = orderNearbyGroups([
+        g('A', live: true, eta: 5),
+        g('B', live: true, eta: 5),
+      ]);
+      expect(ordered.map((x) => x.line), ['A', 'B']);
+    });
+  });
 }

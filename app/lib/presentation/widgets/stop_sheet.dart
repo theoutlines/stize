@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
+import '../../core/arrival_grouping.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/live_position.dart';
 import '../../data/api/api_exceptions.dart';
@@ -17,6 +18,7 @@ import 'arrival_tile.dart';
 import 'empty_state.dart';
 import 'fleet_model_card.dart';
 import 'route_alerts_strip.dart';
+import 'scheduled_group_tile.dart';
 
 /// Opens a stop's live arrivals as a bottom sheet *over the current map*, with
 /// no screen navigation. This is the seamless replacement for pushing a whole
@@ -341,6 +343,13 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
       });
     }
 
+    // Default (time) order: group by line×direction, suppress the non-live rows
+    // the live vehicles already cover, and fold each group's surviving Scheduled
+    // into one cell (arrivals-dedup). This sheet is the in-app tap path, so the
+    // grouping must live here too — StopScreen (deep-link route) mirrors it. The
+    // comfort sort stays a deliberately flat, live-only reorder.
+    final groupedEntries = groupArrivals(visibleArrivals);
+
     final ageSeconds = DateTime.now()
         .toUtc()
         .difference(board.updatedAt.toUtc())
@@ -416,35 +425,51 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
               ],
             ),
           ),
-        for (final i in order)
-          ArrivalTile(
-            arrival: visibleArrivals[i],
-            etaDeltaMinutes: _etaDelta[_vehKey(visibleArrivals[i])],
-            fleet: fleetByIndex[i],
-            onOpenFleetCard:
-                fleetByIndex[i] != null && fleetByIndex[i]!.hasInfo
-                    ? () => showFleetModelCard(
-                          context,
-                          fleet: fleetByIndex[i]!,
-                          fallbackType: visibleArrivals[i].vehicleType,
-                          garageNo: visibleArrivals[i].garageNo,
-                        )
-                    : null,
-            // Tap a vehicle row → close the sheet, then hand the whole arrival
-            // to the map so it can guarantee a marker, highlight the route and
-            // follow (no dependence on a viewport fan-out). Placeholder rows
-            // (P1..P999, no real fix) stay list-only, so they aren't tappable.
-            onTap: (!arrivalHasLivePosition(visibleArrivals[i]) ||
-                    widget.onFocusVehicle == null)
-                ? null
-                : () {
-                    final arrival = visibleArrivals[i];
-                    Navigator.of(context).maybePop();
-                    widget.onFocusVehicle!.call(arrival, board.updatedAt);
-                  },
-          ),
+        // Comfort sort keeps its flat, per-vehicle list; the default view uses
+        // the grouped/deduped/collapsed entries.
+        if (sortByComfort)
+          for (final i in order)
+            _arrivalTile(context, board, visibleArrivals[i], fleetByIndex[i])
+        else
+          for (final entry in groupedEntries)
+            switch (entry) {
+              ArrivalRow(:final arrival, :final index) =>
+                _arrivalTile(context, board, arrival, fleetByIndex[index]),
+              ScheduledGroupCell() => ScheduledGroupTile(cell: entry),
+            },
         const SizedBox(height: 12),
       ],
+    );
+  }
+
+  /// One live/expected vehicle row: Fleet card when known, and (for a live row)
+  /// tap → close the sheet and hand the whole arrival to the map so it can
+  /// guarantee a marker, highlight the route and follow. Placeholder/scheduled
+  /// rows aren't tappable (no real fix to follow).
+  Widget _arrivalTile(
+    BuildContext context,
+    ArrivalsBoard board,
+    Arrival arrival,
+    FleetVehicle? fleet,
+  ) {
+    return ArrivalTile(
+      arrival: arrival,
+      etaDeltaMinutes: _etaDelta[_vehKey(arrival)],
+      fleet: fleet,
+      onOpenFleetCard: fleet != null && fleet.hasInfo
+          ? () => showFleetModelCard(
+                context,
+                fleet: fleet,
+                fallbackType: arrival.vehicleType,
+                garageNo: arrival.garageNo,
+              )
+          : null,
+      onTap: (!arrivalHasLivePosition(arrival) || widget.onFocusVehicle == null)
+          ? null
+          : () {
+              Navigator.of(context).maybePop();
+              widget.onFocusVehicle!.call(arrival, board.updatedAt);
+            },
     );
   }
 
