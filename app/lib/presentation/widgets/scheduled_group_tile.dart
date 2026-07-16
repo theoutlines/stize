@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/arrival_grouping.dart';
+import '../../core/eta_format.dart';
 import '../../core/map_support.dart';
 import '../../l10n/app_localizations.dart';
 import 'vehicle_icon.dart';
@@ -26,6 +27,7 @@ class ScheduledGroupTile extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
+    final localeName = Localizations.localeOf(context).toString();
     final nearest = cell.etaMinutes.first;
     final followUps = cell.etaMinutes.skip(1).toList();
 
@@ -55,16 +57,17 @@ class ScheduledGroupTile extends StatelessWidget {
           children: [
             // Nearest scheduled, large — the "when's the next one" answer.
             Text(
-              nearest <= 0 ? l10n.arrivalEtaNow : l10n.arrivalEtaMinutes(nearest),
+              etaLabel(l10n, localeName, nearest),
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             // The next two, small and muted — enough for the shape of the
-            // schedule without turning the row into a full timetable.
+            // schedule without turning the row into a full timetable. Far-off
+            // times read as clock arrivals too (etaLabel).
             if (followUps.isNotEmpty)
               Text(
-                followUps.map(l10n.arrivalEtaMinutes).join(' · '),
+                followUps.map((e) => etaLabel(l10n, localeName, e)).join(' · '),
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
