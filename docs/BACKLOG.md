@@ -59,10 +59,13 @@ that can't be collected retroactively, we start accumulating before we need it.
   group has live vehicles, its non-live rows (Expected *and* Scheduled) at/under
   the latest live ETA are suppressed (same physical vehicles), and the surviving
   Scheduled collapse into **one** dimmed “<line> · Scheduled” cell (nearest +
-  two, max three). The list is then two **global** sections — **all** live rows
-  (by ETA) then **all** non-live (Expected rows + Scheduled cells by nearest) —
-  so no scheduled/expected ever sits above any live, across all lines. Expected
-  keeps its own per-vehicle row; live rows /
+  two, max three). Suppression stacks a **global** horizon (any non-live entry
+  below the board's soonest live ETA is a phantom — hidden, any line; no live →
+  nothing suppressed) on the per-line one. The list is then two **global**
+  sections — **all** live rows (by ETA) then **all** non-live (Expected rows +
+  Scheduled cells by nearest) — so no scheduled/expected ever sits above any
+  live. Far ETAs (≥ 90 min) render as a 24h clock arrival time, not an
+  unreadable minute count. Expected keeps its own per-vehicle row; live rows /
   comfort sort / per-line filter untouched. Applied on the **in-app** shutter
   (`stop_sheet.dart`) and mirrored in `StopScreen`; the **Nearby** card shows a
   line's live times only when it has live (no scheduled tail), and live cards
