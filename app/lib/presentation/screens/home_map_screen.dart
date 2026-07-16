@@ -16,6 +16,7 @@ import '../../core/api_config.dart';
 import '../../core/coverage_heatmap.dart';
 import '../../core/follow_camera.dart';
 import '../../core/fps_overlay.dart';
+import '../../core/map_refresh.dart';
 import '../../core/live_position.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
@@ -152,6 +153,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   // Moving vehicles render as one batched GPU symbol layer (sub-linear in count).
   bool _vehLayerAdded = false; // source + symbol layers present in this style
+  bool _vehLayerAdding = false; // add in flight (so the flag flips only once real)
   // The currently-selected vehicle's tracking key (tap highlight on the symbol
   // layer via the feature's `selected` property). Null = nothing selected.
   String? _selectedVehicleKey;
@@ -258,6 +260,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   //   C — vehicle context (`_following` + `_focus`): one vehicle is followed
   //       with its direction's route highlighted. Works at BOTH flag values.
   bool _onDemand = false;
+  // A stop arrivals sheet is currently up. The bottom UI (Nearby panel / search)
+  // is hidden while it is, so the two never overlap (#7).
+  bool _stopSheetOpen = false;
   String? _stopContextId; // stop feeding the markers (state B); null = not in B
   ProviderSubscription<AsyncValue<ArrivalsBoard>>? _stopArrivalsSub;
   // The stop context to restore when a vehicle context opened *from* a stop is
@@ -275,7 +280,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   bool _following = false;
   bool _followEngaged = false;
   ll.LatLng? _lastFollowMarkerPos;
+  DateTime? _lastFollowMoveAt; // throttle for the smooth follow ease
   bool _selfCameraMove = false;
+  // Where the camera sat when the vehicle context was entered, restored on close
+  // so the user lands back where they came from (the stop, or the pre-focus
+  // viewport) instead of adrift wherever the vehicle wandered.
+  Geographic? _preFollowCenter;
+  double? _preFollowZoom;
 
   @override
   void initState() {
@@ -378,10 +389,25 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   void _startVehiclesTimer() {
     _vehiclesTimer?.cancel();
-    _vehiclesTimer = Timer.periodic(
-      _vehiclesRefreshInterval,
-      (_) => _loadVehiclesForVisibleArea(force: true),
-    );
+    _vehiclesTimer = Timer.periodic(_vehiclesRefreshInterval, (_) => _refreshTick());
+  }
+
+  /// The steady 30s refresh, matched to the backend cache. In on-demand mode the
+  /// background aquarium is off, so instead the ACTIVE context (a stop, or a
+  /// followed vehicle still tied to its stop) is kept live by re-fetching that
+  /// stop's arrivals — otherwise the markers play their trajectory to the end of
+  /// `as_of` and freeze forever, since the sheet's own poll dies when it closes.
+  /// This runs regardless of follow, so following never freezes the data. When
+  /// off-demand it drives the viewport aquarium exactly as before.
+  void _refreshTick() {
+    switch (mapRefreshAction(onDemand: _onDemand, stopContextId: _stopContextId)) {
+      case MapRefresh.aquarium:
+        _loadVehiclesForVisibleArea(force: true);
+      case MapRefresh.pollStop:
+        ref.invalidate(arrivalsProvider(_stopContextId!));
+      case MapRefresh.none:
+        break;
+    }
   }
 
   // ---- Vehicle-layer driver (runs only while something is actually moving) --
@@ -484,8 +510,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// and the map simply shows no vehicle symbols rather than crashing.
   Future<void> _addVehicleSymbolLayers() async {
     final style = _style;
-    if (style == null || _vehLayerAdded) return;
-    _vehLayerAdded = true;
+    if (style == null || _vehLayerAdded || _vehLayerAdding) return;
+    _vehLayerAdding = true;
     try {
       // Vehicle symbols sit above the stop/rail layers (added earlier in
       // _onStyleLoaded). Tram rails are handled by the imperative stop layers
@@ -494,11 +520,22 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       await style.addLayer(movingObjectsBadgeLayer());
       await style.addLayer(movingObjectsArrowLayer());
       await style.addLayer(movingObjectsLabelLayer());
+      // Flip the "added" flag only now that the badge really exists, so a focus
+      // that lands mid-add doesn't ask to insert *below a badge that isn't there
+      // yet* (belowLayerId → maplibre throws → the route silently vanishes). Until
+      // then focusInsertBelowLayerId returns null and the route goes on top
+      // (visible), then the re-sync below drops it under the badge.
+      _vehLayerAdded = true;
       // Paint whatever the animator already holds, so vehicles show at once
       // (also covers a theme-flip re-add).
       _writeVehiclesToSource();
+      // If a line was focused before the vehicle layers came up, re-place its
+      // route now that there's a badge to sit under.
+      if (_focus != null) _syncFocusLayers();
     } catch (_) {
       _vehLayerAdded = false;
+    } finally {
+      _vehLayerAdding = false;
     }
   }
 
@@ -1550,9 +1587,18 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// (§C.2, don't regress F2).
   void _startFollow(String key, {required ll.LatLng target, required bool flyTo}) {
     final controller = _controller;
+    // Snapshot where the user is before we fly off, so closing the context can
+    // bring them back here (the stop, or the pre-focus viewport). Only on a fresh
+    // entry — a re-seed mid-follow must not overwrite the origin.
+    if (!_following && controller != null) {
+      final cam = controller.getCamera();
+      _preFollowCenter = cam.center;
+      _preFollowZoom = cam.zoom;
+    }
     _following = true;
     _selectedVehicleKey = key;
     _lastFollowMarkerPos = null; // (re)seed on the first follow tick
+    _lastFollowMoveAt = null;
     if (flyTo && controller != null) {
       final zoom = math.max(controller.getCamera().zoom, kMovingObjectDetailZoom);
       _followEngaged = false;
@@ -1588,12 +1634,22 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _lastFollowMarkerPos = null;
   }
 
-  /// One follow step: pan the camera by exactly how far the marker moved since
-  /// the last tick, so the marker stays put on screen as it travels — a
-  /// continuous pan, Flightradar-style. The zoom is never touched (the user's
-  /// zoom is respected), and the first tick only seeds the reference position so
-  /// engaging follow causes no jump. A vanished vehicle (grace/dropped) holds the
-  /// camera still and re-seeds on return so it doesn't lurch.
+  // Follow re-centres at ~15fps, not every render frame. Panning the whole map
+  // with a jumpTo on every one of ~60 fps thrashes the tile/label renderer and
+  // the neighbouring GL layers visibly jitter (pins, street labels) against a
+  // moving camera. At 15fps the per-step drift of the followed marker is
+  // sub-pixel at follow zoom, so it still reads as screen-fixed, but the map is
+  // steady between steps. (Matches the conservative sampler cadence used
+  // elsewhere.)
+  static const _followInterval = Duration(milliseconds: 66);
+
+  /// One follow step: pan the camera by how far the marker moved since the last
+  /// step, so the marker stays put on screen as it travels — a continuous pan,
+  /// Flightradar-style. The zoom is never touched (the user's zoom is respected).
+  /// Throttled to [_followInterval] to keep the map from jittering. The first
+  /// step only seeds the reference position so engaging follow causes no jump; a
+  /// vanished vehicle (grace/dropped) holds the camera still and re-seeds on
+  /// return so it doesn't lurch.
   void _followTick() {
     if (!_following || !_followEngaged) return;
     final key = _selectedVehicleKey;
@@ -1603,10 +1659,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _lastFollowMarkerPos = null; // vanished — re-seed on return, no lurch
       return;
     }
+    final now = DateTime.now();
+    // Throttle: leave `_lastFollowMarkerPos` untouched so the next allowed step
+    // pans by the full delta accumulated over the interval.
+    if (_lastFollowMoveAt != null && now.difference(_lastFollowMoveAt!) < _followInterval) {
+      return;
+    }
     final pos = _vehAnimator.positionOf(key, _vehAnim.value);
     final last = _lastFollowMarkerPos;
     _lastFollowMarkerPos = pos;
-    if (last == null) return; // first tick after engage/return: seed only
+    _lastFollowMoveAt = now;
+    if (last == null) return; // first step after engage/return: seed only
     final dLat = pos.latitude - last.latitude;
     final dLon = pos.longitude - last.longitude;
     if (dLat.abs() < 1e-7 && dLon.abs() < 1e-7) return; // not moving
@@ -1626,10 +1689,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // ---- On-demand stop context (state B) ------------------------------------
 
   /// Enter (or re-enter) stop context: the tapped stop's live arrivals become
-  /// the only vehicle markers. Fed from the SAME arrivals provider the sheet
-  /// polls — subscribing here shares that fetch (no second fan-out), and the
-  /// sheet's 30s invalidation refreshes both list and markers. No-op unless the
-  /// flag is on. Applies whatever the provider already holds immediately.
+  /// the only vehicle markers, fed from the same arrivals provider the sheet
+  /// watches (shared fetch, no second fan-out). No-op unless the flag is on.
+  ///
+  /// The host — not the sheet — owns keeping this fresh: [_refreshTick] re-fetches
+  /// this stop every 30s while the context is alive (crucially, also during a
+  /// follow after the sheet has closed, so nothing freezes). Because our
+  /// subscription pins the provider alive, a re-open would otherwise show a stale
+  /// board ("Updated 2 min ago"), so we invalidate on entry to pull a fresh one
+  /// (SWR: instant cached value, immediate revalidate).
   void _enterStopContext(String stopId) {
     if (!_onDemand) return;
     if (_stopContextId != stopId || _stopArrivalsSub == null) {
@@ -1644,8 +1712,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       );
     }
     _returnToStopId = null;
+    // Apply whatever is already in hand for an instant paint, then force a fresh
+    // fetch so neither the markers nor the sheet show a stale board on open.
     final current = _stopArrivalsSub!.read().valueOrNull;
     if (current != null) _applyStopContextMarkers(current);
+    ref.invalidate(arrivalsProvider(stopId));
   }
 
   /// Replace the vehicle set with this stop's live-position arrivals (schedule
@@ -1710,6 +1781,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _closeVehicleContext() {
     _stopFollow();
     _clearFocus();
+    // Ease back to where the user came from, instead of leaving them wherever the
+    // vehicle wandered off to.
+    final center = _preFollowCenter;
+    if (center != null) {
+      _selfMove(() {
+        _controller?.animateCamera(center: center, zoom: _preFollowZoom);
+      });
+    }
+    _preFollowCenter = null;
+    _preFollowZoom = null;
     if (!_onDemand) return;
     final returnStop = _returnToStopId;
     _returnToStopId = null;
@@ -1889,11 +1970,42 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   void _openStop(Stop stop) => _openStopById(stop.stopId, stopName: stop.name);
 
-  // Open a stop's arrivals from a "Nearby" row — the group carries the nearest
-  // serving stop's id/name, so we can go straight to its sheet (same overlay as
-  // tapping a stop pin), no stop lookup needed.
-  void _openNearbyStop(NearbyGroup group) =>
+  /// Tap a "Nearby" row → follow that line+direction's soonest **live** vehicle
+  /// (#5, owner variant 3). A NearbyGroup carries no gps/trajectory, so we resolve
+  /// the vehicle from the same `/arrivals` the sheet uses (SWR-cached): the
+  /// nearest live board of this line × direction. If the group has no live vehicle
+  /// (schedule-only), fall back to opening the stop. Entering the stop context
+  /// (even coming from Nearby) keeps the followed vehicle refreshed by the 30s
+  /// poll so it doesn't freeze; but the return target stays the pre-follow
+  /// viewport (we didn't arrive through the stop sheet), so closing goes back to
+  /// Nearby, not into the stop.
+  Future<void> _focusNearbyVehicle(NearbyGroup group) async {
+    _clearSearch();
+    ArrivalsBoard board;
+    try {
+      board = await ref.read(arrivalsProvider(group.stopId).future);
+    } catch (_) {
       _openStopById(group.stopId, stopName: group.stopName);
+      return;
+    }
+    if (!mounted) return;
+    Arrival? soonestLive;
+    for (final a in board.arrivals) {
+      if (a.line != group.line) continue;
+      if ((a.directionRouteId ?? a.routeId) != group.routeId) continue;
+      if (!arrivalHasLivePosition(a)) continue;
+      if (soonestLive == null || a.etaMinutes < soonestLive.etaMinutes) {
+        soonestLive = a;
+      }
+    }
+    if (soonestLive == null) {
+      _openStopById(group.stopId, stopName: group.stopName);
+      return;
+    }
+    if (_onDemand) _enterStopContext(group.stopId); // keep the vehicle refreshed
+    _focusVehicleFromArrival(soonestLive, board.updatedAt);
+    _returnToStopId = null; // came from Nearby → close returns to the viewport
+  }
 
   /// Shared stop-opening path (pin tap, Nearby row, or returning to a stop
   /// context after a follow). Seamless (A1): overlays the arrivals on the same
@@ -1903,6 +2015,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _openStopById(String stopId, {String? stopName}) {
     _clearSearch();
     if (_onDemand) _enterStopContext(stopId);
+    // Hide the bottom UI (Nearby panel / search) while the sheet is up so they
+    // don't overlap (#7).
+    setState(() => _stopSheetOpen = true);
     showStopSheet(
       context,
       stopId: stopId,
@@ -1910,7 +2025,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // Tapping a vehicle row hands the whole arrival to the map so it builds a
       // guaranteed marker, highlights the route and follows (§C).
       onFocusVehicle: _focusVehicleFromArrival,
-    ).then((_) => _onStopSheetClosed(stopId));
+    ).then((_) {
+      if (mounted) setState(() => _stopSheetOpen = false);
+      _onStopSheetClosed(stopId);
+    });
   }
 
   /// The stop sheet was dismissed. If a vehicle from this stop is now being
@@ -2117,15 +2235,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // Bottom UI: while a line is focused, a compact line panel with a close
           // button. Otherwise the experimental "Nearby" sheet when its flag is on
           // (it *replaces* the search bar), else the normal search + favourites.
+          // A stop arrivals sheet suppresses the whole bottom cluster so the two
+          // never stack on top of each other (#7).
           if (_focus != null)
             _focusPanel(theme)
+          else if (_stopSheetOpen)
+            const SizedBox.shrink()
           else if (nearbyEnabled)
             NearbySheet(
               userLocation: _meTo,
               locationDenied: _locationDenied,
               active: _tabActive && _appResumed,
               onEnableLocation: _recenterOnMe,
-              onTapGroup: _openNearbyStop,
+              onTapGroup: _focusNearbyVehicle,
             )
           else
             _bottomSearch(l10n, theme),
