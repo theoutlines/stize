@@ -18,11 +18,14 @@ bool isPlaceholderGarage(String? garageNo) {
 }
 
 /// Whether an arrival is a genuinely live-tracked vehicle safe to draw as a
-/// moving marker on the map: it has a real GPS fix and isn't a placeholder row.
-/// Placeholders belong in the arrivals *list* (their ETA is valid) but not on
-/// the map.
+/// moving marker on the map (and to follow): it has a real GPS fix, isn't a
+/// placeholder row, and isn't a schedule-predicted departure. Placeholders and
+/// scheduled rows belong in the arrivals *list* (their ETA is valid) but must
+/// NEVER become a map marker — the map is live-only. This is the single gate the
+/// context markers, the followed vehicle and the row's "show on map" all use, so
+/// "scheduled is never on the map" holds everywhere.
 bool arrivalHasLivePosition(Arrival a) =>
-    a.gps != null && !isPlaceholderGarage(a.garageNo);
+    !a.scheduled && a.gps != null && !isPlaceholderGarage(a.garageNo);
 
 /// Map-feed counterpart of [arrivalHasLivePosition]: the backend already drops
 /// vehicles without GPS from the nearby feed, so here only the placeholder

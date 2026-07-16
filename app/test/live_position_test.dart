@@ -4,7 +4,7 @@ import 'package:stigla/domain/models/arrival.dart';
 import 'package:stigla/domain/models/area_vehicle.dart';
 import 'package:stigla/domain/models/vehicle_type.dart';
 
-Arrival _arrival({String? garageNo, LatLon? gps}) => Arrival(
+Arrival _arrival({String? garageNo, LatLon? gps, bool scheduled = false}) => Arrival(
       line: '71',
       vehicleType: VehicleType.bus,
       etaMinutes: 3,
@@ -12,6 +12,7 @@ Arrival _arrival({String? garageNo, LatLon? gps}) => Arrival(
       routeId: '00071',
       gps: gps,
       garageNo: garageNo,
+      scheduled: scheduled,
     );
 
 AreaVehicle _area({String? garageNo}) => AreaVehicle(
@@ -70,6 +71,19 @@ void main() {
       expect(
         arrivalHasLivePosition(_arrival(garageNo: null, gps: const LatLon(44.82, 20.44))),
         isTrue,
+      );
+    });
+
+    test('a scheduled arrival is NEVER live, even with a GPS + real garage', () {
+      // The map is live-only: a schedule-predicted departure must not become a
+      // marker (or be followable), whatever fields it carries.
+      expect(
+        arrivalHasLivePosition(_arrival(
+          garageNo: 'P70260',
+          gps: const LatLon(44.82, 20.44),
+          scheduled: true,
+        )),
+        isFalse,
       );
     });
   });

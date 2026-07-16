@@ -16,7 +16,9 @@ import '../../core/api_config.dart';
 import '../../core/coverage_heatmap.dart';
 import '../../core/follow_camera.dart';
 import '../../core/fps_overlay.dart';
+import '../../core/hit_test.dart';
 import '../../core/map_refresh.dart';
+import '../../core/nearby_focus.dart';
 import '../../core/live_position.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
@@ -294,6 +296,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // viewport) instead of adrift wherever the vehicle wandered.
   Geographic? _preFollowCenter;
   double? _preFollowZoom;
+  // Where the camera sat before opening a stop sheet (which pans the stop up
+  // above the sheet). Restored when the sheet closes back to browsing, so the
+  // return is symmetric to the open.
+  Geographic? _preStopCameraCenter;
+  double? _preStopCameraZoom;
 
   @override
   void initState() {
@@ -1358,7 +1365,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       final fetched = await ref
           .read(vehiclesRepositoryProvider)
           .nearby(lat: center.latitude, lon: center.longitude, radiusMeters: radius);
-      if (!mounted || seq != _vehiclesRequestSeq) return;
+      // Re-check the flag AFTER the await: a fetch kicked off while off-demand
+      // (e.g. in the window after a reload, before `/config` resolves the flag to
+      // ON) must NOT populate the map once we're on-demand — otherwise the whole
+      // aquarium (buses, trams, scheduled objects) leaks onto a context-less map.
+      if (!keepAquariumResult(
+        mounted: mounted,
+        current: seq == _vehiclesRequestSeq,
+        onDemand: _onDemand,
+      )) {
+        return;
+      }
       // Placeholder rows (junk garage `P1..P999`, GPS pinned to a stop) aren't
       // tracked vehicles — they'd sit motionless on a stop, so keep them off the
       // map. The arrivals *list* on the stop screen still shows their line/ETA.
@@ -1847,16 +1864,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _openStopById(returnStop);
       return;
     }
-    // No stop to return to: ease back to where the user came from, instead of
-    // leaving them wherever the vehicle wandered off to.
-    final center = _preFollowCenter;
+    // No stop to reopen: ease back to where the user came from. Prefer the
+    // pre-stop viewport when the follow was spawned from a stop sheet we're not
+    // reopening (so we land back at the original browse position, not the panned
+    // stop), else the pre-follow viewport (a follow straight from Nearby).
+    final center = _preStopCameraCenter ?? _preFollowCenter;
+    final zoom = _preStopCameraCenter != null ? _preStopCameraZoom : _preFollowZoom;
     if (center != null) {
       _selfMove(() {
-        _controller?.animateCamera(center: center, zoom: _preFollowZoom);
+        _controller?.animateCamera(center: center, zoom: zoom);
       });
     }
     _preFollowCenter = null;
     _preFollowZoom = null;
+    _preStopCameraCenter = null;
+    _preStopCameraZoom = null;
     if (_onDemand) _exitStopContext();
   }
 
@@ -1952,16 +1974,34 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       }
     }
     final features = controller.featuresInRect(rect);
+    // Stops: the fat tap rect can cover several pins in a dense cluster, and
+    // featuresInRect returns them in query/z order — the FIRST isn't necessarily
+    // the one under the finger. Collect every candidate stop, project it to the
+    // screen, and open the one NEAREST the tap point (#2, "tap opens a neighbour").
+    final stopCandidates = <(Stop, Offset)>[];
     for (final f in features) {
-      final props = f.properties;
-      final stopId = props['stopId'];
+      final stopId = f.properties['stopId'];
       if (stopId is String) {
         final stop = _stopById(stopId);
         if (stop != null) {
-          _openStop(stop);
-          return;
+          try {
+            final at = controller.toScreenLocation(
+              Geographic(lon: stop.lon, lat: stop.lat),
+            );
+            stopCandidates.add((stop, at));
+          } catch (_) {
+            stopCandidates.add((stop, screen)); // projection failed — treat as at the tap
+          }
         }
       }
+    }
+    final nearestStop = pickNearest(screen, stopCandidates);
+    if (nearestStop != null) {
+      _openStop(nearestStop);
+      return;
+    }
+    for (final f in features) {
+      final props = f.properties;
       if (props['cluster'] == true) {
         final camera = controller.getCamera();
         controller.animateCamera(
@@ -2054,6 +2094,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// Nearby, not into the stop.
   Future<void> _focusNearbyVehicle(NearbyGroup group) async {
     _clearSearch();
+    // A schedule-only row opens the stop without a fetch (its own status says so).
+    final hasLiveEta = group.arrivals.any((e) => !e.isScheduled);
+    if (!hasLiveEta) {
+      _openStopById(group.stopId, stopName: group.stopName);
+      return;
+    }
     ArrivalsBoard board;
     try {
       board = await ref.read(arrivalsProvider(group.stopId).future);
@@ -2062,21 +2108,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       return;
     }
     if (!mounted) return;
-    Arrival? soonestLive;
-    for (final a in board.arrivals) {
-      if (a.line != group.line) continue;
-      if ((a.directionRouteId ?? a.routeId) != group.routeId) continue;
-      if (!arrivalHasLivePosition(a)) continue;
-      if (soonestLive == null || a.etaMinutes < soonestLive.etaMinutes) {
-        soonestLive = a;
-      }
-    }
-    if (soonestLive == null) {
+    // Resolve the live vehicle the row is about (nearbyFollowTarget honours the
+    // group status and the board's reality); null → open the stop, never follow a
+    // scheduled/absent vehicle.
+    final match = nearbyFollowTarget(group, board.arrivals);
+    if (match == null) {
       _openStopById(group.stopId, stopName: group.stopName);
       return;
     }
     if (_onDemand) _enterStopContext(group.stopId); // keep the vehicle refreshed
-    _focusVehicleFromArrival(soonestLive, board.updatedAt);
+    _focusVehicleFromArrival(match, board.updatedAt);
     _returnToStopId = null; // came from Nearby → close returns to the viewport
   }
 
@@ -2087,6 +2128,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// clears them back to A.
   void _openStopById(String stopId, {String? stopName, ll.LatLng? at}) {
     _clearSearch();
+    // Snapshot the viewport before the stop is panned up, so closing the sheet
+    // returns here — symmetric to the open. Only the first open of a session
+    // captures it (a return-to-stop re-open must not overwrite the origin).
+    if (_preStopCameraCenter == null) {
+      final cam = _controller?.getCamera();
+      if (cam != null) {
+        _preStopCameraCenter = cam.center;
+        _preStopCameraZoom = cam.zoom;
+      }
+    }
     if (_onDemand) _enterStopContext(stopId);
     // Shift the stop up into the visible strip ABOVE the sheet, so it isn't
     // hidden under it (and so returning from a follow lands on a visible stop).
@@ -2140,9 +2191,29 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// followed, keep the stop context alive so closing the line panel can return
   /// to it; otherwise leave state B for A.
   void _onStopSheetClosed(String stopId) {
-    if (!_onDemand) return;
-    if (_returnToStopId == stopId && (_focus != null || _following)) return;
-    if (_stopContextId == stopId) _exitStopContext();
+    // A vehicle context is now active (a row was tapped): it owns the camera and
+    // will return to the origin later — don't restore here, and keep the stop
+    // context alive if we'll come back to it.
+    final vehicleContextActive = _following || _focus != null;
+    if (_onDemand &&
+        _stopContextId == stopId &&
+        !(vehicleContextActive && _returnToStopId == stopId)) {
+      _exitStopContext();
+    }
+    if (vehicleContextActive) return;
+    _restorePreStopCamera();
+  }
+
+  /// Ease the camera back to where it sat before the stop sheet panned it up.
+  void _restorePreStopCamera() {
+    final center = _preStopCameraCenter;
+    if (center != null) {
+      _selfMove(() {
+        _controller?.animateCamera(center: center, zoom: _preStopCameraZoom);
+      });
+    }
+    _preStopCameraCenter = null;
+    _preStopCameraZoom = null;
   }
 
   bool _isLinePinned(String line) {

@@ -22,3 +22,18 @@ MapRefresh mapRefreshAction({
   if (!onDemand) return MapRefresh.aquarium;
   return stopContextId != null ? MapRefresh.pollStop : MapRefresh.none;
 }
+
+/// Whether an in-flight background "aquarium" vehicle fetch's result should still
+/// be applied when it lands.
+///
+/// A fetch kicked off while off-demand (e.g. in the window after a reload, before
+/// `/config` resolves the flag to ON) must be DISCARDED once we're on-demand —
+/// otherwise the whole background set (buses, trams, scheduled objects) leaks
+/// onto a context-less on-demand map. Also drops results for an unmounted screen
+/// or a superseded request.
+bool keepAquariumResult({
+  required bool mounted,
+  required bool current,
+  required bool onDemand,
+}) =>
+    mounted && current && !onDemand;

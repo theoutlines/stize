@@ -40,4 +40,25 @@ void main() {
       );
     });
   });
+
+  group('keepAquariumResult — a fetch outliving the flag flip is discarded', () {
+    test('off-demand, mounted, current → apply', () {
+      expect(
+        keepAquariumResult(mounted: true, current: true, onDemand: false),
+        isTrue,
+      );
+    });
+
+    test('a fetch that lands after the flag flipped ON is dropped (the reload leak)', () {
+      expect(
+        keepAquariumResult(mounted: true, current: true, onDemand: true),
+        isFalse,
+      );
+    });
+
+    test('unmounted or superseded is dropped', () {
+      expect(keepAquariumResult(mounted: false, current: true, onDemand: false), isFalse);
+      expect(keepAquariumResult(mounted: true, current: false, onDemand: false), isFalse);
+    });
+  });
 }
