@@ -103,6 +103,48 @@ void main() {
       expect(find.text('3 min'), findsOneWidget); // soonest, emphasised
       expect(find.text('9 min'), findsOneWidget); // second departure
     });
+
+    testWidgets('brightness == clickability: a live group has a chevron, a '
+        'schedule-only group is dimmed and has none', (tester) async {
+      NearbyGroup mk(String line, {required bool scheduled}) => NearbyGroup.fromJson({
+            'line': line,
+            'vehicle_type': 'bus',
+            'destination': 'Dorćol',
+            'route_id': '$line-0',
+            'stop_id': 's-$line',
+            'stop_name': 'Trg',
+            'distance_meters': 100,
+            'arrivals': [
+              {
+                'eta_minutes': 4,
+                'garage_no': scheduled ? null : 'BG123',
+                'stops_remaining': 3,
+                if (scheduled) 'source': 'scheduled',
+              },
+            ],
+          });
+
+      await tester.pumpWidget(_wrap(NearbyList(groups: [
+        mk('79', scheduled: false), // live → chevron, full brightness
+        mk('26', scheduled: true), // schedule-only → dimmed, no chevron
+      ])));
+      await tester.pumpAndSettle();
+
+      // Exactly one row (the live one) carries the drill-in chevron.
+      expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+
+      // The schedule-only row's line badge is dimmed; the live one is not.
+      Opacity badgeOpacity(String line) => tester.widget<Opacity>(
+            find
+                .ancestor(
+                  of: find.text(line),
+                  matching: find.byType(Opacity),
+                )
+                .first,
+          );
+      expect(badgeOpacity('79').opacity, 1.0);
+      expect(badgeOpacity('26').opacity, lessThan(1.0));
+    });
   });
 
   group('NearbySheet', () {

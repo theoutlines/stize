@@ -32,13 +32,30 @@ class TimedTrajectory {
   List<_Waypoint> _waypoints; // distance ↑, eta ↑; the first eta is ~0
   DateTime _asOf;
   double _dispDist;
+  double _dispVel = 0; // displayed speed along the path (m/s) — a state variable
   DateTime _lastAdvance;
 
-  // Exponential-approach time constant used when the plan is ahead of the
-  // marker: the marker closes ~63% of the gap every this-many seconds. Small
-  // enough to feel responsive, large enough that an ETA-shorter recalculation
-  // eases in over ~1-2s instead of jumping.
-  static const double _convergeTau = 2.5;
+  // Catch-up dynamics. The marker chases the plan's *predicted-now* spot, which
+  // moves forward at the plan's own speed. To close the residual gap without the
+  // periodic lurch an exponential approach produced (its velocity is maximal at
+  // the instant each poll reveals the gap → a velocity step = a visible jerk),
+  // the closing motion is acceleration-limited and velocity-continuous:
+  //
+  //   * The marker rides the plan speed as a *feed-forward* term, so once caught
+  //     up it tracks the ramp with ~zero lag and no fresh gap re-appears each
+  //     poll (which is what re-triggered the jerk).
+  //   * On top of that it closes the position gap at a speed that is capped
+  //     ([_maxCatchUpSpeed], an even cruise) and eased down to zero as it arrives
+  //     (a sqrt profile → decelerate at [_maxCatchUpAccel], no jolt on arrival).
+  //   * Velocity itself may change by at most [_maxCatchUpAccel]·dt per step, so
+  //     it eases *in* when a gap appears and can never step discontinuously — the
+  //     jerk is gone by construction (bounded acceleration ⇒ continuous velocity).
+  //
+  // Tuned for a transit marker: ~3 m/s² feels smooth (not a snap, not a crawl),
+  // and an 18 m/s cap recovers even a large stale-recovery gap in a few seconds
+  // while never cruising implausibly fast.
+  static const double _maxCatchUpAccel = 3.0; // m/s²
+  static const double _maxCatchUpSpeed = 18.0; // m/s, closing speed cap
 
   // A plan step shorter than this (metres) isn't worth treating as motion.
   static const double _epsilonMeters = 0.5;
@@ -142,22 +159,89 @@ class TimedTrajectory {
   /// Advances the displayed distance toward where the plan says the vehicle is
   /// *now*. Forward-only: holds (never reverses) when the plan is behind the
   /// marker, converges smoothly when it's ahead, clamps at the plan's end.
+  ///
+  /// The motion is acceleration-limited and velocity-continuous (see the class
+  /// notes): it rides the plan speed as a feed-forward term and closes any
+  /// residual gap with an eased, capped closing speed, so it never lurches.
   void advance(DateTime now) {
     final horizon = _horizonDist;
-    var target = _distAtElapsed(_waypoints, _targetElapsed(now));
-    if (target > horizon) target = horizon;
+    final target = _gatedTarget(now);
     final dt = now.difference(_lastAdvance).inMicroseconds / 1e6;
     _lastAdvance = now;
-    if (dt > 0 && target > _dispDist) {
-      final gap = target - _dispDist;
-      _dispDist += gap * (1 - math.exp(-dt / _convergeTau));
-      if (_dispDist > target) _dispDist = target;
+    if (dt <= 0) return;
+
+    // Feed-forward: how fast the *target itself* is moving right now (0 when the
+    // board is stale — the target is pinned to the fix — or when it has reached
+    // the horizon/plan end). Measured on the same gated model so all those
+    // hold-cases fall out automatically.
+    final planVel = _targetSpeed(now);
+
+    // Target speed for this frame: ride the plan speed, plus a closing term that
+    // erases the position gap — eased so arrival has no jolt (cruise at the cap
+    // when far, sqrt ramp-down when near → decelerate at _maxCatchUpAccel).
+    final gap = target - _dispDist;
+    double desiredVel;
+    if (gap <= _epsilonMeters) {
+      desiredVel = 0; // caught up / overran: aim to hold; the ramp pulls us on
+    } else {
+      final closing =
+          math.min(_maxCatchUpSpeed, math.sqrt(2 * _maxCatchUpAccel * gap));
+      // Never *command* a speed that would fly past the target in one step; this
+      // single cap also lands coarse (test-sized) steps exactly on the target.
+      desiredVel = math.min(planVel + closing, gap / dt);
     }
-    if (_dispDist > horizon) _dispDist = horizon;
+
+    // Acceleration limit — the velocity may change by at most _maxCatchUpAccel·dt
+    // per step. This is the ease-in when a gap appears and guarantees a
+    // continuous velocity (no step ⇒ no jerk). One update only, so |Δv| is truly
+    // bounded. Never negative (forward-only).
+    final maxDv = _maxCatchUpAccel * dt;
+    _dispVel += (desiredVel - _dispVel).clamp(-maxDv, maxDv);
+    if (_dispVel < 0) _dispVel = 0;
+
+    var next = _dispDist + _dispVel * dt;
+    if (next >= horizon) {
+      next = horizon;
+      _dispVel = 0;
+    }
+    if (next < _dispDist) {
+      next = _dispDist; // forward-only: hold when the plan is behind us
+      _dispVel = 0;
+    }
+    _dispDist = next;
+  }
+
+  // The gated, horizon-clamped target distance the marker chases at [now].
+  double _gatedTarget(DateTime now) {
+    final t = _distAtElapsed(_waypoints, _targetElapsed(now));
+    final horizon = _horizonDist;
+    return t > horizon ? horizon : t;
+  }
+
+  // The target's own forward speed (m/s) at [now], via a short finite difference
+  // on the same gated model — automatically 0 when stale or clamped (nothing to
+  // feed forward), non-negative otherwise.
+  double _targetSpeed(DateTime now) {
+    const eps = 0.25; // s
+    final v = (_gatedTarget(now.add(const Duration(milliseconds: 250))) -
+            _gatedTarget(now)) /
+        eps;
+    return v > 0 ? v : 0;
   }
 
   double get displayDistance => _dispDist;
   double get endDistance => _waypoints.last.dist;
+
+  /// Displayed speed along the path (m/s) — a diagnostics read-out for the
+  /// catch-up instrumentation (staging overlay).
+  double get displaySpeed => _dispVel;
+
+  /// How far behind the plan's predicted-now spot the marker currently is (m,
+  /// never negative) — the live "catch-up distance" for the staging overlay.
+  double catchUpGap(DateTime now) {
+    final gap = _gatedTarget(now) - _dispDist;
+    return gap > 0 ? gap : 0;
+  }
 
   // The furthest distance-along the marker may predict to right now: the plan's
   // end, but no more than [_maxAheadMeters] past the last fix (waypoint 0). Keeps

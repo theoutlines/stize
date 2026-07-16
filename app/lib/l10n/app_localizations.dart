@@ -262,6 +262,12 @@ abstract class AppLocalizations {
   /// **'By schedule — not a live position'**
   String get vehicleScheduled;
 
+  /// Row with a valid ETA but no live GPS position yet (placeholder vehicle)
+  ///
+  /// In en, this message translates to:
+  /// **'Expected'**
+  String get arrivalExpected;
+
   /// Shown when a followed vehicle drops out of the live feed
   ///
   /// In en, this message translates to:

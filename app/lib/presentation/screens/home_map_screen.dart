@@ -2489,6 +2489,18 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// really draws at a real stop's pixel (catches "layer present, data pushed,
   /// but nothing rendered"). Keep it: it is what broke the multi-round
   /// stop-render investigation open.
+  // One diagnostics line for the followed vehicle's catch-up: live gap (metres
+  // behind the plan's predicted-now spot) and display speed (m/s). Reads the
+  // timed player directly; falls back to a dash when nothing is being followed.
+  String _catchUpDiagLine() {
+    final key = _selectedVehicleKey;
+    final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
+    if (timed == null) return 'VEH catchUp gap - vel -';
+    final now = DateTime.now();
+    return 'VEH catchUp gap ${timed.catchUpGap(now).toStringAsFixed(1)}m '
+        'vel ${timed.displaySpeed.toStringAsFixed(1)}m/s';
+  }
+
   Widget _stopDiagnosticsOverlay(ThemeData theme) {
     final center = _lastFetchCenter;
     final controller = _controller;
@@ -2554,6 +2566,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           'paused $_paused refreshTicks $_refreshTicks pumps $_pumpCount',
       'VEH lastCtx ageSec ${_lastCtxBoardAgeSec ?? "-"} '
           'live $_lastCtxLive withTraj $_lastCtxWithTraj',
+      // Catch-up instrumentation for the followed vehicle: how far behind the
+      // plan's predicted-now spot the marker is (gap) and how fast it's moving
+      // to close it (vel). A smooth catch-up shows the gap easing to ~0 with vel
+      // ramping up then settling to the plan speed — never a spike then a crawl.
+      _catchUpDiagLine(),
     ];
 
     return SafeArea(

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
@@ -160,6 +162,82 @@ void main() {
         tt.advance(now.add(Duration(seconds: s)));
         expect(tt.position.longitude, greaterThanOrEqualTo(before - 1e-9));
       }
+    });
+
+    test('catch-up is acceleration-limited: velocity never steps between frames', () {
+      // A fresh fix ~79 m ahead (≈ one lon-milli at this latitude) — a realistic
+      // poll gap, well within the closing-speed cap.
+      final route = _eastRoute();
+      final tt = TimedTrajectory.build(
+        path: route,
+        plan: const [
+          TrajectoryPoint(44.80, 20.500, 0),
+          TrajectoryPoint(44.80, 20.510, 120),
+        ],
+        asOf: _t0,
+        now: _t0,
+      )!;
+      tt.updatePlan(
+        path: route,
+        plan: const [
+          TrajectoryPoint(44.80, 20.501, 0),
+          TrajectoryPoint(44.80, 20.511, 120),
+        ],
+        asOf: _t0,
+        now: _t0,
+      );
+
+      // Step at a realistic frame cadence and watch the speed: it must ramp,
+      // never jump — |Δv| ≤ a_max·dt (+ a hair for float error) every frame.
+      const frame = Duration(milliseconds: 16);
+      const dt = 16 / 1000;
+      const aMax = 3.0;
+      var prevV = tt.displaySpeed;
+      var t = _t0;
+      var maxV = 0.0;
+      for (var i = 0; i < 1250; i++) {
+        t = t.add(frame);
+        tt.advance(t);
+        final v = tt.displaySpeed;
+        expect((v - prevV).abs(), lessThanOrEqualTo(aMax * dt + 1e-6),
+            reason: 'velocity stepped at frame $i: $prevV → $v');
+        maxV = math.max(maxV, v);
+        prevV = v;
+      }
+      // It actually did catch up (the gap closed to ~0) within the window.
+      expect(tt.catchUpGap(t), lessThan(2.0));
+      // And it cruised faster than the plan speed (~6.6 m/s) to close the gap —
+      // an "even" catch-up, not a single exponential spike then a crawl.
+      expect(maxV, greaterThan(8.0));
+    });
+
+    test('the first catch-up frame does not lurch (eases in from rest)', () {
+      final route = _eastRoute();
+      final tt = TimedTrajectory.build(
+        path: route,
+        plan: const [
+          TrajectoryPoint(44.80, 20.500, 0),
+          TrajectoryPoint(44.80, 20.510, 120),
+        ],
+        asOf: _t0,
+        now: _t0,
+      )!;
+      final d0 = tt.displayDistance;
+      // A fresh fix ~158 m ahead appears (a large but plausible re-anchor).
+      tt.updatePlan(
+        path: route,
+        plan: const [
+          TrajectoryPoint(44.80, 20.502, 0),
+          TrajectoryPoint(44.80, 20.512, 120),
+        ],
+        asOf: _t0,
+        now: _t0,
+      );
+      // One 16 ms frame after the gap appears: the step is bounded by the
+      // acceleration limit (½·a·dt²), not a fraction of the whole gap.
+      tt.advance(_t0.add(const Duration(milliseconds: 16)));
+      final firstStep = tt.displayDistance - d0;
+      expect(firstStep, lessThan(0.05)); // ½·3·0.016² ≈ 0.4 mm, nowhere near a lurch
     });
 
     test('build returns null without a usable path or ≥2 forward points', () {

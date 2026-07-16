@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/map_support.dart';
+import '../../core/nearby_focus.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
@@ -63,6 +64,11 @@ class _NearbyCard extends StatelessWidget {
     final type = classifyLine(group.line);
     final color = vehicleColor(type);
     final destination = group.destination;
+    // Same rule as the arrivals list: brightness == "leads to a live vehicle you
+    // can follow". A schedule-/placeholder-only group reads dimmed and shows no
+    // chevron — its tap opens the stop, not a phantom follow.
+    final hasLive = nearbyGroupHasLive(group);
+    final dim = hasLive ? 1.0 : _dimOpacity;
 
     return Material(
       color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -75,24 +81,30 @@ class _NearbyCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _LineBadge(line: group.line, type: type, color: color),
+              Opacity(
+                opacity: dim,
+                child: _LineBadge(line: group.line, type: type, color: color),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      // "→ Destination" reads as the travel direction; when the
-                      // upstream gave us no terminus, fall back to the line name.
-                      destination != null && destination.isNotEmpty
-                          ? '→ $destination'
-                          : group.line,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                    Opacity(
+                      opacity: dim,
+                      child: Text(
+                        // "→ Destination" reads as the travel direction; when the
+                        // upstream gave us no terminus, fall back to the line name.
+                        destination != null && destination.isNotEmpty
+                            ? '→ $destination'
+                            : group.line,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -107,13 +119,20 @@ class _NearbyCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _EtaColumn(arrivals: group.arrivals),
+              Opacity(opacity: dim, child: _EtaColumn(arrivals: group.arrivals)),
+              // Drill-in affordance: only a live, followable group gets a chevron.
+              if (hasLive)
+                Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
             ],
           ),
         ),
       ),
     );
   }
+
+  /// Opacity for a non-live Nearby row — matches [ArrivalTile] so both lists
+  /// speak the same "dim == not a followable vehicle" language.
+  static const double _dimOpacity = 0.58;
 }
 
 /// The coloured route badge: type glyph + line number, matching the map pill.

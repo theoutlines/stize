@@ -1,3 +1,29 @@
+import '../domain/models/arrival.dart';
+import 'live_position.dart';
+
+/// The single honest status every arrival row carries — so no row ever renders
+/// blank. Brightness in the UI follows this: [live] is clickable (full opacity
+/// + chevron), [expected] and [scheduled] are not (dimmed, no chevron).
+enum ArrivalRowStatus {
+  /// A genuinely tracked vehicle: live GPS, real garage — followable on the map.
+  live,
+
+  /// A valid ETA with no live position yet — the schedule-derived placeholder
+  /// class (garage `P1..P999`, pinned to the stop). Honest "Expected", not a
+  /// broken live row. Deferred reclassification lives in the arrivals-dedup task.
+  expected,
+
+  /// Timetable fallback (`source=scheduled`) — no vehicle at all.
+  scheduled,
+}
+
+/// Classify a row into its single honest status. Clickability == [live].
+ArrivalRowStatus arrivalRowStatus(Arrival arrival) {
+  if (arrival.scheduled) return ArrivalRowStatus.scheduled;
+  if (arrivalHasLivePosition(arrival)) return ArrivalRowStatus.live;
+  return ArrivalRowStatus.expected;
+}
+
 /// How to describe an arrival's proximity in the list, deciding whether the
 /// upstream `stops_remaining` field can be trusted.
 enum ArrivalProximity {
