@@ -38,6 +38,13 @@ that can't be collected retroactively, we start accumulating before we need it.
 
 ## In progress / behind a flag
 
+- 🛠️ **Analytics insert hardening** (`fix/analytics-sql-variables`, ждёт merge) —
+  размер чанка вставки в analytics-D1 выводится из числа колонок под
+  документированный лимит D1 (100 bind-параметров), одной утилитой для всех путей
+  (наблюдения + агрегаты). Проверка прода: **тихой потери данных не было**
+  (binding-лимит выше REST-лимита, чанк 40 фактически держал). Отчёт:
+  `docs/reports/2026-07-15-analytics-sql-variables.md`.
+
 - 🚧 **Line analytics screens** (heatmap / sparkline / scatter / stat tiles) —
   hidden on production, visible on staging; draft visuals.
 - 🚧 **Coverage tab (V0)** — a standalone Strava-style route-density infographic
@@ -62,6 +69,19 @@ that can't be collected retroactively, we start accumulating before we need it.
   (~4–8 weeks). Measurement showed the real residue is tiny (most "unseen" lines
   are night lines that simply don't run at night). A month+ of data makes
   night/rare lines distinguishable from retired ones; build the classifier then.
+
+### Plumbing / reliability
+- 🚧 **Scheduled map objects TypeError** — `scheduledMapObjectsForRoute` threw on
+  the edge input `now.minutes === last stop time`, and one bad route dropped the
+  *whole* scheduled layer of a `/vehicles/nearby` response (silent). Root fix +
+  per-route isolation on `fix/scheduled-map-typeerror`, green, awaiting owner
+  merge. Report: `docs/reports/2026-07-16-scheduled-map-typeerror.md`.
+- 🚧 **Cold `/vehicles/nearby` subrequest budget** — worst-case cold path was
+  ≈70–73 subrequests, over the 50/invocation tier. Done on the branch above:
+  per-invocation memo of `getFlag("analytics_collect")` (18 per-stop KV reads →
+  1, cold worst-case ~70 → ~53). Still over on a fully cold isolate; the larger,
+  architectural levers (fan-out reduction, upstream cache policy) are deferred.
+  Full decomposition in the report above.
 
 ### Fleet-ID tail
 - ⏭️ Close remaining roster gaps so fewer vehicles show as UNKNOWN.

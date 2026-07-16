@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
-import { getAllFlags, getFlag, isFeatureFlag, setFlag } from "../src/lib/featureFlags";
+import {
+  getAllFlags,
+  getFlag,
+  getFlagMemoized,
+  isFeatureFlag,
+  setFlag,
+} from "../src/lib/featureFlags";
 
 describe("featureFlags", () => {
   it("defaults every flag to off when its KV key is unset", async () => {
@@ -34,6 +40,32 @@ describe("featureFlags", () => {
   it("guards against unknown flag names", () => {
     expect(isFeatureFlag("analytics_show")).toBe(true);
     expect(isFeatureFlag("nope")).toBe(false);
+  });
+
+  it("getFlagMemoized reads KV once per scope but re-reads across scopes (instant flip)", async () => {
+    // Count KV reads without touching the real binding's other methods.
+    let reads = 0;
+    const counting = new Proxy(env, {
+      get(target, prop, recv) {
+        if (prop === "STIGLA_KV") {
+          return { get: (k: string) => (reads++, target.STIGLA_KV.get(k)) };
+        }
+        return Reflect.get(target, prop, recv);
+      },
+    }) as typeof env;
+
+    await setFlag(env, "analytics_collect", true);
+    const scopeA = {};
+    expect(await getFlagMemoized(counting, scopeA, "analytics_collect")).toBe(true);
+    expect(await getFlagMemoized(counting, scopeA, "analytics_collect")).toBe(true);
+    expect(reads).toBe(1); // same invocation → a single KV read, not one per call
+
+    // Flip the flag; a NEW scope (next request) must observe it — no TTL/global cache.
+    await setFlag(env, "analytics_collect", false);
+    const scopeB = {};
+    expect(await getFlagMemoized(counting, scopeB, "analytics_collect")).toBe(false);
+    expect(reads).toBe(2);
+    await setFlag(env, "analytics_collect", false);
   });
 
   it("defaults unset flags ON on staging, OFF on production, but an explicit value wins", async () => {

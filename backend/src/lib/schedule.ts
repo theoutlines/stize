@@ -208,9 +208,15 @@ export function scheduledMapObjectsForRoute(
       const last = pts[pts.length - 1].t;
       if (now.minutes < first || now.minutes > last) continue; // not in transit
 
-      // Segment the vehicle is on.
+      // Segment the vehicle is on. When now.minutes lands exactly on the final
+      // timepoint (integer local minutes on both sides, so this is a real once-a-
+      // minute case, not floating-point luck), the loop would advance i past the
+      // last segment and pts[i + 1] would be undefined — reading its `.t` threw a
+      // TypeError that, swallowed upstream, dropped *every* scheduled object for
+      // the request. Clamp to the last segment so the trip renders at its terminus.
       let i = 0;
       while (i < pts.length - 1 && pts[i + 1].t <= now.minutes) i++;
+      if (i > pts.length - 2) i = pts.length - 2;
       const a = pts[i];
       const b = pts[i + 1];
       const span = b.t - a.t;
