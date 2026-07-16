@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/eta_format.dart';
 import '../../core/map_support.dart';
 import '../../core/nearby_focus.dart';
 import '../../domain/models/nearby_arrival.dart';
@@ -194,8 +195,8 @@ class _EtaColumn extends StatelessWidget {
     if (etas.isEmpty) {
       return Text('—', style: theme.textTheme.titleMedium);
     }
-    String label(NearbyEta e) =>
-        e.etaMinutes <= 0 ? l10n.arrivalEtaNow : l10n.arrivalEtaMinutes(e.etaMinutes);
+    final localeName = Localizations.localeOf(context).toString();
+    String label(NearbyEta e) => etaLabel(l10n, localeName, e.etaMinutes);
 
     Widget etaRow(NearbyEta e, TextStyle? style) {
       final live = nearbyEtaIsLive(e);
