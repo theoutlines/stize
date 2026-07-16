@@ -1879,9 +1879,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final center = _preStopCameraCenter ?? _preFollowCenter;
     final zoom = _preStopCameraCenter != null ? _preStopCameraZoom : _preFollowZoom;
     if (center != null) {
-      _selfMove(() {
-        _controller?.animateCamera(center: center, zoom: zoom);
-      });
+      _easeCameraTo(center, zoom);
     }
     _preFollowCenter = null;
     _preFollowZoom = null;
@@ -2166,6 +2164,32 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     });
   }
 
+  // A camera glide with a deliberate, deceleration-curve duration. Used for
+  // opening a stop (pan it above the sheet) and closing it (ease back), so entry
+  // and exit feel symmetric — a slow-ish `flyTo` (low speed, capped) rather than
+  // the near-instant default that reads as a teleport on a short move.
+  static const _cameraEaseDuration = Duration(milliseconds: 700);
+  static const double _cameraEaseSpeed = 0.55;
+
+  void _easeCameraTo(
+    Geographic center,
+    double? zoom, {
+    EdgeInsets padding = EdgeInsets.zero,
+  }) {
+    final controller = _controller;
+    if (controller == null) return;
+    _selfMove(() {
+      controller.animateCamera(
+        center: center,
+        zoom: zoom,
+        padding: padding,
+        nativeDuration: _cameraEaseDuration,
+        webSpeed: _cameraEaseSpeed,
+        webMaxDuration: const Duration(milliseconds: 800),
+      );
+    });
+  }
+
   /// Pan [stopId] into the strip of map visible above the arrivals sheet (the
   /// sheet covers the lower ~half), zooming in to at least the individual-stop
   /// level. Resolves the coordinate from the tap ([at]) or the GTFS mirror.
@@ -2176,13 +2200,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (controller == null) return;
     final zoom = math.max(controller.getCamera().zoom, _individualZoom);
     final bottomPad = MediaQuery.of(context).size.height * 0.5;
-    _selfMove(() {
-      controller.animateCamera(
-        center: Geographic(lon: pos.longitude, lat: pos.latitude),
-        zoom: zoom,
-        padding: EdgeInsets.only(bottom: bottomPad),
-      );
-    });
+    _easeCameraTo(
+      Geographic(lon: pos.longitude, lat: pos.latitude),
+      zoom,
+      padding: EdgeInsets.only(bottom: bottomPad),
+    );
   }
 
   Future<ll.LatLng?> _resolveStopLatLng(String stopId) async {
@@ -2212,13 +2234,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _restorePreStopCamera();
   }
 
-  /// Ease the camera back to where it sat before the stop sheet panned it up.
+  /// Ease the camera back to where it sat before the stop sheet panned it up —
+  /// symmetric to the open (same glide), and resetting the sheet's bottom padding
+  /// so it doesn't land offset.
   void _restorePreStopCamera() {
     final center = _preStopCameraCenter;
     if (center != null) {
-      _selfMove(() {
-        _controller?.animateCamera(center: center, zoom: _preStopCameraZoom);
-      });
+      _easeCameraTo(center, _preStopCameraZoom);
     }
     _preStopCameraCenter = null;
     _preStopCameraZoom = null;

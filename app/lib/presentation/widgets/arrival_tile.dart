@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/arrival_display.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/map_support.dart';
 import '../../domain/models/arrival.dart';
@@ -78,7 +79,6 @@ class ArrivalTile extends StatelessWidget {
   /// strip, kept on a single row so a badge never turns one row into two (B2).
   Widget? _subtitle(BuildContext context, AppLocalizations l10n) {
     final theme = Theme.of(context);
-    final stops = arrival.stopsRemaining;
     // Planned (timetable) arrival: a clear "по расписанию" marker instead of
     // "N stops away" / fleet badges (which only exist for a live vehicle).
     if (arrival.scheduled) {
@@ -94,6 +94,18 @@ class ArrivalTile extends StatelessWidget {
         ],
       );
     }
+    // Don't trust stops_remaining blindly: the upstream emits 0 as junk for some
+    // rows (placeholder P1..P999 vehicles pinned to the stop) even with a 10-20
+    // min ETA — "here" would lie. Only show it when it agrees with the ETA.
+    final stopsText = switch (arrivalProximity(
+      stopsRemaining: arrival.stopsRemaining,
+      etaMinutes: arrival.etaMinutes,
+    )) {
+      ArrivalProximity.here => l10n.arrivalStopsAway(0),
+      ArrivalProximity.stopsAway =>
+        l10n.arrivalStopsAway(arrival.stopsRemaining!),
+      ArrivalProximity.unknown => null,
+    };
     final strip = fleet == null
         ? null
         : FleetBadgeStrip(
@@ -101,17 +113,14 @@ class ArrivalTile extends StatelessWidget {
             garageNo: arrival.garageNo,
             onTap: fleet!.hasInfo ? onOpenFleetCard : null,
           );
-    if (stops == null && strip == null) return null;
+    if (stopsText == null && strip == null) return null;
     return Row(
       children: [
-        if (stops != null)
+        if (stopsText != null)
           Flexible(
-            child: Text(
-              l10n.arrivalStopsAway(stops),
-              overflow: TextOverflow.ellipsis,
-            ),
+            child: Text(stopsText, overflow: TextOverflow.ellipsis),
           ),
-        if (stops != null && strip != null) const SizedBox(width: 10),
+        if (stopsText != null && strip != null) const SizedBox(width: 10),
         ?strip,
       ],
     );
