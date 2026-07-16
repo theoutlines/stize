@@ -14,7 +14,7 @@ void main() {
 
     test('a near arrival is "N min"', () {
       expect(etaLabel(l10n, 'en', 5), '5 min');
-      expect(etaLabel(l10n, 'en', 89), '89 min'); // just under the threshold
+      expect(etaLabel(l10n, 'en', 59), '59 min'); // just under the threshold
     });
 
     test('at/beyond ${kFarEtaMinutes} min it becomes a 24h clock arrival time', () {
@@ -23,10 +23,10 @@ void main() {
       expect(etaLabel(l10n, 'en', 158, now: now), '03:53'); // +158m
     });
 
-    test('the threshold is exactly 90 (89 → min, 90 → time)', () {
+    test('the threshold is exactly ${kFarEtaMinutes} (59 → min, 60 → time)', () {
       final now = DateTime(2026, 7, 17, 12, 0);
-      expect(etaLabel(l10n, 'en', 89, now: now), '89 min');
-      expect(etaLabel(l10n, 'en', 90, now: now), '13:30');
+      expect(etaLabel(l10n, 'en', 59, now: now), '59 min');
+      expect(etaLabel(l10n, 'en', 60, now: now), '13:00'); // 12:00 + 60m
     });
   });
 }
