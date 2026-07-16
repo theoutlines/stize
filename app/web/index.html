@@ -27,6 +27,17 @@
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
+  <!-- Browser & PWA chrome color: paint the mobile browser's status/URL bar
+       (Android Chrome) and the installed-PWA title bar with the app's own
+       surface — the sheet background — instead of the Flutter default blue
+       (#0175C2), which showed as a blue strip above the map. Two values because
+       the app follows the system theme (ThemeMode.system): light surface in
+       light mode, the dark sheet surface (#10140f) in dark. On iOS this is a
+       no-op — black-translucent (below) keeps the status bar transparent over
+       the full-bleed map. -->
+  <meta name="theme-color" content="#eef3f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#10140f" media="(prefers-color-scheme: dark)">
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -38,6 +49,37 @@
 
   <title>Stigla</title>
   <link rel="manifest" href="manifest.json">
+
+  <script>
+    // Keep `viewport-fit=cover` alive. Flutter Web's engine rewrites the viewport
+    // <meta> on startup with a fixed string that DROPS viewport-fit=cover
+    // (flutter/flutter#116508), which silently switches off the iOS safe-area
+    // insets — so the map stops rendering under the status bar / notch and the
+    // top controls' SafeArea collapses to a 0 top inset (menu + recenter buttons
+    // ride up under the notch). Re-assert cover whenever the engine strips it: a
+    // MutationObserver on <head> catches the overwrite whether the engine mutates
+    // the tag's content or swaps the node. The observer's own setAttribute is a
+    // no-op on the next pass (cover already present), so it can't loop. Disconnect
+    // a few seconds after the first frame, by when the engine has settled.
+    (function () {
+      function ensureCover() {
+        var vp = document.querySelector('meta[name=viewport]');
+        if (!vp) return;
+        var c = vp.getAttribute('content') || '';
+        if (c.indexOf('viewport-fit=cover') === -1) {
+          vp.setAttribute('content', c + (c ? ', ' : '') + 'viewport-fit=cover');
+        }
+      }
+      ensureCover();
+      var obs = new MutationObserver(ensureCover);
+      obs.observe(document.head, {
+        childList: true, subtree: true, attributes: true, attributeFilter: ['content'],
+      });
+      window.addEventListener('flutter-first-frame', function () {
+        setTimeout(function () { ensureCover(); obs.disconnect(); }, 3000);
+      });
+    })();
+  </script>
 
   <!-- MapLibre GL JS: the web rendering backend for the `maplibre` Flutter plugin. -->
   <script src="https://unpkg.com/maplibre-gl@^5.0/dist/maplibre-gl.js"></script>
