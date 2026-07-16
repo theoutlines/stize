@@ -40,4 +40,22 @@ void main() {
     expect(find.text('12 min'), findsOneWidget);
     expect(find.textContaining('·'), findsNothing);
   });
+
+  testWidgets('a far ETA (>= 90 min) renders as a clock time, not "N min" — '
+      'including the cell\'s secondary times', (tester) async {
+    await tester.pumpWidget(_wrap(const ScheduledGroupCell(
+      line: '29N',
+      vehicleType: VehicleType.bus,
+      etaMinutes: [26, 146], // 26 stays minutes; 146 becomes a clock time
+    )));
+
+    expect(find.text('26 min'), findsOneWidget); // near time unchanged
+    expect(find.textContaining('146 min'), findsNothing); // not an unreadable count
+    // The follow-up line reads "HH:mm" (24h clock arrival time).
+    expect(
+      find.byWidgetPredicate((w) =>
+          w is Text && (w.data ?? '').contains(RegExp(r'\d{2}:\d{2}'))),
+      findsOneWidget,
+    );
+  });
 }
