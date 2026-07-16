@@ -45,3 +45,6 @@ Thumbs.db
 # MapTiler key (client key, kept out of the repo; passed via --dart-define-from-file)
 app/dart_defines.json
 dart_defines.json
+
+# Local handoff snapshots for the product chat (not part of the repo)
+handoff/
