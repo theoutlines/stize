@@ -26,6 +26,33 @@ import 'live_position.dart';
 bool nearbyGroupHasLive(NearbyGroup group) => group.arrivals
     .any((e) => !e.isScheduled && !isPlaceholderGarage(e.garageNo));
 
+/// Whether a single Nearby departure is a genuinely live vehicle (not a
+/// schedule prediction, not a `P1..P999` placeholder) — the per-eta counterpart
+/// of [nearbyGroupHasLive], so a card can dim/flag each time individually.
+bool nearbyEtaIsLive(NearbyEta e) =>
+    !e.isScheduled && !isPlaceholderGarage(e.garageNo);
+
+/// The departures a Nearby card should actually show, after the same
+/// live/scheduled dedup the arrivals list uses: when the group has live
+/// departures, any non-live (scheduled/placeholder) eta at or before the
+/// group's latest live eta is dropped — it's the same physical vehicle already
+/// represented live, so "6 min / 24 min" can't leave you guessing which is
+/// which. A schedule-only group is returned unchanged (never emptied — that's
+/// what keeps a nearby stop from looking dead). Order is preserved (ascending).
+List<NearbyEta> visibleNearbyEtas(NearbyGroup group) {
+  final liveEtas =
+      group.arrivals.where(nearbyEtaIsLive).map((e) => e.etaMinutes);
+  if (liveEtas.isEmpty) return group.arrivals;
+  final horizon = liveEtas.reduce((a, b) => a > b ? a : b);
+  final kept = group.arrivals
+      .where((e) => nearbyEtaIsLive(e) || e.etaMinutes > horizon)
+      .toList();
+  // Defensive: never return empty for a group that has live departures.
+  return kept.isEmpty
+      ? group.arrivals.where(nearbyEtaIsLive).toList()
+      : kept;
+}
+
 Arrival? nearbyFollowTarget(NearbyGroup group, List<Arrival> boardArrivals) {
   NearbyEta? liveEta;
   for (final e in group.arrivals) {

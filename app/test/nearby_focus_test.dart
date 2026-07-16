@@ -87,4 +87,41 @@ void main() {
       expect(nearbyFollowTarget(group, board), isNull);
     });
   });
+
+  group('visibleNearbyEtas — same live/scheduled dedup as the arrivals list', () {
+    test('scheduled earlier than a live departure is dropped', () {
+      final group = _group(arrivals: [
+        _eta(scheduled: true, eta: 6), // ≤ live 9 → same vehicle, hidden
+        _eta(scheduled: false, garageNo: 'P70260', eta: 9),
+      ]);
+      final visible = visibleNearbyEtas(group);
+      expect(visible.map((e) => e.etaMinutes), [9]);
+    });
+
+    test('scheduled later than the live horizon is kept (and still flagged)', () {
+      final group = _group(arrivals: [
+        _eta(scheduled: false, garageNo: 'P70260', eta: 9),
+        _eta(scheduled: true, eta: 24), // > 9 → a real later plan, kept
+      ]);
+      final visible = visibleNearbyEtas(group);
+      expect(visible.map((e) => e.etaMinutes), [9, 24]);
+      expect(visible.map((e) => nearbyEtaIsLive(e)), [true, false]);
+    });
+
+    test('a placeholder departure at/under the live horizon is dropped too', () {
+      final group = _group(arrivals: [
+        _eta(scheduled: false, garageNo: 'P2', eta: 4), // placeholder ≤ 9 → hidden
+        _eta(scheduled: false, garageNo: 'P70260', eta: 9),
+      ]);
+      expect(visibleNearbyEtas(group).map((e) => e.etaMinutes), [9]);
+    });
+
+    test('a schedule-only group is returned unchanged (never emptied)', () {
+      final group = _group(arrivals: [
+        _eta(scheduled: true, eta: 6),
+        _eta(scheduled: true, eta: 24),
+      ]);
+      expect(visibleNearbyEtas(group).map((e) => e.etaMinutes), [6, 24]);
+    });
+  });
 }
