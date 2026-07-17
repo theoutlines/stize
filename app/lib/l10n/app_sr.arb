@@ -93,6 +93,11 @@
   "settingsThemeLight": "Svetla",
   "settingsThemeDark": "Tamna",
 
+  "settingsVehicles": "Prevoz na mapi",
+  "settingsVehiclesOnDemand": "Na zahtev",
+  "settingsVehiclesOnDemandHint": "Vozila se pojavljuju kada izaberete stanicu ili vozilo.",
+  "settingsVehiclesAll": "Sav prevoz",
+
   "aboutTitle": "O Stigla aplikaciji",
   "aboutRouteData": "Podaci o linijama: {date}",
   "aboutDisclaimer": "Nezvanična aplikacija. Nije povezana sa JKP Upravljanje javnim prevozom Beograd.",

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/fleet_matcher.dart';
+import '../../core/vehicle_map_mode.dart';
 import '../../data/api/stigla_api_client.dart';
 import '../../data/device/device_id_service.dart';
 import '../../data/local/gtfs_offline_cache.dart';
@@ -78,15 +79,24 @@ final coverageOnMainMapEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.coverageOnMainMap ?? false,
 );
 
-/// Whether the main map renders vehicles on demand (in context) instead of the
-/// background "aquarium" (remote `vehicles_on_demand` flag). Defaults to false
-/// until config resolves, so the map keeps its current behaviour if config is
-/// unreachable.
+/// Whether the on-demand map feature is enabled at all (remote
+/// `vehicles_on_demand` flag). Two levels: this flag gates the Settings item and
+/// acts as the killswitch; [vehicleMapModeProvider] resolves the actual mode.
+/// Defaults to false until config resolves, so the map keeps its current
+/// behaviour if config is unreachable.
 final vehiclesOnDemandEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.vehiclesOnDemand ?? false,
 );
 
-
+/// The map's vehicle mode: the user's Settings choice resolved against the flag
+/// (see [resolveVehicleMapMode]). Changing either re-resolves this and the map
+/// switches on the fly — no restart.
+final vehicleMapModeProvider = Provider<VehicleMapMode>(
+  (ref) => resolveVehicleMapMode(
+    flagOn: ref.watch(vehiclesOnDemandEnabledProvider),
+    choice: ref.watch(settingsControllerProvider).valueOrNull?.vehicleMapMode,
+  ),
+);
 
 
 /// GTFS bundle freshness metadata (feed version + data dates), for the
@@ -208,6 +218,13 @@ class SettingsController extends AsyncNotifier<AppSettings> {
   Future<void> setLocaleCode(String? code) async {
     await ref.read(settingsStoreProvider).saveLocaleCode(code);
     state = AsyncData((state.valueOrNull ?? AppSettings.defaults).copyWith(localeCode: () => code));
+  }
+
+  Future<void> setVehicleMapMode(VehicleMapMode? mode) async {
+    await ref.read(settingsStoreProvider).saveVehicleMapMode(mode);
+    state = AsyncData(
+      (state.valueOrNull ?? AppSettings.defaults).copyWith(vehicleMapMode: () => mode),
+    );
   }
 }
 

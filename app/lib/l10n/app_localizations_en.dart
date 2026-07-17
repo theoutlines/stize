@@ -274,6 +274,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsThemeDark => 'Dark';
 
   @override
+  String get settingsVehicles => 'Transport on the map';
+
+  @override
+  String get settingsVehiclesOnDemand => 'On demand';
+
+  @override
+  String get settingsVehiclesOnDemandHint =>
+      'Vehicles appear when you pick a stop or a vehicle.';
+
+  @override
+  String get settingsVehiclesAll => 'All transport';
+
+  @override
   String get aboutTitle => 'About Stigla';
 
   @override

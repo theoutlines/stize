@@ -450,6 +450,13 @@ class VehicleTrackAnimator {
   /// would be wrong.
   void clear() => _tracks.clear();
 
+  /// Keep only [keys], dropping the rest immediately (no grace period) — the
+  /// on-demand switch, where the background set must go at once but the context
+  /// the user is watching (a followed vehicle) has to survive it.
+  void retainOnly(Set<String> keys) {
+    _tracks.removeWhere((key, _) => !keys.contains(key));
+  }
+
   static bool _isSamePlace(ll.LatLng a, ll.LatLng b) =>
       (a.latitude - b.latitude).abs() < _stillEpsilon &&
       (a.longitude - b.longitude).abs() < _stillEpsilon;

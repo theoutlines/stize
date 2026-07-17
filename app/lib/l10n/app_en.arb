@@ -102,6 +102,12 @@
   "settingsThemeLight": "Light",
   "settingsThemeDark": "Dark",
 
+  "settingsVehicles": "Transport on the map",
+  "settingsVehiclesOnDemand": "On demand",
+  "settingsVehiclesOnDemandHint": "Vehicles appear when you pick a stop or a vehicle.",
+  "@settingsVehiclesOnDemandHint": {"description": "One-line explanation under the on-demand option in Settings"},
+  "settingsVehiclesAll": "All transport",
+
   "aboutTitle": "About Stigla",
   "aboutRouteData": "Route data: {date}",
   "@aboutRouteData": {"placeholders": {"date": {"type": "String"}}},
