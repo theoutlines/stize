@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stigla/domain/models/arrival.dart' show ServiceStatus;
 import 'package:latlong2/latlong.dart' as ll;
 
 import 'package:stigla/data/api/api_exceptions.dart';
@@ -37,13 +38,16 @@ class _FakeNearbyRepo implements NearbyArrivalsRepository {
   final Object result; // List<NearbyGroup> or an Exception to throw
 
   @override
-  Future<List<NearbyGroup>> nearby({
+  Future<NearbyResult> nearby({
     required double lat,
     required double lon,
     double radiusMeters = 500,
   }) async {
     if (result is Exception) throw result as Exception;
-    return result as List<NearbyGroup>;
+    return NearbyResult(
+      groups: result as List<NearbyGroup>,
+      serviceStatus: ServiceStatus.ok,
+    );
   }
 }
 
@@ -53,13 +57,13 @@ class _RecordingNearbyRepo implements NearbyArrivalsRepository {
   final List<({double lat, double lon})> calls = [];
 
   @override
-  Future<List<NearbyGroup>> nearby({
+  Future<NearbyResult> nearby({
     required double lat,
     required double lon,
     double radiusMeters = 500,
   }) async {
     calls.add((lat: lat, lon: lon));
-    return const [];
+    return const NearbyResult(groups: [], serviceStatus: ServiceStatus.ok);
   }
 }
 

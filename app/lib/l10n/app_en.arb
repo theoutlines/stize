@@ -84,6 +84,11 @@
   "serviceKilledTitle": "We're taking a short break",
   "serviceKilledSubtitle": "Back soon.",
 
+  "liveUnavailableBanner": "Live data temporarily unavailable — timetable",
+  "@liveUnavailableBanner": {
+    "description": "Thin banner above the arrivals list when the live board is down but the GTFS timetable still answers."
+  },
+
   "unknownStopTitle": "Can't find that stop",
   "unknownStopSubtitle": "It may have been renamed or removed from the schedule.",
 

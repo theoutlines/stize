@@ -234,6 +234,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get serviceKilledSubtitle => 'Скоро вернёмся.';
 
   @override
+  String get liveUnavailableBanner =>
+      'Живые данные временно недоступны — расписание';
+
+  @override
   String get unknownStopTitle => 'Не могу найти эту остановку';
 
   @override
