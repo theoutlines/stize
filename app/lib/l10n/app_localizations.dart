@@ -460,6 +460,12 @@ abstract class AppLocalizations {
   /// **'Back soon.'**
   String get serviceKilledSubtitle;
 
+  /// Thin banner above the arrivals list when the live board is down but the GTFS timetable still answers.
+  ///
+  /// In en, this message translates to:
+  /// **'Live data temporarily unavailable — timetable'**
+  String get liveUnavailableBanner;
+
   /// No description provided for @unknownStopTitle.
   ///
   /// In en, this message translates to:

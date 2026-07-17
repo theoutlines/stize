@@ -17,6 +17,7 @@ import '../providers/providers.dart';
 import 'arrival_tile.dart';
 import 'empty_state.dart';
 import 'fleet_model_card.dart';
+import 'live_unavailable_banner.dart';
 import 'route_alerts_strip.dart';
 import 'scheduled_group_tile.dart';
 
@@ -280,7 +281,13 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
     ArrivalsBoard board,
     List<String> stopLines,
   ) {
-    if (board.serviceStatus == ServiceStatus.unavailable) {
+    // "Live unavailable" is not "nothing to show". The timetable comes from our
+    // own GTFS bundle and needs no upstream, so an outage should read like a
+    // night board — the same dimmed scheduled rows — with a banner saying why,
+    // not a wall. The wall is only honest when there is genuinely nothing: no
+    // live, no schedule.
+    if (board.serviceStatus == ServiceStatus.unavailable &&
+        board.arrivals.isEmpty) {
       return EmptyState(
         icon: Icons.pause_circle_outline,
         title: l10n.serviceKilledTitle,
@@ -359,6 +366,8 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (board.serviceStatus == ServiceStatus.unavailable)
+          const LiveUnavailableBanner(),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
           child: Text(

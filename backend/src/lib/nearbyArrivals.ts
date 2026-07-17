@@ -3,6 +3,7 @@ import type {
   ArrivalDto,
   NearbyArrivalGroup,
   NearbyArrivalsResponse,
+  ServiceStatus,
   StopDto,
 } from "../types";
 import { getArrivals } from "./arrivals";
@@ -87,7 +88,7 @@ export type NearbySortMode = "eta" | "board";
 export interface StopBoard {
   stop: StopDto;
   distanceMeters: number;
-  board: { arrivals: ArrivalDto[]; updated_at: string };
+  board: { arrivals: ArrivalDto[]; updated_at: string; service_status: ServiceStatus };
 }
 
 // The direction a nearby row groups by: the direction the vehicle is actually
@@ -229,6 +230,16 @@ export async function getNearbyArrivals(
   return {
     groups,
     updated_at: latest || new Date().toISOString(),
-    service_status: "ok",
+    service_status: nearbyServiceStatus(present.map((b) => b.board.service_status)),
   };
+}
+
+// "unavailable" for the nearby list means the same as for a single stop: every
+// live board is down, so the groups are schedule-only and the client shows a
+// banner rather than a wall. A single live stop nearby means live data is
+// flowing — stays "ok". No boards at all is "ok" too: that's "nothing nearby",
+// the genuine empty state, not an outage.
+export function nearbyServiceStatus(statuses: ServiceStatus[]): ServiceStatus {
+  if (statuses.length === 0) return "ok";
+  return statuses.every((s) => s === "unavailable") ? "unavailable" : "ok";
 }
