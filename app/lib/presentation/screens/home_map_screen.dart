@@ -2567,6 +2567,23 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         'age ${age.toStringAsFixed(0)}s${timed.isStale(now) ? " HOLD" : ""}';
   }
 
+  // How stale the vehicles' REAL fixes are, against how stale their boards
+  // claim to be. `as_of` is the backend's last successful *fetch*, so re-fetching
+  // a board the upstream hasn't refreshed re-stamps it young while the fix
+  // underneath is minutes old — and the whole prediction hangs off that stamp.
+  // Measured live: two views of one bus 121 m apart from GPS fixes identical to
+  // the metre, purely because their as_of differed by 36 s.
+  //
+  // Read-only evidence for a later call on whether the backend should stop
+  // re-stamping. Low numbers → the root fix is painless; high → the feed itself
+  // is the conversation.
+  String _fixAgeDiagLine() {
+    final s = _vehAnimator.fixAgeStats();
+    if (s.total == 0) return 'VEH fixAge -';
+    return 'VEH fixAge >45s ${s.over45}/${s.total} '
+        '>90s ${s.over90}/${s.total} (real fix age, not as_of)';
+  }
+
   // How old each recent board was when it landed, and how many of those doomed
   // the marker to a freeze before the next one (> 15 s; see the field's note).
   String _boardAgeDiagLine() {
@@ -2652,6 +2669,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // ramping up then settling to the plan speed — never a spike then a crawl.
       _catchUpDiagLine(),
       _boardAgeDiagLine(),
+      _fixAgeDiagLine(),
     ];
 
     return SafeArea(

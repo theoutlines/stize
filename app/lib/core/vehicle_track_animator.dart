@@ -49,6 +49,16 @@ class VehicleTrack {
   double fromDist = 0;
   double toDist = 0;
 
+  /// When this vehicle's GPS fix last actually CHANGED, and the fix it was.
+  ///
+  /// Diagnostics only — nothing reads these to move a marker. `as_of` is the
+  /// backend's *last successful fetch*, not the moment the upstream observed the
+  /// vehicle, so re-fetching an unchanged board re-stamps it young. The whole
+  /// prediction hangs off that stamp, so these two fields measure the difference:
+  /// how old the fix REALLY is versus how old the app believes it is.
+  DateTime? fixChangedAt;
+  ll.LatLng? lastFix;
+
   /// Time-driven player over the backend's forward timing plan (timed-trajectory
   /// feature). When present it *supersedes* the from/to ease: the marker is
   /// driven forward by wall-clock along the plan instead of easing to the last
@@ -158,6 +168,40 @@ class VehicleTrackAnimator {
 
   static String keyFor(Arrival a) => a.garageNo ?? '${a.line}-${a.routeId}';
 
+  // Diagnostics: remember when this vehicle's fix last actually moved. A fix
+  // that repeats is a fix the upstream has not refreshed, however young `as_of`
+  // claims to be.
+  void _noteFix(VehicleTrack t, ll.LatLng fix, DateTime at) {
+    final last = t.lastFix;
+    if (last == null || !_isSamePlace(last, fix)) {
+      t.lastFix = fix;
+      t.fixChangedAt = at;
+    }
+  }
+
+  /// How stale the vehicles' *actual* fixes are, as opposed to how stale their
+  /// boards claim to be: `{total, over45, over90}` counted over live timed
+  /// tracks whose fix has been observed to change at least once.
+  ///
+  /// This is the evidence for whether `as_of` should stop being re-stamped on an
+  /// unchanged board (a backend change, deliberately deferred). If real fix ages
+  /// are small, the re-stamping costs us little and the root fix is painless; if
+  /// they are large, the app is predicting minutes forward from an anchor the
+  /// upstream abandoned — and that is a question about the feed, not our code.
+  ({int total, int over45, int over90}) fixAgeStats() {
+    final now = _clock();
+    var total = 0, over45 = 0, over90 = 0;
+    for (final t in _tracks.values) {
+      final changed = t.fixChangedAt;
+      if (t.timed == null || changed == null) continue;
+      total++;
+      final age = now.difference(changed).inSeconds;
+      if (age > 45) over45++;
+      if (age > 90) over90++;
+    }
+    return (total: total, over45: over45, over90: over90);
+  }
+
   /// Call when new arrivals data lands. [currentT] is the animation
   /// controller's value (0..1) *before* it gets reset, so an in-flight
   /// vehicle's current interpolated spot becomes its new starting point.
@@ -223,6 +267,7 @@ class VehicleTrackAnimator {
 
       existing.missingCount = 0;
       existing.source = s.source;
+      _noteFix(existing, s.position, at);
       // Timed-trajectory mode (feature on + a usable plan) supersedes the
       // conservative from/to ease: the marker plays the plan forward by time,
       // and a fresher plan corrects it without ever rewinding (see
@@ -341,6 +386,17 @@ class VehicleTrackAnimator {
       if (built == null) return false;
       track.timed = built;
     } else {
+      // Newest board wins. The map feeds this one store from two mouths — the
+      // viewport's /vehicles/nearby and a tapped stop's arrivals — and their SWR
+      // caches age independently, so the same vehicle can arrive with boards up
+      // to ~35 s apart. Both are honest, but the older one predicts from an older
+      // anchor: measured live, that put two views of the same bus 121 m apart
+      // (the raw fixes were identical to the metre; only `as_of` differed).
+      //
+      // Tracks are keyed by garage number, so both mouths already land on this
+      // one track and one marker — a vehicle can never be drawn twice. All this
+      // rule adds is that a stale board can't drag a fresher prediction backward.
+      if (s.asOf!.isBefore(existing.boardAsOf)) return true;
       // A failed re-projection leaves the previous plan playing rather than
       // dropping to a jump — timed mode stays active either way.
       existing.updatePlan(path: path, plan: plan, asOf: s.asOf!, now: at);
