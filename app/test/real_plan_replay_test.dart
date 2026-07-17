@@ -229,4 +229,82 @@ void main() {
         reason: 'a vehicle standing at a stop was fannable on $fannable of '
             '$dwellFrames dwell frames — it would be shoved aside and snap back');
   });
+
+  test('the marker only ever stands still at a stop', () {
+    // A standstill says "this vehicle is at a stop". Mid-block that is a lie —
+    // and a costlier one now that dwells are rendered, because a standstill is
+    // how the map says "stop".
+    //
+    // The marker is held back all the time: the upstream's ETAs are optimistic,
+    // so a 30 s prediction runs ahead of the real vehicle, and the next fix lands
+    // *behind* the marker. Forward-only forbids rewinding, so it waits. Freezing
+    // is the wrong way to show waiting. Replayed here with a vehicle running 20%
+    // slower than its plan and re-anchored on real fixes every 30 s — the case a
+    // single self-consistent plan can never surface, which is why this went out.
+    final wpDist = [for (final p in plan) path.project(ll.LatLng(p.lat, p.lon))];
+    final stations = wpDist.sublist(1); // waypoint 0 is the GPS
+    double offNearestStation(double d) => stations
+        .map((s) => (d - s).abs())
+        .reduce((a, b) => a < b ? a : b);
+
+    // Ground truth: the planned curve on a stretched clock.
+    double truthAt(double secs) {
+      final e = secs * 0.8;
+      for (var i = 0; i < plan.length - 1; i++) {
+        if (e <= plan[i + 1].etaSeconds) {
+          final a = plan[i].etaSeconds.toDouble();
+          final b = plan[i + 1].etaSeconds.toDouble();
+          return wpDist[i] + (wpDist[i + 1] - wpDist[i]) * (e - a) / (b - a);
+        }
+      }
+      return wpDist.last;
+    }
+
+    final t = TimedTrajectory.build(path: path, plan: plan, asOf: t0, now: t0)!;
+    var lastPlanAt = t0;
+    var standStart = -1.0, standAt = 0.0;
+    final offPinStands = <String>[];
+    for (var f = 0; f <= 150 * 60; f++) {
+      final now = t0.add(Duration(milliseconds: f * 1000 ~/ 60));
+      final secs = f / 60;
+      if (now.difference(lastPlanAt).inSeconds >= 30) {
+        lastPlanAt = now;
+        final asOf = now.subtract(const Duration(seconds: 2));
+        final truth = truthAt(asOf.difference(t0).inMilliseconds / 1000.0);
+        // The upstream re-anchors on the real fix but keeps its optimistic pace.
+        final ahead = <TrajectoryPoint>[];
+        var acc = 0.0;
+        for (var i = 0; i < plan.length - 1; i++) {
+          if (wpDist[i + 1] <= truth) continue;
+          acc += (plan[i + 1].etaSeconds - plan[i].etaSeconds).toDouble();
+          ahead.add(TrajectoryPoint(plan[i + 1].lat, plan[i + 1].lon, acc.round()));
+        }
+        if (ahead.length < 2) break;
+        final gps = path.pointAt(truth);
+        t.updatePlan(
+          path: path,
+          plan: [TrajectoryPoint(gps.latitude, gps.longitude, 0), ...ahead],
+          asOf: asOf,
+          now: now,
+        );
+      }
+      t.advance(now);
+      if (t.displaySpeed < 0.05) {
+        if (standStart < 0) {
+          standStart = secs;
+          standAt = t.displayDistance;
+        }
+      } else if (standStart >= 0) {
+        final off = offNearestStation(standAt);
+        if (secs - standStart >= 0.4 && off > 20.0) {
+          offPinStands.add('${(secs - standStart).toStringAsFixed(1)}s at '
+              '${off.toStringAsFixed(0)}m out (t=${standStart.toStringAsFixed(0)}s)');
+        }
+        standStart = -1;
+      }
+    }
+    expect(offPinStands, isEmpty,
+        reason: 'the marker stood still away from any stop: '
+            '${offPinStands.join("; ")}');
+  });
 }

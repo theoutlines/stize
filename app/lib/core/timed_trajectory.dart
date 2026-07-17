@@ -73,6 +73,19 @@ class TimedTrajectory {
   // at exactly zero, so nothing sits near this threshold in practice.
   static const double _minMotionSpeed = 0.3; // m/s
 
+  // How close to a station the marker must be for a standstill to be truthful,
+  // and how much of the plan's speed it keeps when it must wait somewhere else.
+  //
+  // The marker can be held back anywhere: a fresh fix routinely lands *behind*
+  // where a 30 s prediction had drawn it (the upstream's ETAs are optimistic, so
+  // the plan runs ahead of the real vehicle), and forward-only forbids rewinding.
+  // Measured on a real line-5 plan whose vehicle runs 20% slow: the marker froze
+  // for 6.8 s at 42 m from the nearest stop, and 27 s at 35% slow. Pre-existing —
+  // main does the same, and worse (it also froze 50–88 m out on an *on-plan*
+  // vehicle) — but harmless until stop dwells made a standstill mean something.
+  static const double _stationRadiusMeters = 20.0;
+  static const double _crawlFraction = 0.25;
+
   // ---------------------------------------------------------------------------
   // Stop dwell — the shape of motion *between* two plan waypoints.
   //
@@ -318,10 +331,28 @@ class TimedTrajectory {
     // plan speed, measured, with the gap already at ~1 mm). So take whichever
     // term is gentler — proportional close in (finite gain, ~0.5 s constant),
     // the sqrt braking profile further out where it's the one that matters.
+    //
+    // Behind us, the pull-back may cancel the plan speed outright and stop the
+    // marker dead — but only where a standstill is *true*. A stopped marker says
+    // "this vehicle is at a stop", and mid-block that is a lie, now more than
+    // ever: with stop dwells rendered, a standstill is how the map says "stop".
+    // So off-station the pull-back is floored short of a standstill and the
+    // marker crawls instead. It still converges — the plan closes the gap at its
+    // own speed while the marker gives up [_crawlFraction] of it — and "slowing
+    // down" is an honest picture of what is happening: the fresh fix put the
+    // vehicle behind where we had drawn it, and forward-only forbids rewinding,
+    // so the marker waits for the plan to catch up. Waiting is right; freezing
+    // mid-block is the wrong way to show it.
+    //
+    // The floor never invents motion: it scales with planVel, so a plan that is
+    // itself stopped (a dwell, a stale board) still holds the marker still.
+    final holdFloor = gap < 0 && !_nearStation(_dispDist)
+        ? -(1 - _crawlFraction) * planVel
+        : -planVel;
     final closing = gap > 0
         ? math.min(_maxCatchUpSpeed,
             math.min(math.sqrt(2 * _maxCatchUpAccel * gap), _catchUpGain * gap))
-        : math.max(_catchUpGain * gap, -planVel);
+        : math.max(_catchUpGain * gap, holdFloor);
     double desiredVel = planVel + closing;
     // Never *command* a speed that would fly past the target in one step. Since
     // `target` is the end-of-step position, that ceiling is exactly gap/dt — and
@@ -409,6 +440,16 @@ class TimedTrajectory {
     final byDistance = _waypoints.first.dist + _maxAheadMeters;
     final end = endDistance;
     return byDistance < end ? byDistance : end;
+  }
+
+  // Whether [dist] is close enough to one of the plan's stations for a
+  // standstill there to be honest. Waypoint 0 is the vehicle's GPS, not a
+  // station, so it doesn't count.
+  bool _nearStation(double dist) {
+    for (var i = 1; i < _waypoints.length; i++) {
+      if ((dist - _waypoints[i].dist).abs() <= _stationRadiusMeters) return true;
+    }
+    return false;
   }
 
   ll.LatLng get position => _path.pointAt(_dispDist);
