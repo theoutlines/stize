@@ -75,6 +75,8 @@
   "serviceKilledTitle": "Pravimo kratku pauzu",
   "serviceKilledSubtitle": "Vraćamo se uskoro.",
 
+  "liveUnavailableBanner": "Podaci uživo trenutno nisu dostupni — red vožnje",
+
   "unknownStopTitle": "Ne mogu da pronađem to stajalište",
   "unknownStopSubtitle": "Možda je preimenovano ili uklonjeno iz reda vožnje.",
 

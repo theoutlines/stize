@@ -19,6 +19,7 @@ import '../providers/providers.dart';
 import '../widgets/arrival_tile.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/fleet_model_card.dart';
+import '../widgets/live_unavailable_banner.dart';
 import '../widgets/live_vehicles_map.dart';
 import '../widgets/route_alerts_strip.dart';
 import '../widgets/scheduled_group_tile.dart';
@@ -132,7 +133,11 @@ class _StopScreenState extends ConsumerState<StopScreen> {
   }
 
   Widget _boardBody(BuildContext context, AppLocalizations l10n, ArrivalsBoard board, Stop? stopLocation) {
-    if (board.serviceStatus == ServiceStatus.unavailable) {
+    // See stop_sheet.dart: an outage still has the timetable to show, so the
+    // wall is only for a board with genuinely nothing on it. (Both shutters
+    // carry their own copy of this build — keep them in step.)
+    if (board.serviceStatus == ServiceStatus.unavailable &&
+        board.arrivals.isEmpty) {
       return EmptyState(
         icon: Icons.pause_circle_outline,
         title: l10n.serviceKilledTitle,
@@ -210,6 +215,8 @@ class _StopScreenState extends ConsumerState<StopScreen> {
 
     return Column(
       children: [
+        if (board.serviceStatus == ServiceStatus.unavailable)
+          const LiveUnavailableBanner(),
         if (stopLocation != null && mapVehicles.isNotEmpty)
           SizedBox(
             height: 220,

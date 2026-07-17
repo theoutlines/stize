@@ -1,3 +1,4 @@
+import '../../domain/models/arrival.dart' show ServiceStatus;
 import '../../domain/models/nearby_arrival.dart';
 import '../../domain/repositories/nearby_arrivals_repository.dart';
 import '../api/stigla_api_client.dart';
@@ -8,7 +9,7 @@ class NearbyArrivalsRepositoryImpl implements NearbyArrivalsRepository {
   final StiglaApiClient _client;
 
   @override
-  Future<List<NearbyGroup>> nearby({
+  Future<NearbyResult> nearby({
     required double lat,
     required double lon,
     double radiusMeters = 500,
@@ -20,8 +21,12 @@ class NearbyArrivalsRepositoryImpl implements NearbyArrivalsRepository {
       'lon': lon.toString(),
       'radius': radiusMeters.toString(),
     });
-    return (json['groups'] as List<dynamic>)
+    final groups = (json['groups'] as List<dynamic>)
         .map((e) => NearbyGroup.fromJson(e as Map<String, dynamic>))
         .toList();
+    return NearbyResult(
+      groups: groups,
+      serviceStatus: ServiceStatus.fromApi(json['service_status'] as String? ?? 'ok'),
+    );
   }
 }

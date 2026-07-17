@@ -34,23 +34,40 @@ export async function getArrivals(
   const provider = new BgnaplataTransitProvider(env);
   const cacheKeyUrl = `https://cache.stigla.internal/arrivals/${encodeURIComponent(stopId)}`;
 
-  const { data: rawArrivals, updatedAt } = await getWithStaleWhileRevalidate<RawArrival[]>(
-    cacheKeyUrl,
-    ARRIVALS_TTL_SECONDS,
-    ctx,
-    // Wrap the fresh upstream fetch so analytics logs exactly what we just
-    // pulled — this runs only on a real refresh (not cache hits), so it adds no
-    // extra load on the source. Fire-and-forget; never blocks the response.
-    () =>
-      provider.fetchArrivals(stopId).then((raw) => {
-        ctx.waitUntil(
-          logObservations(env, ctx, stopId, raw).catch((e) =>
-            console.error("analytics log failed", e),
-          ),
-        );
-        return raw;
-      }),
-  );
+  // A dead live board must not take the timetable down with it. The schedule
+  // fallback lives below, and it is served entirely from our own GTFS bundle —
+  // it does not need the upstream at all. Letting this throw skipped it, so an
+  // upstream we couldn't parse turned every stop into an empty board and the app
+  // into a "we're taking a short break" wall, while the timetable it already had
+  // on hand would have answered the question. Degrade to schedule-only, exactly
+  // like a night board, and say so via `service_status`.
+  let rawArrivals: RawArrival[] = [];
+  let updatedAt = new Date().toISOString();
+  let liveOk = true;
+  try {
+    const live = await getWithStaleWhileRevalidate<RawArrival[]>(
+      cacheKeyUrl,
+      ARRIVALS_TTL_SECONDS,
+      ctx,
+      // Wrap the fresh upstream fetch so analytics logs exactly what we just
+      // pulled — this runs only on a real refresh (not cache hits), so it adds no
+      // extra load on the source. Fire-and-forget; never blocks the response.
+      () =>
+        provider.fetchArrivals(stopId).then((raw) => {
+          ctx.waitUntil(
+            logObservations(env, ctx, stopId, raw).catch((e) =>
+              console.error("analytics log failed", e),
+            ),
+          );
+          return raw;
+        }),
+    );
+    rawArrivals = live.data;
+    updatedAt = live.updatedAt;
+  } catch (e) {
+    console.error("live board unavailable; serving schedule only", e);
+    liveOk = false;
+  }
 
   const arrivals: ArrivalDto[] = [];
   for (const raw of rawArrivals) {
@@ -148,6 +165,8 @@ export async function getArrivals(
     stop_name: stop.name,
     updated_at: updatedAt,
     arrivals,
-    service_status: "ok",
+    // "unavailable" now means "no LIVE data" — not "no data". The rows may still
+    // be a full timetable; the client says so with a banner rather than a wall.
+    service_status: liveOk ? "ok" : "unavailable",
   };
 }
