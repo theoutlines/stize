@@ -228,6 +228,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get serviceKilledSubtitle => 'Back soon.';
 
   @override
+  String get liveUnavailableBanner =>
+      'Live data temporarily unavailable — timetable';
+
+  @override
   String get unknownStopTitle => 'Can\'t find that stop';
 
   @override
