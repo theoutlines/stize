@@ -43,6 +43,7 @@ import '../widgets/favorites_carousel.dart';
 import '../widgets/nearby_sheet.dart';
 import '../widgets/stop_sheet.dart';
 import '../widgets/vehicle_icon.dart';
+import '../widgets/vehicle_mode_toggle.dart';
 import 'map_screen_args.dart';
 
 const _belgradeCenter = Geographic(lon: 20.4612, lat: 44.8125);
@@ -2801,6 +2802,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             ),
             Column(
               children: [
+                // Hides itself — gap and all — while the flag is off, so the
+                // killswitch leaves this stack exactly as production has it.
+                const VehicleModeToggle(),
                 _roundButton(
                   theme,
                   icon: Icons.my_location,

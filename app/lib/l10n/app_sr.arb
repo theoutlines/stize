@@ -95,6 +95,8 @@
 
   "vehicleModeOnDemand": "Na zahtev",
   "vehicleModeAll": "Sav prevoz",
+  "vehicleModeTooltip": "Prevoz na mapi",
+  "vehicleModeSwitched": "Prevoz na mapi: {mode}",
 
   "aboutTitle": "O Stigla aplikaciji",
   "aboutRouteData": "Podaci o linijama: {date}",

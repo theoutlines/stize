@@ -280,6 +280,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleModeAll => 'All transport';
 
   @override
+  String get vehicleModeTooltip => 'Transport on the map';
+
+  @override
+  String vehicleModeSwitched(String mode) {
+    return 'Transport on the map: $mode';
+  }
+
+  @override
   String get aboutTitle => 'About Stigla';
 
   @override

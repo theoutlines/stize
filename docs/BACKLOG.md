@@ -52,16 +52,20 @@ that can't be collected retroactively, we start accumulating before we need it.
 
 ## In progress / behind a flag
 
-- 🚧 **Transport on the map — a setting** (`feature/vehicle-mode-setting`, isolated
-  preview pair, merge owner-gated) — on-demand becomes the **new default**, not an
-  experiment: Settings gains *Transport on the map* with **On demand** (default) /
-  **All transport** (today's aquarium), persisted locally and applied on the fly
-  (no restart). `vehicles_on_demand` changes meaning — from a rollout switch to a
-  **permanent two-level gate**: OFF hides the setting and forces the aquarium (the
-  killswitch, = today's prod), ON offers the choice with on-demand as the default;
-  the resolution is `app/lib/core/vehicle_map_mode.dart`, registry updated. Also
+- 🚧 **Transport on the map — a map toggle** (`feature/vehicle-mode-setting`,
+  isolated preview pair, merge owner-gated) — on-demand becomes the **new
+  default**, not an experiment. The single control is a **quick toggle on the map**
+  (layers button in the right control stack, tap → switch + a toast naming the
+  mode; owner picked it from two gallery concepts) — deliberately **no Settings
+  item**. The choice persists locally and applies on the fly, no restart.
+  `vehicles_on_demand` changes meaning — from a rollout switch to a **permanent
+  two-level gate**: OFF hides the toggle and forces the aquarium (the killswitch,
+  = today's prod), ON offers the choice with on-demand as the default; the
+  resolution is `app/lib/core/vehicle_map_mode.dart`, registry updated. Also
   pushes the aquarium's `/vehicles/nearby` fan-out — the path that blows the
-  Cloudflare subrequest limit on a cold cache — into opt-in. Report
+  Cloudflare subrequest limit on a cold cache — into opt-in. Same branch, by owner
+  decision: **Ideas hidden** from the drawer (`kIdeasNavVisible`, code kept) and
+  the language list is **Serbian-first**. Report
   `docs/reports/2026-07-17-vehicle-mode-setting.md`.
 
 - 🚧 **Arrivals dedup — live/scheduled + scheduled roll-up** (`feature/arrivals-dedup`,

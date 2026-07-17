@@ -286,6 +286,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get vehicleModeAll => 'Весь транспорт';
 
   @override
+  String get vehicleModeTooltip => 'Транспорт на карте';
+
+  @override
+  String vehicleModeSwitched(String mode) {
+    return 'Транспорт на карте: $mode';
+  }
+
+  @override
   String get aboutTitle => 'О Stigla';
 
   @override

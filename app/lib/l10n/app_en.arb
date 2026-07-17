@@ -106,6 +106,10 @@
   "@vehicleModeOnDemand": {"description": "Map vehicle mode: vehicles shown only for a picked stop/vehicle. The map's quick toggle labels this mode."},
   "vehicleModeAll": "All transport",
   "@vehicleModeAll": {"description": "Map vehicle mode: every vehicle in the viewport (the background \"aquarium\")"},
+  "vehicleModeTooltip": "Transport on the map",
+  "@vehicleModeTooltip": {"description": "Tooltip of the map's vehicle-mode toggle button"},
+  "vehicleModeSwitched": "Transport on the map: {mode}",
+  "@vehicleModeSwitched": {"description": "Toast shown right after the map's toggle flips the mode; {mode} is vehicleModeOnDemand or vehicleModeAll", "placeholders": {"mode": {"type": "String"}}},
 
   "aboutTitle": "About Stigla",
   "aboutRouteData": "Route data: {date}",
