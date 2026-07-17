@@ -93,6 +93,11 @@
   "settingsThemeLight": "Светлая",
   "settingsThemeDark": "Тёмная",
 
+  "vehicleModeOnDemand": "По запросу",
+  "vehicleModeAll": "Весь транспорт",
+  "vehicleModeTooltip": "Транспорт на карте",
+  "vehicleModeSwitched": "Транспорт на карте: {mode}",
+
   "aboutTitle": "О Stigla",
   "aboutRouteData": "Данные маршрутов: {date}",
   "aboutDisclaimer": "Неофициальное приложение. Не связано с JKP Upravljanje javnim prevozom Beograd.",

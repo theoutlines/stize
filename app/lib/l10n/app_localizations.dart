@@ -550,6 +550,30 @@ abstract class AppLocalizations {
   /// **'Dark'**
   String get settingsThemeDark;
 
+  /// Map vehicle mode: vehicles shown only for a picked stop/vehicle. The map's quick toggle labels this mode.
+  ///
+  /// In en, this message translates to:
+  /// **'On demand'**
+  String get vehicleModeOnDemand;
+
+  /// Map vehicle mode: every vehicle in the viewport (the background "aquarium")
+  ///
+  /// In en, this message translates to:
+  /// **'All transport'**
+  String get vehicleModeAll;
+
+  /// Tooltip of the map's vehicle-mode toggle button
+  ///
+  /// In en, this message translates to:
+  /// **'Transport on the map'**
+  String get vehicleModeTooltip;
+
+  /// Toast shown right after the map's toggle flips the mode; {mode} is vehicleModeOnDemand or vehicleModeAll
+  ///
+  /// In en, this message translates to:
+  /// **'Transport on the map: {mode}'**
+  String vehicleModeSwitched(String mode);
+
   /// No description provided for @aboutTitle.
   ///
   /// In en, this message translates to:

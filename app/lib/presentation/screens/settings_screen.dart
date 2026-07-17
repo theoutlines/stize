@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 
-const _localeOptions = <String?>[null, 'en', 'ru', 'sr'];
+// Serbian first — the app's home city is Belgrade. `null` (follow the system)
+// stays on top: it's the default, not a language.
+const _localeOptions = <String?>[null, 'sr', 'en', 'ru'];
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -50,6 +52,9 @@ class SettingsScreen extends ConsumerWidget {
               groupValue: settings.themeMode,
               onChanged: (value) => controller.setThemeMode(value!),
             ),
+            // No vehicle-mode item here by design: the map's quick toggle is the
+            // single control for it (the mode itself still lives in
+            // core/vehicle_map_mode.dart and persists via SettingsStore).
           ],
         ),
       ),
