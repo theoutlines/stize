@@ -91,6 +91,57 @@ that can't be collected retroactively, we start accumulating before we need it.
   Contract in git (`SCHEDULE_FALLBACK_CONTRACT.md`). Report:
   `docs/reports/2026-07-16-arrivals-dedup.md`.
 
+- 🚧 **Marker motion — two mergeable layers** (`feature/stop-dwell-animation`,
+  isolated preview pair, merge owner-gated, **merge in two parts** so each
+  layer's prod effect is separately revertable).
+
+  **Part 1 — the catch-up loop** (`fix(app): markers saw, freeze mid-block, and
+  shove each other apart`). A **production** bug, valuable on its own and
+  independent of the dwell. `_epsilonMeters` (0.5 m) was used as if the marker's
+  distance from its target measured motion. It doesn't: `target` is read at the
+  end of the step, so a marker tracking perfectly sits one frame behind it —
+  gap settles at planVel·dt (~22 mm at 60 fps). Two consequences, one root:
+  (a) within the epsilon the loop commanded a **dead stop**, so it braked every
+  frame → a limit cycle, gap pinned at 0.5 m, speed sawing ~0..2× the plan, and
+  on a slow segment every trough hits zero — **this is what "markers freeze
+  mid-block" always was**, not a data desync; (b) `hasForwardMotion` tested the
+  same gap, so a moving vehicle reported **stationary on every frame** (0/2101
+  measured) and the spiderfy gate fanned it apart. `c5f4547` built pass-through
+  spiderfy on that predicate meaning "the plan still has time to run";
+  `8dab5e9` re-pointed it at the instantaneous gap a day later. One predicate,
+  two meanings; the limit cycle then flickered it true often enough to keep the
+  ticker alive and the fan shoving. Fixing the loop alone would have pinned the
+  gap at 22 mm and frozen the whole map — the two are one change. Measured by
+  replaying a **real** line-5 plan on its real GTFS shape at 60 fps:
+  0.00–4.68 m/s and 89 near-zero frames → 1.289–1.289, gap 0.000, 2101/2101
+  "moving".
+
+  **Part 2 — the stop dwell** (`feat(app): pause at stops, …`). Pure realism now
+  that the buffer role is gone: the marker brakes into a stop, stands ~3 s and
+  pulls away. Plan waypoints already **are** the stops (verified against GTFS:
+  waypoints 1..20 sit at 0.0 m from their pins) and their ETAs already price in
+  dwelling, so the time is redistributed, not invented — waypoint position *and*
+  time stay exact, only the curve between them is reshaped, so total plan time
+  cannot drift by construction. Honesty contract untouched; backend untouched;
+  no flag. Degrades to the old glide where a pause can't be plausible (accel
+  ≤2.5 m/s², cruise ≤60 km/h, and no braking into a stop the next segment leaves
+  at speed — all three still measured to earn their place; a dwell-fraction cap
+  didn't and was dropped). Also completes the spiderfy contract: a **dwelling**
+  vehicle is not fanned either (it's stillness that resolves itself in 3 s), and
+  the fan's overlap threshold is now hysteretic (form at 24 px, collapse at
+  40 px). Report: `docs/reports/2026-07-17-stop-dwell-animation.md`.
+
+- ⏭️ **Elastic stop dwell (desync buffer)** — *withdrawn; do not start.* Idea was
+  to stretch a pause at a stop when the board nears the 45 s gate. Two things
+  killed it: the freeze it was meant to buffer turned out to be the catch-up
+  limit cycle above, not data; and the read-out that would set its threshold says
+  there is nothing to buffer — only a board landing older than **15 s** dooms a
+  marker to freeze, and boards land **0–3 s** old (owner's own capture:
+  `freeze-bound 0/1`). Reopen only with samples taken *while a freeze is actually
+  observed*. (Caution: the first read-out was itself wrong — counting the
+  provider's re-emitted previous board reported 263 s of fake staleness; fixed.
+  Backgrounded tabs also pause polling.)
+
 - ✅ **Analytics insert hardening** (`fix/analytics-sql-variables`, влито в `main`
   2026-07-16) — размер чанка вставки в analytics-D1 выводится из числа колонок под
   документированный лимит D1 (100 bind-параметров), одной утилитой для всех путей
