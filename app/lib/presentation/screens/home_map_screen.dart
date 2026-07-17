@@ -2619,6 +2619,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         'age ${age.toStringAsFixed(0)}s${timed.isStale(now) ? " HOLD" : ""}';
   }
 
+  // The pause gate's decision for the followed vehicle's next few stops, so the
+  // owner sees on screen WHY a pause fires (or doesn't): `+42m` ahead, projection
+  // moved off its true spot by `off8m`, on/off-shape, and DWELL vs glide.
+  String _dwellDiagLine() {
+    final key = _selectedVehicleKey;
+    final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
+    if (timed == null) return 'VEH dwell -';
+    final stops = timed.upcomingStopDiag();
+    if (stops.isEmpty) return 'VEH dwell (no stops ahead)';
+    final parts = stops.map((s) =>
+        '+${s.aheadM.toStringAsFixed(0)}m off${s.offShapeM.toStringAsFixed(0)}m '
+        '${s.onShape ? "on" : "OFF"}→${s.dwells ? "DWELL" : "glide"}');
+    return 'VEH dwell ${parts.join("  ")}';
+  }
+
   // How stale the vehicles' REAL fixes are, against how stale their boards
   // claim to be. `as_of` is the backend's last successful *fetch*, so re-fetching
   // a board the upstream hasn't refreshed re-stamps it young while the fix
@@ -2720,6 +2735,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // to close it (vel). A smooth catch-up shows the gap easing to ~0 with vel
       // ramping up then settling to the plan speed — never a spike then a crawl.
       _catchUpDiagLine(),
+      _dwellDiagLine(),
       _boardAgeDiagLine(),
       _fixAgeDiagLine(),
     ];
