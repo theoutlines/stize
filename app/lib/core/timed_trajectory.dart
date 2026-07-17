@@ -553,9 +553,14 @@ class TimedTrajectory {
   /// frames" is intact — a stale board and a spent plan both still park it.
   bool isPlaying(DateTime now) {
     if (_dispDist >= _horizonDist - _epsilonMeters) return false;
-    final elapsed = _targetElapsed(now);
-    if (elapsed <= 0) return false; // stale board: settled at the fix
-    return elapsed < _waypoints.last.etaSeconds; // plan not yet spent
+    // Gate on staleness, NOT on `elapsed <= 0`. `_targetElapsed` returns 0 in
+    // TWO cases: a stale board (held at the fix — correctly not playing) AND a
+    // *fresh* board whose age is ~0 (it just landed). Conflating them froze the
+    // marker for the frame a fresh board arrived — the ticker parked
+    // (hasPendingMotion=false) and it sat mid-block until the next event, even
+    // though its brand-new plan was ready to carry it. Ask staleness directly.
+    if (isStale(now)) return false; // stale board: held at the fix
+    return _targetElapsed(now) < _waypoints.last.etaSeconds; // plan not spent
   }
 
   // Projects each plan point onto [path], keeping only strictly-forward,
