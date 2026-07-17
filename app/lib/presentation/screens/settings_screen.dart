@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/vehicle_map_mode.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 
-const _localeOptions = <String?>[null, 'en', 'ru', 'sr'];
+// Serbian first — the app's home city is Belgrade. `null` (follow the system)
+// stays on top: it's the default, not a language.
+const _localeOptions = <String?>[null, 'sr', 'en', 'ru'];
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -15,10 +16,6 @@ class SettingsScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final settingsAsync = ref.watch(settingsControllerProvider);
     final controller = ref.read(settingsControllerProvider.notifier);
-    // The `vehicles_on_demand` killswitch: with the flag off the choice isn't
-    // offered at all and the map stays the aquarium (resolveVehicleMapMode).
-    final vehicleModeOffered = ref.watch(vehiclesOnDemandEnabledProvider);
-    final vehicleMode = ref.watch(vehicleMapModeProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settingsTitle)),
@@ -55,25 +52,9 @@ class SettingsScreen extends ConsumerWidget {
               groupValue: settings.themeMode,
               onChanged: (value) => controller.setThemeMode(value!),
             ),
-            if (vehicleModeOffered) ...[
-              const Divider(),
-              ListTile(title: Text(l10n.settingsVehicles)),
-              RadioListTile<VehicleMapMode>.adaptive(
-                title: Text(l10n.settingsVehiclesOnDemand),
-                subtitle: Text(l10n.settingsVehiclesOnDemandHint),
-                value: VehicleMapMode.onDemand,
-                // The resolved mode, not the raw stored choice: until the user
-                // picks, the default must show as selected rather than neither.
-                groupValue: vehicleMode,
-                onChanged: (value) => controller.setVehicleMapMode(value),
-              ),
-              RadioListTile<VehicleMapMode>.adaptive(
-                title: Text(l10n.settingsVehiclesAll),
-                value: VehicleMapMode.aquarium,
-                groupValue: vehicleMode,
-                onChanged: (value) => controller.setVehicleMapMode(value),
-              ),
-            ],
+            // No vehicle-mode item here by design: the map's quick toggle is the
+            // single control for it (the mode itself still lives in
+            // core/vehicle_map_mode.dart and persists via SettingsStore).
           ],
         ),
       ),

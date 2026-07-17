@@ -7,6 +7,11 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../screens/my_stops_screen.dart';
 
+/// Whether the Ideas section is offered in the drawer. Off by owner decision —
+/// the screen, its route and its backend stay in place (the drawer is the only
+/// way in, so this alone hides it), ready to come back by flipping this.
+const kIdeasNavVisible = false;
+
 /// The app's primary navigation, moved from a bottom tab bar into a left
 /// drawer. Nav items sit at the top (and scroll if the list ever grows); the
 /// About block stays pinned to the bottom via an [Expanded] spacer.
@@ -64,13 +69,14 @@ class AppDrawer extends StatelessWidget {
                     selected: currentIndex == 0,
                     onTap: () => select(0),
                   ),
-                  _NavTile(
-                    icon: Icons.lightbulb_outline,
-                    selectedIcon: Icons.lightbulb,
-                    label: l10n.navIdeas,
-                    selected: currentIndex == 1,
-                    onTap: () => select(1),
-                  ),
+                  if (kIdeasNavVisible)
+                    _NavTile(
+                      icon: Icons.lightbulb_outline,
+                      selectedIcon: Icons.lightbulb,
+                      label: l10n.navIdeas,
+                      selected: currentIndex == 1,
+                      onTap: () => select(1),
+                    ),
                   // Coverage map (infographic) — shown only when the remote
                   // `coverage_map_show` flag is on. It's the third IndexedStack
                   // section (index 2), which only exists while the flag is on.

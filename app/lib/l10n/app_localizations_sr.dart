@@ -276,17 +276,10 @@ class AppLocalizationsSr extends AppLocalizations {
   String get settingsThemeDark => 'Tamna';
 
   @override
-  String get settingsVehicles => 'Prevoz na mapi';
+  String get vehicleModeOnDemand => 'Na zahtev';
 
   @override
-  String get settingsVehiclesOnDemand => 'Na zahtev';
-
-  @override
-  String get settingsVehiclesOnDemandHint =>
-      'Vozila se pojavljuju kada izaberete stanicu ili vozilo.';
-
-  @override
-  String get settingsVehiclesAll => 'Sav prevoz';
+  String get vehicleModeAll => 'Sav prevoz';
 
   @override
   String get aboutTitle => 'O Stigla aplikaciji';

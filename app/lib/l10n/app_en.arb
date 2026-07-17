@@ -102,11 +102,10 @@
   "settingsThemeLight": "Light",
   "settingsThemeDark": "Dark",
 
-  "settingsVehicles": "Transport on the map",
-  "settingsVehiclesOnDemand": "On demand",
-  "settingsVehiclesOnDemandHint": "Vehicles appear when you pick a stop or a vehicle.",
-  "@settingsVehiclesOnDemandHint": {"description": "One-line explanation under the on-demand option in Settings"},
-  "settingsVehiclesAll": "All transport",
+  "vehicleModeOnDemand": "On demand",
+  "@vehicleModeOnDemand": {"description": "Map vehicle mode: vehicles shown only for a picked stop/vehicle. The map's quick toggle labels this mode."},
+  "vehicleModeAll": "All transport",
+  "@vehicleModeAll": {"description": "Map vehicle mode: every vehicle in the viewport (the background \"aquarium\")"},
 
   "aboutTitle": "About Stigla",
   "aboutRouteData": "Route data: {date}",

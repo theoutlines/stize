@@ -280,17 +280,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsThemeDark => 'Тёмная';
 
   @override
-  String get settingsVehicles => 'Транспорт на карте';
+  String get vehicleModeOnDemand => 'По запросу';
 
   @override
-  String get settingsVehiclesOnDemand => 'По запросу';
-
-  @override
-  String get settingsVehiclesOnDemandHint =>
-      'Транспорт появляется при выборе остановки или ТС.';
-
-  @override
-  String get settingsVehiclesAll => 'Весь транспорт';
+  String get vehicleModeAll => 'Весь транспорт';
 
   @override
   String get aboutTitle => 'О Stigla';

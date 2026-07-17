@@ -550,29 +550,17 @@ abstract class AppLocalizations {
   /// **'Dark'**
   String get settingsThemeDark;
 
-  /// No description provided for @settingsVehicles.
-  ///
-  /// In en, this message translates to:
-  /// **'Transport on the map'**
-  String get settingsVehicles;
-
-  /// No description provided for @settingsVehiclesOnDemand.
+  /// Map vehicle mode: vehicles shown only for a picked stop/vehicle. The map's quick toggle labels this mode.
   ///
   /// In en, this message translates to:
   /// **'On demand'**
-  String get settingsVehiclesOnDemand;
+  String get vehicleModeOnDemand;
 
-  /// One-line explanation under the on-demand option in Settings
-  ///
-  /// In en, this message translates to:
-  /// **'Vehicles appear when you pick a stop or a vehicle.'**
-  String get settingsVehiclesOnDemandHint;
-
-  /// No description provided for @settingsVehiclesAll.
+  /// Map vehicle mode: every vehicle in the viewport (the background "aquarium")
   ///
   /// In en, this message translates to:
   /// **'All transport'**
-  String get settingsVehiclesAll;
+  String get vehicleModeAll;
 
   /// No description provided for @aboutTitle.
   ///

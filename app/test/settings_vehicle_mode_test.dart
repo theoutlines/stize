@@ -30,9 +30,8 @@ Widget _wrap({required bool flagOn}) => ProviderScope(
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  /// The settings list is longer than the default 800×600 test window, and a
-  /// ListView doesn't build what's off-screen — give it room so the section
-  /// under Theme is actually laid out.
+  /// The settings list can outgrow the default 800×600 test window, and a
+  /// ListView doesn't build what's off-screen — give it room.
   Future<void> pumpSettings(WidgetTester tester, {required bool flagOn}) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1;
@@ -41,54 +40,77 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('flag OFF hides the transport-on-the-map setting', (tester) async {
-    await pumpSettings(tester, flagOn: false);
+  testWidgets('languages are listed Serbian-first, after System', (tester) async {
+    await pumpSettings(tester, flagOn: true);
 
-    expect(find.text('Transport on the map'), findsNothing);
+    double topOf(String label) => tester.getTopLeft(find.text(label)).dy;
+
+    expect(topOf('System'), lessThan(topOf('Srpski')));
+    expect(topOf('Srpski'), lessThan(topOf('English')));
+    expect(topOf('English'), lessThan(topOf('Русский')));
+  });
+
+  testWidgets('the vehicle mode is NOT a settings item — the map toggle owns it',
+      (tester) async {
+    // Even with the flag on, Settings offers only language + theme.
+    await pumpSettings(tester, flagOn: true);
+
     expect(find.text('On demand'), findsNothing);
     expect(find.text('All transport'), findsNothing);
-    // The rest of the screen is untouched.
+    expect(find.text('Language'), findsOneWidget);
     expect(find.text('Theme'), findsOneWidget);
   });
 
-  testWidgets('flag ON shows it, defaulting to on-demand', (tester) async {
-    await pumpSettings(tester, flagOn: true);
-
-    expect(find.text('Transport on the map'), findsOneWidget);
-    expect(find.text('Vehicles appear when you pick a stop or a vehicle.'), findsOneWidget);
-
-    // Nothing stored yet ⇒ the default reads as selected, not "neither".
-    RadioListTile<VehicleMapMode> radio(String label) =>
-        tester.widget<RadioListTile<VehicleMapMode>>(
-          find.ancestor(
-            of: find.text(label),
-            matching: find.byType(RadioListTile<VehicleMapMode>),
-          ),
-        );
-    expect(radio('On demand').checked, isTrue);
-    expect(radio('All transport').checked, isFalse);
-  });
-
-  testWidgets('picking "All transport" switches the map mode and persists', (tester) async {
-    await pumpSettings(tester, flagOn: true);
-
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(SettingsScreen)),
+  /// A container wired like the app, with the flag forced and the config
+  /// awaited — the mode resolves off `appConfigProvider`, so reading it before
+  /// that future lands would just see the "config unreachable" default.
+  Future<ProviderContainer> modeContainer({required bool flagOn}) async {
+    final container = ProviderContainer(
+      overrides: [
+        appConfigProvider.overrideWith(
+          (ref) async =>
+              AppConfig(version: 'test', flags: {'vehicles_on_demand': flagOn}),
+        ),
+      ],
     );
+    addTearDown(container.dispose);
+    await container.read(appConfigProvider.future);
+    await container.read(settingsControllerProvider.future);
+    return container;
+  }
+
+  test('the mode persists and re-resolves without a restart', () async {
+    final container = await modeContainer(flagOn: true);
+
+    // Nothing stored yet ⇒ the flag-driven default.
     expect(container.read(vehicleMapModeProvider), VehicleMapMode.onDemand);
 
-    await tester.tap(find.text('All transport'));
-    await tester.pumpAndSettle();
+    await container
+        .read(settingsControllerProvider.notifier)
+        .setVehicleMapMode(VehicleMapMode.aquarium);
 
-    // The mode the map watches flips right away — no restart.
+    // The mode the map watches flips right away…
     expect(container.read(vehicleMapModeProvider), VehicleMapMode.aquarium);
     // …and it survives a reload (stored, not just in memory).
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('settings_vehicle_map_mode'), 'aquarium');
+  });
 
-    // Back to on-demand, on the fly.
-    await tester.tap(find.text('On demand'));
-    await tester.pumpAndSettle();
-    expect(container.read(vehicleMapModeProvider), VehicleMapMode.onDemand);
+  test('a stored choice is read back on the next launch', () async {
+    SharedPreferences.setMockInitialValues({
+      'settings_vehicle_map_mode': 'aquarium',
+    });
+    final container = await modeContainer(flagOn: true);
+
+    expect(container.read(vehicleMapModeProvider), VehicleMapMode.aquarium);
+  });
+
+  test('flag OFF forces the aquarium whatever is stored (killswitch)', () async {
+    SharedPreferences.setMockInitialValues({
+      'settings_vehicle_map_mode': 'onDemand',
+    });
+    final container = await modeContainer(flagOn: false);
+
+    expect(container.read(vehicleMapModeProvider), VehicleMapMode.aquarium);
   });
 }
