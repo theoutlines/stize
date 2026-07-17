@@ -562,6 +562,18 @@ abstract class AppLocalizations {
   /// **'All transport'**
   String get vehicleModeAll;
 
+  /// Tooltip of the map's vehicle-mode toggle button
+  ///
+  /// In en, this message translates to:
+  /// **'Transport on the map'**
+  String get vehicleModeTooltip;
+
+  /// Toast shown right after the map's toggle flips the mode; {mode} is vehicleModeOnDemand or vehicleModeAll
+  ///
+  /// In en, this message translates to:
+  /// **'Transport on the map: {mode}'**
+  String vehicleModeSwitched(String mode);
+
   /// No description provided for @aboutTitle.
   ///
   /// In en, this message translates to:

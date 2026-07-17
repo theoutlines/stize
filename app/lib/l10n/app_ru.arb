@@ -95,6 +95,8 @@
 
   "vehicleModeOnDemand": "По запросу",
   "vehicleModeAll": "Весь транспорт",
+  "vehicleModeTooltip": "Транспорт на карте",
+  "vehicleModeSwitched": "Транспорт на карте: {mode}",
 
   "aboutTitle": "О Stigla",
   "aboutRouteData": "Данные маршрутов: {date}",

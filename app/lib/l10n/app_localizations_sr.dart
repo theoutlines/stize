@@ -282,6 +282,14 @@ class AppLocalizationsSr extends AppLocalizations {
   String get vehicleModeAll => 'Sav prevoz';
 
   @override
+  String get vehicleModeTooltip => 'Prevoz na mapi';
+
+  @override
+  String vehicleModeSwitched(String mode) {
+    return 'Prevoz na mapi: $mode';
+  }
+
+  @override
   String get aboutTitle => 'O Stigla aplikaciji';
 
   @override
