@@ -362,7 +362,9 @@ class VehicleTrackAnimator {
     final t = _tracks[key];
     if (t == null) return false;
     final timed = t.timed;
-    if (timed != null) return timed.hasForwardMotion(_clock());
+    // A vehicle pausing at a stop is mid-journey, not parked — spiderfying it
+    // for the 3s it stands there would fan it out and back on every stop.
+    if (timed != null) return timed.isPlaying(_clock());
     final path = t.path;
     if (path != null && path.isUsable) {
       return (t.toDist - t.fromDist).abs() > _stillMeters;
@@ -380,10 +382,11 @@ class VehicleTrackAnimator {
       final timed = t.timed;
       if (timed == null) continue;
       timed.advance(now);
-      if (timed.hasForwardMotion(now)) {
-        moving = true;
-        t.lastMovedAt = now;
-      }
+      // Keep rendering through a stop dwell (isPlaying), but only count genuine
+      // motion as "moved" — a bus standing at a stop shouldn't refresh its
+      // stuck timer.
+      if (timed.isPlaying(now)) moving = true;
+      if (timed.hasForwardMotion(now)) t.lastMovedAt = now;
     }
     return moving;
   }
@@ -420,7 +423,9 @@ class VehicleTrackAnimator {
     for (final t in _tracks.values) {
       final timed = t.timed;
       if (timed != null) {
-        if (timed.hasForwardMotion(now)) return true;
+        // isPlaying, not hasForwardMotion: parking the ticker on a stop dwell
+        // would leave nothing running to end it (see TimedTrajectory.isPlaying).
+        if (timed.isPlaying(now)) return true;
         continue; // a timed track's ease fields are stale — don't consult them
       }
       final path = t.path;

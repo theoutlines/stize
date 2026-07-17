@@ -39,6 +39,7 @@ void main() {
     required void Function(
             double t, double markerV, double targetV, double gap, bool moving)
         sample,
+    void Function(double t, TimedTrajectory tt, DateTime now)? onFrame,
   }) {
     final t = TimedTrajectory.build(path: path, plan: plan, asOf: t0, now: t0)!;
     var lastPlanAt = t0;
@@ -71,6 +72,7 @@ void main() {
       if (secs >= settleAt) {
         sample(secs, t.displaySpeed, targetV, t.catchUpGap(now),
             t.hasForwardMotion(now));
+        onFrame?.call(secs, t, now);
       }
     }
   }
@@ -179,5 +181,52 @@ void main() {
     animator.advanceTimed(clock);
     expect(animator.hasMotion('P80383'), isFalse,
         reason: 'a frozen vehicle should fan out normally');
+  });
+
+  test('a dwell still happens, and only where the plan itself stands still', () {
+    var dwellFrames = 0;
+    var mismatched = 0;
+    replay(
+      seconds: 44,
+      settleAt: 10,
+      sample: (t, markerV, targetV, gap, moving) {
+        if (targetV < 0.01) {
+          dwellFrames++;
+          if (markerV > 0.15) mismatched++;
+        }
+      },
+    );
+    expect(dwellFrames, greaterThan(60),
+        reason: 'the real plan should still pause at its first station');
+    expect(mismatched, lessThan(dwellFrames ~/ 4),
+        reason: 'the marker kept rolling through the plan\'s standstill');
+  });
+
+  test('a vehicle pausing at a stop is not fanned apart either', () {
+    // The owner's call, and the right one: a dwell is stillness that resolves
+    // itself in three seconds. Fanning a bus out on arrival and collapsing it
+    // again as it pulls away would be a shove every stop — the very churn the
+    // pass-through contract exists to prevent. Only a genuinely parked vehicle
+    // (stale board, plan exhausted) fans.
+    //
+    // So `moving` for spiderfy reads isPlaying, not hasForwardMotion: the dwell
+    // is *not* motion (the stuck heuristic must still see a standstill), but it
+    // *is* the plan playing.
+    var dwellFrames = 0, fannable = 0;
+    replay(
+      seconds: 44,
+      settleAt: 10,
+      sample: (t, markerV, targetV, gap, moving) {},
+      onFrame: (t, tt, now) {
+        if (tt.planSpeed(now) < 0.01 && !tt.isStale(now)) {
+          dwellFrames++;
+          if (!tt.isPlaying(now)) fannable++;
+        }
+      },
+    );
+    expect(dwellFrames, greaterThan(60), reason: 'no dwell in the window');
+    expect(fannable, 0,
+        reason: 'a vehicle standing at a stop was fannable on $fannable of '
+            '$dwellFrames dwell frames — it would be shoved aside and snap back');
   });
 }

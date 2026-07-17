@@ -425,4 +425,174 @@ void main() {
       expect(animator.positionOf('P1', 0).longitude, closeTo(before, 1e-3));
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Stop dwell: the shape of motion between plan waypoints.
+  //
+  // These reason about *distance-along* in metres via [targetDistanceAt] (the
+  // plan's curve, before chase dynamics) and the marker's own rendered motion.
+  // The route is the same due-east line, so distance grows with longitude.
+  group('stop dwell', () {
+    // A Belgrade-paced plan (~18 km/h average, the real order of magnitude):
+    // ~100 m in 20 s to the first stop, then ~125 m in 25 s to the second. Both
+    // stops sit inside the 45 s staleness gate, which is the only window that
+    // ever renders.
+    List<TrajectoryPoint> calmPlan() => const [
+          TrajectoryPoint(44.80, 20.50000, 0),
+          TrajectoryPoint(44.80, 20.50126, 20), // stop 1
+          TrajectoryPoint(44.80, 20.50283, 45), // stop 2
+        ];
+
+    // The same route at a brisk ~30 km/h (237 m per 28 s). No profile can fit a
+    // pause here without an implausible sprint, so it must degrade.
+    List<TrajectoryPoint> briskPlan() => const [
+          TrajectoryPoint(44.80, 20.500, 0),
+          TrajectoryPoint(44.80, 20.503, 28),
+          TrajectoryPoint(44.80, 20.506, 55),
+        ];
+
+    TimedTrajectory build(List<TrajectoryPoint> plan) => TimedTrajectory.build(
+          path: _eastRoute(),
+          plan: plan,
+          asOf: _t0,
+          now: _t0,
+        )!;
+
+    double targetAt(TimedTrajectory t, double seconds) => t.targetDistanceAt(
+        _t0.add(Duration(milliseconds: (seconds * 1000).round())));
+
+    test('the plan stands still at a stop, then pulls away', () {
+      final t = build(calmPlan());
+      final atStop = targetAt(t, 20);
+
+      // Standing: the whole dwell passes without the plan moving on.
+      for (final s in [20.5, 21.0, 22.0, 22.9]) {
+        expect(targetAt(t, s), closeTo(atStop, 0.5),
+            reason: 'should still be standing at the stop at ${s}s');
+      }
+      // ...and then it goes again.
+      expect(targetAt(t, 25), greaterThan(atStop + 2));
+    });
+
+    test('it brakes into the stop instead of arriving at full speed', () {
+      final t = build(calmPlan());
+      // Speed over the last four seconds of the approach must fall away, so the
+      // marker stops AT the stop rather than sailing past it and reversing up
+      // (the marker's own limiter only brakes once it sees the gap).
+      final speeds = [16, 17, 18, 19]
+          .map((s) => targetAt(t, s + 1) - targetAt(t, s.toDouble()))
+          .toList();
+      for (var i = 1; i < speeds.length; i++) {
+        expect(speeds[i], lessThan(speeds[i - 1]),
+            reason: 'approach speed should keep dropping: $speeds');
+      }
+      expect(speeds.last, lessThan(1.0), reason: 'should be nearly stopped');
+    });
+
+    test('the waypoints themselves are untouched — position and time', () {
+      // The honesty invariant, and why total plan time cannot drift: the dwell
+      // only reshapes the curve *between* waypoints. Each stop is still reached
+      // at exactly the second the upstream said, at exactly its own position.
+      final t = build(calmPlan());
+      final path = _eastRoute();
+      for (final p in calmPlan()) {
+        final planned = path.project(ll.LatLng(p.lat, p.lon));
+        expect(targetAt(t, p.etaSeconds.toDouble()), closeTo(planned, 1.0),
+            reason: 'waypoint at ${p.etaSeconds}s must not move');
+      }
+    });
+
+    test('never rushes: the plan stays within a plausible speed', () {
+      // A dwell's seconds come out of the segment, so the cruise speeds up. That
+      // must not turn into a bus doing 60+ km/h between two stops.
+      final t = build(calmPlan());
+      var peak = 0.0;
+      for (var s = 0; s < 45; s++) {
+        final v = targetAt(t, s + 1.0) - targetAt(t, s.toDouble());
+        if (v > peak) peak = v;
+      }
+      expect(peak, lessThan(16.7), reason: 'peak ${peak.toStringAsFixed(1)} m/s');
+    });
+
+    test('a brisk segment keeps the even glide rather than fake a pause', () {
+      // 237 m in 28 s from a standstill to a standstill needs an implausible
+      // sprint. Better the old even glide than an invented one.
+      final t = build(briskPlan());
+      // Sample inside the 45 s staleness gate: past it the target collapses back
+      // to the fix by design, which is a different behaviour entirely.
+      final speeds = [
+        for (var s = 30; s < 43; s++)
+          targetAt(t, s + 1.0) - targetAt(t, s.toDouble())
+      ];
+      for (final v in speeds) {
+        expect(v, greaterThan(4.0), reason: 'should never stand still: $speeds');
+      }
+    });
+
+    test('does not brake into a stop the plan then leaves at full speed', () {
+      // The regression this cost us: braking to a halt in front of a segment
+      // that glides away stranded the marker ~12 m behind, which it made up with
+      // a 52 km/h surge out of a stop whose plan said 32 — the exact catch-up
+      // jerk this feature exists to remove.
+      final t = build(briskPlan());
+      var worstGap = 0.0;
+      for (var f = 0; f <= 44 * 30; f++) {
+        final now = _t0.add(Duration(milliseconds: f * 1000 ~/ 30));
+        t.advance(now);
+        // Measure around the stop (at 28 s) only. The first seconds are the
+        // marker easing in from rest — it starts still and the plan doesn't, so
+        // it legitimately trails ~12 m there. That's long-standing behaviour
+        // (see 'eases in from rest' above), not this segment's doing.
+        if (f < 20 * 30) continue;
+        final gap = t.catchUpGap(now);
+        if (gap > worstGap) worstGap = gap;
+      }
+      expect(worstGap, lessThan(3.0),
+          reason: 'marker fell ${worstGap.toStringAsFixed(1)} m behind the plan');
+    });
+
+    test('the marker follows the dwell without ever jerking or reversing', () {
+      final t = build(calmPlan());
+      var prevDist = t.displayDistance;
+      var prevV = 0.0;
+      var stoodStill = false;
+      for (var f = 0; f <= 45 * 30; f++) {
+        final now = _t0.add(Duration(milliseconds: f * 1000 ~/ 30));
+        t.advance(now);
+        // Forward-only, always.
+        expect(t.displayDistance, greaterThanOrEqualTo(prevDist - 1e-6));
+        // Bounded acceleration ⇒ no jerk. (3.0 m/s² is the marker's chase limit;
+        // allow a hair for floating point.)
+        expect((t.displaySpeed - prevV).abs() * 30, lessThan(3.2),
+            reason: 'velocity stepped at frame $f');
+        final elapsed = f / 30;
+        if (elapsed > 21 && elapsed < 23 && t.displaySpeed < 0.1) {
+          stoodStill = true;
+        }
+        prevDist = t.displayDistance;
+        prevV = t.displaySpeed;
+      }
+      expect(stoodStill, isTrue, reason: 'the marker never actually paused');
+    });
+
+    test('a dwell keeps the ticker alive but does not count as movement', () {
+      // isPlaying vs hasForwardMotion. Parking the ticker on a dwell would leave
+      // nothing running to end it — the 3 s pause would become a permanent
+      // freeze (invisible on a busy map, fatal with a single followed vehicle).
+      final t = build(calmPlan());
+      final midDwell = _t0.add(const Duration(milliseconds: 21500));
+      for (var f = 0; f <= 22 * 30; f++) {
+        t.advance(_t0.add(Duration(milliseconds: f * 1000 ~/ 30)));
+      }
+      expect(t.hasForwardMotion(midDwell), isFalse,
+          reason: 'standing at a stop is genuinely not moving');
+      expect(t.isPlaying(midDwell), isTrue,
+          reason: 'but the plan still has motion to come — keep rendering');
+
+      // A stale board is the real "nothing left to render": both go quiet.
+      final stale = _t0.add(const Duration(seconds: 90));
+      expect(t.isPlaying(stale), isFalse);
+      expect(t.hasForwardMotion(stale), isFalse);
+    });
+  });
 }

@@ -271,6 +271,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   int? _lastCtxBoardAgeSec; // freshness of the last context board applied
   int _lastCtxLive = 0; // live rows in it
   int _lastCtxWithTraj = 0; // how many carried a timing plan
+  // Board age at the moment each poll landed, most recent last (last 12).
+  //
+  // This is the number that decides whether an *elastic* stop dwell is worth
+  // building. The marker stops predicting once a board passes the 45 s gate, and
+  // the next board is only 30 s away — so a poll that lands carrying a board
+  // already older than 15 s means the marker will freeze before its relief
+  // arrives, for (age + 30 − 45) seconds. Under 15 s it never freezes at all.
+  // The backend caps board age at 40 s, so the whole question is where in 0..40
+  // these samples actually fall — hence a short history rather than one value.
+  final List<int> _boardAgePolls = [];
   int _refreshTicks = 0; // 30s refresh ticks fired
   int _pumpCount = 0; // vehicle-driver frames pumped
   // A stop arrivals sheet is currently up. The bottom UI (Nearby panel / search)
@@ -649,32 +659,54 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         156543.03392 * math.cos(_belgradeCenter.lat * math.pi / 180) /
         math.pow(2, zoom);
     final radiusM = 16.0 * metersPerPixel; // fan radius, constant on screen
-    final cellM = 30.0 * metersPerPixel; // ~coin size: closer than this overlaps
-    final cellLat = cellM / 111320.0;
-    String cellOf(ll.LatLng p) {
-      final cellLon = cellM / (111320.0 * math.cos(p.latitude * math.pi / 180));
-      return '${(p.latitude / cellLat).floor()}:'
-          '${(p.longitude / cellLon).floor()}';
+
+    // Overlap thresholds, in screen pixels so they mean the same at any zoom —
+    // and hysteretic. With one threshold, a pair sitting right at it fans out,
+    // collapses, fans out again. So a fan only *forms* on a strong overlap
+    // ([enterM], markers clearly on top of each other) and only *collapses*
+    // once they are comfortably apart ([exitM]); in between, whatever the fan is
+    // already doing wins.
+    final enterM = 24.0 * metersPerPixel;
+    final exitM = 40.0 * metersPerPixel;
+    String cellOf(ll.LatLng p, double m) {
+      final lat = m / 111320.0;
+      final lon = m / (111320.0 * math.cos(p.latitude * math.pi / 180));
+      return '${(p.latitude / lat).floor()}:${(p.longitude / lon).floor()}';
     }
 
     final driverRunning = _vehTicker?.isActive ?? false;
     final ease = driverRunning ? 0.3 : 1.0;
 
     // --- Pass 1: fan out stationary coincident vehicles ---------------------
-    // Group ONLY the stationary vehicles, so a moving vehicle passing through a
-    // parked cluster's cell can't collapse the fan.
-    final stationaryByCell = <String, List<int>>{};
+    // Consider ONLY the stationary ones, so a moving vehicle passing through a
+    // parked cluster's cell can't collapse the fan. `moving` counts a stop dwell
+    // as motion (TimedTrajectory.isPlaying): a bus pausing three seconds is
+    // mid-journey, and fanning it out on arrival only to snap it back as it
+    // pulls away would be a shove at every stop.
+    final crowdedEnter = <String, int>{};
+    final byExitCell = <String, List<int>>{};
     for (var i = 0; i < objects.length; i++) {
       if (objects[i].moving) continue;
-      stationaryByCell.putIfAbsent(cellOf(objects[i].position), () => []).add(i);
+      final p = objects[i].position;
+      crowdedEnter.update(cellOf(p, enterM), (v) => v + 1, ifAbsent: () => 1);
+      byExitCell.putIfAbsent(cellOf(p, exitM), () => []).add(i);
     }
     final offsetTarget = <String, ll.LatLng>{}; // dLat,dLon per key
-    for (final group in stationaryByCell.values) {
-      if (group.length < 2) continue;
-      group.sort((a, b) => objects[a].key.compareTo(objects[b].key));
-      for (var r = 0; r < group.length; r++) {
-        final o = objects[group[r]];
-        final angle = 2 * math.pi * r / group.length;
+    for (final group in byExitCell.values) {
+      // Who in this loose group actually earns a fan: anyone strongly overlapped
+      // right now, plus anyone already fanned (that's the hysteresis — they hold
+      // their place until the whole group thins out).
+      final members = [
+        for (final i in group)
+          if ((crowdedEnter[cellOf(objects[i].position, enterM)] ?? 0) >= 2 ||
+              _spiderfyOffset.containsKey(objects[i].key))
+            i
+      ];
+      if (members.length < 2) continue;
+      members.sort((a, b) => objects[a].key.compareTo(objects[b].key));
+      for (var r = 0; r < members.length; r++) {
+        final o = objects[members[r]];
+        final angle = 2 * math.pi * r / members.length;
         offsetTarget[o.key] = ll.LatLng(
           radiusM * math.sin(angle) / 111320.0,
           radiusM *
@@ -708,10 +740,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
     // --- Pass 2: cross-fade moving vehicles that overlap --------------------
     // Count occupancy of each cell at the placed positions; a MOVING vehicle
-    // sharing a cell with anything else is "crossing" and dims a little.
+    // sharing a cell with anything else is "crossing" and dims a little. Its own
+    // threshold (~a marker's width): the fan's enter/exit pair above is about
+    // whether to *move* a marker, which needs the hysteresis; a fade is
+    // continuous and eased, so a single threshold can't flicker.
+    final overlapM = 30.0 * metersPerPixel;
     final cellCount = <String, int>{};
     for (final p in placedPos) {
-      cellCount.update(cellOf(p), (v) => v + 1, ifAbsent: () => 1);
+      cellCount.update(cellOf(p, overlapM), (v) => v + 1, ifAbsent: () => 1);
     }
     const crossOpacity = 0.7;
     final present = <String>{};
@@ -719,7 +755,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     for (var i = 0; i < objects.length; i++) {
       final o = objects[i];
       present.add(o.key);
-      final crossing = o.moving && (cellCount[cellOf(placedPos[i])] ?? 0) > 1;
+      final crossing =
+          o.moving && (cellCount[cellOf(placedPos[i], overlapM)] ?? 0) > 1;
       final targetOpacity = crossing ? crossOpacity : 1.0;
       final curOpacity = _crossOpacity[o.key] ?? 1.0;
       final appliedOpacity = curOpacity + (targetOpacity - curOpacity) * ease;
@@ -1807,6 +1844,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // the screen without a console (debugPrint is stripped in release web).
     _lastCtxBoardAgeSec =
         DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
+    _boardAgePolls.add(_lastCtxBoardAgeSec!);
+    if (_boardAgePolls.length > 12) _boardAgePolls.removeAt(0);
     _lastCtxLive = samples.length;
     _lastCtxWithTraj = samples.where((s) => s.trajectory != null).length;
     // Keep the driver alive for the whole poll interval whenever this context has
@@ -2512,15 +2551,30 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   String _catchUpDiagLine() {
     final key = _selectedVehicleKey;
     final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
-    if (timed == null) return 'VEH catchUp gap - plan - vel -';
+    if (timed == null) return 'VEH catchUp gap - plan - vel - age -';
     final now = DateTime.now();
     // `plan` vs `vel` is the pair that diagnoses jitter: the plan's own speed
     // against the marker's. Tracking is healthy when they sit on top of each
     // other with gap ≈ 0. `vel` swinging around a steady `plan` means the
     // catch-up loop is oscillating; both swinging together means the plan is.
+    //
+    // `age` is the live board age driving the staleness gate; `HOLD` means it
+    // has passed 45 s, so this marker has stopped predicting and stands still.
+    final age = timed.boardAgeSeconds(now);
     return 'VEH catchUp gap ${timed.catchUpGap(now).toStringAsFixed(2)}m '
         'plan ${timed.planSpeed(now).toStringAsFixed(2)} '
-        'vel ${timed.displaySpeed.toStringAsFixed(2)}m/s';
+        'vel ${timed.displaySpeed.toStringAsFixed(2)}m/s '
+        'age ${age.toStringAsFixed(0)}s${timed.isStale(now) ? " HOLD" : ""}';
+  }
+
+  // How old each recent board was when it landed, and how many of those doomed
+  // the marker to a freeze before the next one (> 15 s; see the field's note).
+  String _boardAgeDiagLine() {
+    if (_boardAgePolls.isEmpty) return 'VEH boardAge@poll -';
+    final doomed = _boardAgePolls.where((a) => a > 15).length;
+    final worst = _boardAgePolls.reduce((a, b) => a > b ? a : b);
+    return 'VEH boardAge@poll ${_boardAgePolls.join(",")} '
+        'max ${worst}s freeze-bound $doomed/${_boardAgePolls.length}';
   }
 
   Widget _stopDiagnosticsOverlay(ThemeData theme) {
@@ -2597,6 +2651,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // to close it (vel). A smooth catch-up shows the gap easing to ~0 with vel
       // ramping up then settling to the plan speed — never a spike then a crawl.
       _catchUpDiagLine(),
+      _boardAgeDiagLine(),
     ];
 
     return SafeArea(
