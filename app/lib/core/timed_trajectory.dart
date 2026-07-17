@@ -424,6 +424,31 @@ class TimedTrajectory {
   /// from a jittery *chase loop*.
   double planSpeed(DateTime now) => _targetSpeed(now);
 
+  /// Per-stop gate diagnostics for the staging overlay: the next [count] plan
+  /// stations ahead of the marker, each with how far the shape projection moved
+  /// it (m), whether that passes the on-shape tolerance, whether the segment
+  /// leaving it dwells or glides, and how far ahead it is (m). Lets the owner see
+  /// on screen exactly what the pause gate decided for a followed vehicle.
+  List<({double aheadM, double offShapeM, bool onShape, bool dwells})>
+      upcomingStopDiag({int count = 3}) {
+    final out =
+        <({double aheadM, double offShapeM, bool onShape, bool dwells})>[];
+    for (var i = 0; i < _waypoints.length && out.length < count; i++) {
+      final wp = _waypoints[i];
+      final ahead = wp.dist - _dispDist;
+      if (ahead < -5) continue; // already behind the marker
+      out.add((
+        aheadM: ahead,
+        offShapeM: wp.offShapeMeters,
+        onShape: wp.onShape,
+        // The dwell (if any) happens at the START of the segment leaving this
+        // station; a glided segment has dwell 0.
+        dwells: (i < _segments.length ? _segments[i].dwell : 0) > 0,
+      ));
+    }
+    return out;
+  }
+
   double get displayDistance => _dispDist;
   double get endDistance => _waypoints.last.dist;
 
@@ -550,12 +575,12 @@ class TimedTrajectory {
       final onShape = offShape <= _stopOnShapeToleranceMeters;
       final eta = p.etaSeconds.toDouble();
       if (wps.isEmpty) {
-        wps.add(_Waypoint(d, eta, onShape));
+        wps.add(_Waypoint(d, eta, offShape, onShape));
         continue;
       }
       final last = wps.last;
       if (d > last.dist + _epsilonMeters && eta > last.etaSeconds) {
-        wps.add(_Waypoint(d, eta, onShape));
+        wps.add(_Waypoint(d, eta, offShape, onShape));
       }
     }
     return wps.length >= 2 ? wps : null;
@@ -581,14 +606,15 @@ class TimedTrajectory {
 }
 
 class _Waypoint {
-  const _Waypoint(this.dist, this.etaSeconds, this.onShape);
+  const _Waypoint(this.dist, this.etaSeconds, this.offShapeMeters, this.onShape);
   final double dist;
   final double etaSeconds;
-  // Whether projecting this station onto the route shape barely moved it — i.e.
-  // the shape actually passes through the stop. False when the shape doesn't
-  // cover the stop (a route variant / bad geometry): projection then lands the
-  // station hundreds of metres away, on the wrong street, so a dwell there would
-  // pause the marker somewhere no stop exists. We glide such segments instead.
+  // How far projecting this station onto the route shape had to move it (for the
+  // staging overlay), and whether that passed the on-shape tolerance. Small when
+  // the shape passes through the stop; large (hundreds of m) when it doesn't
+  // cover it (a route variant / bad geometry) — a dwell there would pause the
+  // marker where no stop exists, so we glide such segments.
+  final double offShapeMeters;
   final bool onShape;
 }
 
