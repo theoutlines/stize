@@ -307,4 +307,48 @@ void main() {
         reason: 'the marker stood still away from any stop: '
             '${offPinStands.join("; ")}');
   });
+
+  test('a staler board cannot drag a fresher prediction backward', () {
+    // The map feeds one animator from two mouths — the viewport's
+    // /vehicles/nearby and a tapped stop's arrivals — and their SWR caches age
+    // independently, so the same vehicle arrives with boards up to ~35 s apart.
+    // Measured live: two views of one bus 121 m apart, from GPS fixes identical
+    // to the metre; only `as_of` differed.
+    //
+    // Tracks key on the garage number, so both mouths already land on one track
+    // and one marker (a vehicle is never drawn twice). What this pins is that
+    // whichever board is freshest wins, regardless of which arrives last.
+    final t0 = DateTime(2026, 1, 1, 12);
+    var clock = t0;
+    final animator = VehicleTrackAnimator(clock: () => clock);
+
+    VehicleSample sample(DateTime asOf) => VehicleSample(
+          key: 'P80383', // the garage number: the same track from either mouth
+          position: ll.LatLng(plan.first.lat, plan.first.lon),
+          line: '5',
+          type: VehicleType.tram,
+          path: path,
+          trajectory: plan,
+          asOf: asOf,
+        );
+
+    // The fresh board lands first...
+    final fresh = t0.subtract(const Duration(seconds: 2));
+    animator.syncSamples([sample(fresh)], 0, now: t0);
+    expect(animator.trackFor('P80383')!.timed!.boardAsOf, fresh);
+
+    // ...then the other mouth delivers a 35 s-older one for the same vehicle.
+    clock = t0.add(const Duration(seconds: 1));
+    animator.syncSamples(
+        [sample(t0.subtract(const Duration(seconds: 37)))], 0, now: clock);
+    expect(animator.trackFor('P80383')!.timed!.boardAsOf, fresh,
+        reason: 'a staler board replaced a fresher one — the two views of this '
+            'vehicle will disagree by however far it moves in the difference');
+
+    // A genuinely newer board still takes over.
+    clock = t0.add(const Duration(seconds: 30));
+    final newer = t0.add(const Duration(seconds: 28));
+    animator.syncSamples([sample(newer)], 0, now: clock);
+    expect(animator.trackFor('P80383')!.timed!.boardAsOf, newer);
+  });
 }

@@ -417,6 +417,10 @@ class TimedTrajectory {
   /// catch-up instrumentation (staging overlay).
   double get displaySpeed => _dispVel;
 
+  /// The as-of time of the board this plan came from. Lets the caller keep the
+  /// freshest of several boards for the same vehicle.
+  DateTime get boardAsOf => _asOf;
+
   /// Age of the board this plan came from at [now] (s) — the `now − as_of` the
   /// staleness gate is measured on. A read-out for the staging overlay: it's the
   /// quantity that decides when the marker stops predicting and holds.
