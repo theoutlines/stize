@@ -139,6 +139,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   static const _focusRouteLayerId = 'stg-focus-route';
   static const _focusStopsLayerId = 'stg-focus-stops';
   bool _focusLayersAdded = false;
+  String? _focusLayerError; // last focus-layer add failure, for the staging overlay
   static const _emptyFeatureCollection =
       '{"type":"FeatureCollection","features":[]}';
 
@@ -2736,6 +2737,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // ramping up then settling to the plan speed — never a spike then a crawl.
       _catchUpDiagLine(),
       _dwellDiagLine(),
+      'FOCUS layersAdded $_focusLayersAdded stops ${_focus?.stops.length ?? 0} '
+          'err ${_focusLayerError ?? "-"}',
       _boardAgeDiagLine(),
       _fixAgeDiagLine(),
     ];
@@ -3101,7 +3104,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         belowLayerId: below,
       );
       _focusLayersAdded = true;
-    } catch (_) {
+      _focusLayerError = null;
+    } catch (e) {
+      // Don't swallow silently — a failed focus-stops add is exactly the class
+      // of "the route line draws but its stop pins don't" bug. debugPrint is
+      // stripped in release web, so surface it on the staging overlay instead
+      // (the reliable render-debug channel on Flutter-CanvasKit).
+      _focusLayerError = '$e';
       _focusLayersAdded = false;
     }
   }

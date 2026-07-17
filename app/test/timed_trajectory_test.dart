@@ -610,6 +610,22 @@ void main() {
       expect(stoodStill, isTrue, reason: 'the marker never actually paused');
     });
 
+    test('a fresh board (age ~0) is playing, not frozen', () {
+      // Regression: isPlaying gated on `elapsed <= 0`, which is true both for a
+      // stale board AND for a fresh one that just landed (age ~0). The fresh
+      // case wrongly read as "not playing", so the ticker parked and the marker
+      // sat mid-block the instant a new board arrived (owner screen: plan 8.0,
+      // vel 0.0, movingNow 0, age 0s).
+      final t = build(calmPlan());
+      // now == asOf → age 0 → `_targetElapsed` 0, but the plan is live.
+      expect(t.isPlaying(_t0), isTrue,
+          reason: 'a just-landed board must keep the marker playing');
+      expect(t.hasForwardMotion(_t0), isTrue);
+      // A genuinely stale board (90 s) is still held.
+      final stale = _t0.add(const Duration(seconds: 90));
+      expect(t.isPlaying(stale), isFalse);
+    });
+
     test('a dwell keeps the ticker alive but does not count as movement', () {
       // isPlaying vs hasForwardMotion. Parking the ticker on a dwell would leave
       // nothing running to end it — the 3 s pause would become a permanent
