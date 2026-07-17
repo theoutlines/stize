@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:latlong2/latlong.dart' as ll;
 
 import '../domain/models/trajectory_point.dart';
@@ -56,9 +57,20 @@ class TimedTrajectory {
   // while never cruising implausibly fast.
   static const double _maxCatchUpAccel = 3.0; // m/s²
   static const double _maxCatchUpSpeed = 18.0; // m/s, closing speed cap
+  // Small-gap closing gain (1/s): the marker closes a residual gap on a ~0.5 s
+  // time constant. Bounds the loop's gain where the sqrt profile's would run to
+  // infinity, which is what let it chatter at a standstill-close gap.
+  static const double _catchUpGain = 2.0;
 
   // A plan step shorter than this (metres) isn't worth treating as motion.
   static const double _epsilonMeters = 0.5;
+
+  // Below this plan speed the vehicle counts as standing still (≈1 km/h). Used
+  // by [hasForwardMotion] — the ticker, the stuck heuristic and the spiderfy
+  // gate. Well under any real service speed, and every case that must read as
+  // stopped (a stale board, the plan's end, the horizon) puts the target's speed
+  // at exactly zero, so nothing sits near this threshold in practice.
+  static const double _minMotionSpeed = 0.3; // m/s
 
   // Continuous prediction while the board is fresh, hard-stopped once it isn't.
   //
@@ -176,20 +188,47 @@ class TimedTrajectory {
     // hold-cases fall out automatically.
     final planVel = _targetSpeed(now);
 
-    // Target speed for this frame: ride the plan speed, plus a closing term that
-    // erases the position gap — eased so arrival has no jolt (cruise at the cap
-    // when far, sqrt ramp-down when near → decelerate at _maxCatchUpAccel).
+    // Target speed for this frame: ride the plan speed, plus a term that erases
+    // the position gap — eased so arrival has no jolt (cruise at the cap when
+    // far, sqrt ramp-down when near → decelerate at _maxCatchUpAccel).
+    //
+    // This law must stay CONTINUOUS in `gap`, and the feed-forward must survive
+    // at gap≈0. It used to do neither: within [_epsilonMeters] (0.5 m) of the
+    // target it commanded a dead stop, throwing the plan's speed away.
+    //
+    // That cliff fired on EVERY frame. Tracking perfectly does not mean gap==0:
+    // `target` is read at the end of the step, so a marker exactly on plan sits
+    // one frame behind it — gap settles at planVel·dt, which at 60 fps and a
+    // 1.3 m/s tram is ~22 mm, forever under the 0.5 m cliff. So the marker
+    // braked, fell behind, crossed the epsilon, sprinted back, arrived, braked:
+    // a limit cycle, gap pinned at the epsilon, speed sawing between ~0 and ~2×
+    // the plan. Every trough on a slow segment reaches zero, so the marker also
+    // appears to *stop mid-block*, at no stop at all — which is exactly the
+    // "markers freeze somewhere random" this looked like a data problem.
+    // Measured on a real line-5 plan (real GTFS shape, real 30 s refresh, frame
+    // resolution) over a flat-cruise window: marker 0.00–4.68 m/s with 89
+    // near-zero frames, against a plan asking for a steady 3.1 then 1.31.
     final gap = target - _dispDist;
-    double desiredVel;
-    if (gap <= _epsilonMeters) {
-      desiredVel = 0; // caught up / overran: aim to hold; the ramp pulls us on
-    } else {
-      final closing =
-          math.min(_maxCatchUpSpeed, math.sqrt(2 * _maxCatchUpAccel * gap));
-      // Never *command* a speed that would fly past the target in one step; this
-      // single cap also lands coarse (test-sized) steps exactly on the target.
-      desiredVel = math.min(planVel + closing, gap / dt);
-    }
+    // Ahead of us: ease in and close it. Behind us (we overran): pull back
+    // gently, never past a standstill — the marker waits, it never reverses.
+    //
+    // Near zero the law has to be *proportional*, not sqrt: sqrt's slope is
+    // infinite at gap→0, so a hair of overshoot commands a disproportionate
+    // correction and the loop chatters against the acceleration limiter (27% of
+    // plan speed, measured, with the gap already at ~1 mm). So take whichever
+    // term is gentler — proportional close in (finite gain, ~0.5 s constant),
+    // the sqrt braking profile further out where it's the one that matters.
+    final closing = gap > 0
+        ? math.min(_maxCatchUpSpeed,
+            math.min(math.sqrt(2 * _maxCatchUpAccel * gap), _catchUpGain * gap))
+        : math.max(_catchUpGain * gap, -planVel);
+    double desiredVel = planVel + closing;
+    // Never *command* a speed that would fly past the target in one step. Since
+    // `target` is the end-of-step position, that ceiling is exactly gap/dt — and
+    // it is not a throttle: in steady tracking gap IS planVel·dt, so gap/dt is
+    // the plan speed. It also lands coarse (test-sized) steps on the target.
+    if (gap > 0 && desiredVel > gap / dt) desiredVel = gap / dt;
+    if (desiredVel < 0) desiredVel = 0;
 
     // Acceleration limit — the velocity may change by at most _maxCatchUpAccel·dt
     // per step. This is the ease-in when a gap appears and guarantees a
@@ -229,6 +268,17 @@ class TimedTrajectory {
     return v > 0 ? v : 0;
   }
 
+  /// The distance the plan puts the vehicle at, at [now] — the curve the marker
+  /// chases, before any chase dynamics. Exposed so tests can compare the plan
+  /// against the marker directly instead of inferring one from the other.
+  @visibleForTesting
+  double targetDistanceAt(DateTime now) => _gatedTarget(now);
+
+  /// The plan's own speed at [now] (m/s) — what the marker feeds forward. Paired
+  /// with [displaySpeed] in the staging overlay, it separates a jittery *plan*
+  /// from a jittery *chase loop*.
+  double planSpeed(DateTime now) => _targetSpeed(now);
+
   double get displayDistance => _dispDist;
   double get endDistance => _waypoints.last.dist;
 
@@ -258,19 +308,31 @@ class TimedTrajectory {
   // reads as a zigzag on a road-accurate, ~15 m-spaced GTFS shape).
   double get heading => _path.headingAtSmoothed(_dispDist, forward: true);
 
-  /// Whether the marker still has forward motion to render at [now]. False once
-  /// it has reached the plan's end or wall-clock has run past the plan's horizon
-  /// (no fresh data) — the caller then parks the ticker (idle = zero frames).
+  /// Whether the plan is carrying the vehicle forward at [now]. Drives three
+  /// things: the ticker ("idle = zero frames"), the "looks stuck" heuristic, and
+  /// the spiderfy gate (only genuinely stationary vehicles fan apart). False once
+  /// the plan has run out, the horizon is reached, or the board went stale — in
+  /// each case the target stops advancing, so its speed is zero.
+  ///
+  /// Ask the PLAN's speed, never the marker's distance from the target. That
+  /// distance is not "how far it has left to go": `target` is read at the end of
+  /// the step, so a marker tracking perfectly still sits one frame behind it —
+  /// the gap settles at planVel·dt, ~22 mm at 60 fps. Tested against
+  /// [_epsilonMeters] (0.5 m) that reports a perfectly-moving vehicle as
+  /// *stopped*, on every frame.
+  ///
+  /// Which is exactly what has been happening. `c5f4547` built pass-through
+  /// spiderfy on this predicate when it meant "the plan still has time to run";
+  /// `8dab5e9` re-pointed it at the instantaneous gap a day later to serve the
+  /// ticker's settle-detection. One predicate, two meanings. Moving vehicles
+  /// have read as stationary ever since — and fan apart, which is the contract
+  /// this was supposed to enforce. It survived only because the catch-up limit
+  /// cycle (fixed alongside) swung the gap across the epsilon a few times a
+  /// second, flipping this true often enough to keep the ticker alive and the
+  /// fan flickering: markers shoving apart and snapping back as they converge.
   bool hasForwardMotion(DateTime now) {
     if (_dispDist >= _horizonDist - _epsilonMeters) return false;
-    // Motion only while the (staleness-gated) target is still ahead of the
-    // display. While the fix is fresh the target advances with wall-clock, so
-    // this stays true across the whole poll interval (continuous motion). Once
-    // the fix goes stale the target collapses to the fix, the marker settles,
-    // and the ticker parks (idle = zero frames); the grace fade then removes a
-    // vehicle that also dropped from the feed.
-    final target = _distAtElapsed(_waypoints, _targetElapsed(now));
-    return target > _dispDist + _epsilonMeters;
+    return _targetSpeed(now) > _minMotionSpeed;
   }
 
   // Projects each plan point onto [path], keeping only strictly-forward,

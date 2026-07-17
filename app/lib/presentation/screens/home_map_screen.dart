@@ -2512,10 +2512,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   String _catchUpDiagLine() {
     final key = _selectedVehicleKey;
     final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
-    if (timed == null) return 'VEH catchUp gap - vel -';
+    if (timed == null) return 'VEH catchUp gap - plan - vel -';
     final now = DateTime.now();
-    return 'VEH catchUp gap ${timed.catchUpGap(now).toStringAsFixed(1)}m '
-        'vel ${timed.displaySpeed.toStringAsFixed(1)}m/s';
+    // `plan` vs `vel` is the pair that diagnoses jitter: the plan's own speed
+    // against the marker's. Tracking is healthy when they sit on top of each
+    // other with gap ≈ 0. `vel` swinging around a steady `plan` means the
+    // catch-up loop is oscillating; both swinging together means the plan is.
+    return 'VEH catchUp gap ${timed.catchUpGap(now).toStringAsFixed(2)}m '
+        'plan ${timed.planSpeed(now).toStringAsFixed(2)} '
+        'vel ${timed.displaySpeed.toStringAsFixed(2)}m/s';
   }
 
   Widget _stopDiagnosticsOverlay(ThemeData theme) {
@@ -2579,7 +2584,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           'timed ${_vehAnimator.tracks.values.where((t) => t.timed != null).length} '
           'movingNow ${_vehAnimator.tracks.keys.where(_vehAnimator.hasMotion).length} '
           'pending ${_vehAnimator.hasPendingMotion}',
-      'VEH ticker ${_vehTicker?.isActive ?? false} animV ${_vehAnim.value.toStringAsFixed(2)} '
+      // `animV` used to sit here. It's the legacy ease controller's progress,
+      // which only moves markers that have NO timing plan — so next to `timed
+      // N` it reads as a symptom ("the animation is stuck at 0") while being
+      // simply unused. Dropped; `plan`/`vel` below is the real motion read-out.
+      'VEH ticker ${_vehTicker?.isActive ?? false} '
           'paused $_paused refreshTicks $_refreshTicks pumps $_pumpCount',
       'VEH lastCtx ageSec ${_lastCtxBoardAgeSec ?? "-"} '
           'live $_lastCtxLive withTraj $_lastCtxWithTraj',
