@@ -550,6 +550,30 @@ abstract class AppLocalizations {
   /// **'Dark'**
   String get settingsThemeDark;
 
+  /// No description provided for @settingsVehicles.
+  ///
+  /// In en, this message translates to:
+  /// **'Transport on the map'**
+  String get settingsVehicles;
+
+  /// No description provided for @settingsVehiclesOnDemand.
+  ///
+  /// In en, this message translates to:
+  /// **'On demand'**
+  String get settingsVehiclesOnDemand;
+
+  /// One-line explanation under the on-demand option in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicles appear when you pick a stop or a vehicle.'**
+  String get settingsVehiclesOnDemandHint;
+
+  /// No description provided for @settingsVehiclesAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All transport'**
+  String get settingsVehiclesAll;
+
   /// No description provided for @aboutTitle.
   ///
   /// In en, this message translates to:

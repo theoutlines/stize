@@ -26,10 +26,13 @@ class AppConfig {
   /// [coverageMapShow] — the tab and the overlay gate separately.
   bool get coverageOnMainMap => flag('coverage_on_main_map');
 
-  /// Whether the main map shows vehicles *on demand* (in context) instead of the
-  /// background "aquarium" of every vehicle in the viewport. When on, no
-  /// background `/vehicles/nearby` fetch or render happens without a context —
-  /// vehicles appear only for a tapped stop's arrivals or a followed vehicle.
+  /// Whether the on-demand map feature is available at all. Two levels: this
+  /// flag gates the "Transport on the map" setting and is the killswitch — off
+  /// means no setting and the plain background "aquarium", exactly as production
+  /// behaves; on means the user chooses, defaulting to on-demand (no background
+  /// `/vehicles/nearby` fetch or render without a context — vehicles appear only
+  /// for a tapped stop's arrivals or a followed vehicle). The resolution itself
+  /// lives in `core/vehicle_map_mode.dart`.
   bool get vehiclesOnDemand => flag('vehicles_on_demand');
 
 

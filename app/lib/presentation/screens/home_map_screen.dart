@@ -25,6 +25,7 @@ import '../../core/map_support.dart';
 import '../../core/moving_object_layer.dart';
 import '../../core/route_path.dart';
 import '../../core/user_location_tracker.dart';
+import '../../core/vehicle_map_mode.dart';
 import '../../core/vehicle_track_animator.dart';
 import '../../data/location/location_service.dart';
 import '../../domain/models/area_vehicle.dart';
@@ -252,8 +253,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   _LineFocus? _focus;
 
   // ---- On-demand map context (vehicles_on_demand) --------------------------
-  // With the flag on the map draws NO background "aquarium" of vehicles; they
-  // appear only in context. `_onDemand` mirrors the remote flag (read in build).
+  // In on-demand mode the map draws NO background "aquarium" of vehicles; they
+  // appear only in context. `_onDemand` mirrors the resolved map mode (read in
+  // build): the user's Settings choice gated by the remote flag — see
+  // core/vehicle_map_mode.dart.
   // Three states:
   //   A — no context: empty vehicle layer, no /vehicles/nearby fetch. Default.
   //   B — stop context (`_stopContextId` set): the tapped stop's live arrivals
@@ -1839,15 +1842,26 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
   }
 
-  /// React to the flag flipping (usually once, when remote config resolves).
+  /// React to the mode changing — the flag resolving at startup, or the user
+  /// flipping the Settings choice. Applies on the fly, no restart.
   void _onOnDemandChanged() {
     if (!mounted) return;
     if (_onDemand) {
-      // Entering on-demand with no active context: clear the background aquarium.
-      if (_stopContextId == null && _selectedVehicleKey == null) {
-        _vehAnimator.clear();
+      // Entering on-demand: the background aquarium goes at once (and the 30s
+      // tick stops fetching it — see mapRefreshAction). The contexts survive:
+      // a followed vehicle keeps its own marker (§C, works in both modes)…
+      final followed = _selectedVehicleKey;
+      _vehAnimator.retainOnly({if (followed != null) followed});
+      // …and a stop context repaints from the board already in hand instead of
+      // waiting out the next 30s tick.
+      final board = _stopContextId == null
+          ? null
+          : _stopArrivalsSub?.read().valueOrNull;
+      if (board != null) {
+        _applyStopContextMarkers(board);
+      } else {
         _paintVehicles();
-        setState(() => _hasVehicles = false);
+        setState(() => _hasVehicles = _vehAnimator.tracks.isNotEmpty);
       }
     } else {
       // Left on-demand → repopulate the background set for the viewport.
@@ -2353,9 +2367,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       }
     }
 
-    // On-demand flag: usually flips false→true once remote config resolves.
-    // Reconcile after the frame (clear the background aquarium, or repopulate).
-    final onDemand = ref.watch(vehiclesOnDemandEnabledProvider);
+    // The map mode: the Settings choice resolved against the on-demand flag.
+    // Flips false→true once remote config resolves, and again whenever the user
+    // switches the setting. Reconcile after the frame (clear the background
+    // aquarium, or repopulate) so the switch applies without a restart.
+    final onDemand = ref.watch(vehicleMapModeProvider) == VehicleMapMode.onDemand;
     if (onDemand != _onDemand) {
       _onDemand = onDemand;
       WidgetsBinding.instance.addPostFrameCallback((_) => _onOnDemandChanged());

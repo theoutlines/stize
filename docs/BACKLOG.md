@@ -52,6 +52,18 @@ that can't be collected retroactively, we start accumulating before we need it.
 
 ## In progress / behind a flag
 
+- 🚧 **Transport on the map — a setting** (`feature/vehicle-mode-setting`, isolated
+  preview pair, merge owner-gated) — on-demand becomes the **new default**, not an
+  experiment: Settings gains *Transport on the map* with **On demand** (default) /
+  **All transport** (today's aquarium), persisted locally and applied on the fly
+  (no restart). `vehicles_on_demand` changes meaning — from a rollout switch to a
+  **permanent two-level gate**: OFF hides the setting and forces the aquarium (the
+  killswitch, = today's prod), ON offers the choice with on-demand as the default;
+  the resolution is `app/lib/core/vehicle_map_mode.dart`, registry updated. Also
+  pushes the aquarium's `/vehicles/nearby` fan-out — the path that blows the
+  Cloudflare subrequest limit on a cold cache — into opt-in. Report
+  `docs/reports/2026-07-17-vehicle-mode-setting.md`.
+
 - 🚧 **Arrivals dedup — live/scheduled + scheduled roll-up** (`feature/arrivals-dedup`,
   staging preview, merge owner-gated) — with the schedule fallback ON the stop
   shutter double-counted: live boards and Scheduled rows of the same line
