@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   groupNearbyArrivals,
+  nearbyServiceStatus,
   timeToBoardMinutes,
   type StopBoard,
 } from "../src/lib/nearbyArrivals";
@@ -43,6 +44,7 @@ function board(
   distanceMeters: number,
   arrivals: ArrivalDto[],
   updatedAt = "2026-07-12T10:00:00.000Z",
+  serviceStatus: "ok" | "unavailable" = "ok",
 ): StopBoard {
   const stop: StopDto = { stop_id: stopId, name: stopName, lat: 0, lon: 0, lines: [] };
   return {
@@ -51,6 +53,7 @@ function board(
     board: {
       updated_at: updatedAt,
       arrivals,
+      service_status: serviceStatus,
     },
   };
 }
@@ -176,5 +179,17 @@ describe("groupNearbyArrivals — board sort", () => {
       board("far", "Škola", 294, [arrival("62", "Zvezdara", 2)]),
     ]);
     expect(groups.map((g) => g.line)).toEqual(["62", "79"]);
+  });
+});
+
+describe("nearbyServiceStatus", () => {
+  it("is unavailable only when every present board is live-down", () => {
+    expect(nearbyServiceStatus(["unavailable", "unavailable"])).toBe("unavailable");
+  });
+  it("stays ok if any nearby stop still has live data", () => {
+    expect(nearbyServiceStatus(["unavailable", "ok"])).toBe("ok");
+  });
+  it("is ok with no boards at all (nothing nearby, not an outage)", () => {
+    expect(nearbyServiceStatus([])).toBe("ok");
   });
 });

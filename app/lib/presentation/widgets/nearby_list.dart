@@ -19,9 +19,14 @@ class NearbyList extends StatelessWidget {
     this.scrollController,
     this.onRefresh,
     this.onTapGroup,
+    this.header,
   });
 
   final List<NearbyGroup> groups;
+
+  /// Optional banner pinned above the cards but inside the same scroll view (so
+  /// the shared drag-to-expand still works) — e.g. the live-unavailable note.
+  final Widget? header;
 
   /// Shared with the host sheet so dragging the list expands/collapses it.
   final ScrollController? scrollController;
@@ -33,16 +38,21 @@ class NearbyList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final leading = header == null ? 0 : 1;
     final list = ListView.separated(
       controller: scrollController,
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: groups.length,
+      itemCount: groups.length + leading,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, i) => _NearbyCard(
-        group: groups[i],
-        onTap: onTapGroup == null ? null : () => onTapGroup!(groups[i]),
-      ),
+      itemBuilder: (context, i) {
+        if (i < leading) return header!;
+        final g = groups[i - leading];
+        return _NearbyCard(
+          group: g,
+          onTap: onTapGroup == null ? null : () => onTapGroup!(g),
+        );
+      },
     );
     if (onRefresh == null) return list;
     return RefreshIndicator(onRefresh: onRefresh!, child: list);
