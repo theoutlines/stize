@@ -72,7 +72,7 @@ class VehicleModeToggle extends ConsumerWidget {
         SnackBar(
           content: Text(l10n.vehicleModeSwitched(vehicleModeLabel(next, l10n))),
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
+          duration: const Duration(seconds: 3),
         ),
       );
   }
