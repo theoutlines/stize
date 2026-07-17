@@ -113,6 +113,9 @@ class AppLocalizationsSr extends AppLocalizations {
   String get vehicleLost => 'Vozilo se više ne prati';
 
   @override
+  String get followingVehicle => 'Praćenje';
+
+  @override
   String get noLiveVehiclesOnMap =>
       'Trenutno nema vozila uživo na mapi — pogledaj dolaske ispod.';
 

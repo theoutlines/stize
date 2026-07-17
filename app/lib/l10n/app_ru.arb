@@ -34,6 +34,7 @@
   "vehicleScheduled": "По расписанию — не живая позиция",
   "arrivalExpected": "Ожидается",
   "vehicleLost": "Транспорт больше не отслеживается",
+  "followingVehicle": "Следим",
   "noLiveVehiclesOnMap": "Нет машин с live-позицией — смотри список прибытий ниже.",
 
   "nearbySearchHint": "Фильтр линий рядом…",

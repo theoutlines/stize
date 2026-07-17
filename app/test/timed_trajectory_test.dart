@@ -461,6 +461,41 @@ void main() {
     double targetAt(TimedTrajectory t, double seconds) => t.targetDistanceAt(
         _t0.add(Duration(milliseconds: (seconds * 1000).round())));
 
+    // A plan whose middle station sits OFF the route line (~1 km north) — the
+    // signature of a GTFS shape that doesn't cover a route variant. Its
+    // projection lands ~1 km from its true position, so no dwell may happen
+    // there (a pause where no stop is). The on-route stops still dwell.
+    // Calm timing (dwells clearly) but the MIDDLE stop sits ~1.1 km north of the
+    // route line — the signature of a shape that doesn't cover this variant.
+    List<TrajectoryPoint> offShapePlan() => const [
+          TrajectoryPoint(44.80, 20.50000, 0),
+          TrajectoryPoint(44.81, 20.50126, 20), // stop 1: ~1.1 km NORTH, off-route
+          TrajectoryPoint(44.80, 20.50283, 45), // stop 2: on the route
+        ];
+
+    test('no dwell anywhere near a station the shape does not reach', () {
+      // Control: the all-on-shape calm plan DOES stand still at its stop.
+      final onShape = build(calmPlan());
+      final atStop = targetAt(onShape, 20);
+      expect(targetAt(onShape, 21.5), closeTo(atStop, 0.6),
+          reason: 'sanity: an on-shape stop must dwell');
+
+      // Same timing but stop 1 off-shape: the marker must NOT stand still at its
+      // time (~20 s) — a pause there would be ~1 km from any real stop. Sampled
+      // finely so a 3 s dwell can't hide between integer seconds.
+      final off = build(offShapePlan());
+      var minSpeed = double.infinity;
+      for (var ms = 17000; ms <= 24000; ms += 250) {
+        final a = off.targetDistanceAt(_t0.add(Duration(milliseconds: ms)));
+        final b = off.targetDistanceAt(_t0.add(Duration(milliseconds: ms + 250)));
+        final v = (b - a) / 0.25;
+        if (v < minSpeed) minSpeed = v;
+      }
+      expect(minSpeed, greaterThan(0.5),
+          reason: 'marker dwelled at an off-shape station '
+              '(min speed ${minSpeed.toStringAsFixed(2)} m/s near 20 s)');
+    });
+
     test('the plan stands still at a stop, then pulls away', () {
       final t = build(calmPlan());
       final atStop = targetAt(t, 20);

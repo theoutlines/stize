@@ -34,6 +34,7 @@
   "vehicleScheduled": "Po redu vožnje — nije pozicija uživo",
   "arrivalExpected": "Očekuje se",
   "vehicleLost": "Vozilo se više ne prati",
+  "followingVehicle": "Praćenje",
   "noLiveVehiclesOnMap": "Trenutno nema vozila uživo na mapi — pogledaj dolaske ispod.",
 
   "nearbySearchHint": "Filtriraj linije u blizini…",

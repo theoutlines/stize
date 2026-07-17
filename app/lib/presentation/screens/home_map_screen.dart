@@ -305,6 +305,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   ll.LatLng? _lastFollowMarkerPos;
   DateTime? _lastFollowMoveAt; // throttle for the smooth follow ease
   bool _selfCameraMove = false;
+  // A brief grace window after a resume during which a camera-move event does
+  // NOT break follow. Returning to a hidden tab re-lays-out the MapLibre-web
+  // canvas, which surfaces a camera event flagged as a user gesture even though
+  // the user did nothing — that used to silently drop follow, leaving the marker
+  // to wander off-screen with the selection still live. The programmatic follow
+  // pan that re-centres on the re-anchored (jumped) marker also happens inside
+  // this window, so it can't be mistaken for a manual pan either.
+  DateTime? _followResumeGuardUntil;
   // Where the camera sat when the vehicle context was entered, restored on close
   // so the user lands back where they came from (the stop, or the pre-focus
   // viewport) instead of adrift wherever the vehicle wandered.
@@ -404,6 +412,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _resumeActivity() {
     if (!_paused) return;
     _paused = false;
+    // Hold follow across the resume: the tab-return canvas re-layout can surface
+    // a spurious "gesture" camera event that would otherwise break it. Keep
+    // `_lastFollowMarkerPos` untouched so the first follow tick pans by the full
+    // re-anchor jump and the marker stays centred rather than sliding off.
+    if (_following) {
+      _followResumeGuardUntil = DateTime.now().add(const Duration(seconds: 1));
+    }
     final hiddenAt = _hiddenAt;
     if (hiddenAt != null) {
       // Discount the time spent hidden so a vehicle isn't declared stuck just
@@ -851,6 +866,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     } else if (event is MapEventClick) {
       _handleTap(event.point);
     } else if (event is MapEventStartMoveCamera) {
+      // A camera event in the brief post-resume window is the tab-return canvas
+      // re-layout, not a user gesture — never break follow on it.
+      final guard = _followResumeGuardUntil;
+      if (guard != null && DateTime.now().isBefore(guard)) return;
       // Break follow only on a genuine user pan/zoom (the marker + highlight
       // stay). Our own programmatic pans are bracketed by [_selfCameraMove] so
       // they never count — even if the platform mislabels one as a gesture — so
@@ -1659,6 +1678,34 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
   }
 
+  /// The single entry into follow mode. Every source — a stop-sheet row, a
+  /// Nearby row, a marker tap — funnels through here so they establish an
+  /// identical state set: select the vehicle, guarantee the follow bar (via the
+  /// `_selectedVehicleKey`-gated bottom UI, which replaces whatever context sheet
+  /// was open and offers the × exit), load its route, and start the camera
+  /// follow. The caller has already ensured the marker exists.
+  ///
+  /// The Nearby path used to skip this contract — it nudged only camera+selection
+  /// while its (persistent, non-modal) sheet stayed open and the follow bar,
+  /// gated on the async route load, never appeared — so there was no way out.
+  void _enterFollow({
+    required String key,
+    required ll.LatLng target,
+    required bool flyTo,
+    required String line,
+    bool scheduled = false,
+    bool refreshVehicles = false,
+  }) {
+    setState(() => _selectedVehicleKey = key);
+    _writeVehiclesToSource(); // tap highlight on the symbol layer
+    if (!_paused && _vehAnimator.hasPendingMotion) _startVehDriver();
+    _paintVehicles();
+    // Route highlight (sets `_focus` async). The follow bar no longer waits on
+    // it — it shows the instant `_selectedVehicleKey` is set.
+    _openVehicleLine(line, scheduled: scheduled, refreshVehicles: refreshVehicles);
+    _startFollow(key, target: target, flyTo: flyTo);
+  }
+
   /// Start following [key]. [flyTo] true (entry from a list row) flies the camera
   /// to the vehicle and zooms to a readable pill first, then — once the fly-to
   /// settles — hands over to the continuous per-frame pan; false (a marker tap)
@@ -1972,13 +2019,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _showVehicleLost();
       return;
     }
-    setState(() => _selectedVehicleKey = key);
-    if (!_paused && _vehAnimator.hasPendingMotion) _startVehDriver();
-    _paintVehicles();
-    _startFollow(key, target: pos, flyTo: true);
-    // Highlight the route (line panel). refreshVehicles:false so a fan-out can't
-    // prune the marker we just injected.
-    _openVehicleLine(a.line, scheduled: a.scheduled, refreshVehicles: false);
+    // Single follow entry (fly the camera in from a list row). refreshVehicles
+    // false so a fan-out can't prune the marker we just injected.
+    _enterFollow(
+      key: key,
+      target: pos,
+      flyTo: true,
+      line: a.line,
+      scheduled: a.scheduled,
+    );
   }
 
   void _clearFocus() {
@@ -2016,18 +2065,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // Honestly mark a schedule-predicted object when its line opens.
           final scheduled = keyStr != null &&
               _vehAnimator.trackFor(keyStr)?.source == VehicleSource.scheduled;
-          setState(() => _selectedVehicleKey = keyStr);
-          _writeVehiclesToSource();
-          // §C.2: highlight the route + line panel as today, and start following
-          // — but the camera does NOT jump or zoom (don't regress F2).
+          // §C.2: highlight the route + line panel and start following — but the
+          // camera does NOT jump or zoom (don't regress F2). Same single entry
+          // as the list-row paths, so all three end in identical state.
           _returnToStopId = _onDemand ? _stopContextId : null;
-          _openVehicleLine(line, scheduled: scheduled);
           if (keyStr != null) {
-            _startFollow(
-              keyStr,
+            _enterFollow(
+              key: keyStr,
               target: ll.LatLng(point.lat, point.lon),
               flyTo: false,
+              line: line,
+              scheduled: scheduled,
+              refreshVehicles: true,
             );
+          } else {
+            _openVehicleLine(line, scheduled: scheduled);
           }
           return;
         }
@@ -2499,7 +2551,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // (it *replaces* the search bar), else the normal search + favourites.
           // A stop arrivals sheet suppresses the whole bottom cluster so the two
           // never stack on top of each other (#7).
-          if (_focus != null)
+          if (_focus != null || _selectedVehicleKey != null)
             _focusPanel(theme)
           else if (_stopSheetOpen)
             const SizedBox.shrink()
@@ -2745,8 +2797,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   }
 
   Widget _focusPanel(ThemeData theme) {
-    final focus = _focus!;
-    final color = vehicleColor(focus.type);
+    // The follow bar must appear the instant follow starts, from ANY source —
+    // not only once the route shape has loaded (async, and it sets `_focus`).
+    // A follow entered from the persistent Nearby sheet used to leave `_focus`
+    // null until the shape landed, so the bar (and its × exit) never showed and
+    // the user was trapped. So derive the badge from the focused line when it's
+    // loaded, otherwise from the followed vehicle's own track.
+    final focus = _focus;
+    final key = _selectedVehicleKey;
+    final track = key == null ? null : _vehAnimator.trackFor(key);
+    final line = focus?.line ?? track?.line ?? '';
+    final type = focus?.type ?? track?.type ?? VehicleType.bus;
+    final subtitle =
+        focus != null ? '${focus.origin} → ${focus.destination}' : null;
+    final scheduled = focus?.scheduled ?? false;
+    final color = vehicleColor(type);
     return SafeArea(
       child: Align(
         alignment: Alignment.bottomCenter,
@@ -2779,10 +2844,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      vehicleGlyph(focus.type, size: 16, color: Colors.white),
+                      vehicleGlyph(type, size: 16, color: Colors.white),
                       const SizedBox(width: 6),
                       Text(
-                        focus.line,
+                        line,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -2798,14 +2863,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${focus.origin} → ${focus.destination}',
+                        // Route terminals once the shape is loaded; until then
+                        // (or on a shape that failed to load) a neutral label so
+                        // the bar is still complete and exitable.
+                        subtitle ?? AppLocalizations.of(context).followingVehicle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium,
                       ),
                       // A tapped schedule-predicted object honestly says so — its
                       // position is a GTFS estimate, not a live fix.
-                      if (focus.scheduled)
+                      if (scheduled)
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
