@@ -75,6 +75,8 @@
   "serviceKilledTitle": "Мы ненадолго остановились",
   "serviceKilledSubtitle": "Скоро вернёмся.",
 
+  "liveUnavailableBanner": "Живые данные временно недоступны — расписание",
+
   "unknownStopTitle": "Не могу найти эту остановку",
   "unknownStopSubtitle": "Возможно, её переименовали или убрали из расписания.",
 

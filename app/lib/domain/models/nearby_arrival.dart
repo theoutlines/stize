@@ -1,3 +1,4 @@
+import 'arrival.dart' show ServiceStatus;
 import 'vehicle_type.dart';
 
 /// One soonest departure inside a [NearbyGroup].
@@ -77,4 +78,14 @@ class NearbyGroup {
           .toList(),
     );
   }
+}
+
+/// The Nearby list plus the freshness of the boards it came from. `unavailable`
+/// means the live feed is down and these groups are schedule-only — the list is
+/// still useful, so the UI shows a banner rather than an empty state.
+class NearbyResult {
+  const NearbyResult({required this.groups, required this.serviceStatus});
+
+  final List<NearbyGroup> groups;
+  final ServiceStatus serviceStatus;
 }

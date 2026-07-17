@@ -8,10 +8,12 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 import '../../core/api_config.dart';
 import '../../core/nearby_focus.dart';
 import '../../data/api/api_exceptions.dart';
+import '../../domain/models/arrival.dart' show ServiceStatus;
 import '../../domain/models/nearby_arrival.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'empty_state.dart';
+import 'live_unavailable_banner.dart';
 import 'nearby_list.dart';
 
 /// How far the user must move before the Nearby list refetches its set of stops.
@@ -78,6 +80,8 @@ class _NearbySheetState extends ConsumerState<NearbySheet> {
   List<NearbyGroup>? _groups; // null = never loaded
   bool _loading = false;
   bool _offline = false;
+  // Live feed down but the timetable answered: show a banner, not an empty list.
+  bool _liveUnavailable = false;
   String _query = '';
   Timer? _timer;
   ll.LatLng? _lastFetchLoc;
@@ -136,12 +140,13 @@ class _NearbySheetState extends ConsumerState<NearbySheet> {
     _lastFetchLoc = loc;
     if (mounted && _groups == null) setState(() => _loading = true);
     try {
-      final groups = await ref
+      final result = await ref
           .read(nearbyArrivalsRepositoryProvider)
           .nearby(lat: loc.latitude, lon: loc.longitude);
       if (!mounted || seq != _seq) return;
       setState(() {
-        _groups = groups;
+        _groups = result.groups;
+        _liveUnavailable = result.serviceStatus == ServiceStatus.unavailable;
         _loading = false;
         _offline = false;
       });
@@ -316,6 +321,7 @@ class _NearbySheetState extends ConsumerState<NearbySheet> {
       scrollController: controller,
       onRefresh: _fetch,
       onTapGroup: widget.onTapGroup,
+      header: _liveUnavailable ? const LiveUnavailableBanner() : null,
     );
   }
 

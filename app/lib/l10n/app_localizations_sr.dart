@@ -230,6 +230,10 @@ class AppLocalizationsSr extends AppLocalizations {
   String get serviceKilledSubtitle => 'Vraćamo se uskoro.';
 
   @override
+  String get liveUnavailableBanner =>
+      'Podaci uživo trenutno nisu dostupni — red vožnje';
+
+  @override
   String get unknownStopTitle => 'Ne mogu da pronađem to stajalište';
 
   @override
