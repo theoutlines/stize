@@ -37,6 +37,10 @@
   "arrivalExpected": "Expected",
   "@arrivalExpected": {"description": "Row with a valid ETA but no live GPS position yet (placeholder vehicle)"},
   "vehicleLost": "Vehicle no longer tracked",
+  "followingVehicle": "Following",
+  "@followingVehicle": {
+    "description": "Follow-bar label shown while following a vehicle before its route terminals have loaded."
+  },
   "@vehicleLost": {"description": "Shown when a followed vehicle drops out of the live feed"},
   "noLiveVehiclesOnMap": "No live-tracked vehicles to map right now — see the arrivals below.",
 

@@ -116,6 +116,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get vehicleLost => 'Транспорт больше не отслеживается';
 
   @override
+  String get followingVehicle => 'Следим';
+
+  @override
   String get noLiveVehiclesOnMap =>
       'Нет машин с live-позицией — смотри список прибытий ниже.';
 

@@ -118,6 +118,13 @@ class TimedTrajectory {
   //
   // Tuning lives here and nowhere else.
   static const double _dwellSeconds = 3.0; // pause at a stop
+  // A station whose projection onto the route shape lands within this of its
+  // true position counts as "on the shape" — the shape reaches the stop, so a
+  // dwell there is truthful. Past it the shape doesn't cover the stop and the
+  // dwell is suppressed (see _buildSegments). 20 m absorbs normal projection
+  // slack and stop-vs-shape offset without admitting the hundreds-of-metres
+  // misses of an uncovered variant.
+  static const double _stopOnShapeToleranceMeters = 20.0;
   // Accel/brake rate for the *plan's* shape — a real bus figure, deliberately
   // far gentler than [_maxCatchUpAccel] (3.0), which is the marker's chase
   // dynamics and answers to smoothness, not realism. Keep the two apart.
@@ -186,13 +193,20 @@ class TimedTrajectory {
     final segs = <_Segment>[];
     for (var i = 0; i < wps.length - 1; i++) {
       final a = wps[i], b = wps[i + 1];
+      // Shape only pauses/brakes at stops the shape actually reaches. If either
+      // endpoint is off-shape (a variant the GTFS geometry doesn't cover), the
+      // projection put the "stop" hundreds of metres from any real one — a dwell
+      // or brake there would stop the marker where no stop exists. Glide it
+      // instead: fewer pauses on those lines, but honest. (The track itself is
+      // still wrong on those sections — a separate GTFS-shape fix, see BACKLOG.)
       segs.add(_Segment.solve(
         t0: a.etaSeconds,
         t1: b.etaSeconds,
         d0: a.dist,
         d1: b.dist,
         flyingStart: i == 0,
-        dwellSeconds: _dwellSeconds,
+        dwellSeconds: (a.onShape && b.onShape) ? _dwellSeconds : 0,
+        shape: a.onShape && b.onShape,
         preferredAccel: _profileAccel,
         maxAccel: _maxProfileAccel,
         maxSpeed: _maxProfileSpeed,
@@ -527,16 +541,21 @@ class TimedTrajectory {
     final wps = <_Waypoint>[];
     double? near;
     for (final p in plan) {
-      final d = path.project(ll.LatLng(p.lat, p.lon), near: near);
+      final planPos = ll.LatLng(p.lat, p.lon);
+      final d = path.project(planPos, near: near);
       near = d;
+      // How far the projection had to move the station to land it on the shape.
+      final offShape = const ll.Distance()
+          .as(ll.LengthUnit.Meter, planPos, path.pointAt(d));
+      final onShape = offShape <= _stopOnShapeToleranceMeters;
       final eta = p.etaSeconds.toDouble();
       if (wps.isEmpty) {
-        wps.add(_Waypoint(d, eta));
+        wps.add(_Waypoint(d, eta, onShape));
         continue;
       }
       final last = wps.last;
       if (d > last.dist + _epsilonMeters && eta > last.etaSeconds) {
-        wps.add(_Waypoint(d, eta));
+        wps.add(_Waypoint(d, eta, onShape));
       }
     }
     return wps.length >= 2 ? wps : null;
@@ -562,9 +581,15 @@ class TimedTrajectory {
 }
 
 class _Waypoint {
-  const _Waypoint(this.dist, this.etaSeconds);
+  const _Waypoint(this.dist, this.etaSeconds, this.onShape);
   final double dist;
   final double etaSeconds;
+  // Whether projecting this station onto the route shape barely moved it — i.e.
+  // the shape actually passes through the stop. False when the shape doesn't
+  // cover the stop (a route variant / bad geometry): projection then lands the
+  // station hundreds of metres away, on the wrong street, so a dwell there would
+  // pause the marker somewhere no stop exists. We glide such segments instead.
+  final bool onShape;
 }
 
 /// The distance-vs-time shape *within* one plan segment (waypoint k → k+1).
@@ -605,6 +630,7 @@ class _Segment {
     required double d1,
     required bool flyingStart,
     required double dwellSeconds,
+    required bool shape,
     required double preferredAccel,
     required double maxAccel,
     required double maxSpeed,
@@ -613,6 +639,9 @@ class _Segment {
     final d = d1 - d0;
     linear() =>
         _Segment._(t0, t1, d0, d1, _SegmentKind.linear, 0, 0, preferredAccel);
+    // Off-shape endpoint: the shape doesn't reach this stop, so there is nothing
+    // real to pause or brake at — glide straight through.
+    if (!shape) return linear();
     if (t <= 0 || d <= 0) return linear();
 
     if (flyingStart) {
