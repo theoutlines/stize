@@ -14,6 +14,7 @@ class VehicleTrack {
     required this.type,
     this.heading,
     this.path,
+    this.directionRouteId,
     this.source = VehicleSource.live,
   }) : from = to {
     if (path != null) {
@@ -30,6 +31,12 @@ class VehicleTrack {
   /// badge without re-looking-up the arrival.
   final String line;
   final VehicleType type;
+
+  /// The resolved direction route_id the vehicle travels (see [VehicleSample]).
+  /// Held so a follow entered by tapping the marker (which only knows the key)
+  /// can still highlight the correct-direction route + stops. Kept across
+  /// updates that don't carry it, so a later plain sample can't erase it.
+  String? directionRouteId;
 
   /// Live GPS vs GTFS-schedule-predicted. Scheduled tracks render semi-
   /// transparent; movement is identical (both play the timed plan).
@@ -88,6 +95,7 @@ class VehicleSample {
     this.path,
     this.trajectory,
     this.asOf,
+    this.directionRouteId,
     this.source = VehicleSource.live,
   });
 
@@ -96,6 +104,12 @@ class VehicleSample {
   final String line;
   final VehicleType type;
   final double? heading;
+
+  /// The resolved direction route_id this vehicle is travelling (e.g. the
+  /// `00079-1` variant, not the bare line `79`). Carried so a follow can draw
+  /// the route highlight + its stops for the SAME direction the marker moves
+  /// along, instead of the line's default direction (the wrong carriageway).
+  final String? directionRouteId;
 
   /// Live GPS vs GTFS-schedule-predicted (hybrid live+schedule).
   final VehicleSource source;
@@ -258,6 +272,7 @@ class VehicleTrackAnimator {
           type: s.type,
           heading: s.heading,
           path: s.path,
+          directionRouteId: s.directionRouteId,
           source: s.source,
         )..lastMovedAt = at;
         _applyTimedPlan(track, s, at);
@@ -267,6 +282,8 @@ class VehicleTrackAnimator {
 
       existing.missingCount = 0;
       existing.source = s.source;
+      // Keep the last known direction if this sample didn't carry one.
+      existing.directionRouteId = s.directionRouteId ?? existing.directionRouteId;
       _noteFix(existing, s.position, at);
       // Timed-trajectory mode (feature on + a usable plan) supersedes the
       // conservative from/to ease: the marker plays the plan forward by time,
