@@ -496,6 +496,42 @@ void main() {
               '(min speed ${minSpeed.toStringAsFixed(2)} m/s near 20 s)');
     });
 
+    // Calibration boundary (2026-07-18, on-shape tolerance = 32 m). A stop whose
+    // projection lands `metres` NORTH of the due-east route (so it projects that
+    // far off its true position) with otherwise-calm timing. Stop 2 stays on the
+    // route. `metres` / 111320 converts to a latitude offset.
+    List<TrajectoryPoint> stopOffBy(double metres) => [
+          const TrajectoryPoint(44.80, 20.50000, 0),
+          TrajectoryPoint(44.80 + metres / 111320.0, 20.50126, 20), // stop 1
+          const TrajectoryPoint(44.80, 20.50283, 45), // stop 2, on-route
+        ];
+
+    double minSpeedNear20s(TimedTrajectory t) {
+      var minSpeed = double.infinity;
+      for (var ms = 17000; ms <= 24000; ms += 250) {
+        final a = t.targetDistanceAt(_t0.add(Duration(milliseconds: ms)));
+        final b = t.targetDistanceAt(_t0.add(Duration(milliseconds: ms + 250)));
+        final v = (b - a) / 0.25;
+        if (v < minSpeed) minSpeed = v;
+      }
+      return minSpeed;
+    }
+
+    test('a stop projecting 31 m off-shape still DWELLS (inside the 32 m tolerance)', () {
+      // A real stop on a slightly-off shape (the 26-28 m yellow band + margin) —
+      // it must still pause, or good stops on imperfect geometry lose their dwell.
+      final v = minSpeedNear20s(build(stopOffBy(31)));
+      expect(v, lessThan(0.3),
+          reason: 'a 31 m stop must dwell (min speed ${v.toStringAsFixed(2)} m/s)');
+    });
+
+    test('a stop projecting 45 m off-shape GLIDES past (beyond the 32 m tolerance)', () {
+      // A genuinely wrong shape variant (50 m+ misses): no pause where no stop is.
+      final v = minSpeedNear20s(build(stopOffBy(45)));
+      expect(v, greaterThan(0.5),
+          reason: 'a 45 m miss must glide (min speed ${v.toStringAsFixed(2)} m/s)');
+    });
+
     test('the plan stands still at a stop, then pulls away', () {
       final t = build(calmPlan());
       final atStop = targetAt(t, 20);

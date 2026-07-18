@@ -121,10 +121,13 @@ class TimedTrajectory {
   // A station whose projection onto the route shape lands within this of its
   // true position counts as "on the shape" — the shape reaches the stop, so a
   // dwell there is truthful. Past it the shape doesn't cover the stop and the
-  // dwell is suppressed (see _buildSegments). 20 m absorbs normal projection
-  // slack and stop-vs-shape offset without admitting the hundreds-of-metres
-  // misses of an uncovered variant.
-  static const double _stopOnShapeToleranceMeters = 20.0;
+  // dwell is suppressed (see _buildSegments). Absorbs normal projection slack
+  // and stop-vs-shape offset without admitting the hundreds-of-metres misses of
+  // an uncovered variant.
+  // Calibration 2026-07-18 (по прод-замеру): стопы с проекцией 26-28 м — реальные
+  // стопы кривоватых shape, не мусор; 32 м покрывает эту жёлтую зону с запасом и
+  // при этом не дотягивается до 50 м+ выбросов по-настоящему неверного варианта.
+  static const double _stopOnShapeToleranceMeters = 32.0;
   // Accel/brake rate for the *plan's* shape — a real bus figure, deliberately
   // far gentler than [_maxCatchUpAccel] (3.0), which is the marker's chase
   // dynamics and answers to smoothness, not realism. Keep the two apart.
