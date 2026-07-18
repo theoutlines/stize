@@ -2694,6 +2694,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (timed.isStale(now)) {
       cause = 'HOLD stale board '
           '(age ${timed.boardAgeSeconds(now).toStringAsFixed(0)}s>45) — pinned to fix';
+    } else if (timed.isGliding(now)) {
+      cause = 'GLIDE-END coasting to rest at plan end '
+          '(vel ${vel.toStringAsFixed(2)}m/s, buffering a late board)';
     } else if (!timed.isPlaying(now)) {
       cause = 'plan spent (end/horizon reached)';
     } else if (plan < 0.5) {

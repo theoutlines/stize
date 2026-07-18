@@ -682,4 +682,154 @@ void main() {
       expect(t.hasForwardMotion(stale), isFalse);
     });
   });
+
+  group('plan-end glide', () {
+    // A plan that runs OUT of time at 25 s while the marker is still cruising —
+    // tight segments degrade the trapezoid to a linear cruise, so at the last
+    // waypoint the marker carries real speed. This is the "plan ran out under a
+    // moving marker" case the glide-out smooths (vs the old hard zero at horizon).
+    List<TrajectoryPoint> spendingPlan() => const [
+          TrajectoryPoint(44.80, 20.500, 0),
+          TrajectoryPoint(44.80, 20.502, 13),
+          TrajectoryPoint(44.80, 20.504, 25),
+        ];
+
+    // Steps the marker frame-by-frame, returning the per-frame samples.
+    List<({double t, double vel, double dist, bool glide})> replay(
+      TimedTrajectory t, {
+      double toSeconds = 40,
+      int stepMs = 250,
+    }) {
+      final out = <({double t, double vel, double dist, bool glide})>[];
+      for (var ms = 0; ms <= toSeconds * 1000; ms += stepMs) {
+        final now = _t0.add(Duration(milliseconds: ms));
+        t.advance(now);
+        out.add((
+          t: ms / 1000.0,
+          vel: t.displaySpeed,
+          dist: t.displayDistance,
+          glide: t.isGliding(now),
+        ));
+      }
+      return out;
+    }
+
+    test('eases to rest with a decay, not a hard stop, at the plan end', () {
+      final t = TimedTrajectory.build(
+          path: _eastRoute(), plan: spendingPlan(), asOf: _t0, now: _t0)!;
+      final s = replay(t);
+
+      final firstGlide = s.indexWhere((f) => f.glide);
+      expect(firstGlide, greaterThan(0), reason: 'the glide must engage');
+
+      // NOT a cliff: the frame the plan spends still carries real speed — the old
+      // behaviour zeroed it in a single step.
+      expect(s[firstGlide].vel, greaterThan(3.0),
+          reason: 'speed at plan end is bled, not slammed to 0');
+
+      // The glide window: from first glide frame to the first frame at rest.
+      final restIdx =
+          s.indexWhere((f) => f.vel < 0.2 && f.t > s[firstGlide].t);
+      final glideSeconds = s[restIdx].t - s[firstGlide].t;
+      expect(glideSeconds, greaterThan(1.5),
+          reason: 'a glide lasts ~2 s, not the sub-frame of a hard stop '
+              '(measured ${glideSeconds.toStringAsFixed(2)} s)');
+      expect(glideSeconds, lessThan(4.0), reason: 'but it does reach rest');
+
+      // Monotone: speed never rises during the glide, position never rewinds.
+      for (var i = firstGlide + 1; i <= restIdx; i++) {
+        expect(s[i].vel, lessThanOrEqualTo(s[i - 1].vel + 1e-6),
+            reason: 'speed decays monotonically (frame $i)');
+        expect(s[i].dist, greaterThanOrEqualTo(s[i - 1].dist - 1e-6),
+            reason: 'forward-only: the coast never rewinds (frame $i)');
+      }
+    });
+
+    test('a fresh board mid-glide resumes the chase without a jerk', () {
+      final t = TimedTrajectory.build(
+          path: _eastRoute(), plan: spendingPlan(), asOf: _t0, now: _t0)!;
+      // Advance into the middle of the glide (well after the 25 s spend).
+      var now = _t0;
+      for (var ms = 0; ms <= 26000; ms += 250) {
+        now = _t0.add(Duration(milliseconds: ms));
+        t.advance(now);
+      }
+      expect(t.isGliding(now), isTrue, reason: 'precondition: mid-glide');
+      final vBefore = t.displaySpeed;
+
+      // A fresh board lands, extending the plan forward from here.
+      final fresh = [
+        TrajectoryPoint(44.80, t.position.longitude, 0),
+        const TrajectoryPoint(44.80, 20.508, 30),
+        const TrajectoryPoint(44.80, 20.512, 60),
+      ];
+      t.updatePlan(path: _eastRoute(), plan: fresh, asOf: now, now: now);
+
+      // The very next frame's speed change is bounded by the accel limiter — the
+      // contour's C1 contract: velocity is continuous, no discontinuous jump.
+      now = now.add(const Duration(milliseconds: 250));
+      t.advance(now);
+      final vAfter = t.displaySpeed;
+      expect((vAfter - vBefore).abs(), lessThan(3.0 * 0.25 + 1e-3),
+          reason: 'no jerk across the board swap '
+              '($vBefore → $vAfter m/s in one 0.25 s frame)');
+
+      // And it picks the chase back up rather than staying in the decay.
+      expect(t.isGliding(now), isFalse);
+      for (var ms = 26500; ms <= 30000; ms += 250) {
+        now = _t0.add(Duration(milliseconds: ms - 0)).add(Duration.zero);
+        t.advance(now);
+      }
+      expect(t.displaySpeed, greaterThan(1.0),
+          reason: 'the marker is moving again on the fresh plan');
+    });
+
+    test('no fresh board: the marker reaches rest and holds, bounded', () {
+      final t = TimedTrajectory.build(
+          path: _eastRoute(), plan: spendingPlan(), asOf: _t0, now: _t0)!;
+      final s = replay(t, toSeconds: 40);
+      final last = s.last;
+      // Honest stop: no motion, not playing, and it did NOT extrapolate the route
+      // — the coast is capped just past the plan's last point.
+      expect(last.vel, 0.0);
+      final now = _t0.add(const Duration(seconds: 40));
+      expect(t.isPlaying(now), isFalse);
+      expect(t.isGliding(now), isFalse);
+      expect(t.displayDistance, lessThanOrEqualTo(t.endDistance + 20.0 + 1e-6),
+          reason: 'coast is bounded (presentation, not free extrapolation)');
+    });
+
+    test('a marker already at rest at the plan end does not glide (dwell stands)',
+        () {
+      final t = TimedTrajectory.build(
+          path: _eastRoute(), plan: spendingPlan(), asOf: _t0, now: _t0)!;
+      // Let the glide fully play out to rest.
+      var now = _t0;
+      for (var ms = 0; ms <= 30000; ms += 250) {
+        now = _t0.add(Duration(milliseconds: ms));
+        t.advance(now);
+      }
+      expect(t.displaySpeed, 0.0);
+      expect(t.isGliding(now), isFalse);
+      final restDist = t.displayDistance;
+      // Keep ticking (still fresh, no new board): it stays put — no re-glide, no
+      // creeping coast. A stop at the end is a stop, not perpetual motion.
+      for (var ms = 30250; ms <= 40000; ms += 250) {
+        now = _t0.add(Duration(milliseconds: ms));
+        t.advance(now);
+        expect(t.isGliding(now), isFalse);
+      }
+      expect(t.displayDistance, closeTo(restDist, 1e-6));
+    });
+
+    test('a stale board holds at the fix and never glides', () {
+      final t = TimedTrajectory.build(
+          path: _eastRoute(), plan: spendingPlan(), asOf: _t0, now: _t0)!;
+      // Past the 45 s staleness gate: pinned to the fix, honesty gate untouched.
+      final stale = _t0.add(const Duration(seconds: 90));
+      t.advance(stale);
+      expect(t.isGliding(stale), isFalse);
+      expect(t.hasForwardMotion(stale), isFalse);
+    });
+  });
 }

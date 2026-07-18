@@ -86,6 +86,35 @@ class TimedTrajectory {
   static const double _stationRadiusMeters = 20.0;
   static const double _crawlFraction = 0.25;
 
+  // Glide-out at the end of the known plan. When the plan's predicted-now spot
+  // reaches the horizon (the plan is spent, or the 900 m extrapolation cap binds)
+  // while the marker is still moving — a late board is the common case, its median
+  // gap under 2 s — the marker used to hard-zero its speed at the horizon, a
+  // visible halt-колом on the перегон. Instead it bleeds the residual speed to
+  // rest with an exponential decay: the last metres of the plan, presented
+  // smoothly. The marker approaches the horizon from behind and never predicts
+  // past it, so this is presentation, not route extrapolation; a fresh board
+  // clears the glide and the PRESERVED _dispVel resumes the chase with continuous
+  // velocity (the contour's C1 contract). If no board comes it reaches rest and
+  // honestly stops (PLAN_END, as before). A modeled stop the trapezoid brakes
+  // into is NOT a glide: there the marker is already at rest (_dispVel ≈ 0), the
+  // guard below skips it, and the dwell stands. Staleness is untouched — a stale
+  // board still hard-holds at the fix.
+  //
+  // τ ≈ 0.7 s eases a typical 3–10 m/s cruise to rest in ~2–2.5 s (t = τ·ln(v/vₑ)).
+  // The marker coasts forward along the route while it decays, a bounded few metres
+  // past the plan's last point — the decay itself limits the distance (∫v·e^{-t/τ}
+  // = v·τ, ~7 m for a 10 m/s cruise); [_glideCoastMeters] is only a hard safety cap
+  // so a freak speed can't run the marker away past the end.
+  static const double _glideTauSeconds = 0.7; // exponential decay time constant
+  static const double _glideRestSpeed = 0.2; // m/s; at/below this the glide is done
+  static const double _glideCoastMeters = 20.0; // hard cap on coast past the plan end
+  // How close to the horizon the marker enters the glide — the "last N metres" of
+  // the brief. Must exceed one frame's travel so a fast approach can't leap the
+  // horizon in a single step and skip the decay (18 m/s cap × a coarse 0.25 s tick
+  // ≈ 4.5 m); the display ticks far finer in practice.
+  static const double _glideEnterMeters = 6.0;
+
   // ---------------------------------------------------------------------------
   // Stop dwell — the shape of motion *between* two plan waypoints.
   //
@@ -318,6 +347,29 @@ class TimedTrajectory {
     // hold-cases fall out automatically.
     final planVel = _targetSpeed(now);
 
+    // Glide-out: the plan no longer carries us forward (its spot has reached the
+    // horizon) but the marker still has speed. Ease it to rest with an exponential
+    // decay instead of the hard zero this used to do at the horizon (see the
+    // constants). Preempts the catch-up law entirely for these frames; _dispVel is
+    // never stepped discontinuously, so a fresh board that clears the glide resumes
+    // the chase velocity-continuously.
+    if (_isGliding(now)) {
+      _dispVel *= math.exp(-dt / _glideTauSeconds);
+      if (_dispVel < _glideRestSpeed) _dispVel = 0;
+      var next = _dispDist + _dispVel * dt;
+      // Coast a bounded distance past the plan's last point along the route shape;
+      // the decay is the real limiter, the cap is only a safety belt. Forward-only
+      // (the normal path's guard) then keeps this coasted position — it never
+      // rewinds back to the horizon when the glide comes to rest.
+      final coastCap = horizon + _glideCoastMeters;
+      if (next > coastCap) {
+        next = coastCap;
+        _dispVel = 0;
+      }
+      _dispDist = next;
+      return;
+    }
+
     // Target speed for this frame: ride the plan speed, plus a term that erases
     // the position gap — eased so arrival has no jolt (cruise at the cap when
     // far, sqrt ramp-down when near → decelerate at _maxCatchUpAccel).
@@ -427,6 +479,33 @@ class TimedTrajectory {
   /// from a jittery *chase loop*.
   double planSpeed(DateTime now) => _targetSpeed(now);
 
+  // Whether the marker is coasting out the end of the plan right now: the plan's
+  // predicted-now spot has reached the horizon (spent, or the extrapolation cap)
+  // so it no longer feeds motion forward, yet the marker still carries speed to
+  // bleed. Excludes a stale board (held at the fix) and a marker already at rest
+  // (a modeled stop the trapezoid braked into — the dwell stands, no glide).
+  bool _isGliding(DateTime now) {
+    if (isStale(now)) return false;
+    if (_dispVel <= _glideRestSpeed) return false;
+    // The plan no longer carries us forward — its predicted-now spot has reached
+    // the horizon (spent, or the 900 m extrapolation cap), so its feed-forward
+    // speed is ~0 — and the marker, within the last N metres of that horizon, is
+    // still moving. That is the plan running out under a still-cruising marker: the
+    // hard-zero here was the halt-колом. The rest-speed guard above means a marker
+    // that arrived at rest (a trapezoid-braked stop) does NOT glide — the dwell
+    // stands. Deliberately NOT the marker OVERRUNNING the plan into its last stop
+    // while the plan still has time (planVel > 0): that is the separate OVERRAN
+    // phenomenon (a fresh board landed the vehicle behind the marker), out of this
+    // change's scope.
+    return _targetSpeed(now) <= _minMotionSpeed &&
+        _dispDist >= _horizonDist - _glideEnterMeters;
+  }
+
+  /// Whether the marker is gliding to rest at the end of the known plan (see
+  /// [_isGliding]) — a distinct state from a mid-block catch-up standstill, so the
+  /// staging overlay can name it (GLIDE-END) rather than a contour fault.
+  bool isGliding(DateTime now) => _isGliding(now);
+
   /// Per-stop gate diagnostics for the staging overlay: the next [count] plan
   /// stations ahead of the marker, each with how far the shape projection moved
   /// it (m), whether that passes the on-shape tolerance, whether the segment
@@ -530,6 +609,7 @@ class TimedTrajectory {
   /// second, flipping this true often enough to keep the ticker alive and the
   /// fan flickering: markers shoving apart and snapping back as they converge.
   bool hasForwardMotion(DateTime now) {
+    if (_isGliding(now)) return true; // coasting out the plan end IS moving forward
     if (_dispDist >= _horizonDist - _epsilonMeters) return false;
     return _targetSpeed(now) > _minMotionSpeed;
   }
@@ -555,6 +635,7 @@ class TimedTrajectory {
   /// is simply whether the plan is still live and unfinished. "Idle = zero
   /// frames" is intact — a stale board and a spent plan both still park it.
   bool isPlaying(DateTime now) {
+    if (_isGliding(now)) return true; // keep the ticker alive through the glide-out
     if (_dispDist >= _horizonDist - _epsilonMeters) return false;
     // Gate on staleness, NOT on `elapsed <= 0`. `_targetElapsed` returns 0 in
     // TWO cases: a stale board (held at the fix — correctly not playing) AND a
