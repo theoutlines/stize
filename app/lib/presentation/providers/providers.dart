@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/fleet_matcher.dart';
 import '../../core/vehicle_map_mode.dart';
+import '../../data/analytics/event_logger.dart';
 import '../../data/api/stigla_api_client.dart';
 import '../../data/device/device_id_service.dart';
 import '../../data/local/gtfs_offline_cache.dart';
@@ -139,6 +140,23 @@ final fleetCatalogProvider = FutureProvider<FleetCatalog?>((ref) async {
 
 final deviceIdServiceProvider = Provider<DeviceIdService>((ref) => DeviceIdService());
 
+/// Anonymous product-analytics logger (see [EventLogger]). One instance for the
+/// app's lifetime — it holds the ephemeral in-memory session id. Its gate is
+/// wired to the `product_analytics` flag by [eventLoggerGateProvider].
+final eventLoggerProvider = Provider<EventLogger>(
+  (ref) => EventLogger(ref.watch(apiClientProvider)),
+);
+
+/// Bridges the async `product_analytics` flag onto the [EventLogger] gate: once
+/// config resolves, the logger is unlocked (flag on) or silenced (flag off).
+/// Watch this once near the root so the gate is set exactly once per launch.
+final eventLoggerGateProvider = Provider<bool>((ref) {
+  final config = ref.watch(appConfigProvider).valueOrNull;
+  final enabled = config?.productAnalytics ?? false;
+  if (config != null) ref.read(eventLoggerProvider).setEnabled(enabled);
+  return enabled;
+});
+
 final alertsRepositoryProvider = Provider<AlertsRepository>(
   (ref) => AlertsRepositoryImpl(ref.watch(apiClientProvider)),
 );
@@ -238,11 +256,13 @@ class FavoritesController extends AsyncNotifier<List<FavoriteStop>> {
 
   Future<void> add(FavoriteStop stop) async {
     await ref.read(favoritesRepositoryProvider).add(stop);
+    ref.read(eventLoggerProvider).log(Ev.favoriteAdd);
     ref.invalidateSelf();
   }
 
   Future<void> remove(String stopId) async {
     await ref.read(favoritesRepositoryProvider).remove(stopId);
+    ref.read(eventLoggerProvider).log(Ev.favoriteRemove);
     ref.invalidateSelf();
   }
 
@@ -279,11 +299,13 @@ class PinnedLinesController extends AsyncNotifier<List<PinnedLine>> {
 
   Future<void> add(PinnedLine line) async {
     await ref.read(pinnedFavoritesRepositoryProvider).addLine(line);
+    ref.read(eventLoggerProvider).log(Ev.favoriteAdd);
     ref.invalidateSelf();
   }
 
   Future<void> remove(String line) async {
     await ref.read(pinnedFavoritesRepositoryProvider).removeLine(line);
+    ref.read(eventLoggerProvider).log(Ev.favoriteRemove);
     ref.invalidateSelf();
   }
 }
