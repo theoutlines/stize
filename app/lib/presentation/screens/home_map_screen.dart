@@ -169,6 +169,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // dim per key (a moving vehicle overlapping another). See [_arrangeVehicles].
   final Map<String, ll.LatLng> _spiderfyOffset = {};
   final Map<String, double> _crossOpacity = {};
+  // True while a fan offset / crossing dim is still easing toward its target, so
+  // the driver keeps ticking to animate the transition even when NO vehicle is
+  // "playing" (a choral HOLD on a stale feed parks every marker, so nothing else
+  // would keep the ticker alive and the fan would snap). Clears the moment the
+  // arrangement settles → idle stays at zero frames.
+  bool _fanAnimating = false;
   // Backgrounded (tab hidden / app paused): all animation and polling stop, and
   // we remember when so the frozen span can be discounted from the "stuck"
   // heuristic on resume.
@@ -487,7 +493,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _pumpVehLayer() {
     _vehAnimator.advanceTimed(DateTime.now());
     _pumpCount++;
-    if (_vehAnim.isAnimating || _vehAnimator.hasPendingMotion) {
+    // Keep ticking while a fan is still easing into place even if nothing is
+    // "playing" (choral HOLD): _paintVehicles → _arrangeVehicles advances the
+    // ease and clears _fanAnimating once it settles.
+    if (_vehAnim.isAnimating || _vehAnimator.hasPendingMotion || _fanAnimating) {
       _paintVehicles();
     } else {
       _stopVehDriver();
@@ -691,7 +700,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
 
     final driverRunning = _vehTicker?.isActive ?? false;
-    final ease = driverRunning ? 0.3 : 1.0;
 
     // --- Pass 1: fan out stationary coincident vehicles ---------------------
     // Consider ONLY the stationary ones, so a moving vehicle passing through a
@@ -731,6 +739,25 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         );
       }
     }
+
+    // Is the fan still in transit — any key's offset not yet at its target?
+    // (Forming, dissolving, or re-fanning.) If so while the driver is stopped —
+    // a choral HOLD parks every marker, so nothing is "playing" to keep it alive
+    // — kick the driver so the offsets EASE instead of snapping (a sideways shove
+    // reads as a glitch). It self-stops once [_fanAnimating] clears below.
+    var changing = false;
+    for (final o in objects) {
+      final tgt = offsetTarget[o.key] ?? const ll.LatLng(0, 0);
+      final cur = _spiderfyOffset[o.key] ?? const ll.LatLng(0, 0);
+      if ((tgt.latitude - cur.latitude).abs() > 1e-7 ||
+          (tgt.longitude - cur.longitude).abs() > 1e-7) {
+        changing = true;
+        break;
+      }
+    }
+    _fanAnimating = changing;
+    if (changing && !driverRunning && !_paused) _startVehDriver();
+    final ease = (driverRunning || changing) ? 0.3 : 1.0;
 
     // Ease each key's applied offset toward its target (zero if not in a
     // stationary cluster) and compute placed positions.
