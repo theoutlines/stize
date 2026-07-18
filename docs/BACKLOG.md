@@ -52,6 +52,24 @@ that can't be collected retroactively, we start accumulating before we need it.
 
 ## In progress / behind a flag
 
+- 🚧 **Adaptive context panel** (`feature/context-panel`, isolated preview pair,
+  merge owner-gated) — the nearby / stop / vehicle bottom sheets become one
+  **context slot** with three views and back navigation (nearby → stop →
+  vehicle), driven by the state machine already in main. Desktop (≥840px) = a
+  persistent left panel (rubber-band 360/28%/440) + full-height map with a
+  persistent global search; mobile = the same content as unified bottom sheets
+  (peek/half/large). The followed vehicle is kept in the visible map area
+  (camera padding follows the panel width / sheet detent — the visible-track
+  contract); a **follow-lost** pill ("Back to vehicle", l10n triple) shows on a
+  manual pan or when the vehicle leaves the screen. Flag `context_panel` (OFF
+  prod / ON staging) is the killswitch = today's independent sheets. Content
+  extracted to reusable widgets (`StopBoard`, `NearbyView`, `VehicleView`) — no
+  duplication; progresses the shared-stop-board item below. One declared
+  divergence from the mock: the vehicle view's per-stop ETA list stays on the
+  map, not the panel. Report `docs/reports/2026-07-18-context-panel.md`. Open
+  follow-ups (separate tasks): route My Stops rows into the desktop panel-stop
+  view; per-stop ETAs in the panel vehicle view.
+
 - 🚧 **Transport on the map — a map toggle** (`feature/vehicle-mode-setting`,
   isolated preview pair, merge owner-gated) — on-demand becomes the **new
   default**, not an experiment. The single control is a **quick toggle on the map**
@@ -269,7 +287,10 @@ that can't be collected retroactively, we start accumulating before we need it.
   landed in `stop_screen` first and did nothing in the app until wired into
   `stop_sheet` too). Extract one shared arrivals-list widget both consume, so a
   future list change can't ship a half-fix. Client-only refactor, no behaviour
-  change; lock it with the existing widget tests.
+  change; lock it with the existing widget tests. **Partly done** on
+  `feature/context-panel`: the sheet's board is now the shared `StopBoard`
+  widget (also hosted by the desktop panel); `stop_screen.dart` (deep link) is
+  the remaining copy to fold into `StopBoard`.
 
 ### Fleet-ID tail
 - ⏭️ Close remaining roster gaps so fewer vehicles show as UNKNOWN.
