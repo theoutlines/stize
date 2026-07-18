@@ -35,6 +35,11 @@ class AppConfig {
   /// lives in `core/vehicle_map_mode.dart`.
   bool get vehiclesOnDemand => flag('vehicles_on_demand');
 
+  /// Whether anonymous product-analytics events are collected on this client
+  /// (remote `product_analytics` flag). OFF (the default) means the app sends
+  /// zero analytics requests. Independent of the transport `analytics_*` flags.
+  bool get productAnalytics => flag('product_analytics');
+
 
   static const empty = AppConfig(version: '', flags: {});
 

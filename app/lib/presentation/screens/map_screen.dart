@@ -5,6 +5,7 @@ import 'package:maplibre/maplibre.dart';
 
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
+import '../../data/analytics/event_logger.dart';
 import '../../domain/models/route_alert.dart';
 import '../../domain/models/stop.dart';
 import '../providers/providers.dart';
@@ -80,6 +81,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           orElse: () => widget.stops.first,
         );
         // Overlay arrivals on this same map (A1) rather than pushing a screen.
+        ref.read(eventLoggerProvider).log(Ev.stopOpen, props: {'source': Ev.srcPin});
         showStopSheet(context, stopId: stop.stopId, stopName: stop.name);
         return;
       }

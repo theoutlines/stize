@@ -9,6 +9,7 @@ import '../../core/api_config.dart';
 import '../../core/arrival_grouping.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/live_position.dart';
+import '../../data/analytics/event_logger.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
@@ -46,6 +47,13 @@ class _StopScreenState extends ConsumerState<StopScreen> {
   void initState() {
     super.initState();
     _scheduleRefresh();
+    // This full screen is reached only via the /stop/:id route — the "My Stops"
+    // (favorites) list and external deep links — so the open is tagged as such.
+    // (The in-app tap path uses the bottom sheet, which tags its own source.)
+    ref.read(eventLoggerProvider).log(
+      Ev.stopOpen,
+      props: {'source': Ev.srcFavorites},
+    );
   }
 
   void _scheduleRefresh() {
@@ -259,7 +267,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
                     ChoiceChip(
                       label: Text(line),
                       selected: effectiveFilter == line,
-                      onSelected: (_) => setState(() => _lineFilter = line),
+                      onSelected: (_) {
+                        ref.read(eventLoggerProvider).log(Ev.lineFilter);
+                        setState(() => _lineFilter = line);
+                      },
                     )
                   else
                     Opacity(
@@ -292,7 +303,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
                           : Theme.of(context).colorScheme.outline),
                   label: Text(l10n.fleetSortByComfort),
                   selected: _sortByComfort,
-                  onSelected: (_) => setState(() => _sortByComfort = true),
+                  onSelected: (_) {
+                    ref.read(eventLoggerProvider).log(Ev.sortComfort);
+                    setState(() => _sortByComfort = true);
+                  },
                 ),
               ],
             ),

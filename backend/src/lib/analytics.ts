@@ -73,9 +73,10 @@ export function maxRowsPerInsert(columnsPerRow: number): number {
  * Insert many rows into `table(columns)` as chunked multi-row statements, each
  * kept under D1's per-statement bound-parameter cap. The single choke point for
  * every analytics insert (raw observations, aggregates, future tables) so the
- * "too many SQL variables" bug can't come back one table at a time.
+ * "too many SQL variables" bug can't come back one table at a time. Exported so
+ * the product-analytics logger (lib/productAnalytics.ts) shares the same chunker.
  */
-async function chunkedInsert(
+export async function chunkedInsert(
   db: D1Database,
   table: string,
   columns: readonly string[],

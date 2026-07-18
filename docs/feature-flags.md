@@ -33,6 +33,7 @@ instant rollback.
 | `nearby_list` | the "Nearby" draggable sheet over the map (client) | ON | ON | 2026-07-12 | fresh (kept for rollback) |
 | `nearby_sort_board` | "Nearby" ordered by time-to-board instead of bare ETA (backend) | ON | ON | 2026-07-12 | fresh (kept for rollback) |
 | `vehicles_on_demand` | the map's vehicle-mode toggle — the user's choice between on-demand vehicles (in context only) and the background "aquarium" (client) | OFF | ON | 2026-07-15 | permanent (toggle gate + killswitch) — two-level, see below |
+| `product_analytics` | anonymous product-usage events: client batches them to `POST /api/v1/events`, worker writes to `product_events` (client + backend) | OFF | ON | 2026-07-18 | permanent (gate + killswitch) — flip prod after a volume check |
 
 Config parameters (KV, not boolean flags):
 
@@ -42,7 +43,11 @@ Config parameters (KV, not boolean flags):
 
 Notes: the two analytics flags are independent on purpose — turn **collect** on
 early to accumulate history while **show** stays off. `nearby_sort_board` only
-matters when `nearby_list` is on.
+matters when `nearby_list` is on. `product_analytics` is a **different** system
+from `analytics_collect`: the latter logs *transport* observations (arrivals →
+`raw_observations`), the former logs *anonymous product-usage* events (taps →
+`product_events`). `product_analytics` gates **both** ends — with it off the
+client sends zero `/api/v1/events` requests **and** the worker writes nothing.
 
 ### `vehicles_on_demand` — a two-level flag (gate + killswitch)
 

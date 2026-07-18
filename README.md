@@ -72,6 +72,32 @@ flutter run -d chrome --dart-define-from-file=dart_defines.json            # web
 key — restrict it by allowed origins in the MapTiler dashboard). Point the app at
 a local backend with `--dart-define=API_BASE_URL=http://localhost:8787`.
 
+## Privacy
+
+Stigla has **no accounts and no tracking of people.** It uses no third-party
+analytics, no Google Analytics, no advertising or fingerprinting SDKs — nothing
+that ships your data to someone else.
+
+To understand which features are worth keeping, the app records a small set of
+**anonymous product events** (e.g. "a stop was opened", "a vehicle was
+followed", "the app was opened") to *our own* backend. By design these carry
+**no way to identify you**:
+
+- **no** user id, account, or device fingerprint;
+- **no** IP address or precise location stored with an event;
+- **no** free text — only fixed, enumerated values (e.g. the *class* of your
+  system language — Serbian / Russian / English / other — never anything more
+  specific);
+- timestamps are coarsened to the **hour**, not the second.
+
+The only link between events is an **ephemeral, random id kept in memory for the
+current tab** (never written to disk, never an identity) so we can tell that
+"open stop → follow vehicle" was one sequence. It's gone the moment the tab
+closes. Data collection is **off by default** and, when on, the data stays ours —
+we don't sell it or hand it to a third party. The exact event list and the
+enum-only properties live in
+[`backend/src/lib/productAnalytics.ts`](backend/src/lib/productAnalytics.ts).
+
 ## Contributing & license
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — ground rules and setup.

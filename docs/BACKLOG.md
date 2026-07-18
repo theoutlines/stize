@@ -149,6 +149,18 @@ that can't be collected retroactively, we start accumulating before we need it.
   (binding-лимит выше REST-лимита, чанк 40 фактически держал). Отчёт:
   `docs/reports/2026-07-15-analytics-sql-variables.md`.
 
+- ✅ **Product analytics contour** (`feature/product-analytics`) — собственный
+  контур продуктовых событий: клиентский `EventLogger` (очередь + батч-flush +
+  эфемерная in-memory session, без user-id/IP/координат) шлёт батчи на
+  `POST /api/v1/events`, воркер пишет в новую таблицу `product_events`
+  (analytics-D1) через `chunkedInsert` в `waitUntil` — ноль влияния на горячие
+  пути. 8 событий v1 (вкл. `app_open.locale_class` для когорт местные/туристы),
+  свойства только перечислениями (unknown события/свойства отбрасываются на
+  входе). Гейт `product_analytics` (OFF прод / ON staging) закрывает **оба** конца:
+  при OFF клиент шлёт ноль запросов. README-абзац о приватности добавлен. Прод —
+  отдельным решением после проверки объёмов. Отчёт:
+  `docs/reports/2026-07-18-product-analytics.md`.
+
 - 🚧 **Line analytics screens** (heatmap / sparkline / scatter / stat tiles) —
   hidden on production, visible on staging; draft visuals.
 - 🚧 **Coverage tab (V0)** — a standalone Strava-style route-density infographic

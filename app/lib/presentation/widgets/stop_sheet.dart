@@ -8,6 +8,7 @@ import '../../core/api_config.dart';
 import '../../core/arrival_grouping.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/live_position.dart';
+import '../../data/analytics/event_logger.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
@@ -395,7 +396,10 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
                     ChoiceChip(
                       label: Text(line),
                       selected: effectiveFilter == line,
-                      onSelected: (_) => setState(() => _lineFilter = line),
+                      onSelected: (_) {
+                        ref.read(eventLoggerProvider).log(Ev.lineFilter);
+                        setState(() => _lineFilter = line);
+                      },
                     )
                   else
                     // Inactive: no arrivals right now — muted and non-clickable.
@@ -429,7 +433,10 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
                           : Theme.of(context).colorScheme.outline),
                   label: Text(l10n.fleetSortByComfort),
                   selected: _sortByComfort,
-                  onSelected: (_) => setState(() => _sortByComfort = true),
+                  onSelected: (_) {
+                    ref.read(eventLoggerProvider).log(Ev.sortComfort);
+                    setState(() => _sortByComfort = true);
+                  },
                 ),
               ],
             ),

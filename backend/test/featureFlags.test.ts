@@ -33,6 +33,7 @@ describe("featureFlags", () => {
       "coverage_on_main_map",
       "nearby_list",
       "nearby_sort_board",
+      "product_analytics",
       "vehicles_on_demand",
     ]);
   });

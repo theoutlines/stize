@@ -27,6 +27,7 @@ import '../../core/route_path.dart';
 import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_map_mode.dart';
 import '../../core/vehicle_track_animator.dart';
+import '../../data/analytics/event_logger.dart';
 import '../../data/location/location_service.dart';
 import '../../domain/models/area_vehicle.dart';
 import '../../domain/models/arrival.dart';
@@ -248,6 +249,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   Timer? _shapeResyncTimer;
 
   bool _searching = false;
+  // Dedupe the `search_used` event to once per search session (reset when the
+  // query is cleared) so a debounced keystroke burst logs a single event.
+  bool _searchLogged = false;
   List<Stop> _resultStops = [];
   List<LineInfo> _resultLines = [];
   List<GeocodeResult> _resultPlaces = [];
@@ -1734,9 +1738,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     required ll.LatLng target,
     required bool flyTo,
     required String line,
+    required String source,
     bool scheduled = false,
     bool refreshVehicles = false,
   }) {
+    // Single funnel for all three follow entries (marker / sheet / nearby), so
+    // this one log point captures every "follow started" with its source.
+    ref.read(eventLoggerProvider).log(Ev.vehicleFollow, props: {'source': source});
     setState(() => _selectedVehicleKey = key);
     _writeVehiclesToSource(); // tap highlight on the symbol layer
     if (!_paused && _vehAnimator.hasPendingMotion) _startVehDriver();
@@ -2042,7 +2050,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// vehicle appears immediately — never waiting on a viewport fan-out, which was
   /// the root of the old bug — highlights its direction's route, flies to it and
   /// follows. Works at both flag values.
-  void _focusVehicleFromArrival(Arrival a, DateTime asOf) {
+  void _focusVehicleFromArrival(Arrival a, DateTime asOf, {required String source}) {
     final gps = a.gps;
     // No live fix → no marker → don't enter follow (it would be a follow over an
     // empty map). Surface "vehicle lost" instead.
@@ -2074,6 +2082,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       target: pos,
       flyTo: true,
       line: a.line,
+      source: source,
       scheduled: a.scheduled,
     );
   }
@@ -2123,6 +2132,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               target: ll.LatLng(point.lat, point.lon),
               flyTo: false,
               line: line,
+              source: Ev.srcMarker,
               scheduled: scheduled,
               refreshVehicles: true,
             );
@@ -2157,7 +2167,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
     final nearestStop = pickNearest(screen, stopCandidates);
     if (nearestStop != null) {
-      _openStop(nearestStop);
+      _openStop(nearestStop, source: Ev.srcPin);
       return;
     }
     for (final f in features) {
@@ -2194,6 +2204,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _onSearchChanged(String query) {
     _searchDebounce?.cancel();
     if (query.trim().isEmpty) {
+      _searchLogged = false; // a new non-empty query starts a fresh session
       setState(() {
         _searching = false;
         _resultStops = [];
@@ -2210,6 +2221,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   }
 
   Future<void> _runSearch(String query) async {
+    if (!_searchLogged) {
+      _searchLogged = true;
+      ref.read(eventLoggerProvider).log(Ev.searchUsed);
+    }
     final stops = await ref.read(stopsRepositoryProvider).search(query);
     final lines = await ref.read(linesRepositoryProvider).search(query);
     List<GeocodeResult> places = [];
@@ -2229,6 +2244,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _clearSearch() {
     _searchController.clear();
     _focusNode.unfocus();
+    _searchLogged = false;
     setState(() {
       _searching = false;
       _resultStops = [];
@@ -2237,10 +2253,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     });
   }
 
-  void _openStop(Stop stop) => _openStopById(
+  void _openStop(Stop stop, {String? source}) => _openStopById(
         stop.stopId,
         stopName: stop.name,
         at: ll.LatLng(stop.lat, stop.lon),
+        source: source,
       );
 
   /// Tap a "Nearby" row → follow that line+direction's soonest **live** vehicle
@@ -2257,14 +2274,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // A schedule-only row opens the stop without a fetch (its own status says so).
     final hasLiveEta = group.arrivals.any((e) => !e.isScheduled);
     if (!hasLiveEta) {
-      _openStopById(group.stopId, stopName: group.stopName);
+      _openStopById(group.stopId, stopName: group.stopName, source: Ev.srcNearby);
       return;
     }
     ArrivalsBoard board;
     try {
       board = await ref.read(arrivalsProvider(group.stopId).future);
     } catch (_) {
-      _openStopById(group.stopId, stopName: group.stopName);
+      _openStopById(group.stopId, stopName: group.stopName, source: Ev.srcNearby);
       return;
     }
     if (!mounted) return;
@@ -2273,11 +2290,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // scheduled/absent vehicle.
     final match = nearbyFollowTarget(group, board.arrivals);
     if (match == null) {
-      _openStopById(group.stopId, stopName: group.stopName);
+      _openStopById(group.stopId, stopName: group.stopName, source: Ev.srcNearby);
       return;
     }
     if (_onDemand) _enterStopContext(group.stopId); // keep the vehicle refreshed
-    _focusVehicleFromArrival(match, board.updatedAt);
+    _focusVehicleFromArrival(match, board.updatedAt, source: Ev.srcNearby);
     _returnToStopId = null; // came from Nearby → close returns to the viewport
   }
 
@@ -2286,7 +2303,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// map. When on-demand, entering stop context makes that stop's arrivals the
   /// map's markers (state B); closing the sheet (unless a vehicle was tapped)
   /// clears them back to A.
-  void _openStopById(String stopId, {String? stopName, ll.LatLng? at}) {
+  void _openStopById(String stopId, {String? stopName, ll.LatLng? at, String? source}) {
+    // `source` non-null marks a fresh user-initiated open (pin / nearby / search
+    // / favorites) — logged here, the single funnel for every such entry. The
+    // internal return-to-stop after a follow passes no source, so it isn't
+    // counted as a new product entry.
+    if (source != null) {
+      ref.read(eventLoggerProvider).log(Ev.stopOpen, props: {'source': source});
+    }
     _clearSearch();
     // Snapshot the viewport before the stop is panned up, so closing the sheet
     // returns here — symmetric to the open. Only the first open of a session
@@ -2311,7 +2335,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       stopName: stopName,
       // Tapping a vehicle row hands the whole arrival to the map so it builds a
       // guaranteed marker, highlights the route and follows (§C).
-      onFocusVehicle: _focusVehicleFromArrival,
+      onFocusVehicle: (a, asOf) => _focusVehicleFromArrival(a, asOf, source: Ev.srcSheet),
     ).then((_) {
       if (mounted) setState(() => _stopSheetOpen = false);
       _onStopSheetClosed(stopId);
@@ -3354,7 +3378,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               // hidden while searching and when there are no favourites.
               if (!_searching)
                 FavoritesCarousel(
-                  onOpenStop: _openStop,
+                  onOpenStop: (stop) => _openStop(stop, source: Ev.srcFavorites),
                   onOpenLine: (line) => _openVehicleLine(line.line),
                 ),
               PointerInterceptor(
@@ -3422,7 +3446,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             leading: const Icon(Icons.location_on_outlined),
             title: Text(stop.name),
             subtitle: Text(stop.lines.join(', ')),
-            onTap: () => _openStop(stop),
+            onTap: () => _openStop(stop, source: Ev.srcSearch),
           ),
         for (final line in _resultLines)
           ListTile(
