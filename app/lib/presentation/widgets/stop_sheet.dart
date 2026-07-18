@@ -6,6 +6,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
 import '../../core/arrival_grouping.dart';
+import '../../core/eta_delta.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/live_position.dart';
 import '../../data/api/api_exceptions.dart';
@@ -79,13 +80,13 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
   /// offered when ≥2 arriving vehicles of different classes are identified.
   bool _sortByComfort = false;
 
-  // ETA-change tracking (G1): the last ETA we showed per vehicle, and the
-  // signed delta from the most recent refresh, so a shifting arrival time is
-  // shown *as* a change rather than silently swapped.
-  Map<String, int> _prevEta = {};
+  // ETA-change tracking (G1): the last *absolute* predicted arrival instant we
+  // saw per live vehicle (keyed by garage number), and the signed whole-minute
+  // delta from the most recent refresh. Diffing the absolute arrival instant —
+  // not the displayed count-down — is what keeps the badge honest: a ticking
+  // clock alone never moves it. See diffEtaDeltas.
+  Map<String, DateTime> _prevArrival = {};
   Map<String, int> _etaDelta = {};
-
-  static String _vehKey(Arrival a) => a.garageNo ?? '${a.line}-${a.routeId}';
 
   @override
   void initState() {
@@ -111,23 +112,15 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
-    // On each refresh, diff the new ETAs against what we last showed (G1).
+    // On each refresh, diff the new board's absolute arrival instants against the
+    // previous poll's to flag genuine reforecasts (G1) — not the ticking clock.
     ref.listen(arrivalsProvider(widget.stopId), (_, next) {
       final board = next.valueOrNull;
       if (board == null) return;
-      final nextPrev = <String, int>{};
-      final deltas = <String, int>{};
-      for (final a in board.arrivals) {
-        final key = _vehKey(a);
-        nextPrev[key] = a.etaMinutes;
-        final before = _prevEta[key];
-        if (before != null && before != a.etaMinutes) {
-          deltas[key] = a.etaMinutes - before;
-        }
-      }
+      final result = diffEtaDeltas(_prevArrival, board);
       setState(() {
-        _prevEta = nextPrev;
-        _etaDelta = deltas;
+        _prevArrival = result.arrivalTimes;
+        _etaDelta = result.deltas;
       });
     });
 
@@ -463,7 +456,9 @@ class _StopSheetState extends ConsumerState<_StopSheet> {
   ) {
     return ArrivalTile(
       arrival: arrival,
-      etaDeltaMinutes: _etaDelta[_vehKey(arrival)],
+      // Only live rows are diffed, so their garage is the only key ever present;
+      // a null garage or a non-live row simply misses and shows no badge.
+      etaDeltaMinutes: _etaDelta[arrival.garageNo],
       fleet: fleet,
       onOpenFleetCard: fleet != null && fleet.hasInfo
           ? () => showFleetModelCard(
