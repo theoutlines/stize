@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/vehicle_map_mode.dart';
+import '../../data/analytics/event_logger.dart';
 import '../providers/providers.dart';
 import '../widgets/app_drawer.dart';
 import 'coverage_screen.dart';
@@ -19,6 +21,7 @@ class RootScreen extends ConsumerStatefulWidget {
 class _RootScreenState extends ConsumerState<RootScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _index = 0;
+  bool _loggedAppOpen = false;
 
   @override
   void initState() {
@@ -29,6 +32,26 @@ class _RootScreenState extends ConsumerState<RootScreen> {
     unawaited(ref.read(gtfsOfflineCacheProvider).refreshIfStale());
   }
 
+  /// Emit the once-per-launch `app_open` — but only after config resolves (so the
+  /// gate is known and the resolved vehicle-map mode is meaningful). `mode` is
+  /// the current map mode; `locale_class` is the coarse class of the *system*
+  /// locale (a local-vs-tourist proxy), read straight from the platform so a
+  /// user's in-app language override doesn't mask it.
+  void _maybeLogAppOpen(bool analyticsEnabled) {
+    if (_loggedAppOpen || !analyticsEnabled) return;
+    _loggedAppOpen = true;
+    final mode = ref.read(vehicleMapModeProvider);
+    ref.read(eventLoggerProvider).log(
+      Ev.appOpen,
+      props: {
+        'mode': mode == VehicleMapMode.aquarium ? Ev.modeAquarium : Ev.modeOnDemand,
+        'locale_class': localeClassOf(
+          WidgetsBinding.instance.platformDispatcher.locale.languageCode,
+        ),
+      },
+    );
+  }
+
   void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
 
   @override
@@ -36,6 +59,11 @@ class _RootScreenState extends ConsumerState<RootScreen> {
     // The coverage tab is a third section, but only when its remote flag is on —
     // so a dormant feature never builds its (map-backed) screen.
     final coverageEnabled = ref.watch(coverageEnabledProvider);
+    // Wire the analytics gate to the `product_analytics` flag (sets the logger's
+    // enabled state once config resolves) and emit app_open the first time it's
+    // known to be on. With the flag off this stays a pure no-op — zero requests.
+    final analyticsEnabled = ref.watch(eventLoggerGateProvider);
+    _maybeLogAppOpen(analyticsEnabled);
     final sectionCount = coverageEnabled ? 3 : 2;
     // If the flag flips off while coverage is showing, fall back to the map.
     final index = _index.clamp(0, sectionCount - 1);

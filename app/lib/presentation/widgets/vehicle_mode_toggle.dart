@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/vehicle_map_mode.dart';
+import '../../data/analytics/event_logger.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 
@@ -62,6 +63,12 @@ class VehicleModeToggle extends ConsumerWidget {
         ? VehicleMapMode.aquarium
         : VehicleMapMode.onDemand;
     ref.read(settingsControllerProvider.notifier).setVehicleMapMode(next);
+    // User's explicit map-mode switch — logged here (not in the controller,
+    // which also fires on programmatic changes) so it reflects a real choice.
+    ref.read(eventLoggerProvider).log(
+      Ev.modeToggle,
+      props: {'to': next == VehicleMapMode.aquarium ? Ev.modeAquarium : Ev.modeOnDemand},
+    );
     // Name the mode we just switched to — the button state alone is easy to
     // misread, and the map's own change (vehicles appearing/vanishing) can be
     // off-screen behind a sheet.

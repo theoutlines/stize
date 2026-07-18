@@ -32,6 +32,14 @@ import type { Env } from "../env";
 //                       worker is unchanged; the client simply stops calling
 //                       /vehicles/nearby while there's no context, which drops
 //                       the map fan-out load. OFF on prod, ON on staging.
+//   product_analytics — the client emits anonymous product-usage events (batched
+//                       to POST /api/v1/events; the worker writes them to the
+//                       product_events table via waitUntil). Gates BOTH the
+//                       client (OFF = zero analytics requests) and the worker's
+//                       write. Distinct from analytics_collect (that's the
+//                       TRANSPORT-observation logger). OFF on prod, ON on staging
+//                       until we've checked the volume/cost, then flip prod
+//                       deliberately.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -40,6 +48,7 @@ export const FEATURE_FLAGS = [
   "coverage_map_show",
   "coverage_on_main_map",
   "vehicles_on_demand",
+  "product_analytics",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

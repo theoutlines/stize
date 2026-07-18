@@ -11,8 +11,9 @@ import type {
   VehiclesResponse,
 } from "./types";
 import { isServiceKilled, setServiceKilled } from "./lib/killswitch";
-import { FEATURE_FLAGS, getAllFlags, isFeatureFlag, setFlag } from "./lib/featureFlags";
+import { FEATURE_FLAGS, getAllFlags, getFlagMemoized, isFeatureFlag, setFlag } from "./lib/featureFlags";
 import { aggregate, getLineAnalytics } from "./lib/analytics";
+import { logProductEvents, sanitizeBatch } from "./lib/productAnalytics";
 import { getArrivals } from "./lib/arrivals";
 import { getNearbyVehicles } from "./lib/vehicles";
 import { getNearbyArrivals } from "./lib/nearbyArrivals";
@@ -398,6 +399,39 @@ app.post("/api/v1/admin/flags", async (c) => {
   }
   await setFlag(c.env, body.flag, body.value);
   return c.json({ flags: await getAllFlags(c.env) });
+});
+
+// Product analytics: anonymous, batched usage events from the client. Own
+// contour (no external vendor) — the worker writes them to product_events. This
+// is deliberately cheap and fire-and-forget: sanitize the batch synchronously
+// (drop unknown events, strip non-enum props, cap the size), hand the write to
+// waitUntil, and answer immediately. Nothing here can add latency to, or fail,
+// the client. No auth: the payload is anonymous enums, same trust model as the
+// other public read/write endpoints.
+//
+// The endpoint MIRRORS the `product_analytics` flag: with it OFF it collects
+// nothing and says so with 204 No Content — no body parse, no write. The client
+// already sends nothing when the flag is off (config-gated); this makes the gate
+// observable and harmlessly absorbs a stale client that still posts. The flag
+// read is memoized on the request ctx, so the ON path's logProductEvents reuses
+// it — one KV read per request.
+app.post("/api/v1/events", async (c) => {
+  c.header("cache-control", "no-store");
+  if (!(await getFlagMemoized(c.env, c.executionCtx, "product_analytics"))) {
+    return c.body(null, 204);
+  }
+  const body = await c.req
+    .json<{ events?: unknown }>()
+    .catch(() => ({ events: undefined }));
+  const events = sanitizeBatch(body.events);
+  if (events.length > 0) {
+    c.executionCtx.waitUntil(
+      logProductEvents(c.env, c.executionCtx, events).catch((err) =>
+        console.error("product events log failed", err),
+      ),
+    );
+  }
+  return c.json({ accepted: events.length }, 202);
 });
 
 // Transport analytics: rolled-up metrics for one line, served from the
