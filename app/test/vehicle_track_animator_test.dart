@@ -404,4 +404,33 @@ void main() {
       expect(animator.trackFor('P3')!.missingCount, 1);
     });
   });
+
+  test('a track carries the resolved direction route_id, kept across plain updates', () {
+    // The follow highlight (route line + stop pins) is drawn for the direction
+    // the marker travels; that direction must survive on the track so a
+    // marker-tap follow (which only knows the key) can read it back — even when
+    // a later update sample doesn't re-supply it.
+    final animator = VehicleTrackAnimator();
+    animator.syncSamples([
+      const VehicleSample(
+        key: 'P79',
+        position: ll.LatLng(44.80, 20.50),
+        line: '79',
+        type: VehicleType.bus,
+        directionRouteId: '00079-1',
+      ),
+    ], 0);
+    expect(animator.trackFor('P79')!.directionRouteId, '00079-1');
+
+    // A later sample with no direction must NOT erase the known one.
+    animator.syncSamples([
+      const VehicleSample(
+        key: 'P79',
+        position: ll.LatLng(44.801, 20.501),
+        line: '79',
+        type: VehicleType.bus,
+      ),
+    ], 0);
+    expect(animator.trackFor('P79')!.directionRouteId, '00079-1');
+  });
 }
