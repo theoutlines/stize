@@ -112,6 +112,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleLost => 'Vehicle no longer tracked';
 
   @override
+  String get followingVehicle => 'Following';
+
+  @override
   String get noLiveVehiclesOnMap =>
       'No live-tracked vehicles to map right now — see the arrivals below.';
 

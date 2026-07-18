@@ -139,6 +139,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   static const _focusRouteLayerId = 'stg-focus-route';
   static const _focusStopsLayerId = 'stg-focus-stops';
   bool _focusLayersAdded = false;
+  String? _focusLayerError; // last focus-layer add failure, for the staging overlay
   static const _emptyFeatureCollection =
       '{"type":"FeatureCollection","features":[]}';
 
@@ -271,6 +272,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   int? _lastCtxBoardAgeSec; // freshness of the last context board applied
   int _lastCtxLive = 0; // live rows in it
   int _lastCtxWithTraj = 0; // how many carried a timing plan
+  // Board age at the moment each poll landed, most recent last (last 12).
+  //
+  // This is the number that decides whether an *elastic* stop dwell is worth
+  // building. The marker stops predicting once a board passes the 45 s gate, and
+  // the next board is only 30 s away — so a poll that lands carrying a board
+  // already older than 15 s means the marker will freeze before its relief
+  // arrives, for (age + 30 − 45) seconds. Under 15 s it never freezes at all.
+  // The backend caps board age at 40 s, so the whole question is where in 0..40
+  // these samples actually fall — hence a short history rather than one value.
+  final List<int> _boardAgePolls = [];
   int _refreshTicks = 0; // 30s refresh ticks fired
   int _pumpCount = 0; // vehicle-driver frames pumped
   // A stop arrivals sheet is currently up. The bottom UI (Nearby panel / search)
@@ -295,6 +306,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   ll.LatLng? _lastFollowMarkerPos;
   DateTime? _lastFollowMoveAt; // throttle for the smooth follow ease
   bool _selfCameraMove = false;
+  // A brief grace window after a resume during which a camera-move event does
+  // NOT break follow. Returning to a hidden tab re-lays-out the MapLibre-web
+  // canvas, which surfaces a camera event flagged as a user gesture even though
+  // the user did nothing — that used to silently drop follow, leaving the marker
+  // to wander off-screen with the selection still live. The programmatic follow
+  // pan that re-centres on the re-anchored (jumped) marker also happens inside
+  // this window, so it can't be mistaken for a manual pan either.
+  DateTime? _followResumeGuardUntil;
   // Where the camera sat when the vehicle context was entered, restored on close
   // so the user lands back where they came from (the stop, or the pre-focus
   // viewport) instead of adrift wherever the vehicle wandered.
@@ -394,6 +413,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _resumeActivity() {
     if (!_paused) return;
     _paused = false;
+    // Hold follow across the resume: the tab-return canvas re-layout can surface
+    // a spurious "gesture" camera event that would otherwise break it. Keep
+    // `_lastFollowMarkerPos` untouched so the first follow tick pans by the full
+    // re-anchor jump and the marker stays centred rather than sliding off.
+    if (_following) {
+      _followResumeGuardUntil = DateTime.now().add(const Duration(seconds: 1));
+    }
     final hiddenAt = _hiddenAt;
     if (hiddenAt != null) {
       // Discount the time spent hidden so a vehicle isn't declared stuck just
@@ -649,32 +675,54 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         156543.03392 * math.cos(_belgradeCenter.lat * math.pi / 180) /
         math.pow(2, zoom);
     final radiusM = 16.0 * metersPerPixel; // fan radius, constant on screen
-    final cellM = 30.0 * metersPerPixel; // ~coin size: closer than this overlaps
-    final cellLat = cellM / 111320.0;
-    String cellOf(ll.LatLng p) {
-      final cellLon = cellM / (111320.0 * math.cos(p.latitude * math.pi / 180));
-      return '${(p.latitude / cellLat).floor()}:'
-          '${(p.longitude / cellLon).floor()}';
+
+    // Overlap thresholds, in screen pixels so they mean the same at any zoom —
+    // and hysteretic. With one threshold, a pair sitting right at it fans out,
+    // collapses, fans out again. So a fan only *forms* on a strong overlap
+    // ([enterM], markers clearly on top of each other) and only *collapses*
+    // once they are comfortably apart ([exitM]); in between, whatever the fan is
+    // already doing wins.
+    final enterM = 24.0 * metersPerPixel;
+    final exitM = 40.0 * metersPerPixel;
+    String cellOf(ll.LatLng p, double m) {
+      final lat = m / 111320.0;
+      final lon = m / (111320.0 * math.cos(p.latitude * math.pi / 180));
+      return '${(p.latitude / lat).floor()}:${(p.longitude / lon).floor()}';
     }
 
     final driverRunning = _vehTicker?.isActive ?? false;
     final ease = driverRunning ? 0.3 : 1.0;
 
     // --- Pass 1: fan out stationary coincident vehicles ---------------------
-    // Group ONLY the stationary vehicles, so a moving vehicle passing through a
-    // parked cluster's cell can't collapse the fan.
-    final stationaryByCell = <String, List<int>>{};
+    // Consider ONLY the stationary ones, so a moving vehicle passing through a
+    // parked cluster's cell can't collapse the fan. `moving` counts a stop dwell
+    // as motion (TimedTrajectory.isPlaying): a bus pausing three seconds is
+    // mid-journey, and fanning it out on arrival only to snap it back as it
+    // pulls away would be a shove at every stop.
+    final crowdedEnter = <String, int>{};
+    final byExitCell = <String, List<int>>{};
     for (var i = 0; i < objects.length; i++) {
       if (objects[i].moving) continue;
-      stationaryByCell.putIfAbsent(cellOf(objects[i].position), () => []).add(i);
+      final p = objects[i].position;
+      crowdedEnter.update(cellOf(p, enterM), (v) => v + 1, ifAbsent: () => 1);
+      byExitCell.putIfAbsent(cellOf(p, exitM), () => []).add(i);
     }
     final offsetTarget = <String, ll.LatLng>{}; // dLat,dLon per key
-    for (final group in stationaryByCell.values) {
-      if (group.length < 2) continue;
-      group.sort((a, b) => objects[a].key.compareTo(objects[b].key));
-      for (var r = 0; r < group.length; r++) {
-        final o = objects[group[r]];
-        final angle = 2 * math.pi * r / group.length;
+    for (final group in byExitCell.values) {
+      // Who in this loose group actually earns a fan: anyone strongly overlapped
+      // right now, plus anyone already fanned (that's the hysteresis — they hold
+      // their place until the whole group thins out).
+      final members = [
+        for (final i in group)
+          if ((crowdedEnter[cellOf(objects[i].position, enterM)] ?? 0) >= 2 ||
+              _spiderfyOffset.containsKey(objects[i].key))
+            i
+      ];
+      if (members.length < 2) continue;
+      members.sort((a, b) => objects[a].key.compareTo(objects[b].key));
+      for (var r = 0; r < members.length; r++) {
+        final o = objects[members[r]];
+        final angle = 2 * math.pi * r / members.length;
         offsetTarget[o.key] = ll.LatLng(
           radiusM * math.sin(angle) / 111320.0,
           radiusM *
@@ -708,10 +756,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
     // --- Pass 2: cross-fade moving vehicles that overlap --------------------
     // Count occupancy of each cell at the placed positions; a MOVING vehicle
-    // sharing a cell with anything else is "crossing" and dims a little.
+    // sharing a cell with anything else is "crossing" and dims a little. Its own
+    // threshold (~a marker's width): the fan's enter/exit pair above is about
+    // whether to *move* a marker, which needs the hysteresis; a fade is
+    // continuous and eased, so a single threshold can't flicker.
+    final overlapM = 30.0 * metersPerPixel;
     final cellCount = <String, int>{};
     for (final p in placedPos) {
-      cellCount.update(cellOf(p), (v) => v + 1, ifAbsent: () => 1);
+      cellCount.update(cellOf(p, overlapM), (v) => v + 1, ifAbsent: () => 1);
     }
     const crossOpacity = 0.7;
     final present = <String>{};
@@ -719,7 +771,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     for (var i = 0; i < objects.length; i++) {
       final o = objects[i];
       present.add(o.key);
-      final crossing = o.moving && (cellCount[cellOf(placedPos[i])] ?? 0) > 1;
+      final crossing =
+          o.moving && (cellCount[cellOf(placedPos[i], overlapM)] ?? 0) > 1;
       final targetOpacity = crossing ? crossOpacity : 1.0;
       final curOpacity = _crossOpacity[o.key] ?? 1.0;
       final appliedOpacity = curOpacity + (targetOpacity - curOpacity) * ease;
@@ -814,6 +867,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     } else if (event is MapEventClick) {
       _handleTap(event.point);
     } else if (event is MapEventStartMoveCamera) {
+      // A camera event in the brief post-resume window is the tab-return canvas
+      // re-layout, not a user gesture — never break follow on it.
+      final guard = _followResumeGuardUntil;
+      if (guard != null && DateTime.now().isBefore(guard)) return;
       // Break follow only on a genuine user pan/zoom (the marker + highlight
       // stay). Our own programmatic pans are bracketed by [_selfCameraMove] so
       // they never count — even if the platform mislabels one as a gesture — so
@@ -1501,6 +1558,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // Stitch to the direction-resolved shape when available (fixes
           // "through houses"); null key ⇒ no path ⇒ straight-line ease.
           path: shapeKeyOf(v) == null ? null : _shapeCache[shapeKeyOf(v)!],
+          // Same resolved direction, so a marker-tap follow highlights the
+          // correct-direction route + stops rather than the line default.
+          directionRouteId: shapeKeyOf(v),
           // Hand the animator each vehicle's forward plan + as-of time so it
           // plays motion forward by time; a vehicle without a plan (null) just
           // eases conservatively to its latest fix.
@@ -1544,14 +1604,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// marker can't be pruned by a fan-out that doesn't (yet) contain it.
   Future<void> _openVehicleLine(
     String line, {
+    String? directionRouteId,
     bool scheduled = false,
     bool refreshVehicles = true,
   }) async {
     _clearSearch();
     try {
-      final shape = await ref
-          .read(linesRepositoryProvider)
-          .getShapeByLineNumber(line);
+      // Highlight the SAME direction the marker travels. A bare line number
+      // resolves to the line's default direction (dir 0) — the opposite
+      // carriageway when the vehicle runs the other way — so the route line and
+      // its stop pins landed on the wrong side. With the resolved direction
+      // route_id we fetch that variant's shape + stops instead.
+      final repo = ref.read(linesRepositoryProvider);
+      final shape = directionRouteId != null
+          ? await repo.getShapeByRouteId(directionRouteId)
+          : await repo.getShapeByLineNumber(line);
       if (!mounted) return;
       final routeStops = shape.stops
           .map(
@@ -1607,6 +1674,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       path: _shapeCache[shapeKey],
       trajectory: a.trajectory,
       asOf: asOf,
+      // [shapeKey] IS the resolved direction route_id the marker moves along, so
+      // a follow highlights the route + stops for that same direction.
+      directionRouteId: shapeKey,
       source: a.scheduled ? VehicleSource.scheduled : VehicleSource.live,
     );
   }
@@ -1620,6 +1690,41 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     } finally {
       _selfCameraMove = false;
     }
+  }
+
+  /// The single entry into follow mode. Every source — a stop-sheet row, a
+  /// Nearby row, a marker tap — funnels through here so they establish an
+  /// identical state set: select the vehicle, guarantee the follow bar (via the
+  /// `_selectedVehicleKey`-gated bottom UI, which replaces whatever context sheet
+  /// was open and offers the × exit), load its route, and start the camera
+  /// follow. The caller has already ensured the marker exists.
+  ///
+  /// The Nearby path used to skip this contract — it nudged only camera+selection
+  /// while its (persistent, non-modal) sheet stayed open and the follow bar,
+  /// gated on the async route load, never appeared — so there was no way out.
+  void _enterFollow({
+    required String key,
+    required ll.LatLng target,
+    required bool flyTo,
+    required String line,
+    bool scheduled = false,
+    bool refreshVehicles = false,
+  }) {
+    setState(() => _selectedVehicleKey = key);
+    _writeVehiclesToSource(); // tap highlight on the symbol layer
+    if (!_paused && _vehAnimator.hasPendingMotion) _startVehDriver();
+    _paintVehicles();
+    // Route highlight (sets `_focus` async). The follow bar no longer waits on
+    // it — it shows the instant `_selectedVehicleKey` is set. Draw the highlight
+    // for the vehicle's OWN resolved direction (from its track), not the line's
+    // default — otherwise the route and its pins sit on the opposite carriageway.
+    _openVehicleLine(
+      line,
+      directionRouteId: _vehAnimator.trackFor(key)?.directionRouteId,
+      scheduled: scheduled,
+      refreshVehicles: refreshVehicles,
+    );
+    _startFollow(key, target: target, flyTo: flyTo);
   }
 
   /// Start following [key]. [flyTo] true (entry from a list row) flies the camera
@@ -1807,6 +1912,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // the screen without a console (debugPrint is stripped in release web).
     _lastCtxBoardAgeSec =
         DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
+    _boardAgePolls.add(_lastCtxBoardAgeSec!);
+    if (_boardAgePolls.length > 12) _boardAgePolls.removeAt(0);
     _lastCtxLive = samples.length;
     _lastCtxWithTraj = samples.where((s) => s.trajectory != null).length;
     // Keep the driver alive for the whole poll interval whenever this context has
@@ -1933,13 +2040,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _showVehicleLost();
       return;
     }
-    setState(() => _selectedVehicleKey = key);
-    if (!_paused && _vehAnimator.hasPendingMotion) _startVehDriver();
-    _paintVehicles();
-    _startFollow(key, target: pos, flyTo: true);
-    // Highlight the route (line panel). refreshVehicles:false so a fan-out can't
-    // prune the marker we just injected.
-    _openVehicleLine(a.line, scheduled: a.scheduled, refreshVehicles: false);
+    // Single follow entry (fly the camera in from a list row). refreshVehicles
+    // false so a fan-out can't prune the marker we just injected.
+    _enterFollow(
+      key: key,
+      target: pos,
+      flyTo: true,
+      line: a.line,
+      scheduled: a.scheduled,
+    );
   }
 
   void _clearFocus() {
@@ -1977,18 +2086,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // Honestly mark a schedule-predicted object when its line opens.
           final scheduled = keyStr != null &&
               _vehAnimator.trackFor(keyStr)?.source == VehicleSource.scheduled;
-          setState(() => _selectedVehicleKey = keyStr);
-          _writeVehiclesToSource();
-          // §C.2: highlight the route + line panel as today, and start following
-          // — but the camera does NOT jump or zoom (don't regress F2).
+          // §C.2: highlight the route + line panel and start following — but the
+          // camera does NOT jump or zoom (don't regress F2). Same single entry
+          // as the list-row paths, so all three end in identical state.
           _returnToStopId = _onDemand ? _stopContextId : null;
-          _openVehicleLine(line, scheduled: scheduled);
           if (keyStr != null) {
-            _startFollow(
-              keyStr,
+            _enterFollow(
+              key: keyStr,
               target: ll.LatLng(point.lat, point.lon),
               flyTo: false,
+              line: line,
+              scheduled: scheduled,
+              refreshVehicles: true,
             );
+          } else {
+            _openVehicleLine(line, scheduled: scheduled);
           }
           return;
         }
@@ -2460,7 +2572,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // (it *replaces* the search bar), else the normal search + favourites.
           // A stop arrivals sheet suppresses the whole bottom cluster so the two
           // never stack on top of each other (#7).
-          if (_focus != null)
+          if (_focus != null || _selectedVehicleKey != null)
             _focusPanel(theme)
           else if (_stopSheetOpen)
             const SizedBox.shrink()
@@ -2489,12 +2601,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     );
   }
 
-  /// True for one of the imperative stop layers (see [_addStopLayers]).
-  static bool _isStopLayer(String id) => id.startsWith('stg-stops-');
+  /// True for one of the imperative stop layers — the ambient `stg-stops-*`
+  /// set AND the focused-line `stg-focus-*` layers. The focus layers were
+  /// silently excluded here, so the render diagnostics (GL-layers list +
+  /// `renders`) never saw the focused-line stop pins at all — exactly the
+  /// layer whose pins go missing during follow.
+  static bool _isStopLayer(String id) =>
+      id.startsWith('stg-stops-') || id.startsWith('stg-focus-');
 
-  /// Short label for a stop layer id in diagnostics ('stg-stops-bus' → 'bus').
-  String _glLayerLabel(String id) =>
-      _isStopLayer(id) ? id.substring('stg-stops-'.length) : id;
+  /// Short label for a stop layer id in diagnostics ('stg-stops-bus' → 'bus',
+  /// 'stg-focus-stops' → 'focus-stops').
+  String _glLayerLabel(String id) => id.startsWith('stg-stops-')
+      ? id.substring('stg-stops-'.length)
+      : id.startsWith('stg-')
+      ? id.substring('stg-'.length)
+      : id;
 
   /// Staging-only render-diagnostics overlay (`isStaging`, invisible in prod).
   /// On Flutter-CanvasKit the map/layers aren't in the DOM and external JS
@@ -2512,15 +2633,107 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   String _catchUpDiagLine() {
     final key = _selectedVehicleKey;
     final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
-    if (timed == null) return 'VEH catchUp gap - plan - vel -';
+    if (timed == null) return 'VEH catchUp gap - plan - vel - age -';
     final now = DateTime.now();
     // `plan` vs `vel` is the pair that diagnoses jitter: the plan's own speed
     // against the marker's. Tracking is healthy when they sit on top of each
     // other with gap ≈ 0. `vel` swinging around a steady `plan` means the
     // catch-up loop is oscillating; both swinging together means the plan is.
+    //
+    // `age` is the live board age driving the staleness gate; `HOLD` means it
+    // has passed 45 s, so this marker has stopped predicting and stands still.
+    final age = timed.boardAgeSeconds(now);
     return 'VEH catchUp gap ${timed.catchUpGap(now).toStringAsFixed(2)}m '
         'plan ${timed.planSpeed(now).toStringAsFixed(2)} '
-        'vel ${timed.displaySpeed.toStringAsFixed(2)}m/s';
+        'vel ${timed.displaySpeed.toStringAsFixed(2)}m/s '
+        'age ${age.toStringAsFixed(0)}s${timed.isStale(now) ? " HOLD" : ""}';
+  }
+
+  // The pause gate's decision for the followed vehicle's next few stops, so the
+  // owner sees on screen WHY a pause fires (or doesn't): `+42m` ahead, projection
+  // moved off its true spot by `off8m`, on/off-shape, and DWELL vs glide.
+  String _dwellDiagLine() {
+    final key = _selectedVehicleKey;
+    final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
+    if (timed == null) return 'VEH dwell -';
+    final stops = timed.upcomingStopDiag();
+    if (stops.isEmpty) return 'VEH dwell (no stops ahead)';
+    final parts = stops.map((s) =>
+        '+${s.aheadM.toStringAsFixed(0)}m off${s.offShapeM.toStringAsFixed(0)}m '
+        '${s.onShape ? "on" : "OFF"}→${s.dwells ? "DWELL" : "glide"}');
+    return 'VEH dwell ${parts.join("  ")}';
+  }
+
+  // The followed marker's standstill, explained as an EVENT: the instant its
+  // display speed drops below 0.5 m/s, name the CAUSE so nobody has to guess
+  // why a bus is parked mid-block. The four causes are mutually exclusive and
+  // ordered by precedence:
+  //   HOLD    — the board is stale (>45 s), so the target is pinned to the last
+  //             fix and the marker legitimately stops until a fresh board.
+  //   spent   — the plan is exhausted (reached its end / the distance horizon).
+  //   DWELL   — the plan ITSELF predicts a standstill here (plan speed ≈ 0):
+  //             a real pause at the named stop.
+  //   CONTOUR — the plan is still moving but the marker is not: the catch-up /
+  //             gap-contour fault (a mid-block standstill with NO dwell — this
+  //             is the "stopped but every upcoming stop shows glide" case).
+  String _stopCauseDiagLine() {
+    final key = _selectedVehicleKey;
+    final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
+    if (timed == null) return 'VEH stopWhy -';
+    final now = DateTime.now();
+    final vel = timed.displaySpeed;
+    final pos = timed.position;
+    final at = '@${pos.latitude.toStringAsFixed(5)},'
+        '${pos.longitude.toStringAsFixed(5)}';
+    if (vel >= 0.5) return 'VEH stopWhy moving ${vel.toStringAsFixed(2)}m/s';
+    final plan = timed.planSpeed(now);
+    final gap = timed.catchUpGap(now);
+    final ahead = timed.upcomingStopDiag(count: 1);
+    final near = ahead.isEmpty ? null : ahead.first;
+    final String cause;
+    if (timed.isStale(now)) {
+      cause = 'HOLD stale board '
+          '(age ${timed.boardAgeSeconds(now).toStringAsFixed(0)}s>45) — pinned to fix';
+    } else if (!timed.isPlaying(now)) {
+      cause = 'plan spent (end/horizon reached)';
+    } else if (plan < 0.5) {
+      cause = near == null
+          ? 'DWELL: plan standstill (no stop info)'
+          : 'DWELL: plan stopped +${near.aheadM.toStringAsFixed(0)}m '
+                'off${near.offShapeM.toStringAsFixed(0)}m '
+                '${near.dwells ? "dwell" : "glide?!"}';
+    } else {
+      cause = 'CONTOUR: plan ${plan.toStringAsFixed(2)}m/s but vel '
+          '${vel.toStringAsFixed(2)}, gap ${gap.toStringAsFixed(1)}m — parked off-plan';
+    }
+    return 'VEH stopWhy $cause $at';
+  }
+
+  // How stale the vehicles' REAL fixes are, against how stale their boards
+  // claim to be. `as_of` is the backend's last successful *fetch*, so re-fetching
+  // a board the upstream hasn't refreshed re-stamps it young while the fix
+  // underneath is minutes old — and the whole prediction hangs off that stamp.
+  // Measured live: two views of one bus 121 m apart from GPS fixes identical to
+  // the metre, purely because their as_of differed by 36 s.
+  //
+  // Read-only evidence for a later call on whether the backend should stop
+  // re-stamping. Low numbers → the root fix is painless; high → the feed itself
+  // is the conversation.
+  String _fixAgeDiagLine() {
+    final s = _vehAnimator.fixAgeStats();
+    if (s.total == 0) return 'VEH fixAge -';
+    return 'VEH fixAge >45s ${s.over45}/${s.total} '
+        '>90s ${s.over90}/${s.total} (real fix age, not as_of)';
+  }
+
+  // How old each recent board was when it landed, and how many of those doomed
+  // the marker to a freeze before the next one (> 15 s; see the field's note).
+  String _boardAgeDiagLine() {
+    if (_boardAgePolls.isEmpty) return 'VEH boardAge@poll -';
+    final doomed = _boardAgePolls.where((a) => a > 15).length;
+    final worst = _boardAgePolls.reduce((a, b) => a > b ? a : b);
+    return 'VEH boardAge@poll ${_boardAgePolls.join(",")} '
+        'max ${worst}s freeze-bound $doomed/${_boardAgePolls.length}';
   }
 
   Widget _stopDiagnosticsOverlay(ThemeData theme) {
@@ -2528,24 +2741,37 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final controller = _controller;
     final style = _style;
 
-    // Whether the layer for a stop type actually renders at the first such
-    // stop's screen pixel — 'ok' drawn, 'MISS' built-but-not-drawn, '-' none.
-    String renders(String label, List<Feature<Point>> pts) {
-      if (pts.isEmpty) return '$label:-';
+    // How many of a layer's stops actually draw, counted over EVERY on-screen
+    // stop — not just the first. The old check sampled `pts.first`, which is
+    // usually under this panel (top-left) or off the edge, so it read MISS even
+    // while pins drew: a false alarm we both chased. 'drawn/onscreen': `bus:0/6`
+    // = six bus stops in view, NONE drew (a real miss); `bus:6/6` = all drew;
+    // `bus:-` = no such stops; `bus:0/0offscr` = none currently in view.
+    final screen = MediaQuery.sizeOf(context);
+    String renderStats(String label, Iterable<({double lat, double lon})> pts) {
+      final list = pts.toList();
+      if (list.isEmpty) return '$label:-';
       if (controller == null) return '$label:?';
-      try {
-        final p = pts.first.geometry!.position;
-        final off = controller.toScreenLocation(
-          Geographic(lon: p.x, lat: p.y),
-        );
-        final drawn = controller
-            .queryLayers(off)
-            .any((q) => _isStopLayer(q.layerId));
-        return '$label:${drawn ? 'ok' : 'MISS'}';
-      } catch (_) {
-        return '$label:err';
+      var onscreen = 0, drawn = 0;
+      for (final p in list) {
+        try {
+          final o = controller.toScreenLocation(
+            Geographic(lon: p.lon, lat: p.lat),
+          );
+          if (o.dx < 0 || o.dy < 0 || o.dx > screen.width || o.dy > screen.height) {
+            continue; // off the visible map — a query there is meaningless
+          }
+          onscreen++;
+          if (controller.queryLayers(o).any((q) => _isStopLayer(q.layerId))) {
+            drawn++;
+          }
+        } catch (_) {}
       }
+      return onscreen == 0 ? '$label:0/0offscr' : '$label:$drawn/$onscreen';
     }
+
+    ({double lat, double lon}) fromFeature(Feature<Point> f) =>
+        (lat: f.geometry!.position.y, lon: f.geometry!.position.x);
 
     // The imperative stop layers actually on the map right now (should be 8).
     // `getLayerIds` is the only style read that surfaces them; guard hard.
@@ -2574,9 +2800,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           'trolley ${_trolleyPts.length} mixed ${_mixedPts.length} '
           'cluster ${_clusterPts.length}',
       'GL layers on map: $glLayers',
-      // Does each type's layer actually draw at its first stop's pixel?
-      'renders: ${renders('bus', _busPts)} ${renders('tram', _tramPts)} '
-          '${renders('trolley', _trolleyPts)} ${renders('mixed', _mixedPts)}',
+      // How many stops of each ambient type actually draw, over ALL on-screen
+      // stops. During follow the ambient sources are emptied on purpose, so
+      // these read `-`/`0/0` — look at the FOCUS render line below instead.
+      'renders: ${renderStats('bus', _busPts.map(fromFeature))} '
+          '${renderStats('tram', _tramPts.map(fromFeature))} '
+          '${renderStats('trolley', _trolleyPts.map(fromFeature))} '
+          '${renderStats('mixed', _mixedPts.map(fromFeature))}',
       // Vehicle-animation state (on-demand context / follow diagnosis).
       'VEH onDemand $_onDemand stopCtx ${_stopContextId ?? "-"} '
           'following $_following sel ${_selectedVehicleKey ?? "-"}',
@@ -2597,6 +2827,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // to close it (vel). A smooth catch-up shows the gap easing to ~0 with vel
       // ramping up then settling to the plan speed — never a spike then a crawl.
       _catchUpDiagLine(),
+      _dwellDiagLine(),
+      _stopCauseDiagLine(),
+      'FOCUS layersAdded $_focusLayersAdded stops ${_focus?.stops.length ?? 0} '
+          'err ${_focusLayerError ?? "-"}',
+      // The real test for the followed line's stop pins: of the focus stops in
+      // view, how many actually draw. `focus:0/8` with layersAdded true + err -
+      // = layer & source are fine but nothing paints (image not resolved for the
+      // layer, or z-order); `focus:8/8` = pins ARE there (trust this over eyes).
+      'FOCUS render ${renderStats('focus', (_focus?.stops ?? const <Stop>[]).map((s) => (lat: s.lat, lon: s.lon)))}',
+      _boardAgeDiagLine(),
+      _fixAgeDiagLine(),
     ];
 
     return SafeArea(
@@ -2672,8 +2913,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   }
 
   Widget _focusPanel(ThemeData theme) {
-    final focus = _focus!;
-    final color = vehicleColor(focus.type);
+    // The follow bar must appear the instant follow starts, from ANY source —
+    // not only once the route shape has loaded (async, and it sets `_focus`).
+    // A follow entered from the persistent Nearby sheet used to leave `_focus`
+    // null until the shape landed, so the bar (and its × exit) never showed and
+    // the user was trapped. So derive the badge from the focused line when it's
+    // loaded, otherwise from the followed vehicle's own track.
+    final focus = _focus;
+    final key = _selectedVehicleKey;
+    final track = key == null ? null : _vehAnimator.trackFor(key);
+    final line = focus?.line ?? track?.line ?? '';
+    final type = focus?.type ?? track?.type ?? VehicleType.bus;
+    final subtitle =
+        focus != null ? '${focus.origin} → ${focus.destination}' : null;
+    final scheduled = focus?.scheduled ?? false;
+    final color = vehicleColor(type);
     return SafeArea(
       child: Align(
         alignment: Alignment.bottomCenter,
@@ -2706,10 +2960,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      vehicleGlyph(focus.type, size: 16, color: Colors.white),
+                      vehicleGlyph(type, size: 16, color: Colors.white),
                       const SizedBox(width: 6),
                       Text(
-                        focus.line,
+                        line,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -2725,14 +2979,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${focus.origin} → ${focus.destination}',
+                        // Route terminals once the shape is loaded; until then
+                        // (or on a shape that failed to load) a neutral label so
+                        // the bar is still complete and exitable.
+                        subtitle ?? AppLocalizations.of(context).followingVehicle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium,
                       ),
                       // A tapped schedule-predicted object honestly says so — its
                       // position is a GTFS estimate, not a live fix.
-                      if (focus.scheduled)
+                      if (scheduled)
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -2944,7 +3201,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         belowLayerId: below,
       );
       _focusLayersAdded = true;
-    } catch (_) {
+      _focusLayerError = null;
+    } catch (e) {
+      // Don't swallow silently — a failed focus-stops add is exactly the class
+      // of "the route line draws but its stop pins don't" bug. debugPrint is
+      // stripped in release web, so surface it on the staging overlay instead
+      // (the reliable render-debug channel on Flutter-CanvasKit).
+      _focusLayerError = '$e';
       _focusLayersAdded = false;
     }
   }

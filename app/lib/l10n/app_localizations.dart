@@ -274,6 +274,12 @@ abstract class AppLocalizations {
   /// **'Vehicle no longer tracked'**
   String get vehicleLost;
 
+  /// Follow-bar label shown while following a vehicle before its route terminals have loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Following'**
+  String get followingVehicle;
+
   /// No description provided for @noLiveVehiclesOnMap.
   ///
   /// In en, this message translates to:

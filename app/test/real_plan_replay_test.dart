@@ -39,6 +39,7 @@ void main() {
     required void Function(
             double t, double markerV, double targetV, double gap, bool moving)
         sample,
+    void Function(double t, TimedTrajectory tt, DateTime now)? onFrame,
   }) {
     final t = TimedTrajectory.build(path: path, plan: plan, asOf: t0, now: t0)!;
     var lastPlanAt = t0;
@@ -71,6 +72,7 @@ void main() {
       if (secs >= settleAt) {
         sample(secs, t.displaySpeed, targetV, t.catchUpGap(now),
             t.hasForwardMotion(now));
+        onFrame?.call(secs, t, now);
       }
     }
   }
@@ -179,5 +181,174 @@ void main() {
     animator.advanceTimed(clock);
     expect(animator.hasMotion('P80383'), isFalse,
         reason: 'a frozen vehicle should fan out normally');
+  });
+
+  test('a dwell still happens, and only where the plan itself stands still', () {
+    var dwellFrames = 0;
+    var mismatched = 0;
+    replay(
+      seconds: 44,
+      settleAt: 10,
+      sample: (t, markerV, targetV, gap, moving) {
+        if (targetV < 0.01) {
+          dwellFrames++;
+          if (markerV > 0.15) mismatched++;
+        }
+      },
+    );
+    expect(dwellFrames, greaterThan(60),
+        reason: 'the real plan should still pause at its first station');
+    expect(mismatched, lessThan(dwellFrames ~/ 4),
+        reason: 'the marker kept rolling through the plan\'s standstill');
+  });
+
+  test('a vehicle pausing at a stop is not fanned apart either', () {
+    // The owner's call, and the right one: a dwell is stillness that resolves
+    // itself in three seconds. Fanning a bus out on arrival and collapsing it
+    // again as it pulls away would be a shove every stop — the very churn the
+    // pass-through contract exists to prevent. Only a genuinely parked vehicle
+    // (stale board, plan exhausted) fans.
+    //
+    // So `moving` for spiderfy reads isPlaying, not hasForwardMotion: the dwell
+    // is *not* motion (the stuck heuristic must still see a standstill), but it
+    // *is* the plan playing.
+    var dwellFrames = 0, fannable = 0;
+    replay(
+      seconds: 44,
+      settleAt: 10,
+      sample: (t, markerV, targetV, gap, moving) {},
+      onFrame: (t, tt, now) {
+        if (tt.planSpeed(now) < 0.01 && !tt.isStale(now)) {
+          dwellFrames++;
+          if (!tt.isPlaying(now)) fannable++;
+        }
+      },
+    );
+    expect(dwellFrames, greaterThan(60), reason: 'no dwell in the window');
+    expect(fannable, 0,
+        reason: 'a vehicle standing at a stop was fannable on $fannable of '
+            '$dwellFrames dwell frames — it would be shoved aside and snap back');
+  });
+
+  test('the marker only ever stands still at a stop', () {
+    // A standstill says "this vehicle is at a stop". Mid-block that is a lie —
+    // and a costlier one now that dwells are rendered, because a standstill is
+    // how the map says "stop".
+    //
+    // The marker is held back all the time: the upstream's ETAs are optimistic,
+    // so a 30 s prediction runs ahead of the real vehicle, and the next fix lands
+    // *behind* the marker. Forward-only forbids rewinding, so it waits. Freezing
+    // is the wrong way to show waiting. Replayed here with a vehicle running 20%
+    // slower than its plan and re-anchored on real fixes every 30 s — the case a
+    // single self-consistent plan can never surface, which is why this went out.
+    final wpDist = [for (final p in plan) path.project(ll.LatLng(p.lat, p.lon))];
+    final stations = wpDist.sublist(1); // waypoint 0 is the GPS
+    double offNearestStation(double d) => stations
+        .map((s) => (d - s).abs())
+        .reduce((a, b) => a < b ? a : b);
+
+    // Ground truth: the planned curve on a stretched clock.
+    double truthAt(double secs) {
+      final e = secs * 0.8;
+      for (var i = 0; i < plan.length - 1; i++) {
+        if (e <= plan[i + 1].etaSeconds) {
+          final a = plan[i].etaSeconds.toDouble();
+          final b = plan[i + 1].etaSeconds.toDouble();
+          return wpDist[i] + (wpDist[i + 1] - wpDist[i]) * (e - a) / (b - a);
+        }
+      }
+      return wpDist.last;
+    }
+
+    final t = TimedTrajectory.build(path: path, plan: plan, asOf: t0, now: t0)!;
+    var lastPlanAt = t0;
+    var standStart = -1.0, standAt = 0.0;
+    final offPinStands = <String>[];
+    for (var f = 0; f <= 150 * 60; f++) {
+      final now = t0.add(Duration(milliseconds: f * 1000 ~/ 60));
+      final secs = f / 60;
+      if (now.difference(lastPlanAt).inSeconds >= 30) {
+        lastPlanAt = now;
+        final asOf = now.subtract(const Duration(seconds: 2));
+        final truth = truthAt(asOf.difference(t0).inMilliseconds / 1000.0);
+        // The upstream re-anchors on the real fix but keeps its optimistic pace.
+        final ahead = <TrajectoryPoint>[];
+        var acc = 0.0;
+        for (var i = 0; i < plan.length - 1; i++) {
+          if (wpDist[i + 1] <= truth) continue;
+          acc += (plan[i + 1].etaSeconds - plan[i].etaSeconds).toDouble();
+          ahead.add(TrajectoryPoint(plan[i + 1].lat, plan[i + 1].lon, acc.round()));
+        }
+        if (ahead.length < 2) break;
+        final gps = path.pointAt(truth);
+        t.updatePlan(
+          path: path,
+          plan: [TrajectoryPoint(gps.latitude, gps.longitude, 0), ...ahead],
+          asOf: asOf,
+          now: now,
+        );
+      }
+      t.advance(now);
+      if (t.displaySpeed < 0.05) {
+        if (standStart < 0) {
+          standStart = secs;
+          standAt = t.displayDistance;
+        }
+      } else if (standStart >= 0) {
+        final off = offNearestStation(standAt);
+        if (secs - standStart >= 0.4 && off > 20.0) {
+          offPinStands.add('${(secs - standStart).toStringAsFixed(1)}s at '
+              '${off.toStringAsFixed(0)}m out (t=${standStart.toStringAsFixed(0)}s)');
+        }
+        standStart = -1;
+      }
+    }
+    expect(offPinStands, isEmpty,
+        reason: 'the marker stood still away from any stop: '
+            '${offPinStands.join("; ")}');
+  });
+
+  test('a staler board cannot drag a fresher prediction backward', () {
+    // The map feeds one animator from two mouths — the viewport's
+    // /vehicles/nearby and a tapped stop's arrivals — and their SWR caches age
+    // independently, so the same vehicle arrives with boards up to ~35 s apart.
+    // Measured live: two views of one bus 121 m apart, from GPS fixes identical
+    // to the metre; only `as_of` differed.
+    //
+    // Tracks key on the garage number, so both mouths already land on one track
+    // and one marker (a vehicle is never drawn twice). What this pins is that
+    // whichever board is freshest wins, regardless of which arrives last.
+    final t0 = DateTime(2026, 1, 1, 12);
+    var clock = t0;
+    final animator = VehicleTrackAnimator(clock: () => clock);
+
+    VehicleSample sample(DateTime asOf) => VehicleSample(
+          key: 'P80383', // the garage number: the same track from either mouth
+          position: ll.LatLng(plan.first.lat, plan.first.lon),
+          line: '5',
+          type: VehicleType.tram,
+          path: path,
+          trajectory: plan,
+          asOf: asOf,
+        );
+
+    // The fresh board lands first...
+    final fresh = t0.subtract(const Duration(seconds: 2));
+    animator.syncSamples([sample(fresh)], 0, now: t0);
+    expect(animator.trackFor('P80383')!.timed!.boardAsOf, fresh);
+
+    // ...then the other mouth delivers a 35 s-older one for the same vehicle.
+    clock = t0.add(const Duration(seconds: 1));
+    animator.syncSamples(
+        [sample(t0.subtract(const Duration(seconds: 37)))], 0, now: clock);
+    expect(animator.trackFor('P80383')!.timed!.boardAsOf, fresh,
+        reason: 'a staler board replaced a fresher one — the two views of this '
+            'vehicle will disagree by however far it moves in the difference');
+
+    // A genuinely newer board still takes over.
+    clock = t0.add(const Duration(seconds: 30));
+    final newer = t0.add(const Duration(seconds: 28));
+    animator.syncSamples([sample(newer)], 0, now: clock);
+    expect(animator.trackFor('P80383')!.timed!.boardAsOf, newer);
   });
 }
