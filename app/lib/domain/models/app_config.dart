@@ -40,6 +40,12 @@ class AppConfig {
   /// zero analytics requests. Independent of the transport `analytics_*` flags.
   bool get productAnalytics => flag('product_analytics');
 
+  /// Whether the adaptive "context slot" is shown (remote `context_panel` flag):
+  /// a persistent left panel on desktop (≥840px) and unified bottom sheets on
+  /// mobile, both driven by one nearby→stop→vehicle state machine. OFF (the
+  /// default) is the killswitch — the app keeps today's independent sheets.
+  bool get contextPanel => flag('context_panel');
+
 
   static const empty = AppConfig(version: '', flags: {});
 

@@ -65,6 +65,12 @@
   "vehicleShowRoute": "Prikaži rutu na mapi",
   "vehicleEtaMinutesApprox": "≈ {minutes} min",
 
+  "contextNearbyTitle": "U blizini",
+  "aboutVehicle": "O ovom vozilu",
+  "viewModelDetails": "Detalji o modelu",
+  "backToVehicle": "Nazad na vozilo",
+  "vehicleOffScreen": "{line} je van ekrana",
+
   "emptyArrivalsTitle": "Trenutno je tiho na ovom stajalištu",
   "emptyArrivalsSubtitle": "Prevoz bi trebalo uskoro da stigne.",
 

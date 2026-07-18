@@ -13,6 +13,7 @@ import 'package:maplibre/maplibre.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
+import '../../core/context_slot.dart';
 import '../../core/coverage_heatmap.dart';
 import '../../core/follow_camera.dart';
 import '../../core/fps_overlay.dart';
@@ -40,11 +41,15 @@ import '../../domain/models/vehicle_source.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import '../widgets/context_shell.dart';
 import '../widgets/favorites_carousel.dart';
 import '../widgets/nearby_sheet.dart';
+import '../widgets/nearby_view.dart';
+import '../widgets/stop_board.dart';
 import '../widgets/stop_sheet.dart';
 import '../widgets/vehicle_icon.dart';
 import '../widgets/vehicle_mode_toggle.dart';
+import '../widgets/vehicle_view.dart';
 import 'map_screen_args.dart';
 
 const _belgradeCenter = Geographic(lon: 20.4612, lat: 44.8125);
@@ -297,6 +302,24 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // A stop arrivals sheet is currently up. The bottom UI (Nearby panel / search)
   // is hidden while it is, so the two never overlap (#7).
   bool _stopSheetOpen = false;
+
+  // ---- Adaptive context slot (context_panel) -------------------------------
+  // With the flag ON the three views (nearby → stop → vehicle) share ONE
+  // surface: a persistent left panel on desktop (≥840px) or unified bottom
+  // sheets on mobile. `_contextPanel` mirrors the remote flag (read in build);
+  // OFF = today's independent sheets, untouched (killswitch). `_slotStopId` is
+  // the stop shown in the slot's stop view (distinct from `_stopContextId`,
+  // which drives the on-demand markers and only exists in on-demand mode).
+  bool _contextPanel = false;
+  String? _slotStopId;
+  String? _slotStopName;
+  // The mobile sheet's current height fraction (0..1), reported on every drag
+  // frame so the camera padding follows the detent (the visible-track contract).
+  double _sheetExtent = kDetentPeek;
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
+  bool _wasWide = false; // last breakpoint class, to detect a 840px crossing
+
   String? _stopContextId; // stop feeding the markers (state B); null = not in B
   ProviderSubscription<AsyncValue<ArrivalsBoard>>? _stopArrivalsSub;
   // The stop context to restore when a vehicle context opened *from* a stop is
@@ -384,6 +407,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _vehAnim.dispose();
     _searchController.dispose();
     _focusNode.dispose();
+    _sheetController.dispose();
     super.dispose();
   }
 
@@ -912,6 +936,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         reason: event.reason,
       )) {
         _stopFollow();
+        // Surface the "Back to vehicle" pill (decision #8): the user panned the
+        // vehicle away, so follow is now interrupted while the context stays up.
+        if (_contextPanel && mounted) setState(() {});
       }
     }
   }
@@ -1785,10 +1812,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       final zoom = math.max(controller.getCamera().zoom, kMovingObjectDetailZoom);
       _followEngaged = false;
       Future<void>? flight;
+      // Context-panel ON: fly the vehicle to the VISIBLE map area (right of the
+      // panel / above the sheet), not the window centre — the desktop case of
+      // the visible-track contract (decision #3), shown on the mock as the
+      // offset guides.
+      final padding = _contextPanel ? _currentViewInsets() : EdgeInsets.zero;
       _selfMove(() {
         flight = controller.animateCamera(
           center: Geographic(lon: target.longitude, lat: target.latitude),
           zoom: zoom,
+          padding: padding,
         );
       });
       // Engage the continuous pan only once the fly-to has actually settled, so
@@ -2045,6 +2078,131 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (_onDemand) _exitStopContext();
   }
 
+  // ---- Adaptive context slot ------------------------------------------------
+
+  /// The active view, derived from the SAME state the legacy sheets use (a
+  /// followed vehicle → vehicle; a slot stop → stop; else nearby). One machine,
+  /// identical at both breakpoints.
+  ContextView get _activeView {
+    if (_selectedVehicleKey != null || _focus != null) return ContextView.vehicle;
+    if (_slotStopId != null) return ContextView.stop;
+    return ContextView.nearby;
+  }
+
+  /// Follow is interrupted: a vehicle context is up but we're not tracking (the
+  /// user panned it away, or the vehicle left the viewport). Drives the
+  /// conditional "Back to vehicle" pill (decision #8). Only meaningful with the
+  /// slot on.
+  bool get _followLost =>
+      _contextPanel && _selectedVehicleKey != null && !_following;
+
+  /// The insets of the map NOT covered by the panel/sheet — the region a
+  /// followed target must stay inside. Pure geometry lives in
+  /// [contextViewInsets]; this binds it to the live layout.
+  EdgeInsets _currentViewInsets() {
+    if (!_contextPanel) return EdgeInsets.zero;
+    final size = MediaQuery.sizeOf(context);
+    return contextViewInsets(
+      wide: isWideLayout(size.width),
+      panelWidth: panelWidthFor(size.width),
+      sheetHeight: _sheetExtent * size.height,
+    );
+  }
+
+  /// Back one step up the chain (vehicle → stop → nearby). The desktop panel's
+  /// back-chip and Android back both route here.
+  void _slotBack() {
+    switch (_activeView) {
+      case ContextView.vehicle:
+        _closeVehicleContext();
+      case ContextView.stop:
+        _closeSlotStop();
+      case ContextView.nearby:
+        break;
+    }
+  }
+
+  /// The slot × (desktop) / close: return all the way to nearby (decision #4).
+  /// The panel never collapses — nearby IS "closed".
+  void _slotClose() {
+    if (_activeView == ContextView.vehicle) {
+      // Closing the vehicle may return to its stop; from there, drop to nearby.
+      _stopFollow();
+      _clearFocus();
+      _returnToStopId = null;
+      _preFollowCenter = null;
+      _preFollowZoom = null;
+      if (_onDemand) _exitStopContext();
+    }
+    _closeSlotStop();
+  }
+
+  /// Leave the stop view → nearby. Mirrors the legacy sheet-close: clears the
+  /// on-demand markers and restores the pre-stop camera.
+  void _closeSlotStop() {
+    if (_slotStopId == null) {
+      if (mounted) setState(() {});
+      return;
+    }
+    final stopId = _slotStopId;
+    setState(() {
+      _slotStopId = null;
+      _slotStopName = null;
+    });
+    if (_onDemand && _stopContextId == stopId) _exitStopContext();
+    _restorePreStopCamera();
+  }
+
+  /// The mobile sheet was dragged: remember its height so the camera padding
+  /// follows it, and (while following) keep the tracked vehicle in the shrinking
+  /// visible strip — tracking is never visually interrupted (decision #3).
+  void _onSheetExtentChanged(double extent) {
+    if ((extent - _sheetExtent).abs() < 0.005) return;
+    _sheetExtent = extent;
+    if (_following) _recenterFollowedWithinView(animated: false);
+  }
+
+  /// Re-place the followed marker inside the current visible area (right of the
+  /// panel / above the sheet) using the live view insets. Called on follow
+  /// entry, on a detent drag, and when the breakpoint/panel width changes.
+  void _recenterFollowedWithinView({bool animated = true}) {
+    final key = _selectedVehicleKey;
+    final controller = _controller;
+    if (key == null || controller == null) return;
+    if (_vehAnimator.trackFor(key) == null) return;
+    final pos = _vehAnimator.positionOf(key, _vehAnim.value);
+    final center = Geographic(lon: pos.longitude, lat: pos.latitude);
+    final insets = _currentViewInsets();
+    _selfMove(() {
+      if (animated) {
+        controller.animateCamera(
+          center: center,
+          padding: insets,
+          nativeDuration: const Duration(milliseconds: 300),
+          webSpeed: 1.2,
+          webMaxDuration: const Duration(milliseconds: 400),
+        );
+      } else {
+        // A drag frame: snap (no animation) so the marker tracks the sheet edge
+        // without a lagging ease fighting the finger.
+        controller.moveCamera(center: center, zoom: controller.getCamera().zoom, padding: insets);
+      }
+    });
+    // The delta-pan follow measures from the marker's last position; a recenter
+    // moved the camera under it, so reseed to avoid a lurch on the next tick.
+    _lastFollowMarkerPos = null;
+  }
+
+  /// The "Back to vehicle" pill: recenter on the vehicle (in the visible strip)
+  /// and resume follow (decision #8).
+  void _resumeFollowFromPill() {
+    final key = _selectedVehicleKey;
+    if (key == null || _vehAnimator.trackFor(key) == null) return;
+    final pos = _vehAnimator.positionOf(key, _vehAnim.value);
+    _startFollow(key, target: pos, flyTo: true);
+    if (mounted) setState(() {});
+  }
+
   /// Enter vehicle context from a tapped arrival row (§C). Builds a guaranteed
   /// marker from the arrival's own data (gps + trajectory + direction) so the
   /// vehicle appears immediately — never waiting on a viewport fan-out, which was
@@ -2059,7 +2217,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       return;
     }
     _clearSearch();
-    _returnToStopId = _onDemand ? _stopContextId : null;
+    // Slot ON: return up the chain to the slot's stop view (works in aquarium
+    // mode too, where there's no on-demand `_stopContextId`). Legacy: only the
+    // on-demand stop context.
+    _returnToStopId = _slotStopId ?? (_onDemand ? _stopContextId : null);
     final key = VehicleTrackAnimator.keyFor(a);
     final pos = ll.LatLng(gps.lat, gps.lon);
     final dirId = a.directionRouteId ?? a.routeId;
@@ -2125,7 +2286,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // §C.2: highlight the route + line panel and start following — but the
           // camera does NOT jump or zoom (don't regress F2). Same single entry
           // as the list-row paths, so all three end in identical state.
-          _returnToStopId = _onDemand ? _stopContextId : null;
+          // Slot ON: return up the chain to the slot's stop view (works in aquarium
+    // mode too, where there's no on-demand `_stopContextId`). Legacy: only the
+    // on-demand stop context.
+    _returnToStopId = _slotStopId ?? (_onDemand ? _stopContextId : null);
           if (keyStr != null) {
             _enterFollow(
               key: keyStr,
@@ -2326,6 +2490,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // Shift the stop up into the visible strip ABOVE the sheet, so it isn't
     // hidden under it (and so returning from a follow lands on a visible stop).
     _bringStopIntoView(stopId, at);
+    // Context-panel ON: the stop view lives in the persistent slot (panel /
+    // unified sheet), NOT a modal — advance the shared state machine instead.
+    if (_contextPanel) {
+      setState(() {
+        _slotStopId = stopId;
+        _slotStopName = stopName;
+      });
+      return;
+    }
     // Hide the bottom UI (Nearby panel / search) while the sheet is up so they
     // don't overlap (#7).
     setState(() => _stopSheetOpen = true);
@@ -2377,11 +2550,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final controller = _controller;
     if (controller == null) return;
     final zoom = math.max(controller.getCamera().zoom, _individualZoom);
-    final bottomPad = MediaQuery.of(context).size.height * 0.5;
+    // Context-panel ON: keep the stop in the slot's visible strip (right of the
+    // panel on desktop / above the sheet on mobile). Legacy path pans it above
+    // the half-height modal.
+    final padding = _contextPanel
+        ? _currentViewInsets()
+        : EdgeInsets.only(bottom: MediaQuery.of(context).size.height * 0.5);
     _easeCameraTo(
       Geographic(lon: pos.longitude, lat: pos.latitude),
       zoom,
-      padding: EdgeInsets.only(bottom: bottomPad),
+      padding: padding,
     );
   }
 
@@ -2541,12 +2719,39 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) => _onOnDemandChanged());
     }
 
+    // Adaptive context slot flag (killswitch): OFF = today's independent sheets,
+    // untouched. The map itself is ALWAYS the same Positioned.fill widget below
+    // — only the OVERLAY (panel vs sheets) changes — so crossing the breakpoint
+    // never rebuilds/recreates the map (the IndexedStack/render-cycle gotcha).
+    _contextPanel = ref.watch(contextPanelEnabledProvider);
+    final size = MediaQuery.sizeOf(context);
+    final wide = _contextPanel && isWideLayout(size.width);
+    // Keep the followed vehicle in the visible strip when the breakpoint flips
+    // (desktop ↔ mobile changes the inset from left to bottom). The map is not
+    // resized here — only the camera padding target moves.
+    if (_contextPanel && wide != _wasWide) {
+      _wasWide = wide;
+      if (_following) {
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => _recenterFollowedWithinView());
+      }
+    }
+
+    // Android back / PopScope: with the slot on, back walks up the chain
+    // (vehicle → stop → nearby) before leaving the map.
+    final canPopMap =
+        _contextPanel ? _activeView == ContextView.nearby : _focus == null;
+
     return PopScope(
-      // While a line is focused, Android back closes the vehicle context instead
-      // of leaving the map.
-      canPop: _focus == null,
+      // While a context is open, Android back closes it instead of leaving.
+      canPop: canPopMap,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _closeVehicleContext();
+        if (didPop) return;
+        if (_contextPanel) {
+          _slotBack();
+        } else {
+          _closeVehicleContext();
+        }
       },
       child: Scaffold(
       body: Stack(
@@ -2618,12 +2823,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               _currentZoom < _minVehiclesZoom &&
               !_hasVehicles)
             _zoomHint(l10n, theme),
-          // Bottom UI: while a line is focused, a compact line panel with a close
-          // button. Otherwise the experimental "Nearby" sheet when its flag is on
-          // (it *replaces* the search bar), else the normal search + favourites.
-          // A stop arrivals sheet suppresses the whole bottom cluster so the two
-          // never stack on top of each other (#7).
-          if (_focus != null || _selectedVehicleKey != null)
+          // Bottom UI. With the context-panel flag ON the three views live in one
+          // adaptive slot (left panel on desktop / unified sheet on mobile);
+          // OFF keeps today's independent bottom cluster untouched (killswitch).
+          if (_contextPanel)
+            ..._contextSlot(l10n, theme, wide: wide, size: size)
+          // While a line is focused, a compact line panel with a close button.
+          // Otherwise the experimental "Nearby" sheet when its flag is on (it
+          // *replaces* the search bar), else the normal search + favourites. A
+          // stop arrivals sheet suppresses the whole cluster (#7).
+          else if (_focus != null || _selectedVehicleKey != null)
             _focusPanel(theme)
           else if (_stopSheetOpen)
             const SizedBox.shrink()
@@ -2650,6 +2859,288 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       ),
       ),
     );
+  }
+
+  // ---- Context slot (adaptive) rendering -----------------------------------
+
+  /// The adaptive slot overlays: the left panel (desktop) or the unified bottom
+  /// sheet (mobile), plus the conditional "Back to vehicle" pill.
+  List<Widget> _contextSlot(
+    AppLocalizations l10n,
+    ThemeData theme, {
+    required bool wide,
+    required Size size,
+  }) {
+    final view = _activeView;
+    final widgets = <Widget>[];
+    if (wide) {
+      widgets.add(
+        Align(
+          alignment: Alignment.centerLeft,
+          child: ContextPanel(
+            width: panelWidthFor(size.width),
+            header: _slotHeaderFor(l10n, view, wide: true),
+            searchField: _panelSearchField(l10n, theme),
+            child: _searching
+                ? _searchResultsList(l10n)
+                : _slotContentFor(l10n, view, wide: true),
+          ),
+        ),
+      );
+    } else {
+      widgets.add(
+        ContextSheet(
+          controller: _sheetController,
+          header: _slotHeaderFor(l10n, view, wide: false),
+          onSizeChanged: _onSheetExtentChanged,
+          child: _slotContentFor(l10n, view, wide: false),
+        ),
+      );
+    }
+    if (_followLost) widgets.add(_backToVehiclePill(l10n, theme, wide: wide, size: size));
+    return widgets;
+  }
+
+  ContextSlotHeader _slotHeaderFor(
+    AppLocalizations l10n,
+    ContextView view, {
+    required bool wide,
+  }) {
+    switch (view) {
+      case ContextView.nearby:
+        return const ContextSlotHeader(view: ContextView.nearby);
+      case ContextView.stop:
+        // StopBoard draws its own title + star + ×; the shell adds only the
+        // back-chip (desktop; mobile's × is the step-back).
+        return ContextSlotHeader(
+          view: ContextView.stop,
+          backLabel: wide ? l10n.contextNearbyTitle : null,
+          onBack: _slotBack,
+        );
+      case ContextView.vehicle:
+        final track = _selectedVehicleKey == null
+            ? null
+            : _vehAnimator.trackFor(_selectedVehicleKey!);
+        final line = _focus?.line ?? track?.line ?? '';
+        final type = _focus?.type ?? track?.type ?? VehicleType.bus;
+        final parent = _slotStopName ?? l10n.contextNearbyTitle;
+        return ContextSlotHeader(
+          view: ContextView.vehicle,
+          leading: _linePill(line, type),
+          backLabel: wide ? parent : null,
+          onBack: _slotBack,
+          // Desktop × returns to nearby (decision #4); mobile × steps back one.
+          onClose: wide ? _slotClose : _slotBack,
+        );
+    }
+  }
+
+  Widget _slotContentFor(
+    AppLocalizations l10n,
+    ContextView view, {
+    required bool wide,
+  }) {
+    switch (view) {
+      case ContextView.nearby:
+        return NearbyView(
+          userLocation: _meTo,
+          locationDenied: _locationDenied,
+          active: _tabActive && _appResumed,
+          onEnableLocation: _recenterOnMe,
+          onTapGroup: _focusNearbyVehicle,
+          // Desktop: the persistent global search above the panel replaces the
+          // local "filter lines nearby" field (decision #6).
+          showLocalSearch: !wide,
+        );
+      case ContextView.stop:
+        return StopBoard(
+          key: ValueKey('slot-stop-$_slotStopId'),
+          stopId: _slotStopId!,
+          initialStopName: _slotStopName,
+          onClose: wide ? _slotClose : _slotBack,
+          onFocusVehicle: (a, asOf) =>
+              _focusVehicleFromArrival(a, asOf, source: Ev.srcSheet),
+        );
+      case ContextView.vehicle:
+        final track = _selectedVehicleKey == null
+            ? null
+            : _vehAnimator.trackFor(_selectedVehicleKey!);
+        final line = _focus?.line ?? track?.line ?? '';
+        final type = _focus?.type ?? track?.type ?? VehicleType.bus;
+        final stuck = _selectedVehicleKey != null &&
+            _vehAnimator.isStuck(_selectedVehicleKey!);
+        return VehicleView(
+          line: line,
+          type: type,
+          origin: _focus?.origin,
+          destination: _focus?.destination,
+          stuck: stuck,
+          scheduled: _focus?.scheduled ?? (track?.source == VehicleSource.scheduled),
+          // The follow key is the garage number when the vehicle came from an
+          // arrival — resolved against the fleet catalog for the "About" card.
+          garageNo: _selectedVehicleKey,
+          // Mobile keeps "Show route on map" (kept 1:1); desktop draws the route
+          // on the panel-side map permanently, so the button is redundant there.
+          showRouteButton: !wide,
+          onShowRoute: _openFocusRouteScreen,
+        );
+    }
+  }
+
+  /// The compact coloured line pill (in the vehicle header).
+  Widget _linePill(String line, VehicleType type) {
+    final color = vehicleColor(type);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration:
+          BoxDecoration(color: color, borderRadius: BorderRadius.circular(999)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          vehicleGlyph(type, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(line,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  /// The persistent global search field for the desktop panel header (stops /
+  /// streets / lines) — visible in all three views (decision #6). Reuses the
+  /// same [_searchController]/[_onSearchChanged] as the mobile bottom search, so
+  /// results render in the panel body via [_searchResultsList].
+  Widget _panelSearchField(AppLocalizations l10n, ThemeData theme) {
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.menu),
+          tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+          onPressed: widget.onOpenDrawer,
+        ),
+        Expanded(
+          child: Material(
+            borderRadius: BorderRadius.circular(28),
+            color:
+                theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            child: Row(
+              children: [
+                const SizedBox(width: 12),
+                Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _focusNode,
+                    onChanged: _onSearchChanged,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: l10n.searchHint,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 12),
+                    ),
+                  ),
+                ),
+                if (_searching)
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: _clearSearch,
+                  )
+                else
+                  const SizedBox(width: 8),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Push the standalone route screen for the followed line (mobile "Show route
+  /// on map"), built from the current focus.
+  void _openFocusRouteScreen() {
+    final focus = _focus;
+    if (focus == null) return;
+    context.push(
+      '/map',
+      extra: MapScreenArgs(
+        stops: focus.stops,
+        polyline: focus.polyline,
+        title: '${focus.line}: ${focus.origin} → ${focus.destination}',
+        lineNumber: focus.line,
+      ),
+    );
+  }
+
+  /// The "Back to vehicle" pill, pinned to the bottom of the VISIBLE map area
+  /// (right of the panel / above the sheet) with an off-screen hint. Decision #8.
+  Widget _backToVehiclePill(
+    AppLocalizations l10n,
+    ThemeData theme, {
+    required bool wide,
+    required Size size,
+  }) {
+    final track = _selectedVehicleKey == null
+        ? null
+        : _vehAnimator.trackFor(_selectedVehicleKey!);
+    final line = _focus?.line ?? track?.line ?? '';
+    final leftInset = wide ? panelWidthFor(size.width) : 0.0;
+    final bottomInset = wide ? 0.0 : _sheetExtent * size.height;
+    return Positioned(
+      left: leftInset,
+      right: 0,
+      bottom: bottomInset + 16,
+      child: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (line.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    l10n.vehicleOffScreen(line),
+                    style: theme.textTheme.labelMedium,
+                  ),
+                ),
+              BackToVehiclePill(
+                line: line,
+                onTap: _resumeFollowFromPill,
+                arrowTurns: _offScreenArrowTurns(size),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Turns (0..1) for the off-screen direction arrow toward the followed marker,
+  /// or null when it's on-screen. [Icons.navigation] points up at 0.
+  double? _offScreenArrowTurns(Size size) {
+    final key = _selectedVehicleKey;
+    final controller = _controller;
+    if (key == null || controller == null) return null;
+    if (_vehAnimator.trackFor(key) == null) return null;
+    try {
+      final pos = _vehAnimator.positionOf(key, _vehAnim.value);
+      final screen =
+          controller.toScreenLocation(Geographic(lon: pos.longitude, lat: pos.latitude));
+      final dx = screen.dx - size.width / 2;
+      final dy = screen.dy - size.height / 2;
+      if (dx.abs() < size.width / 2 && dy.abs() < size.height / 2) return null;
+      // Rotation from "up" (north) toward (dx, dy).
+      return math.atan2(dx, -dy) / (2 * math.pi);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// True for one of the imperative stop layers — the ambient `stg-stops-*`

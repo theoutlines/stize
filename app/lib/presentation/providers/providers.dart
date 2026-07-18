@@ -89,6 +89,13 @@ final vehiclesOnDemandEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.vehiclesOnDemand ?? false,
 );
 
+/// Whether the adaptive context slot is enabled for this user (remote
+/// `context_panel` flag). Defaults to false until config resolves, so the app
+/// keeps today's independent sheets if config can't be reached (killswitch).
+final contextPanelEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.contextPanel ?? false,
+);
+
 /// The map's vehicle mode: the user's Settings choice resolved against the flag
 /// (see [resolveVehicleMapMode]). Changing either re-resolves this and the map
 /// switches on the fly — no restart.
