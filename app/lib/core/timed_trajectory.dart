@@ -146,7 +146,12 @@ class TimedTrajectory {
   // exactly the artefact this feature exists to remove.
   //
   // Tuning lives here and nowhere else.
-  static const double _dwellSeconds = 3.0; // pause at a stop
+  // Pause at a stop. Raised 3 s → 6 s (2026-07-18, owner call) to make the dwell
+  // read as a real halt. NOT 10 s: measured on real plans, a 10 s dwell squeezed
+  // the trapezoid's cruise into an implausible sprint (target hit ~158 m/s in
+  // tight segments) and re-tripped the catch-up oscillation / fake-standstill
+  // guards; 6 s keeps the drop-rate near the 3 s baseline and those guards green.
+  static const double _dwellSeconds = 6.0;
   // A station whose projection onto the route shape lands within this of its
   // true position counts as "on the shape" — the shape reaches the stop, so a
   // dwell there is truthful. Past it the shape doesn't cover the stop and the

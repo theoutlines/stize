@@ -536,13 +536,15 @@ void main() {
       final t = build(calmPlan());
       final atStop = targetAt(t, 20);
 
-      // Standing: the whole dwell passes without the plan moving on.
-      for (final s in [20.5, 21.0, 22.0, 22.9]) {
+      // Standing: the whole dwell passes without the plan moving on. The stop is
+      // at 20 s and the dwell is 6 s, so it holds through ~26 s (calmPlan's
+      // 25 s / 125 m segment leaving the stop has room for a 6 s pause).
+      for (final s in [20.5, 22.0, 24.0, 25.5]) {
         expect(targetAt(t, s), closeTo(atStop, 0.5),
             reason: 'should still be standing at the stop at ${s}s');
       }
-      // ...and then it goes again.
-      expect(targetAt(t, 25), greaterThan(atStop + 2));
+      // ...and then it goes again once the 6 s dwell is over.
+      expect(targetAt(t, 29), greaterThan(atStop + 2));
     });
 
     test('it brakes into the stop instead of arriving at full speed', () {
