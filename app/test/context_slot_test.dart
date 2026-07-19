@@ -55,7 +55,7 @@ void main() {
     });
   });
 
-  group('panel width (rubber-band: min 360 / ~28% / max 440)', () {
+  group('panel width (rubber-band: min 360 / ~28% / max 400)', () {
     test('clamps to the floor at narrow desktop widths', () {
       // 28% of 840 = 235 → floored to 360.
       expect(panelWidthFor(840), 360);
@@ -67,8 +67,8 @@ void main() {
     });
 
     test('caps at the ceiling for wide windows', () {
-      // 28% of 2000 = 560 → capped to 440.
-      expect(panelWidthFor(2000), 440);
+      // 28% of 2000 = 560 → capped to 400.
+      expect(panelWidthFor(2000), 400);
     });
   });
 }

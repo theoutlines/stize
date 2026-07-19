@@ -24,16 +24,16 @@ bool isWideLayout(double width) => width >= kContextPanelBreakpoint;
 
 // ---- Desktop panel width (rubber-band) -------------------------------------
 
-/// Panel width band (owner decision #2): min 360 / preferred ~28% of the window
-/// / max 440.
+/// Panel width band (owner decision #2, ceiling lowered to 400 on 2026-07-19):
+/// min 360 / preferred ~28% of the window / max 400.
 const double kPanelMinWidth = 360.0;
-const double kPanelMaxWidth = 440.0;
+const double kPanelMaxWidth = 400.0;
 const double kPanelWidthFraction = 0.28;
 
 /// The resolved panel width for a given window [width] — the preferred fraction
 /// clamped into the band. At the breakpoint (840) the fraction (235) is below
 /// the floor, so the panel is 360 until the window is wide enough for 28% to
-/// exceed it (~1286px), and it stops growing at 440 (~1572px+).
+/// exceed it (~1286px), and it stops growing at 400 (~1429px+).
 double panelWidthFor(double width) =>
     (width * kPanelWidthFraction).clamp(kPanelMinWidth, kPanelMaxWidth);
 
