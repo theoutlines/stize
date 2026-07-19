@@ -121,7 +121,12 @@ export async function logProductEvents(
   if (events.length === 0) return;
   if (!(await getFlagMemoized(env, ctx, "product_analytics"))) return;
 
-  const hourBucket = Math.floor(Date.now() / 3600) * 3600;
+  // Coarsen to the hour, in UNIX SECONDS. Date.now() is MILLISECONDS, so divide
+  // by 3_600_000 (1000 * 3600) to get the hour index, then * 3600 back to the
+  // hour-boundary in seconds. This is the privacy contract: dividing by only
+  // 3600 (the old bug) left a millisecond value coarsened to ~3.6s, which is
+  // NOT hour-coarsened and would let a session's actions be correlated in time.
+  const hourBucket = Math.floor(Date.now() / 3_600_000) * 3600;
   const rows = events.map((e) => [
     e.event,
     e.props ? JSON.stringify(e.props) : null,
