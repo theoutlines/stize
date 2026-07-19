@@ -350,6 +350,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // break follow (the classic self-cancelling-follow bug).
   bool _following = false;
   bool _followEngaged = false;
+  // The followed line has no route geometry in our GTFS (a suburban / non-GSP
+  // carrier like "Ada 4"): follow degrades to raw GPS — no route line, no route
+  // ahead, an honest label (owner R4 #2).
+  bool _followNoRouteData = false;
   DateTime? _lastFollowMoveAt; // throttle for the smooth follow ease
   bool _selfCameraMove = false;
   // A brief grace window after a resume during which a camera-move event does
@@ -1704,6 +1708,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           ? await repo.getShapeByRouteId(directionRouteId)
           : await repo.getShapeByLineNumber(line);
       if (!mounted) return;
+      // No usable geometry for this line (a suburban / non-GSP carrier like
+      // "Ada 4" isn't in our GTFS — no shape, no stations, no direction). Follow
+      // still works off raw GPS, but there's nothing to highlight or list, so
+      // degrade honestly (owner R4 #2): no route line, no route ahead, an honest
+      // label, and the marker driven by GPS instead of a phantom station plan
+      // (which straight-lines between far-apart stations → "through the houses").
+      if (shape.polyline.length < 2 && shape.stops.isEmpty) {
+        _enterRawFollow();
+        return;
+      }
+      _followNoRouteData = false;
       final routeStops = shape.stops
           .map(
             (s) => Stop(
@@ -1735,7 +1750,29 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // Refresh the vehicle set so the focused line's buses show right away.
       if (refreshVehicles) _loadVehiclesForVisibleArea(force: true);
     } catch (_) {
-      // Best-effort: a failed shape lookup just doesn't open the route.
+      // A failed shape lookup means we have no geometry for this line either —
+      // same honest raw-GPS degradation as an empty shape (owner R4 #2).
+      _enterRawFollow();
+    }
+  }
+
+  /// The followed line has no route geometry in our GTFS (owner R4 #2): drive the
+  /// marker off raw GPS (drop the station plan that would straight-line it
+  /// through the houses), draw no route line, and let the vehicle view show an
+  /// honest "route unavailable" note in place of the stop list.
+  void _enterRawFollow() {
+    if (!mounted) return;
+    setState(() {
+      _followNoRouteData = true;
+      _focus = null; // no route/stops to draw
+    });
+    _syncFocusLayers(); // remove any stale focus layers
+    final key = _selectedVehicleKey;
+    if (key != null) {
+      // Re-drive this marker by GPS alone: clear its timed plan so it eases to
+      // its live fix instead of playing a plan over roads we don't have.
+      _vehAnimator.dropTimed(key);
+      _paintVehicles();
     }
   }
 
@@ -2027,6 +2064,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       animated: false,
     );
   }
+
+  /// Route-ahead progress diagnostic (owner R4 #1), set in [_buildUpcomingStops].
+  String _routeAheadDiag = 'ROUTE ahead -';
 
   /// Diagnostics for the follow camera (owner R3 #1): the marker's pixel before
   /// the move, the visible-area-centre target pixel, the applied inset and the
@@ -2369,6 +2409,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _focus = null;
       _selectedVehicleKey = null;
       _slotModel = null; // the model leaf belongs to the vehicle view
+      _followNoRouteData = false;
     });
     _pushStopSources(); // restore the ambient stop layers
     _syncFocusLayers(); // remove the focus route/stops layers
@@ -3093,6 +3134,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           scheduled: _focus?.scheduled ?? (track?.source == VehicleSource.scheduled),
           garageNo: _selectedVehicleKey,
           upcomingStops: _buildUpcomingStops(),
+          // A line with no route geometry in our GTFS (e.g. "Ada 4"): show an
+          // honest note instead of an empty route list (owner R4 #2).
+          routeUnavailable: _followNoRouteData,
           // The route is drawn on the panel-side map, so no "show route" button.
           showRouteButton: false,
           // Tapping the "About" card opens the model as a leaf IN the panel.
@@ -3132,7 +3176,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   List<UpcomingStop> _buildUpcomingStops() {
     final focus = _focus;
     final key = _selectedVehicleKey;
-    if (focus == null || key == null || focus.stops.isEmpty) return const [];
+    if (focus == null || key == null || focus.stops.isEmpty) {
+      _routeAheadDiag = _followNoRouteData
+          ? 'ROUTE unavailable (no GTFS geometry for line)'
+          : 'ROUTE ahead -';
+      return const [];
+    }
     final track = _vehAnimator.trackFor(key);
     if (track == null) return const [];
     final vehicle = _vehAnimator.positionOf(key, _vehAnim.value);
@@ -3160,6 +3209,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       stopsRemaining: _followStopsRemaining,
       etaToBoardMinutes: _followEtaMinutes,
     );
+    // Progress diagnostic (owner R4 #1): how many stops still ahead and which is
+    // next. As the vehicle passes a stop these change — the proof the list
+    // slides with live progress, not a frozen entry snapshot.
+    _routeAheadDiag =
+        'ROUTE ahead ${plan.stops.length} next ${plan.nextStop?.name ?? "-"}';
     return plan.stops;
   }
 
@@ -3521,6 +3575,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // Follow camera: marker pixel vs visible-area-centre target + camera centre
       // (owner R3 #1 — prove vertical tracking).
       _followCamDiag,
+      _routeAheadDiag,
       // Vehicle-animation state (on-demand context / follow diagnosis).
       'VEH onDemand $_onDemand stopCtx ${_stopContextId ?? "-"} '
           'following $_following sel ${_selectedVehicleKey ?? "-"}',

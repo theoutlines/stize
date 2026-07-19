@@ -80,4 +80,27 @@ void main() {
     // The muted garage number is shown; no "view model" CTA (nothing to open).
     expect(find.textContaining('View model details'), findsNothing);
   });
+
+  testWidgets(
+      'a line with no route geometry shows the honest note, not a route list '
+      '(owner R4 #2)', (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [fleetCatalogProvider.overrideWith((ref) async => null)],
+      child: const MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: VehicleView(
+            line: 'Ada 4',
+            type: VehicleType.bus,
+            garageNo: null,
+            routeUnavailable: true,
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Route unavailable for this line'), findsOneWidget);
+    expect(find.text('Rest of the route'), findsNothing);
+  });
 }

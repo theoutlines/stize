@@ -34,6 +34,7 @@ class VehicleView extends ConsumerWidget {
     this.scheduled = false,
     this.garageNo,
     this.upcomingStops = const [],
+    this.routeUnavailable = false,
     this.showRouteButton = false,
     this.onShowRoute,
     this.onOpenModel,
@@ -59,6 +60,10 @@ class VehicleView extends ConsumerWidget {
   /// The vehicle's upcoming stops (next → end), for the worded route list under
   /// the fleet card. Empty → the list is hidden.
   final List<UpcomingStop> upcomingStops;
+
+  /// The followed line has no route geometry in our GTFS (a suburban / non-GSP
+  /// carrier): show an honest "route unavailable" note instead of the stop list.
+  final bool routeUnavailable;
 
   /// Mobile keeps the "Show route on map" action (kept 1:1 with today's app);
   /// desktop hides it — the route is always drawn on the panel-side map.
@@ -115,7 +120,23 @@ class VehicleView extends ConsumerWidget {
           const SizedBox(height: 16),
           _aboutVehicle(context, theme, l10n, fleet),
         ],
-        if (upcomingStops.isNotEmpty) ...[
+        if (routeUnavailable) ...[
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(Icons.info_outline,
+                  size: 16, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.routeUnavailable,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+        ] else if (upcomingStops.isNotEmpty) ...[
           const SizedBox(height: 16),
           _routeList(context, theme, l10n),
         ],
