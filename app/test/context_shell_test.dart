@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/core/context_slot.dart';
 import 'package:stigla/l10n/app_localizations.dart';
 import 'package:stigla/presentation/widgets/context_shell.dart';
 
@@ -14,74 +13,54 @@ Widget _wrap(Widget child, {Locale? locale}) => MaterialApp(
 
 void main() {
   group('ContextPanel (desktop shell)', () {
-    testWidgets('shows the persistent search + back-chip and hosts the view',
+    testWidgets('hosts the search row, an optional nav row, and the view',
         (tester) async {
       var backTapped = false;
       await tester.pumpWidget(_wrap(
-        ContextPanel(
-          width: 384,
-          header: ContextSlotHeader(
-            view: ContextView.stop,
-            backLabel: 'Nearby',
-            onBack: () => backTapped = true,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: ContextPanel(
+            width: 384,
+            searchField: const TextField(
+              key: Key('panel-search'),
+              decoration: InputDecoration(hintText: 'search'),
+            ),
+            navRow: ContextNavRow(
+              onBack: () => backTapped = true,
+              title: 'Batutova',
+            ),
+            child: const Center(child: Text('STOP-CONTENT')),
           ),
-          searchField: const TextField(
-            key: Key('panel-search'),
-            decoration: InputDecoration(hintText: 'search'),
-          ),
-          child: const Center(child: Text('STOP-CONTENT')),
         ),
       ));
 
       expect(find.byKey(const Key('panel-search')), findsOneWidget);
       expect(find.text('STOP-CONTENT'), findsOneWidget);
-      // Back-chip present and wired.
-      expect(find.text('Nearby'), findsOneWidget);
-      await tester.tap(find.text('Nearby'));
+      expect(find.text('Batutova'), findsOneWidget);
+      // The single nav row has ONE back control and NO close (owner R1 #4).
+      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+      expect(find.byIcon(Icons.close), findsNothing);
+      await tester.tap(find.byIcon(Icons.arrow_back));
       expect(backTapped, isTrue);
 
       // The panel is exactly the resolved rubber-band width.
-      final box = tester.getSize(find.byType(ContextPanel));
-      expect(box.width, 384);
+      expect(tester.getSize(find.byType(ContextPanel)).width, 384);
     });
 
-    testWidgets('nearby view draws no back-chip and no title row',
-        (tester) async {
+    testWidgets('nearby view has no nav row (root)', (tester) async {
       await tester.pumpWidget(_wrap(
-        ContextPanel(
-          width: 360,
-          header: const ContextSlotHeader(view: ContextView.nearby),
-          searchField: const SizedBox(key: Key('s')),
-          child: const Center(child: Text('NEARBY')),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: ContextPanel(
+            width: 360,
+            searchField: const SizedBox(key: Key('s')),
+            child: const Center(child: Text('NEARBY')),
+          ),
         ),
       ));
       expect(find.text('NEARBY'), findsOneWidget);
-      expect(find.byType(ContextBackChip), findsNothing);
-      expect(find.byType(ContextTitleRow), findsNothing);
-    });
-  });
-
-  group('ContextSheet (mobile shell)', () {
-    testWidgets('hosts the view in a draggable sheet starting at peek',
-        (tester) async {
-      final controller = DraggableScrollableController();
-      final sizes = <double>[];
-      await tester.pumpWidget(_wrap(
-        ContextSheet(
-          controller: controller,
-          header: const ContextSlotHeader(view: ContextView.nearby),
-          onSizeChanged: sizes.add,
-          child: ListView(children: const [Text('SHEET-CONTENT')]),
-        ),
-      ));
-      await tester.pumpAndSettle();
-      expect(find.text('SHEET-CONTENT'), findsOneWidget);
-      // The content lives inside a draggable sheet (the detent heights it snaps
-      // to are asserted by the pure-model test).
-      final sheet = tester.widget<DraggableScrollableSheet>(
-          find.byType(DraggableScrollableSheet));
-      expect(sheet.initialChildSize, kDetentPeek);
-      expect(sheet.snapSizes, const [kDetentPeek, kDetentHalf, kDetentLarge]);
+      expect(find.byType(ContextNavRow), findsNothing);
+      expect(find.byIcon(Icons.arrow_back), findsNothing);
     });
   });
 

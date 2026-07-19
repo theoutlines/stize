@@ -11,6 +11,7 @@ import 'package:stigla/l10n/app_localizations.dart';
 import 'package:stigla/presentation/providers/providers.dart';
 import 'package:stigla/presentation/screens/home_map_screen.dart';
 import 'package:stigla/presentation/widgets/context_shell.dart';
+import 'package:stigla/presentation/widgets/nearby_sheet.dart';
 
 /// Location permanently denied → the map never starts a stream (keeps the test
 /// hermetic; the nearby view just shows its "enable location" state).
@@ -57,38 +58,40 @@ void main() {
     await tester.pump(); // let appConfig resolve
     await tester.pump();
     expect(find.byType(ContextPanel), findsOneWidget);
-    expect(find.byType(ContextSheet), findsNothing);
+    expect(find.byType(NearbySheet), findsNothing);
   });
 
-  testWidgets('mobile (<840) shows the bottom sheet, not the panel',
-      (tester) async {
+  testWidgets(
+      'mobile (<840) keeps the LEGACY sheets, not the panel (owner R1 #1: '
+      'panel is desktop-only, mobile untouched)', (tester) async {
     await tester.pumpWidget(_host(size: const Size(400, 800)));
     await tester.pump();
     await tester.pump();
-    expect(find.byType(ContextSheet), findsOneWidget);
+    // The panel never appears on mobile; the legacy Nearby sheet does.
     expect(find.byType(ContextPanel), findsNothing);
+    expect(find.byType(NearbySheet), findsOneWidget);
   });
 
-  testWidgets('resizing across 840 swaps the container but keeps ONE map alive',
+  testWidgets(
+      'resizing across 840 swaps only the overlay but keeps ONE map alive',
       (tester) async {
     await tester.pumpWidget(_host(size: const Size(1200, 800)));
     await tester.pump();
     await tester.pump();
     expect(find.byType(ContextPanel), findsOneWidget);
-    // The map placeholder widget (SizedBox.expand under kMapRenderingEnabled)
-    // is the first Stack child; capture its element identity.
-    final mapElementBefore = tester.element(find.byType(HomeMapScreen));
+    expect(find.byType(NearbySheet), findsNothing);
+    final stateBefore = tester.state(find.byType(HomeMapScreen));
 
     // Cross the breakpoint to mobile.
     await tester.pumpWidget(_host(size: const Size(400, 800)));
     await tester.pump();
     await tester.pump();
 
-    // Container swapped…
-    expect(find.byType(ContextSheet), findsOneWidget);
+    // Overlay swapped to the legacy mobile UI…
     expect(find.byType(ContextPanel), findsNothing);
+    expect(find.byType(NearbySheet), findsOneWidget);
     // …and it's the SAME HomeMapScreen State (the map was never rebuilt from
     // scratch — no IndexedStack/render-cycle recreation).
-    expect(tester.element(find.byType(HomeMapScreen)), mapElementBefore);
+    expect(tester.state(find.byType(HomeMapScreen)), stateBefore);
   });
 }

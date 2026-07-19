@@ -13,6 +13,7 @@ import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/route_alert.dart';
+import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'arrival_tile.dart';
@@ -43,6 +44,7 @@ class StopBoard extends ConsumerStatefulWidget {
     required this.stopId,
     this.initialStopName,
     this.onFocusVehicle,
+    this.onOpenFleetCard,
     this.onClose,
     this.scrollController,
     this.showHeader = true,
@@ -50,6 +52,12 @@ class StopBoard extends ConsumerStatefulWidget {
 
   final String stopId;
   final String? initialStopName;
+
+  /// When set, tapping a row's Fleet-ID badge opens the model through this host
+  /// callback (the desktop panel renders it as a leaf sub-view). Null → the
+  /// default modal card (mobile).
+  final void Function(FleetVehicle fleet, String? garageNo, VehicleType type)?
+      onOpenFleetCard;
 
   /// Called with the tapped arrival (and the board's as-of time, which anchors
   /// its timed-trajectory plan) when a live row is selected, so the host (the
@@ -427,12 +435,15 @@ class _StopBoardState extends ConsumerState<StopBoard> {
       etaDeltaMinutes: _etaDelta[arrival.garageNo],
       fleet: fleet,
       onOpenFleetCard: fleet != null && fleet.hasInfo
-          ? () => showFleetModelCard(
-                context,
-                fleet: fleet,
-                fallbackType: arrival.vehicleType,
-                garageNo: arrival.garageNo,
-              )
+          ? () => widget.onOpenFleetCard != null
+              ? widget.onOpenFleetCard!(
+                  fleet, arrival.garageNo, arrival.vehicleType)
+              : showFleetModelCard(
+                  context,
+                  fleet: fleet,
+                  fallbackType: arrival.vehicleType,
+                  garageNo: arrival.garageNo,
+                )
           : null,
       onTap: (!arrivalHasLivePosition(arrival) || widget.onFocusVehicle == null)
           ? null

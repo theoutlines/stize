@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/fleet_matcher.dart';
 import '../../core/map_support.dart' show vehicleColor;
+import '../../core/vehicle_route.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
@@ -32,8 +33,10 @@ class VehicleView extends ConsumerWidget {
     this.stuck = false,
     this.scheduled = false,
     this.garageNo,
+    this.upcomingStops = const [],
     this.showRouteButton = false,
     this.onShowRoute,
+    this.onOpenModel,
   });
 
   final String line;
@@ -53,10 +56,19 @@ class VehicleView extends ConsumerWidget {
   /// arrival). Resolved against the fleet catalog for the "About" card.
   final String? garageNo;
 
+  /// The vehicle's upcoming stops (next → end), for the worded route list under
+  /// the fleet card. Empty → the list is hidden.
+  final List<UpcomingStop> upcomingStops;
+
   /// Mobile keeps the "Show route on map" action (kept 1:1 with today's app);
   /// desktop hides it — the route is always drawn on the panel-side map.
   final bool showRouteButton;
   final VoidCallback? onShowRoute;
+
+  /// When set, tapping the "About the vehicle" card opens the model as a leaf
+  /// sub-view of THIS panel (desktop) instead of a modal. Null → the modal
+  /// ([showFleetModelCard], mobile).
+  final void Function(FleetVehicle fleet)? onOpenModel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -103,6 +115,10 @@ class VehicleView extends ConsumerWidget {
           const SizedBox(height: 16),
           _aboutVehicle(context, theme, l10n, fleet),
         ],
+        if (upcomingStops.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _routeList(context, theme, l10n),
+        ],
         if (showRouteButton) ...[
           const SizedBox(height: 16),
           SizedBox(
@@ -115,6 +131,69 @@ class VehicleView extends ConsumerWidget {
           ),
         ],
       ],
+    );
+  }
+
+  /// The worded route (owner R1 #5): the vehicle's next stop + the ones ahead,
+  /// like a running timetable, so you can tell where it's going without staring
+  /// at the map. The next (nearest) stop is highlighted. ETAs are approximate
+  /// (only the board stop's is a real prediction — the rest are extrapolated).
+  Widget _routeList(BuildContext context, ThemeData theme, AppLocalizations l10n) {
+    // Cap the list so the panel stays glanceable; the map shows the full route.
+    final shown = upcomingStops.take(6).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.vehicleUpcomingStops,
+          style: theme.textTheme.labelLarge
+              ?.copyWith(color: theme.colorScheme.outline),
+        ),
+        const SizedBox(height: 4),
+        for (var i = 0; i < shown.length; i++)
+          _routeRow(theme, l10n, shown[i], isNext: i == 0),
+      ],
+    );
+  }
+
+  Widget _routeRow(
+      ThemeData theme, AppLocalizations l10n, UpcomingStop u, {required bool isNext}) {
+    final eta = u.etaMinutes;
+    final color = isNext ? theme.colorScheme.primary : theme.colorScheme.outline;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Icon(isNext ? Icons.my_location : Icons.circle,
+              size: isNext ? 15 : 7, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              u.stop.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: isNext
+                  ? theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)
+                  : theme.textTheme.bodyMedium,
+            ),
+          ),
+          if (u.isBoardStop) ...[
+            const SizedBox(width: 6),
+            Text(l10n.vehicleYourStop,
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: theme.colorScheme.primary)),
+          ],
+          if (eta != null) ...[
+            const SizedBox(width: 8),
+            Text(
+              eta <= 0 ? l10n.arrivalEtaNow : l10n.vehicleEtaMinutesApprox(eta),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: isNext ? FontWeight.w700 : FontWeight.w500),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -222,12 +301,16 @@ class VehicleView extends ConsumerWidget {
     if (!tappable) return card;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () => showFleetModelCard(
-        context,
-        fleet: fleet,
-        fallbackType: type,
-        garageNo: garageNo,
-      ),
+      // Desktop panel: open the model as a leaf sub-view IN the panel (no second
+      // surface — owner R1 #3). Mobile: the modal card.
+      onTap: () => onOpenModel != null
+          ? onOpenModel!(fleet)
+          : showFleetModelCard(
+              context,
+              fleet: fleet,
+              fallbackType: type,
+              garageNo: garageNo,
+            ),
       child: card,
     );
   }
