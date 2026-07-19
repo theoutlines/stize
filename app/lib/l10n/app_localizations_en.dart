@@ -226,6 +226,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get routeUnavailable => 'Route unavailable for this line';
+
+  @override
   String get emptyArrivalsTitle => 'It\'s quiet here right now';
 
   @override

@@ -77,17 +77,31 @@ VehicleRoutePlan planVehicleRoute({
 
   final boardIdx = _nearestStopIndex(stops, boardStop);
 
-  // The vehicle's next stop. With stops_remaining we can anchor precisely
-  // (stopsRemaining == 1 means the board stop is next); without it, fall back
-  // to the stop nearest the vehicle's current position.
-  int nextIdx;
-  if (stopsRemaining != null && stopsRemaining >= 0) {
-    nextIdx = boardIdx - stopsRemaining + 1;
-  } else {
-    nextIdx = _nearestStopIndex(stops, vehicle);
+  // The vehicle's next stop, from its LIVE position on the route: the first stop
+  // whose along-track distance is at/after the vehicle's. This is what makes the
+  // list SLIDE — as the vehicle passes a stop, that stop falls behind on the
+  // track and drops off, and the next one moves to the top (owner R4 #1: the
+  // list was static because it anchored on a FIXED `stopsRemaining` captured at
+  // follow entry). `stopsRemaining` now only scales the ETA, never the position.
+  //
+  // Along-track (projected onto each segment) rather than nearest-vertex, so a
+  // vehicle sitting BETWEEN two stops correctly counts the one behind it as
+  // passed. A tiny epsilon lets a stop the vehicle is essentially at still count
+  // as "next" rather than flickering off a metre early.
+  final vehicleAlong = _alongTrackMeters(poly, vehicle);
+  int nextIdx = stops.length;
+  for (var i = 0; i < stops.length; i++) {
+    final stopAlong =
+        _alongTrackMeters(poly, ll.LatLng(stops[i].lat, stops[i].lon));
+    if (stopAlong >= vehicleAlong - 15) {
+      nextIdx = i;
+      break;
+    }
   }
-  nextIdx = nextIdx.clamp(0, stops.length - 1);
+  if (nextIdx >= stops.length) nextIdx = stops.length - 1; // all behind → last
 
+  // Average per-stop minutes for the ETA extrapolation (approximate). Anchored
+  // to the feed's stops_remaining/ETA-to-board when available.
   final avgPerStop = (stopsRemaining != null &&
           stopsRemaining > 0 &&
           etaToBoardMinutes != null)
@@ -98,9 +112,9 @@ VehicleRoutePlan planVehicleRoute({
   for (var j = nextIdx; j < stops.length; j++) {
     int? eta;
     if (avgPerStop != null) {
-      // Stops ahead of the vehicle: j relative to the vehicle's position
-      // (boardIdx - stopsRemaining).
-      final stopsAhead = j - (boardIdx - stopsRemaining!);
+      // Minutes to stop j, counted from the LIVE next stop (j - nextIdx), so the
+      // ETAs advance with the vehicle instead of staying pinned to entry.
+      final stopsAhead = j - nextIdx + 1;
       eta = (avgPerStop * stopsAhead).round();
       if (eta < 0) eta = 0;
     }
@@ -114,6 +128,40 @@ VehicleRoutePlan planVehicleRoute({
     upcoming: upcoming,
     stops: upcomingStops,
   );
+}
+
+/// The along-track distance (metres from the route start) of the nearest point
+/// on [poly] to [p]. Projects [p] onto each segment (planar approximation —
+/// exact enough at city scale) and returns the cumulative length to the nearest
+/// projection. Used to order stops by progress, so a vehicle between two stops
+/// counts the one behind it as passed.
+double _alongTrackMeters(List<List<double>> poly, ll.LatLng p) {
+  if (poly.length < 2) return 0;
+  var bestDist = double.infinity;
+  var bestAlong = 0.0;
+  var cum = 0.0;
+  for (var i = 0; i < poly.length - 1; i++) {
+    final a = ll.LatLng(poly[i][0], poly[i][1]);
+    final b = ll.LatLng(poly[i + 1][0], poly[i + 1][1]);
+    final segLen = _dist.as(ll.LengthUnit.Meter, a, b);
+    // Parametric projection t of p onto segment a→b, clamped to the segment.
+    final dLat = b.latitude - a.latitude;
+    final dLon = b.longitude - a.longitude;
+    final len2 = dLat * dLat + dLon * dLon;
+    final t = len2 == 0
+        ? 0.0
+        : (((p.latitude - a.latitude) * dLat + (p.longitude - a.longitude) * dLon) /
+                len2)
+            .clamp(0.0, 1.0);
+    final proj = ll.LatLng(a.latitude + dLat * t, a.longitude + dLon * t);
+    final d = _dist.as(ll.LengthUnit.Meter, p, proj);
+    if (d < bestDist) {
+      bestDist = d;
+      bestAlong = cum + segLen * t;
+    }
+    cum += segLen;
+  }
+  return bestAlong;
 }
 
 int _nearestPolylineIndex(List<List<double>> poly, ll.LatLng p) {

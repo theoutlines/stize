@@ -232,6 +232,9 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get routeUnavailable => 'Маршрут недоступен для этой линии';
+
+  @override
   String get emptyArrivalsTitle => 'Пока тихо на этой остановке';
 
   @override

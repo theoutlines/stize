@@ -228,6 +228,9 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
+  String get routeUnavailable => 'Ruta nije dostupna za ovu liniju';
+
+  @override
   String get emptyArrivalsTitle => 'Trenutno je tiho na ovom stajalištu';
 
   @override

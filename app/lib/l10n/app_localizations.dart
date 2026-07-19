@@ -454,6 +454,12 @@ abstract class AppLocalizations {
   /// **'{line} is off-screen'**
   String vehicleOffScreen(String line);
 
+  /// Shown in the followed-vehicle view for a line with no route geometry in our data (e.g. a suburban carrier)
+  ///
+  /// In en, this message translates to:
+  /// **'Route unavailable for this line'**
+  String get routeUnavailable;
+
   /// No description provided for @emptyArrivalsTitle.
   ///
   /// In en, this message translates to:

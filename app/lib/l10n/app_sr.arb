@@ -70,6 +70,7 @@
   "viewModelDetails": "Detalji o modelu",
   "backToVehicle": "Nazad na vozilo",
   "vehicleOffScreen": "{line} je van ekrana",
+  "routeUnavailable": "Ruta nije dostupna za ovu liniju",
 
   "emptyArrivalsTitle": "Trenutno je tiho na ovom stajalištu",
   "emptyArrivalsSubtitle": "Prevoz bi trebalo uskoro da stigne.",
