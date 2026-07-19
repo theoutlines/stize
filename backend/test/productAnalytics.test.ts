@@ -83,7 +83,11 @@ describe("logProductEvents", () => {
       { event: "app_open", props: { mode: "aquarium", locale_class: "other" }, session: "sess1" },
       { event: "sort_comfort" },
     ]);
+    // Bracket the write so we can pin the expected hour bucket even across an
+    // hour boundary.
+    const beforeBucket = Math.floor(Date.now() / 3_600_000) * 3600;
     await logProductEvents(env, scope(), events);
+    const afterBucket = Math.floor(Date.now() / 3_600_000) * 3600;
 
     const { results } = await env.STIGLA_ANALYTICS_DB.prepare(
       "SELECT event, props, session, hour_bucket FROM product_events ORDER BY event",
@@ -93,8 +97,15 @@ describe("logProductEvents", () => {
     const appOpen = results.find((r) => r.event === "app_open")!;
     expect(JSON.parse(appOpen.props!)).toEqual({ mode: "aquarium", locale_class: "other" });
     expect(appOpen.session).toBe("sess1");
-    // Server-stamped, truncated to the hour.
+    // PRIVACY CONTRACT: hour_bucket is UNIX SECONDS coarsened to the hour, NOT
+    // milliseconds and NOT second-precision. The `% 3600 === 0` check alone is
+    // too weak — a millisecond value floored to a multiple of 3600 (the old bug:
+    // `Date.now() / 3600`, ~3.6s resolution) also passes it. Anchoring to the
+    // current-hour bucket in *seconds* rejects that: the ms bug produces a value
+    // ~1000x larger, far outside [beforeBucket, afterBucket].
     expect(appOpen.hour_bucket % 3600).toBe(0);
+    expect(appOpen.hour_bucket).toBeGreaterThanOrEqual(beforeBucket);
+    expect(appOpen.hour_bucket).toBeLessThanOrEqual(afterBucket);
     const sort = results.find((r) => r.event === "sort_comfort")!;
     expect(sort.props).toBeNull();
     expect(sort.session).toBeNull();
