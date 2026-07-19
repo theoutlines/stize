@@ -1826,11 +1826,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       final zoom = math.max(controller.getCamera().zoom, kMovingObjectDetailZoom);
       _followEngaged = false;
       Future<void>? flight;
-      // Panel active: fly the vehicle to the centre of the VISIBLE map area
-      // (right of the panel), not the window centre — decision #3.
       _selfMove(() {
         flight = controller.animateCamera(
-          center: _visibleAreaCenter(target, zoom),
+          center: Geographic(lon: target.longitude, lat: target.latitude),
           zoom: zoom,
         );
       });
@@ -1841,9 +1839,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         if (mounted && _following && _selectedVehicleKey == key) {
           _lastFollowMarkerPos = null;
           _followEngaged = true;
-          // Correct any residual off-centre from the fly-to (marker moved during
-          // the flight); a small nudge lands it dead-centre of the visible area.
-          if (_panelActive) _recenterFollowedWithinView();
+          // Panel active: nudge the vehicle from the window centre to the centre
+          // of the VISIBLE area (right of the panel) — the ONE shift, applied by
+          // the self-correcting screen-math recenter (decision #3 / block #2).
+          _recenterFollowedWithinView();
         }
       });
     } else {
@@ -2173,19 +2172,35 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     setState(() => _slotModel = (fleet: fleet, garageNo: garageNo, type: type));
   }
 
-  /// Re-centre the followed marker in the visible area (right of the panel).
-  /// Called on follow entry (after the fly-to settles) and whenever the panel
-  /// width / breakpoint changes (block #2: resize → centre recomputed).
+  /// Re-centre the followed marker in the EXACT centre of the visible area
+  /// (right of the panel). Called on follow entry (after the fly-to settles) and
+  /// whenever the panel width / breakpoint changes (block #2: resize → centre
+  /// recomputed).
+  ///
+  /// Screen-math + self-correcting: it reads where the marker actually is on
+  /// screen and pans so it lands on the visible-area centre pixel. That makes it
+  /// idempotent regardless of any earlier over/under-shift, so repeated calls
+  /// converge on the exact centre rather than compounding.
   void _recenterFollowedWithinView() {
     final key = _selectedVehicleKey;
     final controller = _controller;
-    if (key == null || controller == null) return;
+    if (key == null || controller == null || !_panelActive) return;
     if (_vehAnimator.trackFor(key) == null) return;
     final pos = _vehAnimator.positionOf(key, _vehAnim.value);
-    final zoom = controller.getCamera().zoom;
+    final size = MediaQuery.sizeOf(context);
+    final panelW = panelWidthFor(size.width);
+    final markerScreen = controller.toScreenLocation(
+        Geographic(lon: pos.longitude, lat: pos.latitude));
+    // Where we want the marker: the centre of the strip right of the panel.
+    final target = Offset(panelW + (size.width - panelW) / 2, size.height / 2);
+    final windowCentre = Offset(size.width / 2, size.height / 2);
+    // The new camera centre is the geo currently under this screen point; after
+    // the move the marker sits exactly on [target].
+    final newCentreGeo =
+        controller.toLngLat(markerScreen + windowCentre - target);
     _selfMove(() {
       controller.animateCamera(
-        center: _visibleAreaCenter(pos, zoom),
+        center: newCentreGeo,
         nativeDuration: const Duration(milliseconds: 300),
         webSpeed: 1.2,
         webMaxDuration: const Duration(milliseconds: 400),
