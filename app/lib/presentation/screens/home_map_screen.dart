@@ -2165,6 +2165,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
     _ensureShapesFor(shapeKeys, byRouteId: true);
     _vehAnimator.syncSamples(samples, _vehAnim.value);
+    // A no-route follow re-adds the followed vehicle's board plan on every
+    // refresh; keep it in raw-GPS mode so it doesn't resume driving "through the
+    // houses" over a route we can't render (owner R4 #2).
+    if (_followNoRouteData && _selectedVehicleKey != null) {
+      _vehAnimator.dropTimed(_selectedVehicleKey!);
+    }
     // Diagnostics (staging overlay): board freshness + how many of this stop's
     // rows carried a timing plan, so a "frozen markers" report can be read off
     // the screen without a console (debugPrint is stripped in release web).
