@@ -211,6 +211,26 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
+  String get contextNearbyTitle => 'U blizini';
+
+  @override
+  String get aboutVehicle => 'O ovom vozilu';
+
+  @override
+  String get viewModelDetails => 'Detalji o modelu';
+
+  @override
+  String get backToVehicle => 'Nazad na vozilo';
+
+  @override
+  String vehicleOffScreen(String line) {
+    return '$line je van ekrana';
+  }
+
+  @override
+  String get routeUnavailable => 'Ruta nije dostupna za ovu liniju';
+
+  @override
   String get emptyArrivalsTitle => 'Trenutno je tiho na ovom stajalištu';
 
   @override

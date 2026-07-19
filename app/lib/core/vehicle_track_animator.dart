@@ -535,6 +535,12 @@ class VehicleTrackAnimator {
     _tracks.removeWhere((key, _) => !keys.contains(key));
   }
 
+  /// Drop [key]'s timed plan so the marker is driven by its raw fixes (the
+  /// conservative from/to ease) instead of playing a forward plan. Used for a
+  /// line with no route geometry, where the plan would straight-line the marker
+  /// between far-apart stations over roads we can't draw (owner R4 #2).
+  void dropTimed(String key) => _tracks[key]?.timed = null;
+
   static bool _isSamePlace(ll.LatLng a, ll.LatLng b) =>
       (a.latitude - b.latitude).abs() < _stillEpsilon &&
       (a.longitude - b.longitude).abs() < _stillEpsilon;

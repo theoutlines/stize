@@ -424,6 +424,42 @@ abstract class AppLocalizations {
   /// **'≈ {minutes} min'**
   String vehicleEtaMinutesApprox(int minutes);
 
+  /// Title/back-chip label for the nearby view of the adaptive context slot
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby'**
+  String get contextNearbyTitle;
+
+  /// Header of the Fleet-ID card in the followed-vehicle view
+  ///
+  /// In en, this message translates to:
+  /// **'About the vehicle'**
+  String get aboutVehicle;
+
+  /// CTA on the About-the-vehicle card, opens the vehicle model view
+  ///
+  /// In en, this message translates to:
+  /// **'View model details'**
+  String get viewModelDetails;
+
+  /// Pill shown when following is interrupted (manual pan or the vehicle left the screen); recenters and resumes follow
+  ///
+  /// In en, this message translates to:
+  /// **'Back to vehicle'**
+  String get backToVehicle;
+
+  /// Hint next to the Back-to-vehicle pill when the followed vehicle is off-screen
+  ///
+  /// In en, this message translates to:
+  /// **'{line} is off-screen'**
+  String vehicleOffScreen(String line);
+
+  /// Shown in the followed-vehicle view for a line with no route geometry in our data (e.g. a suburban carrier)
+  ///
+  /// In en, this message translates to:
+  /// **'Route unavailable for this line'**
+  String get routeUnavailable;
+
   /// No description provided for @emptyArrivalsTitle.
   ///
   /// In en, this message translates to:

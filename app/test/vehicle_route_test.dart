@@ -56,6 +56,27 @@ void main() {
     expect(plan.upcoming.length, greaterThanOrEqualTo(2));
   });
 
+  test('the upcoming list SLIDES as the vehicle advances (owner R4 #1)', () {
+    final shape = _shape();
+    // Same fixed feed anchor for both samples (as captured at follow entry).
+    List<String> upcomingAt(double lat) => planVehicleRoute(
+          shape: shape,
+          vehicle: ll.LatLng(lat, 20.0),
+          boardStop: const ll.LatLng(44.83, 20.0),
+          stopsRemaining: 2,
+          etaToBoardMinutes: 10,
+        ).stops.map((u) => u.stop.stopId).toList();
+
+    // Between stop 1 and 2 → next is s2.
+    expect(upcomingAt(44.815), ['s2', 's3', 's4']);
+    // The vehicle drives on, past stop 2, to between stop 2 and 3 → s2 has
+    // dropped off and s3 is now next. The list slid, even though the feed's
+    // stops_remaining (2) never changed.
+    expect(upcomingAt(44.825), ['s3', 's4']);
+    // Past stop 3 → only s4 remains.
+    expect(upcomingAt(44.835), ['s4']);
+  });
+
   test('degrades gracefully without stops_remaining / eta', () {
     final plan = planVehicleRoute(
       shape: _shape(),
