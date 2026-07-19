@@ -1851,11 +1851,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final c = _controller;
     if (c == null || !mounted) return;
     final focus = _cameraFocus();
-    // Free browse: re-easing to the CURRENT centre with the new padding shifts
-    // the scene by the geometry delta (maplibre places the centre at the padded
-    // centre). A focus re-centres on itself in the new visible area.
-    final center = focus ?? c.getCamera().center;
-    _camEase(center, duration: _geometryEaseDuration, webSpeed: 1.4);
+    if (focus != null) {
+      // A focus re-centres on itself in the new visible area — screen-math, so
+      // both axes land correctly (same helper the follow tick uses).
+      _centreOnVisibleArea(c, focus, animated: true);
+    } else {
+      // Free browse: re-easing to the CURRENT centre with the new padding shifts
+      // the scene by the geometry delta (maplibre places the centre at the
+      // padded centre) — the city slides by the delta, it isn't covered.
+      _camEase(c.getCamera().center,
+          duration: _geometryEaseDuration, webSpeed: 1.4);
+    }
   }
 
   /// The geographic point the camera should keep centred, if any: the followed
@@ -1991,12 +1997,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // elsewhere.)
   static const _followInterval = Duration(milliseconds: 66);
 
-  /// One follow step: keep the marker centred in the VISIBLE area (right of the
-  /// panel / above the sheet). Because every move carries the geometry padding
-  /// ([_mapInsets]), centring on the marker lands it in the visible centre — and
-  /// crucially the padding is re-asserted each tick, so nothing resets it back
-  /// to the whole window (the R2 regression). Throttled to [_followInterval] to
-  /// keep the map from jittering; the zoom is never touched.
+  /// One follow step: place the marker at the centre of the VISIBLE area in
+  /// BOTH axes. Uses screen-math (measure the marker's pixel, pan so it lands on
+  /// the visible-area-centre pixel) rather than `moveCamera(center, padding)` —
+  /// `jumpTo`'s padding shifted only the horizontal, which dropped vertical
+  /// tracking (owner R3 #1). Screen-math moves x AND y explicitly, so the
+  /// vehicle can't drift off vertically. Throttled to [_followInterval].
   void _followTick() {
     if (!_following || !_followEngaged) return;
     final key = _selectedVehicleKey;
@@ -2015,10 +2021,59 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
     _lastFollowMoveAt = now;
     final pos = _vehAnimator.positionOf(key, _vehAnim.value);
-    _camMove(
-      center: Geographic(lon: pos.longitude, lat: pos.latitude),
-      zoom: controller.getCamera().zoom, // keep the user's zoom
+    _centreOnVisibleArea(
+      controller,
+      Geographic(lon: pos.longitude, lat: pos.latitude),
+      animated: false,
     );
+  }
+
+  /// Diagnostics for the follow camera (owner R3 #1): the marker's pixel before
+  /// the move, the visible-area-centre target pixel, the applied inset and the
+  /// resulting camera centre. Surfaced on the staging overlay.
+  String _followCamDiag = 'FOLLOW cam -';
+
+  /// Place [geo] at the centre of the VISIBLE area (the strip not covered by the
+  /// panel / sheet) in BOTH axes, via screen-math. Independent of maplibre's
+  /// padding (which this move sets to zero) — the target PIXEL already accounts
+  /// for the overlap geometry, so x and y are both handled explicitly.
+  void _centreOnVisibleArea(
+    MapController c,
+    Geographic geo, {
+    required bool animated,
+  }) {
+    final size = MediaQuery.sizeOf(context);
+    final insets = _mapInsets;
+    final markerScreen = c.toScreenLocation(geo);
+    // Centre of the visible (unobscured) area, in screen pixels — both axes.
+    final target = Offset(
+      insets.left + (size.width - insets.left - insets.right) / 2,
+      insets.top + (size.height - insets.top - insets.bottom) / 2,
+    );
+    final windowCentre = Offset(size.width / 2, size.height / 2);
+    // The new camera centre is the geo currently under this screen point; after
+    // the move the marker sits exactly on [target].
+    final newCentre = c.toLngLat(markerScreen + windowCentre - target);
+    _followCamDiag = 'FOLLOW mk(${markerScreen.dx.toStringAsFixed(0)},'
+        '${markerScreen.dy.toStringAsFixed(0)}) '
+        'tgt(${target.dx.toStringAsFixed(0)},${target.dy.toStringAsFixed(0)}) '
+        'padL${insets.left.toStringAsFixed(0)}B${insets.bottom.toStringAsFixed(0)} '
+        'cam(${newCentre.lat.toStringAsFixed(5)},${newCentre.lon.toStringAsFixed(5)})';
+    final zoom = c.getCamera().zoom;
+    _selfMove(() {
+      if (animated) {
+        c.animateCamera(
+          center: newCentre,
+          zoom: zoom,
+          nativeDuration: _geometryEaseDuration,
+          webSpeed: 1.4,
+          webMaxDuration: const Duration(milliseconds: 400),
+        );
+      } else {
+        // padding stays zero — the target pixel already encodes the geometry.
+        c.moveCamera(center: newCentre, zoom: zoom);
+      }
+    });
   }
 
   // ---- On-demand stop context (state B) ------------------------------------
@@ -2298,6 +2353,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       source: source,
       scheduled: a.scheduled,
     );
+    // Sitting on a vehicle = get its FRESHEST state now, don't wait out the ~30s
+    // poll (owner R3 #2). If the board this row came from was stale (a HOLD fix),
+    // forcing an immediate refetch collapses the desync window from ~30s to a
+    // fraction of a second: a fresh board re-anchors the marker (an honest
+    // catch-up jerk to the real spot), and the route ahead stops being fresher
+    // than the marker. Until it lands, the stale-board gate keeps the marker on
+    // an honest HOLD rather than animating a stale plan.
+    if (ctxStop != null) ref.invalidate(arrivalsProvider(ctxStop));
   }
 
   void _clearFocus() {
@@ -3455,6 +3518,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // (owner R3 #1 — prove the panel-aware inset reaches the map).
       'GEO panelActive $_panelActive sheetPx ${_mobileSheetPx.toStringAsFixed(0)} '
           'insets L${_mapInsets.left.toStringAsFixed(0)} B${_mapInsets.bottom.toStringAsFixed(0)}',
+      // Follow camera: marker pixel vs visible-area-centre target + camera centre
+      // (owner R3 #1 — prove vertical tracking).
+      _followCamDiag,
       // Vehicle-animation state (on-demand context / follow diagnosis).
       'VEH onDemand $_onDemand stopCtx ${_stopContextId ?? "-"} '
           'following $_following sel ${_selectedVehicleKey ?? "-"}',
