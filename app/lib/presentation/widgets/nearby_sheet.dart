@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
+import '../../core/context_slot.dart';
 import '../../domain/models/nearby_arrival.dart';
 import 'nearby_view.dart';
 
@@ -21,6 +22,7 @@ class NearbySheet extends StatelessWidget {
     required this.active,
     required this.onEnableLocation,
     this.onTapGroup,
+    this.onHeightChanged,
   });
 
   /// The user's latest position fix, or null when there's no fix yet.
@@ -38,15 +40,27 @@ class NearbySheet extends StatelessWidget {
 
   final void Function(NearbyGroup group)? onTapGroup;
 
+  /// Reports the sheet's current pixel height on every layout/drag frame, so the
+  /// map's geometry owner can keep a followed vehicle above the sheet. Optional.
+  final ValueChanged<double>? onHeightChanged;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return DraggableScrollableSheet(
-      initialChildSize: 0.30,
+    final viewport = MediaQuery.sizeOf(context).height;
+    return NotificationListener<DraggableScrollableNotification>(
+      onNotification: (n) {
+        onHeightChanged?.call(n.extent * viewport);
+        return false;
+      },
+      child: DraggableScrollableSheet(
+      // Unified detents (owner R2 #4): large is NOT fullscreen — a strip of map
+      // always stays on top.
+      initialChildSize: kSheetPeek,
       minChildSize: 0.12,
-      maxChildSize: 0.92,
+      maxChildSize: kSheetLarge,
       snap: true,
-      snapSizes: const [0.30, 0.92],
+      snapSizes: const [kSheetPeek, kSheetHalf, kSheetLarge],
       builder: (context, scrollController) {
         // PointerInterceptor stops scroll/drag/taps on the sheet from falling
         // through to the MapLibre platform view underneath on web. No-op on
@@ -80,6 +94,7 @@ class NearbySheet extends StatelessWidget {
           ),
         );
       },
+      ),
     );
   }
 
