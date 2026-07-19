@@ -209,6 +209,26 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get contextNearbyTitle => 'Nearby';
+
+  @override
+  String get aboutVehicle => 'About the vehicle';
+
+  @override
+  String get viewModelDetails => 'View model details';
+
+  @override
+  String get backToVehicle => 'Back to vehicle';
+
+  @override
+  String vehicleOffScreen(String line) {
+    return '$line is off-screen';
+  }
+
+  @override
+  String get routeUnavailable => 'Route unavailable for this line';
+
+  @override
   String get emptyArrivalsTitle => 'It\'s quiet here right now';
 
   @override

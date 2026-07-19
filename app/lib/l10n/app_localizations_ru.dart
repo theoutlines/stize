@@ -215,6 +215,26 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get contextNearbyTitle => 'Рядом';
+
+  @override
+  String get aboutVehicle => 'Об этом транспорте';
+
+  @override
+  String get viewModelDetails => 'Подробнее о модели';
+
+  @override
+  String get backToVehicle => 'Вернуться к транспорту';
+
+  @override
+  String vehicleOffScreen(String line) {
+    return '$line за экраном';
+  }
+
+  @override
+  String get routeUnavailable => 'Маршрут недоступен для этой линии';
+
+  @override
   String get emptyArrivalsTitle => 'Пока тихо на этой остановке';
 
   @override

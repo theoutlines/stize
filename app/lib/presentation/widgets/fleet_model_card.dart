@@ -24,7 +24,7 @@ Future<void> showFleetModelCard(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (context) => _FleetModelCard(
+    builder: (context) => FleetModelView(
       fleet: fleet,
       fallbackType: fallbackType,
       garageNo: garageNo,
@@ -32,8 +32,12 @@ Future<void> showFleetModelCard(
   );
 }
 
-class _FleetModelCard extends StatelessWidget {
-  const _FleetModelCard({
+/// The model-card content. Hosted by the mobile modal ([showFleetModelCard]) and
+/// by the desktop context panel (as a leaf sub-view of the vehicle view — the
+/// desktop model details live INSIDE the panel, never a second surface over it).
+class FleetModelView extends StatelessWidget {
+  const FleetModelView({
+    super.key,
     required this.fleet,
     required this.fallbackType,
     this.garageNo,

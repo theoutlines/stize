@@ -13,7 +13,9 @@ import 'package:maplibre/maplibre.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
+import '../../core/context_slot.dart';
 import '../../core/coverage_heatmap.dart';
+import '../../core/fleet_matcher.dart';
 import '../../core/follow_camera.dart';
 import '../../core/fps_overlay.dart';
 import '../../core/hit_test.dart';
@@ -26,25 +28,33 @@ import '../../core/moving_object_layer.dart';
 import '../../core/route_path.dart';
 import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_map_mode.dart';
+import '../../core/vehicle_route.dart';
 import '../../core/vehicle_track_animator.dart';
 import '../../data/analytics/event_logger.dart';
 import '../../data/location/location_service.dart';
 import '../../domain/models/area_vehicle.dart';
 import '../../domain/models/arrival.dart';
+import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/pinned_line.dart';
 import '../../domain/models/nearby_arrival.dart';
+import '../../domain/models/route_shape.dart';
 import '../../domain/models/stop.dart';
 import '../../domain/models/vehicle_source.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import '../widgets/context_shell.dart';
 import '../widgets/favorites_carousel.dart';
+import '../widgets/fleet_model_card.dart';
 import '../widgets/nearby_sheet.dart';
+import '../widgets/nearby_view.dart';
+import '../widgets/stop_board.dart';
 import '../widgets/stop_sheet.dart';
 import '../widgets/vehicle_icon.dart';
 import '../widgets/vehicle_mode_toggle.dart';
+import '../widgets/vehicle_view.dart';
 import 'map_screen_args.dart';
 
 const _belgradeCenter = Geographic(lon: 20.4612, lat: 44.8125);
@@ -297,23 +307,53 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // A stop arrivals sheet is currently up. The bottom UI (Nearby panel / search)
   // is hidden while it is, so the two never overlap (#7).
   bool _stopSheetOpen = false;
+
+  // ---- Adaptive context slot (context_panel) -------------------------------
+  // With the flag ON the three views (nearby → stop → vehicle) share ONE
+  // surface: a persistent left panel on desktop (≥840px) or unified bottom
+  // sheets on mobile. `_contextPanel` mirrors the remote flag (read in build);
+  // OFF = today's independent sheets, untouched (killswitch). `_slotStopId` is
+  // the stop shown in the slot's stop view (distinct from `_stopContextId`,
+  // which drives the on-demand markers and only exists in on-demand mode).
+  bool _contextPanel = false;
+  // The panel is a DESKTOP-ONLY surface (owner R1): on the mobile breakpoint the
+  // app keeps today's independent sheets untouched, so ALL new panel behaviour
+  // gates on `_panelActive` (flag ON *and* wide), never on the flag alone.
+  bool _wideNow = false; // last-built breakpoint class (≥840)
+  bool get _panelActive => _contextPanel && _wideNow;
+  String? _slotStopId;
+  String? _slotStopName;
+  // A tapped Fleet-ID vehicle shown as a leaf sub-view of the vehicle view (the
+  // desktop model card lives INSIDE the panel — no second surface). Null = not
+  // showing the model. (`(fleet, garageNo, type)`.)
+  ({FleetVehicle fleet, String? garageNo, VehicleType type})? _slotModel;
+  EdgeInsets? _appliedInsets; // last geometry the camera was settled for
+  // ETA anchoring for the followed vehicle's worded route (owner R1 #5), taken
+  // from the arrival it was opened from; null for a marker-tap follow (the route
+  // then extrapolates from position alone).
+  int? _followStopsRemaining;
+  int? _followEtaMinutes;
+  ll.LatLng? _followBoardStop; // the stop the follow was opened from ("your stop")
+
   String? _stopContextId; // stop feeding the markers (state B); null = not in B
   ProviderSubscription<AsyncValue<ArrivalsBoard>>? _stopArrivalsSub;
   // The stop context to restore when a vehicle context opened *from* a stop is
   // closed (return to B); null → fall back to A.
   String? _returnToStopId;
 
-  // Follow mode: the camera pans to keep the selected vehicle screen-fixed as it
-  // moves. Any manual pan/zoom gesture breaks it (the marker and highlight stay
-  // — the Google Maps / Flightradar pattern). `_followEngaged` gates the
-  // per-frame pan so an entry fly-to settles first; `_lastFollowMarkerPos` is
-  // the marker position the last pan was measured from (delta-panning).
-  // `_selfCameraMove` marks a camera move the app itself issued, so the
-  // move-start it triggers isn't mistaken for a user gesture and doesn't break
-  // follow (the classic self-cancelling-follow bug).
+  // Follow mode: the camera keeps the selected vehicle centred in the visible
+  // area (right of the panel / above the sheet) as it moves — the Google Maps
+  // pattern. Any manual pan/zoom gesture breaks it (the marker and highlight
+  // stay). `_followEngaged` gates the per-tick centring so an entry fly-to
+  // settles first. `_selfCameraMove` marks a camera move the app itself issued,
+  // so the move-start it triggers isn't mistaken for a user gesture and doesn't
+  // break follow (the classic self-cancelling-follow bug).
   bool _following = false;
   bool _followEngaged = false;
-  ll.LatLng? _lastFollowMarkerPos;
+  // The followed line has no route geometry in our GTFS (a suburban / non-GSP
+  // carrier like "Ada 4"): follow degrades to raw GPS — no route line, no route
+  // ahead, an honest label (owner R4 #2).
+  bool _followNoRouteData = false;
   DateTime? _lastFollowMoveAt; // throttle for the smooth follow ease
   bool _selfCameraMove = false;
   // A brief grace window after a resume during which a camera-move event does
@@ -424,9 +464,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (!_paused) return;
     _paused = false;
     // Hold follow across the resume: the tab-return canvas re-layout can surface
-    // a spurious "gesture" camera event that would otherwise break it. Keep
-    // `_lastFollowMarkerPos` untouched so the first follow tick pans by the full
-    // re-anchor jump and the marker stays centred rather than sliding off.
+    // a spurious "gesture" camera event that would otherwise break it. The next
+    // follow tick re-centres on the marker, so a re-anchor jump just re-centres.
     if (_following) {
       _followResumeGuardUntil = DateTime.now().add(const Duration(seconds: 1));
     }
@@ -502,11 +541,25 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // ease and clears _fanAnimating once it settles.
     if (_vehAnim.isAnimating || _vehAnimator.hasPendingMotion || _fanAnimating) {
       _paintVehicles();
+      _refreshFollowPanel();
     } else {
       _stopVehDriver();
       _paintVehicles();
       if (mounted) setState(() {});
     }
+  }
+
+  // Rebuild the desktop vehicle panel ~1/s while following, so its worded route
+  // ("Rest of the route") slides as the vehicle progresses along the plan — same
+  // progress the marker uses (its plan position), just re-read (owner R3 #3).
+  DateTime? _lastFollowPanelRefreshAt;
+  void _refreshFollowPanel() {
+    if (!_panelActive || _selectedVehicleKey == null || _slotModel != null) return;
+    final now = DateTime.now();
+    final last = _lastFollowPanelRefreshAt;
+    if (last != null && now.difference(last) < const Duration(seconds: 1)) return;
+    _lastFollowPanelRefreshAt = now;
+    if (mounted) setState(() {});
   }
 
   /// Push the current vehicle positions to the GPU symbol source.
@@ -536,9 +589,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   void _onMapCreated(MapController controller) {
     _controller = controller;
-    // Apply any camera target that resolved before the map was ready.
+    // Apply any camera target that resolved before the map was ready — through
+    // the geometry-aware helper so the initial centre respects the panel/sheet.
     if (_pendingCenter != null) {
-      controller.moveCamera(center: _pendingCenter!, zoom: _pendingZoom ?? 16);
+      _camMove(center: _pendingCenter!, zoom: _pendingZoom ?? 16);
       _pendingCenter = null;
       _pendingZoom = null;
     }
@@ -912,6 +966,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         reason: event.reason,
       )) {
         _stopFollow();
+        // Surface the "Back to vehicle" pill (decision #8): the user panned the
+        // vehicle away, so follow is now interrupted while the context stays up.
+        if (_panelActive && mounted) setState(() {});
       }
     }
   }
@@ -962,7 +1019,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         _pendingCenter = geo;
         _pendingZoom = 16;
       } else {
-        controller.moveCamera(center: geo, zoom: 16);
+        // Centre the user in the VISIBLE area (right of the panel / above the
+        // sheet), not the whole window — the same geometry every camera path
+        // reads (owner R3 #1: locate was centring on the full viewport).
+        _camMove(center: geo, zoom: 16);
       }
     }
   }
@@ -1061,10 +1121,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // dead (X3).
     final me = _meTo;
     if (me != null) {
-      await _controller?.animateCamera(
-        center: Geographic(lon: me.longitude, lat: me.latitude),
-        zoom: 16,
-      );
+      _camEase(Geographic(lon: me.longitude, lat: me.latitude), zoom: 16);
     }
     // A real user gesture — allowed to prompt. One fresh fix (also fires the OS
     // prompt on first use) gives an instant recenter; the live stream then keeps
@@ -1651,6 +1708,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           ? await repo.getShapeByRouteId(directionRouteId)
           : await repo.getShapeByLineNumber(line);
       if (!mounted) return;
+      // No usable geometry for this line (a suburban / non-GSP carrier like
+      // "Ada 4" isn't in our GTFS — no shape, no stations, no direction). Follow
+      // still works off raw GPS, but there's nothing to highlight or list, so
+      // degrade honestly (owner R4 #2): no route line, no route ahead, an honest
+      // label, and the marker driven by GPS instead of a phantom station plan
+      // (which straight-lines between far-apart stations → "through the houses").
+      if (shape.polyline.length < 2 && shape.stops.isEmpty) {
+        _enterRawFollow();
+        return;
+      }
+      _followNoRouteData = false;
       final routeStops = shape.stops
           .map(
             (s) => Stop(
@@ -1682,7 +1750,29 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       // Refresh the vehicle set so the focused line's buses show right away.
       if (refreshVehicles) _loadVehiclesForVisibleArea(force: true);
     } catch (_) {
-      // Best-effort: a failed shape lookup just doesn't open the route.
+      // A failed shape lookup means we have no geometry for this line either —
+      // same honest raw-GPS degradation as an empty shape (owner R4 #2).
+      _enterRawFollow();
+    }
+  }
+
+  /// The followed line has no route geometry in our GTFS (owner R4 #2): drive the
+  /// marker off raw GPS (drop the station plan that would straight-line it
+  /// through the houses), draw no route line, and let the vehicle view show an
+  /// honest "route unavailable" note in place of the stop list.
+  void _enterRawFollow() {
+    if (!mounted) return;
+    setState(() {
+      _followNoRouteData = true;
+      _focus = null; // no route/stops to draw
+    });
+    _syncFocusLayers(); // remove any stale focus layers
+    final key = _selectedVehicleKey;
+    if (key != null) {
+      // Re-drive this marker by GPS alone: clear its timed plan so it eases to
+      // its live fix instead of playing a plan over roads we don't have.
+      _vehAnimator.dropTimed(key);
+      _paintVehicles();
     }
   }
 
@@ -1721,6 +1811,110 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     } finally {
       _selfCameraMove = false;
     }
+  }
+
+  // ---- Map geometry owner (single source of truth) --------------------------
+  //
+  // The overlap the UI puts over the map, in logical pixels: the desktop panel
+  // (left) or the mobile bottom sheet at its current detent (bottom). EVERY
+  // programmatic camera move passes this as maplibre `padding`, because
+  // maplibre_web forwards a `padding` on every jumpTo/flyTo — a call WITHOUT it
+  // silently resets the map's *persistent* camera padding to zero. That reset,
+  // every follow tick, is exactly why centring "didn't reach maplibre": the
+  // next move wiped it. One owner, read by locate / follow / stop / initial /
+  // deep-link / "Back to vehicle" alike, so a focused target sits in the centre
+  // of the VISIBLE (unobscured) area and a free-browse scene shifts by the
+  // geometry delta instead of being covered.
+  double _mobileSheetPx = 0; // active mobile sheet height (from the sheet host)
+  bool _wasPanelActive = false; // to catch the breakpoint flip in build
+
+  /// The mobile bottom sheet reported a new height. Feeds the geometry owner so
+  /// a followed vehicle is kept above the sheet (the follow tick re-centres from
+  /// [_mapInsets] each step). Thresholded to avoid a rebuild on every sub-pixel.
+  void _setMobileSheetPx(double px) {
+    if ((px - _mobileSheetPx).abs() < 4) return;
+    setState(() => _mobileSheetPx = px);
+  }
+
+  // A deliberate deceleration-curve glide (slow-ish flyTo), so a short move
+  // reads as a glide, not a teleport.
+  static const _cameraEaseDuration = Duration(milliseconds: 700);
+  static const double _cameraEaseSpeed = 0.55;
+
+  EdgeInsets get _mapInsets => mapInsetsFor(
+        panelActive: _panelActive,
+        panelWidth: panelWidthFor(MediaQuery.sizeOf(context).width),
+        mobileSheetPx: _mobileSheetPx,
+      );
+
+  /// Instant camera move (jumpTo) carrying the current geometry padding.
+  void _camMove({Geographic? center, double? zoom}) {
+    final c = _controller;
+    if (c == null) return;
+    _selfMove(() => c.moveCamera(center: center, zoom: zoom, padding: _mapInsets));
+  }
+
+  /// Eased camera move (flyTo) carrying the current geometry padding. Returns the
+  /// flight future so callers can act once it settles.
+  Future<void>? _camEase(
+    Geographic center, {
+    double? zoom,
+    Duration duration = _cameraEaseDuration,
+    double webSpeed = _cameraEaseSpeed,
+  }) {
+    final c = _controller;
+    if (c == null) return null;
+    Future<void>? flight;
+    _selfMove(() {
+      flight = c.animateCamera(
+        center: center,
+        zoom: zoom,
+        padding: _mapInsets,
+        nativeDuration: duration,
+        webSpeed: webSpeed,
+        webMaxDuration: const Duration(milliseconds: 800),
+      );
+    });
+    return flight;
+  }
+
+  /// Re-settle the camera after the overlap geometry changed (panel width /
+  /// breakpoint / sheet detent / sheet open-close) — the Google-Maps feel: a
+  /// short ease that keeps the focus centred in the new visible area, or, with
+  /// no focus, shifts the free-browse scene by the geometry delta (open the
+  /// panel → the city slides right by half the panel, it isn't covered).
+  static const _geometryEaseDuration = Duration(milliseconds: 280);
+  void _onMapGeometryChanged() {
+    final c = _controller;
+    if (c == null || !mounted) return;
+    final focus = _cameraFocus();
+    if (focus != null) {
+      // A focus re-centres on itself in the new visible area — screen-math, so
+      // both axes land correctly (same helper the follow tick uses).
+      _centreOnVisibleArea(c, focus, animated: true);
+    } else {
+      // Free browse: re-easing to the CURRENT centre with the new padding shifts
+      // the scene by the geometry delta (maplibre places the centre at the
+      // padded centre) — the city slides by the delta, it isn't covered.
+      _camEase(c.getCamera().center,
+          duration: _geometryEaseDuration, webSpeed: 1.4);
+    }
+  }
+
+  /// The geographic point the camera should keep centred, if any: the followed
+  /// vehicle, else the active stop context. Null = free browse.
+  Geographic? _cameraFocus() {
+    final key = _selectedVehicleKey;
+    if (_following && key != null && _vehAnimator.trackFor(key) != null) {
+      final p = _vehAnimator.positionOf(key, _vehAnim.value);
+      return Geographic(lon: p.longitude, lat: p.latitude);
+    }
+    final stopId = _slotStopId ?? _stopContextId;
+    if (stopId != null) {
+      final pos = _resolveStopLatLngSync(stopId);
+      if (pos != null) return Geographic(lon: pos.longitude, lat: pos.latitude);
+    }
+    return null;
   }
 
   /// The single entry into follow mode. Every source — a stop-sheet row, a
@@ -1778,25 +1972,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _preFollowZoom = cam.zoom;
     }
     _following = true;
-    _selectedVehicleKey = key;
-    _lastFollowMarkerPos = null; // (re)seed on the first follow tick
+    _selectedVehicleKey = key; // (re)seed on the first follow tick
     _lastFollowMoveAt = null;
     if (flyTo && controller != null) {
       final zoom = math.max(controller.getCamera().zoom, kMovingObjectDetailZoom);
       _followEngaged = false;
-      Future<void>? flight;
-      _selfMove(() {
-        flight = controller.animateCamera(
-          center: Geographic(lon: target.longitude, lat: target.latitude),
-          zoom: zoom,
-        );
-      });
-      // Engage the continuous pan only once the fly-to has actually settled, so
-      // the two never fight; re-seed at the settled spot so the first pan tick
-      // doesn't apply a stale delta.
+      // Fly the vehicle to the centre of the VISIBLE area — the geometry padding
+      // (owned by [_mapInsets]) does the centring, on this and every later tick.
+      final flight = _camEase(
+        Geographic(lon: target.longitude, lat: target.latitude),
+        zoom: zoom,
+      );
+      // Engage the continuous follow only once the fly-to has actually settled,
+      // so the two never fight.
       flight?.whenComplete(() {
         if (mounted && _following && _selectedVehicleKey == key) {
-          _lastFollowMarkerPos = null;
           _followEngaged = true;
         }
       });
@@ -1813,7 +2003,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (!_following) return;
     _following = false;
     _followEngaged = false;
-    _lastFollowMarkerPos = null;
   }
 
   /// A brief "vehicle no longer tracked" notice — shown when we can't build a
@@ -1845,13 +2034,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // elsewhere.)
   static const _followInterval = Duration(milliseconds: 66);
 
-  /// One follow step: pan the camera by how far the marker moved since the last
-  /// step, so the marker stays put on screen as it travels — a continuous pan,
-  /// Flightradar-style. The zoom is never touched (the user's zoom is respected).
-  /// Throttled to [_followInterval] to keep the map from jittering. The first
-  /// step only seeds the reference position so engaging follow causes no jump; a
-  /// vanished vehicle (grace/dropped) holds the camera still and re-seeds on
-  /// return so it doesn't lurch.
+  /// One follow step: place the marker at the centre of the VISIBLE area in
+  /// BOTH axes. Uses screen-math (measure the marker's pixel, pan so it lands on
+  /// the visible-area-centre pixel) rather than `moveCamera(center, padding)` —
+  /// `jumpTo`'s padding shifted only the horizontal, which dropped vertical
+  /// tracking (owner R3 #1). Screen-math moves x AND y explicitly, so the
+  /// vehicle can't drift off vertically. Throttled to [_followInterval].
   void _followTick() {
     if (!_following || !_followEngaged) return;
     final key = _selectedVehicleKey;
@@ -1859,37 +2047,72 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (key == null || controller == null) return;
     if (_vehAnimator.trackFor(key) == null) {
       // The vehicle dropped out of the feed for good (past the grace period).
-      // Follow without a marker shouldn't exist — surface "vehicle lost" and
-      // leave follow rather than chase an empty map (deferred so we don't mutate
-      // navigation mid-paint).
-      _lastFollowMarkerPos = null;
+      // Surface "vehicle lost" and leave follow rather than chase an empty map.
       WidgetsBinding.instance.addPostFrameCallback((_) => _onFollowedVehicleLost());
       return;
     }
     final now = DateTime.now();
-    // Throttle: leave `_lastFollowMarkerPos` untouched so the next allowed step
-    // pans by the full delta accumulated over the interval.
-    if (_lastFollowMoveAt != null && now.difference(_lastFollowMoveAt!) < _followInterval) {
+    if (_lastFollowMoveAt != null &&
+        now.difference(_lastFollowMoveAt!) < _followInterval) {
       return;
     }
-    final pos = _vehAnimator.positionOf(key, _vehAnim.value);
-    final last = _lastFollowMarkerPos;
-    _lastFollowMarkerPos = pos;
     _lastFollowMoveAt = now;
-    if (last == null) return; // first step after engage/return: seed only
-    final dLat = pos.latitude - last.latitude;
-    final dLon = pos.longitude - last.longitude;
-    if (dLat.abs() < 1e-7 && dLon.abs() < 1e-7) return; // not moving
-    final cam = controller.getCamera();
-    // Pan the camera by the marker's own delta → the marker stays screen-fixed.
+    final pos = _vehAnimator.positionOf(key, _vehAnim.value);
+    _centreOnVisibleArea(
+      controller,
+      Geographic(lon: pos.longitude, lat: pos.latitude),
+      animated: false,
+    );
+  }
+
+  /// Route-ahead progress diagnostic (owner R4 #1), set in [_buildUpcomingStops].
+  String _routeAheadDiag = 'ROUTE ahead -';
+
+  /// Diagnostics for the follow camera (owner R3 #1): the marker's pixel before
+  /// the move, the visible-area-centre target pixel, the applied inset and the
+  /// resulting camera centre. Surfaced on the staging overlay.
+  String _followCamDiag = 'FOLLOW cam -';
+
+  /// Place [geo] at the centre of the VISIBLE area (the strip not covered by the
+  /// panel / sheet) in BOTH axes, via screen-math. Independent of maplibre's
+  /// padding (which this move sets to zero) — the target PIXEL already accounts
+  /// for the overlap geometry, so x and y are both handled explicitly.
+  void _centreOnVisibleArea(
+    MapController c,
+    Geographic geo, {
+    required bool animated,
+  }) {
+    final size = MediaQuery.sizeOf(context);
+    final insets = _mapInsets;
+    final markerScreen = c.toScreenLocation(geo);
+    // Centre of the visible (unobscured) area, in screen pixels — both axes.
+    final target = Offset(
+      insets.left + (size.width - insets.left - insets.right) / 2,
+      insets.top + (size.height - insets.top - insets.bottom) / 2,
+    );
+    final windowCentre = Offset(size.width / 2, size.height / 2);
+    // The new camera centre is the geo currently under this screen point; after
+    // the move the marker sits exactly on [target].
+    final newCentre = c.toLngLat(markerScreen + windowCentre - target);
+    _followCamDiag = 'FOLLOW mk(${markerScreen.dx.toStringAsFixed(0)},'
+        '${markerScreen.dy.toStringAsFixed(0)}) '
+        'tgt(${target.dx.toStringAsFixed(0)},${target.dy.toStringAsFixed(0)}) '
+        'padL${insets.left.toStringAsFixed(0)}B${insets.bottom.toStringAsFixed(0)} '
+        'cam(${newCentre.lat.toStringAsFixed(5)},${newCentre.lon.toStringAsFixed(5)})';
+    final zoom = c.getCamera().zoom;
     _selfMove(() {
-      controller.moveCamera(
-        center: Geographic(
-          lon: cam.center.lon + dLon,
-          lat: cam.center.lat + dLat,
-        ),
-        zoom: cam.zoom, // keep the user's zoom
-      );
+      if (animated) {
+        c.animateCamera(
+          center: newCentre,
+          zoom: zoom,
+          nativeDuration: _geometryEaseDuration,
+          webSpeed: 1.4,
+          webMaxDuration: const Duration(milliseconds: 400),
+        );
+      } else {
+        // padding stays zero — the target pixel already encodes the geometry.
+        c.moveCamera(center: newCentre, zoom: zoom);
+      }
     });
   }
 
@@ -1942,6 +2165,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
     _ensureShapesFor(shapeKeys, byRouteId: true);
     _vehAnimator.syncSamples(samples, _vehAnim.value);
+    // A no-route follow re-adds the followed vehicle's board plan on every
+    // refresh; keep it in raw-GPS mode so it doesn't resume driving "through the
+    // houses" over a route we can't render (owner R4 #2).
+    if (_followNoRouteData && _selectedVehicleKey != null) {
+      _vehAnimator.dropTimed(_selectedVehicleKey!);
+    }
     // Diagnostics (staging overlay): board freshness + how many of this stop's
     // rows carried a timing plan, so a "frozen markers" report can be read off
     // the screen without a console (debugPrint is stripped in release web).
@@ -2036,13 +2265,90 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final center = _preStopCameraCenter ?? _preFollowCenter;
     final zoom = _preStopCameraCenter != null ? _preStopCameraZoom : _preFollowZoom;
     if (center != null) {
-      _easeCameraTo(center, zoom);
+      _camEase(center, zoom: zoom);
     }
     _preFollowCenter = null;
     _preFollowZoom = null;
     _preStopCameraCenter = null;
     _preStopCameraZoom = null;
     if (_onDemand) _exitStopContext();
+  }
+
+  // ---- Adaptive context slot ------------------------------------------------
+
+  /// The active panel view, derived from the SAME state the legacy flow uses:
+  /// a tapped Fleet model (leaf) → model; a followed vehicle → vehicle; a slot
+  /// stop → stop; else nearby. Desktop-only (the panel).
+  ContextView get _activeView {
+    if (_selectedVehicleKey != null || _focus != null) return ContextView.vehicle;
+    if (_slotStopId != null) return ContextView.stop;
+    return ContextView.nearby;
+  }
+
+  /// Follow is interrupted: a vehicle context is up but we're not tracking (the
+  /// user panned it away, or the vehicle left the viewport). Drives the
+  /// conditional "Back to vehicle" pill (decision #8). Desktop-panel only.
+  bool get _followLost =>
+      _panelActive && _selectedVehicleKey != null && !_following;
+
+  /// The insets of the map NOT covered by the panel — the region a followed
+  /// target must stay CENTRED inside (decision #3). Desktop-panel only.
+  ///
+  /// Analytic (no reliance on maplibre `padding`, whose web behaviour is
+  /// inconsistent and drifts a delta-panned follow): the map centre is shifted
+  /// WEST by half the panel width, so [target] lands in the middle of the
+  /// unobscured strip to the right of the panel. On mobile / flag-OFF the panel
+  /// is inactive → returns [target] unchanged (prod camera behaviour untouched).
+  ///
+  /// Back one step up the chain (model → vehicle → stop → nearby). The panel's
+  /// single nav-row back arrow and Android back both route here; there is NO
+  /// separate × — back IS the exit (owner R1 #4).
+  void _slotBack() {
+    if (_slotModel != null) {
+      setState(() => _slotModel = null);
+      return;
+    }
+    switch (_activeView) {
+      case ContextView.vehicle:
+        _closeVehicleContext();
+      case ContextView.stop:
+        _closeSlotStop();
+      case ContextView.nearby:
+        break;
+    }
+  }
+
+  /// Leave the stop view → nearby. Mirrors the legacy sheet-close: clears the
+  /// on-demand markers and restores the pre-stop camera.
+  void _closeSlotStop() {
+    if (_slotStopId == null) {
+      if (mounted) setState(() {});
+      return;
+    }
+    final stopId = _slotStopId;
+    setState(() {
+      _slotStopId = null;
+      _slotStopName = null;
+    });
+    if (_onDemand && _stopContextId == stopId) _exitStopContext();
+    _restorePreStopCamera();
+  }
+
+  /// Open the Fleet model as a leaf sub-view INSIDE the panel (desktop) — never
+  /// a second surface over it (owner R1 #3). On mobile this isn't used (the
+  /// legacy modal card runs instead).
+  void _openSlotModel(FleetVehicle fleet, {String? garageNo, required VehicleType type}) {
+    setState(() => _slotModel = (fleet: fleet, garageNo: garageNo, type: type));
+  }
+
+  /// The "Back to vehicle" pill: recenter on the vehicle (in the visible strip)
+  /// and resume follow (decision #8).
+  void _resumeFollowFromPill() {
+    final key = _selectedVehicleKey;
+    if (key == null || _vehAnimator.trackFor(key) == null) return;
+    final pos = _vehAnimator.positionOf(key, _vehAnim.value);
+    _startFollow(key, target: pos, flyTo: true);
+    if (mounted) setState(() {});
   }
 
   /// Enter vehicle context from a tapped arrival row (§C). Builds a guaranteed
@@ -2059,7 +2365,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       return;
     }
     _clearSearch();
-    _returnToStopId = _onDemand ? _stopContextId : null;
+    // Slot ON: return up the chain to the slot's stop view (works in aquarium
+    // mode too, where there's no on-demand `_stopContextId`). Legacy: only the
+    // on-demand stop context.
+    _returnToStopId = _slotStopId ?? (_onDemand ? _stopContextId : null);
     final key = VehicleTrackAnimator.keyFor(a);
     final pos = ll.LatLng(gps.lat, gps.lon);
     final dirId = a.directionRouteId ?? a.routeId;
@@ -2075,6 +2384,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _showVehicleLost();
       return;
     }
+    // Anchor the worded-route ETAs (R1 #5) to this arrival's own numbers.
+    _followStopsRemaining = a.stopsRemaining;
+    _followEtaMinutes = a.etaMinutes;
+    final ctxStop = _slotStopId ?? _stopContextId;
+    _followBoardStop = ctxStop == null ? null : _resolveStopLatLngSync(ctxStop);
     // Single follow entry (fly the camera in from a list row). refreshVehicles
     // false so a fan-out can't prune the marker we just injected.
     _enterFollow(
@@ -2085,6 +2399,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       source: source,
       scheduled: a.scheduled,
     );
+    // Sitting on a vehicle = get its FRESHEST state now, don't wait out the ~30s
+    // poll (owner R3 #2). If the board this row came from was stale (a HOLD fix),
+    // forcing an immediate refetch collapses the desync window from ~30s to a
+    // fraction of a second: a fresh board re-anchors the marker (an honest
+    // catch-up jerk to the real spot), and the route ahead stops being fresher
+    // than the marker. Until it lands, the stale-board gate keeps the marker on
+    // an honest HOLD rather than animating a stale plan.
+    if (ctxStop != null) ref.invalidate(arrivalsProvider(ctxStop));
   }
 
   void _clearFocus() {
@@ -2092,6 +2414,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     setState(() {
       _focus = null;
       _selectedVehicleKey = null;
+      _slotModel = null; // the model leaf belongs to the vehicle view
+      _followNoRouteData = false;
     });
     _pushStopSources(); // restore the ambient stop layers
     _syncFocusLayers(); // remove the focus route/stops layers
@@ -2125,7 +2449,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // §C.2: highlight the route + line panel and start following — but the
           // camera does NOT jump or zoom (don't regress F2). Same single entry
           // as the list-row paths, so all three end in identical state.
-          _returnToStopId = _onDemand ? _stopContextId : null;
+          // Slot ON: return up the chain to the slot's stop view (works in aquarium
+    // mode too, where there's no on-demand `_stopContextId`). Legacy: only the
+    // on-demand stop context.
+    _returnToStopId = _slotStopId ?? (_onDemand ? _stopContextId : null);
           if (keyStr != null) {
             _enterFollow(
               key: keyStr,
@@ -2174,10 +2501,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       final props = f.properties;
       if (props['cluster'] == true) {
         final camera = controller.getCamera();
-        controller.animateCamera(
-          center: point,
-          zoom: (camera.zoom + 2).clamp(12, 18),
-        );
+        _camEase(point, zoom: (camera.zoom + 2).clamp(12, 18));
         return;
       }
     }
@@ -2326,6 +2650,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // Shift the stop up into the visible strip ABOVE the sheet, so it isn't
     // hidden under it (and so returning from a follow lands on a visible stop).
     _bringStopIntoView(stopId, at);
+    // Desktop panel active: the stop view lives in the persistent panel, NOT a
+    // modal — advance the shared state machine instead. On mobile / flag OFF we
+    // fall through to the legacy modal (prod behaviour, untouched).
+    if (_panelActive) {
+      setState(() {
+        _slotStopId = stopId;
+        _slotStopName = stopName;
+        _slotModel = null; // opening a fresh stop clears any leaf model view
+      });
+      return;
+    }
     // Hide the bottom UI (Nearby panel / search) while the sheet is up so they
     // don't overlap (#7).
     setState(() => _stopSheetOpen = true);
@@ -2342,32 +2677,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     });
   }
 
-  // A camera glide with a deliberate, deceleration-curve duration. Used for
-  // opening a stop (pan it above the sheet) and closing it (ease back), so entry
-  // and exit feel symmetric — a slow-ish `flyTo` (low speed, capped) rather than
-  // the near-instant default that reads as a teleport on a short move.
-  static const _cameraEaseDuration = Duration(milliseconds: 700);
-  static const double _cameraEaseSpeed = 0.55;
-
-  void _easeCameraTo(
-    Geographic center,
-    double? zoom, {
-    EdgeInsets padding = EdgeInsets.zero,
-  }) {
-    final controller = _controller;
-    if (controller == null) return;
-    _selfMove(() {
-      controller.animateCamera(
-        center: center,
-        zoom: zoom,
-        padding: padding,
-        nativeDuration: _cameraEaseDuration,
-        webSpeed: _cameraEaseSpeed,
-        webMaxDuration: const Duration(milliseconds: 800),
-      );
-    });
-  }
-
   /// Pan [stopId] into the strip of map visible above the arrivals sheet (the
   /// sheet covers the lower ~half), zooming in to at least the individual-stop
   /// level. Resolves the coordinate from the tap ([at]) or the GTFS mirror.
@@ -2377,12 +2686,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final controller = _controller;
     if (controller == null) return;
     final zoom = math.max(controller.getCamera().zoom, _individualZoom);
-    final bottomPad = MediaQuery.of(context).size.height * 0.5;
-    _easeCameraTo(
-      Geographic(lon: pos.longitude, lat: pos.latitude),
-      zoom,
-      padding: EdgeInsets.only(bottom: bottomPad),
-    );
+    // The geometry padding ([_mapInsets]) centres the stop in the visible area —
+    // right of the panel on desktop, above the sheet on mobile.
+    _camEase(Geographic(lon: pos.longitude, lat: pos.latitude), zoom: zoom);
+  }
+
+  /// Synchronous stop → coords from whatever is already loaded (area stops /
+  /// focus stops); null if not in hand. Used to anchor the worded route's
+  /// "your stop" without an await.
+  ll.LatLng? _resolveStopLatLngSync(String stopId) {
+    final s = _stopById(stopId);
+    return s == null ? null : ll.LatLng(s.lat, s.lon);
   }
 
   Future<ll.LatLng?> _resolveStopLatLng(String stopId) async {
@@ -2418,7 +2732,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _restorePreStopCamera() {
     final center = _preStopCameraCenter;
     if (center != null) {
-      _easeCameraTo(center, _preStopCameraZoom);
+      _camEase(center, zoom: _preStopCameraZoom);
     }
     _preStopCameraCenter = null;
     _preStopCameraZoom = null;
@@ -2489,7 +2803,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _pinnedPlaceLabel = place.displayName;
     });
     _pushStopSources(); // show the pinned-place marker
-    await _controller?.animateCamera(center: center, zoom: 16);
+    _camEase(center, zoom: 16); // centre in the visible area (geometry-aware)
   }
 
 
@@ -2541,12 +2855,63 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) => _onOnDemandChanged());
     }
 
+    // Adaptive context slot flag (killswitch): OFF = today's independent sheets,
+    // untouched. The map itself is ALWAYS the same Positioned.fill widget below
+    // — only the OVERLAY (panel vs sheets) changes — so crossing the breakpoint
+    // never rebuilds/recreates the map (the IndexedStack/render-cycle gotcha).
+    _contextPanel = ref.watch(contextPanelEnabledProvider);
+    final size = MediaQuery.sizeOf(context);
+    _wideNow = _contextPanel && isWideLayout(size.width);
+    // Panel is a DESKTOP-ONLY surface: on mobile the app falls through to the
+    // legacy bottom cluster, unchanged. The map is ALWAYS the same Positioned.
+    // fill widget — crossing the breakpoint only swaps the overlay, never
+    // rebuilds the map. Whenever the overlap GEOMETRY changes (panel width on a
+    // window resize, breakpoint flip, or the mobile sheet detent), re-settle the
+    // camera so the focus stays centred in the new visible area / the scene
+    // shifts by the delta — one owner, [_mapInsets] (owner R3 #1/#2).
+    // Only the mobile Nearby sheet feeds its live height; when it isn't shown
+    // (desktop panel, a stop modal, a follow bar) drop the stale value so the
+    // geometry owner doesn't keep a phantom bottom inset. (Assigned during build,
+    // no setState — the value is read just below.)
+    final showingNearbySheet = !_panelActive &&
+        nearbyEnabled &&
+        !_stopSheetOpen &&
+        _focus == null &&
+        _selectedVehicleKey == null;
+    if (!showingNearbySheet && _mobileSheetPx != 0) _mobileSheetPx = 0;
+
+    final insets = _mapInsets;
+    if (insets != _appliedInsets) {
+      final first = _appliedInsets == null;
+      // Ease only for desktop panel-geometry / breakpoint changes. A mobile
+      // sheet DRAG also moves the inset, but the 66ms follow tick re-centres a
+      // followed vehicle smoothly from it — a 280ms ease every drag frame would
+      // lag, so we don't fire one here for the mobile-only case.
+      final easeWorthy = !first && (_panelActive || _wasPanelActive);
+      _wasPanelActive = _panelActive;
+      _appliedInsets = insets;
+      if (easeWorthy) {
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => _onMapGeometryChanged());
+      }
+    }
+
+    // Android back / PopScope: with the panel active, back walks up the chain
+    // (model → vehicle → stop → nearby) before leaving the map.
+    final canPopMap = _panelActive
+        ? (_slotModel == null && _activeView == ContextView.nearby)
+        : _focus == null;
+
     return PopScope(
-      // While a line is focused, Android back closes the vehicle context instead
-      // of leaving the map.
-      canPop: _focus == null,
+      // While a context is open, Android back closes it instead of leaving.
+      canPop: canPopMap,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _closeVehicleContext();
+        if (didPop) return;
+        if (_panelActive) {
+          _slotBack();
+        } else {
+          _closeVehicleContext();
+        }
       },
       child: Scaffold(
       body: Stack(
@@ -2618,12 +2983,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               _currentZoom < _minVehiclesZoom &&
               !_hasVehicles)
             _zoomHint(l10n, theme),
-          // Bottom UI: while a line is focused, a compact line panel with a close
-          // button. Otherwise the experimental "Nearby" sheet when its flag is on
-          // (it *replaces* the search bar), else the normal search + favourites.
-          // A stop arrivals sheet suppresses the whole bottom cluster so the two
-          // never stack on top of each other (#7).
-          if (_focus != null || _selectedVehicleKey != null)
+          // Bottom UI. On desktop with the flag ON the three views live in the
+          // persistent left panel. On mobile (and flag OFF) we fall through to
+          // today's independent bottom cluster, UNTOUCHED — the panel is a
+          // desktop-only surface (owner R1 #1).
+          if (_panelActive)
+            ..._contextSlot(l10n, theme, size: size)
+          // While a line is focused, a compact line panel with a close button.
+          // Otherwise the experimental "Nearby" sheet when its flag is on (it
+          // *replaces* the search bar), else the normal search + favourites. A
+          // stop arrivals sheet suppresses the whole cluster (#7).
+          else if (_focus != null || _selectedVehicleKey != null)
             _focusPanel(theme)
           else if (_stopSheetOpen)
             const SizedBox.shrink()
@@ -2634,6 +3004,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               active: _tabActive && _appResumed,
               onEnableLocation: _recenterOnMe,
               onTapGroup: _focusNearbyVehicle,
+              // Feed the mobile sheet height to the geometry owner so a followed
+              // vehicle is kept above the sheet as it's dragged (R2 #2).
+              onHeightChanged: _setMobileSheetPx,
             )
           else
             _bottomSearch(l10n, theme),
@@ -2650,6 +3023,346 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       ),
       ),
     );
+  }
+
+  // ---- Context panel (desktop-only) rendering ------------------------------
+
+  /// The desktop panel overlay + the conditional "Back to vehicle" pill. Only
+  /// built when [_panelActive] (flag ON *and* wide); mobile never reaches here.
+  List<Widget> _contextSlot(
+    AppLocalizations l10n,
+    ThemeData theme, {
+    required Size size,
+  }) {
+    final widgets = <Widget>[
+      Align(
+        alignment: Alignment.centerLeft,
+        child: ContextPanel(
+          width: panelWidthFor(size.width),
+          searchField: _panelSearchField(l10n, theme),
+          navRow: _slotNavRow(l10n),
+          child: _searching ? _searchResultsList(l10n) : _slotContent(l10n),
+        ),
+      ),
+    ];
+    if (_followLost) widgets.add(_backToVehiclePill(l10n, theme, size: size));
+    return widgets;
+  }
+
+  /// The single `[← back] [title]` nav row for the current context view; null on
+  /// nearby (root). Model leaf takes precedence (owner R1 #3/#4).
+  Widget? _slotNavRow(AppLocalizations l10n) {
+    final model = _slotModel;
+    if (model != null) {
+      return ContextNavRow(
+        onBack: _slotBack,
+        title: model.fleet.modelName ?? l10n.fleetUnknownModel,
+      );
+    }
+    switch (_activeView) {
+      case ContextView.nearby:
+        return null;
+      case ContextView.stop:
+        final name = ref.watch(stopLocationProvider(_slotStopId!)).valueOrNull?.name ??
+            _slotStopName ??
+            '';
+        return ContextNavRow(
+          onBack: _slotBack,
+          title: name,
+          trailing: _slotStarButton(_slotStopId!, name),
+        );
+      case ContextView.vehicle:
+        final track = _selectedVehicleKey == null
+            ? null
+            : _vehAnimator.trackFor(_selectedVehicleKey!);
+        final line = _focus?.line ?? track?.line ?? '';
+        final type = _focus?.type ?? track?.type ?? VehicleType.bus;
+        final dir = (_focus != null)
+            ? '${_focus!.origin} → ${_focus!.destination}'
+            : l10n.followingVehicle;
+        return ContextNavRow(
+          onBack: _slotBack,
+          leading: _linePill(line, type),
+          title: dir,
+        );
+    }
+  }
+
+  /// The active view's content (no header — the nav row above owns the title).
+  Widget _slotContent(AppLocalizations l10n) {
+    final model = _slotModel;
+    if (model != null) {
+      return FleetModelView(
+        fleet: model.fleet,
+        fallbackType: model.type,
+        garageNo: model.garageNo,
+      );
+    }
+    switch (_activeView) {
+      case ContextView.nearby:
+        return NearbyView(
+          userLocation: _meTo,
+          locationDenied: _locationDenied,
+          active: _tabActive && _appResumed,
+          onEnableLocation: _recenterOnMe,
+          onTapGroup: _focusNearbyVehicle,
+          // The persistent global search above the panel replaces the local
+          // "filter lines nearby" field (decision #6).
+          showLocalSearch: false,
+        );
+      case ContextView.stop:
+        return StopBoard(
+          key: ValueKey('slot-stop-$_slotStopId'),
+          stopId: _slotStopId!,
+          initialStopName: _slotStopName,
+          // The nav row above owns the title + star; the board is body-only.
+          showHeader: false,
+          onFocusVehicle: (a, asOf) =>
+              _focusVehicleFromArrival(a, asOf, source: Ev.srcSheet),
+          // A row's Fleet badge opens the model INSIDE the panel (no modal).
+          onOpenFleetCard: (fleet, garageNo, type) =>
+              _openSlotModel(fleet, garageNo: garageNo, type: type),
+        );
+      case ContextView.vehicle:
+        final track = _selectedVehicleKey == null
+            ? null
+            : _vehAnimator.trackFor(_selectedVehicleKey!);
+        final line = _focus?.line ?? track?.line ?? '';
+        final type = _focus?.type ?? track?.type ?? VehicleType.bus;
+        final stuck = _selectedVehicleKey != null &&
+            _vehAnimator.isStuck(_selectedVehicleKey!);
+        return VehicleView(
+          line: line,
+          type: type,
+          origin: _focus?.origin,
+          destination: _focus?.destination,
+          stuck: stuck,
+          scheduled: _focus?.scheduled ?? (track?.source == VehicleSource.scheduled),
+          garageNo: _selectedVehicleKey,
+          upcomingStops: _buildUpcomingStops(),
+          // A line with no route geometry in our GTFS (e.g. "Ada 4"): show an
+          // honest note instead of an empty route list (owner R4 #2).
+          routeUnavailable: _followNoRouteData,
+          // The route is drawn on the panel-side map, so no "show route" button.
+          showRouteButton: false,
+          // Tapping the "About" card opens the model as a leaf IN the panel.
+          onOpenModel: (fleet) => _openSlotModel(fleet,
+              garageNo: _selectedVehicleKey, type: type),
+        );
+    }
+  }
+
+  /// The favourite star for the stop nav row (host-owned so the board can be
+  /// body-only). Watches + toggles the favourites controller.
+  Widget _slotStarButton(String stopId, String stopName) {
+    final isFav = ref.watch(favoritesControllerProvider).maybeWhen(
+          data: (favs) => favs.any((f) => f.stopId == stopId),
+          orElse: () => false,
+        );
+    return IconButton(
+      icon: Icon(isFav ? Icons.star : Icons.star_outline),
+      color: isFav ? const Color(0xFFF6A609) : null,
+      tooltip: isFav
+          ? AppLocalizations.of(context).removeFromFavorites
+          : AppLocalizations.of(context).addToFavorites,
+      onPressed: () {
+        final notifier = ref.read(favoritesControllerProvider.notifier);
+        if (isFav) {
+          notifier.remove(stopId);
+        } else {
+          notifier.add(FavoriteStop(stopId: stopId, name: stopName));
+        }
+      },
+    );
+  }
+
+  /// Build the followed vehicle's upcoming-stop list (owner R1 #5) from the
+  /// focused route shape + the marker's live position, anchored to the arrival's
+  /// own ETA when known. Empty when there's no shape yet.
+  List<UpcomingStop> _buildUpcomingStops() {
+    final focus = _focus;
+    final key = _selectedVehicleKey;
+    if (focus == null || key == null || focus.stops.isEmpty) {
+      _routeAheadDiag = _followNoRouteData
+          ? 'ROUTE unavailable (no GTFS geometry for line)'
+          : 'ROUTE ahead -';
+      return const [];
+    }
+    final track = _vehAnimator.trackFor(key);
+    if (track == null) return const [];
+    final vehicle = _vehAnimator.positionOf(key, _vehAnim.value);
+    final shape = RouteShape(
+      routeId: track.directionRouteId ?? '',
+      vehicleType: focus.type,
+      origin: focus.origin,
+      destination: focus.destination,
+      polyline: focus.polyline,
+      stops: [
+        for (var i = 0; i < focus.stops.length; i++)
+          RouteShapeStop(
+            stopId: focus.stops[i].stopId,
+            name: focus.stops[i].name,
+            lat: focus.stops[i].lat,
+            lon: focus.stops[i].lon,
+            seq: i,
+          ),
+      ],
+    );
+    final plan = planVehicleRoute(
+      shape: shape,
+      vehicle: vehicle,
+      boardStop: _followBoardStop ?? vehicle,
+      stopsRemaining: _followStopsRemaining,
+      etaToBoardMinutes: _followEtaMinutes,
+    );
+    // Progress diagnostic (owner R4 #1): how many stops still ahead and which is
+    // next. As the vehicle passes a stop these change — the proof the list
+    // slides with live progress, not a frozen entry snapshot.
+    _routeAheadDiag =
+        'ROUTE ahead ${plan.stops.length} next ${plan.nextStop?.name ?? "-"}';
+    return plan.stops;
+  }
+
+  /// The compact coloured line pill (in the vehicle nav row).
+  Widget _linePill(String line, VehicleType type) {
+    final color = vehicleColor(type);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration:
+          BoxDecoration(color: color, borderRadius: BorderRadius.circular(999)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          vehicleGlyph(type, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(line,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  /// The persistent global search row for the panel (stops / streets / lines) —
+  /// visible in all views (decision #6). The hamburger sits here and ONLY on the
+  /// nearby (root) view (owner R1 #4). Reuses the same search state as the
+  /// legacy bottom search, so results render in the panel body.
+  Widget _panelSearchField(AppLocalizations l10n, ThemeData theme) {
+    final showBurger = _slotModel == null && _activeView == ContextView.nearby;
+    return Row(
+      children: [
+        if (showBurger)
+          IconButton(
+            icon: const Icon(Icons.menu),
+            tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+            onPressed: widget.onOpenDrawer,
+          )
+        else
+          const SizedBox(width: 4),
+        Expanded(
+          child: Material(
+            borderRadius: BorderRadius.circular(28),
+            color:
+                theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            child: Row(
+              children: [
+                const SizedBox(width: 12),
+                Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _focusNode,
+                    onChanged: _onSearchChanged,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: l10n.searchHint,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 12),
+                    ),
+                  ),
+                ),
+                if (_searching)
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: _clearSearch,
+                  )
+                else
+                  const SizedBox(width: 8),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// The "Back to vehicle" pill, pinned to the bottom of the VISIBLE map area
+  /// (right of the panel) with an off-screen hint. Decision #8, desktop-only.
+  Widget _backToVehiclePill(
+    AppLocalizations l10n,
+    ThemeData theme, {
+    required Size size,
+  }) {
+    final track = _selectedVehicleKey == null
+        ? null
+        : _vehAnimator.trackFor(_selectedVehicleKey!);
+    final line = _focus?.line ?? track?.line ?? '';
+    final leftInset = panelWidthFor(size.width);
+    return Positioned(
+      left: leftInset,
+      right: 0,
+      bottom: 16,
+      child: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (line.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    l10n.vehicleOffScreen(line),
+                    style: theme.textTheme.labelMedium,
+                  ),
+                ),
+              BackToVehiclePill(
+                line: line,
+                onTap: _resumeFollowFromPill,
+                arrowTurns: _offScreenArrowTurns(size),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Turns (0..1) for the off-screen direction arrow toward the followed marker,
+  /// or null when it's on-screen. [Icons.navigation] points up at 0.
+  double? _offScreenArrowTurns(Size size) {
+    final key = _selectedVehicleKey;
+    final controller = _controller;
+    if (key == null || controller == null) return null;
+    if (_vehAnimator.trackFor(key) == null) return null;
+    try {
+      final pos = _vehAnimator.positionOf(key, _vehAnim.value);
+      final screen =
+          controller.toScreenLocation(Geographic(lon: pos.longitude, lat: pos.latitude));
+      final dx = screen.dx - size.width / 2;
+      final dy = screen.dy - size.height / 2;
+      if (dx.abs() < size.width / 2 && dy.abs() < size.height / 2) return null;
+      // Rotation from "up" (north) toward (dx, dy).
+      return math.atan2(dx, -dy) / (2 * math.pi);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// True for one of the imperative stop layers — the ambient `stg-stops-*`
@@ -2861,6 +3574,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           '${renderStats('tram', _tramPts.map(fromFeature))} '
           '${renderStats('trolley', _trolleyPts.map(fromFeature))} '
           '${renderStats('mixed', _mixedPts.map(fromFeature))}',
+      // Geometry owner: the padding EVERY camera move actually sends to maplibre
+      // (owner R3 #1 — prove the panel-aware inset reaches the map).
+      'GEO panelActive $_panelActive sheetPx ${_mobileSheetPx.toStringAsFixed(0)} '
+          'insets L${_mapInsets.left.toStringAsFixed(0)} B${_mapInsets.bottom.toStringAsFixed(0)}',
+      // Follow camera: marker pixel vs visible-area-centre target + camera centre
+      // (owner R3 #1 — prove vertical tracking).
+      _followCamDiag,
+      _routeAheadDiag,
       // Vehicle-animation state (on-demand context / follow diagnosis).
       'VEH onDemand $_onDemand stopCtx ${_stopContextId ?? "-"} '
           'following $_following sel ${_selectedVehicleKey ?? "-"}',
@@ -2899,7 +3620,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         alignment: Alignment.topLeft,
         child: IgnorePointer(
           child: Container(
-            margin: const EdgeInsets.only(top: 72, left: 8, right: 8),
+            // Clear of the desktop panel (block #6): shift right of it so the
+            // staging overlay isn't hidden underneath.
+            margin: EdgeInsets.only(
+              top: 72,
+              left: 8 + (_panelActive ? panelWidthFor(MediaQuery.sizeOf(context).width) : 0),
+              right: 8,
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.72),
@@ -3100,8 +3827,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final controller = _controller;
     if (controller == null) return;
     final camera = controller.getCamera();
-    controller.animateCamera(
-      center: camera.center,
+    // Carry the geometry padding so a zoom doesn't reset it (which would jump
+    // the focus back under the panel).
+    _camEase(
+      camera.center,
       zoom: (camera.zoom + delta).clamp(kCityMinZoom, kCityMaxZoom),
     );
   }

@@ -40,6 +40,13 @@ import type { Env } from "../env";
 //                       TRANSPORT-observation logger). OFF on prod, ON on staging
 //                       until we've checked the volume/cost, then flip prod
 //                       deliberately.
+//   context_panel     — the app presents the adaptive "context slot": a persistent
+//                       left panel on desktop (≥840px) and unified bottom sheets on
+//                       mobile, both driven by one state machine (nearby → stop →
+//                       vehicle). Purely a client-render flag — the worker is
+//                       unchanged; this entry only lets /config serve the flag so
+//                       it can default ON on staging / OFF on prod and be flipped
+//                       in KV. OFF is the killswitch (today's UI, untouched).
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -49,6 +56,7 @@ export const FEATURE_FLAGS = [
   "coverage_on_main_map",
   "vehicles_on_demand",
   "product_analytics",
+  "context_panel",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

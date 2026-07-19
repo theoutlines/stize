@@ -65,6 +65,13 @@
   "vehicleShowRoute": "Показать маршрут на карте",
   "vehicleEtaMinutesApprox": "≈ {minutes} мин",
 
+  "contextNearbyTitle": "Рядом",
+  "aboutVehicle": "Об этом транспорте",
+  "viewModelDetails": "Подробнее о модели",
+  "backToVehicle": "Вернуться к транспорту",
+  "vehicleOffScreen": "{line} за экраном",
+  "routeUnavailable": "Маршрут недоступен для этой линии",
+
   "emptyArrivalsTitle": "Пока тихо на этой остановке",
   "emptyArrivalsSubtitle": "Транспорт скоро появится.",
 
