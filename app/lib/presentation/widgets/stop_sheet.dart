@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
+import '../../core/context_slot.dart';
 import '../../domain/models/arrival.dart';
 import 'stop_board.dart';
 
@@ -52,9 +53,13 @@ class _StopSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return DraggableScrollableSheet(
-      initialChildSize: 0.5,
-      minChildSize: 0.28,
-      maxChildSize: 0.92,
+      // Unified detents (owner R2 #4): large is NOT fullscreen — a map strip
+      // always stays on top.
+      initialChildSize: kSheetHalf,
+      minChildSize: kSheetPeek,
+      maxChildSize: kSheetLarge,
+      snap: true,
+      snapSizes: const [kSheetPeek, kSheetHalf, kSheetLarge],
       expand: false,
       builder: (context, scrollController) {
         // PointerInterceptor stops taps/double-taps on the sheet from falling
