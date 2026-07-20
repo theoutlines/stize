@@ -4,8 +4,10 @@ import {
   computeJams,
   garageVehicleType,
   recordVehicleFixes,
-  T_JAM_SECS,
+  JAM_CONFIG_DEFAULTS,
 } from "../src/lib/jamDetector";
+
+const T_CLUSTER = JAM_CONFIG_DEFAULTS.tCluster; // 180s — >=2 same-direction cluster
 import { setFlag } from "../src/lib/featureFlags";
 import { getAllLines, getLineDirectionEndpoints } from "../src/lib/gtfsData";
 import type { ArrivalDto } from "../src/types";
@@ -164,20 +166,20 @@ describe("computeJams", () => {
   it("reports a jam: >=2 same-direction trams frozen past T_JAM on a healthy feed", async () => {
     const { line, routeId } = await firstTramLine();
     await seedHealthyBackground();
-    await seedFix({ garage: "P80201", line, dir: routeId, lat: 44.812, lon: 20.472, movedSecsAgo: T_JAM_SECS + 20 });
-    await seedFix({ garage: "P80202", line, dir: routeId, lat: 44.8123, lon: 20.4723, movedSecsAgo: T_JAM_SECS + 50 });
+    await seedFix({ garage: "P80201", line, dir: routeId, lat: 44.812, lon: 20.472, movedSecsAgo: T_CLUSTER + 20 });
+    await seedFix({ garage: "P80202", line, dir: routeId, lat: 44.8123, lon: 20.4723, movedSecsAgo: T_CLUSTER + 50 });
     const res = await computeJams(env, NOW);
     expect(res.feed_healthy).toBe(true);
     expect(res.jams).toHaveLength(1);
     expect(res.jams[0].line).toBe(line);
     expect(res.jams[0].vehicles).toHaveLength(2);
-    expect(res.jams[0].frozen_secs).toBeGreaterThanOrEqual(T_JAM_SECS);
+    expect(res.jams[0].frozen_secs).toBeGreaterThanOrEqual(T_CLUSTER);
   });
 
   it("a single frozen tram is NOT a jam", async () => {
     const { line, routeId } = await firstTramLine();
     await seedHealthyBackground();
-    await seedFix({ garage: "P80201", line, dir: routeId, lat: 44.812, lon: 20.472, movedSecsAgo: T_JAM_SECS + 20 });
+    await seedFix({ garage: "P80201", line, dir: routeId, lat: 44.812, lon: 20.472, movedSecsAgo: T_CLUSTER + 20 });
     const res = await computeJams(env, NOW);
     expect(res.jams).toHaveLength(0);
   });
@@ -187,8 +189,8 @@ describe("computeJams", () => {
     const term = dirs[0]?.origin;
     if (!term) return; // fixture line lacks terminal coords — skip
     await seedHealthyBackground();
-    await seedFix({ garage: "P80201", line, dir: routeId, lat: term.lat, lon: term.lon, movedSecsAgo: T_JAM_SECS + 20 });
-    await seedFix({ garage: "P80202", line, dir: routeId, lat: term.lat + 0.0002, lon: term.lon, movedSecsAgo: T_JAM_SECS + 20 });
+    await seedFix({ garage: "P80201", line, dir: routeId, lat: term.lat, lon: term.lon, movedSecsAgo: T_CLUSTER + 20 });
+    await seedFix({ garage: "P80202", line, dir: routeId, lat: term.lat + 0.0002, lon: term.lon, movedSecsAgo: T_CLUSTER + 20 });
     const res = await computeJams(env, NOW);
     expect(res.jams).toHaveLength(0);
   });
@@ -207,5 +209,27 @@ describe("computeJams", () => {
     const sim = res.jams.find((j) => j.simulated);
     expect(sim).toBeTruthy();
     expect(sim!.vehicles.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("affected_stop_ids covers the stalled span, not just downstream (round-2 fix)", async () => {
+    const { line } = await firstTramLine();
+    const res = await computeJams(env, NOW, { simLine: line });
+    const sim = res.jams.find((j) => j.simulated)!;
+    // The two sim vehicles sit at mid / mid+1, so the span's stops must be in the
+    // affected set — a rider tapping a stop under the segment gets the banner.
+    expect(sim.affected_stop_ids.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("cascading threshold: a substitute bus relaxes the cluster to tSubstitute", async () => {
+    const { line, routeId } = await firstTramLine();
+    await seedHealthyBackground();
+    // A substitute bus on the line (corroborates) + two trams frozen only ~100s —
+    // below tCluster(180) but above tSubstitute(90) → a jam forms thanks to it.
+    await seedFix({ garage: "P93475", line, dir: routeId, lat: 44.8115, lon: 20.4718, movedSecsAgo: 100 });
+    await seedFix({ garage: "P80201", line, dir: routeId, lat: 44.812, lon: 20.472, movedSecsAgo: 100 });
+    await seedFix({ garage: "P80202", line, dir: routeId, lat: 44.8123, lon: 20.4723, movedSecsAgo: 110 });
+    const res = await computeJams(env, NOW);
+    expect(res.jams.length).toBe(1);
+    expect(res.jams[0].has_substitute).toBe(true);
   });
 });

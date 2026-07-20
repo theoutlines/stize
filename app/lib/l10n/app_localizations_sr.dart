@@ -491,4 +491,18 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get jamStalledLabel => 'Izgleda da stoji';
+
+  @override
+  String get jamModeTooltip => 'Prikaži zastoje';
+
+  @override
+  String jamNearbyDelay(String line) {
+    return 'Moguće kašnjenje na liniji $line';
+  }
+
+  @override
+  String get jamAffectedStopsTitle => 'Pogođene stanice';
+
+  @override
+  String get jamFollowAhead => 'Moguće kašnjenje ispred na trasi';
 }

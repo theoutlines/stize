@@ -43,6 +43,10 @@ Config parameters (KV, not boolean flags):
 |---|---|---|---|---|
 | `config:nearby_schedule_stops` | how many nearest "Nearby" stops inherit the schedule fallback (CPU cap) | 5 | 5 (default) | 5 (clamp 0..8) |
 | `jam:sim` | **staging only** — force a synthetic tram jam on the given line number so a stand shows the red segment + banner without a live jam (also as `?sim=<line>`). Ignored in prod. | (unset) | set to a tram line to demo | unset |
+| `config:jam_t_cluster` | freeze seconds before ≥2 same-direction trams on an adjacent segment count as a jam (cascading T_jam) | 180 | 180 | 180 (clamp 60..1800) |
+| `config:jam_t_substitute` | relaxed freeze seconds when a substitute bus corroborates the line (halves the cluster threshold) | 90 | 90 | 90 (clamp 30..1800) |
+| `config:jam_t_single` | freeze seconds for a lone vehicle (anchor only — a single vehicle is never surfaced as a jam) | 300 | 300 | 300 (clamp 60..1800) |
+| `config:jam_cluster_min` | minimum vehicles for a jam cluster — **keep at 2** (3 would miss real jams on short/sparse lines) | 2 | 2 | 2 (clamp 2..5) |
 
 Notes: the two analytics flags are independent on purpose — turn **collect** on
 early to accumulate history while **show** stays off. `nearby_sort_board` only

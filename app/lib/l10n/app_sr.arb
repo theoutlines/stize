@@ -169,4 +169,8 @@
   "coverageUnavailable": "Mapa pokrivenosti trenutno nije dostupna.",
   "jamStopBannerTitle": "Tramvaji {line} stoje duže nego obično — moguće kašnjenje",
   "jamSubstitutionNotice": "Na liniji {line} umesto tramvaja saobraćaju autobusi",
-  "jamStalledLabel": "Izgleda da stoji"}
+  "jamStalledLabel": "Izgleda da stoji",
+  "jamModeTooltip": "Prikaži zastoje",
+  "jamNearbyDelay": "Moguće kašnjenje na liniji {line}",
+  "jamAffectedStopsTitle": "Pogođene stanice",
+  "jamFollowAhead": "Moguće kašnjenje ispred na trasi"}

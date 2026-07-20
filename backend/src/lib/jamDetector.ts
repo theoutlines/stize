@@ -24,8 +24,6 @@ import { getLineDirectionEndpoints, getRouteShape, getAllLines } from "./gtfsDat
 // validated for "does NOT false-positive"; it has NOT yet been checked against a
 // real jam's magnitude, so treat it as a starting value.
 export const FROZEN_MOVE_M = 30; // a fix within this of the last one hasn't "moved"
-export const T_JAM_SECS = 300; // >=2 vehicles frozen this long = a jam
-export const T_JAM_CORROBORATED_SECS = 240; // relaxed when a substitute bus corroborates
 const TERMINAL_RADIUS_M = 150; // a fix this close to a direction terminus is a legit layover
 const CLUSTER_RADIUS_M = 600; // two frozen vehicles this close = "same segment"
 const SEEN_RECENT_MS = 120_000; // ignore vehicles not observed in the last 2 min
@@ -33,6 +31,46 @@ const FEED_HEALTH_WINDOW_MS = 90_000; // "moved recently" window for the feed-he
 const FEED_HEALTHY_MIN_MOVING = 0.35; // below this moving fraction the feed is starving → suppress
 const MIN_FEED_SAMPLE = 6; // don't judge feed health on too few vehicles
 const PRUNE_AGE_MS = 10 * 60_000; // drop rows older than this
+const DOWNSTREAM_STOP_CAP = 8; // localize the delay banner to the next N stops
+
+// ── Cascading freeze thresholds — KV config, NOT hardcode (owner, round 2) ──
+// The threshold to flag a stalled vehicle scales with signal strength, because a
+// real stalled *cluster* is far less likely to be a fluke than a lone dwell:
+//   • a lone frozen vehicle never becomes a jam on its own (a jam needs >=2), so
+//     `single` is only a documentation anchor for any future lone indicator;
+//   • >=2 vehicles of one direction stacked on an adjacent segment → `cluster`
+//     (180s): a queue behind a light doesn't stack up two cars this long;
+//   • a confirmed substitute bus on the line → halve again (`substitute`).
+// T_JAM is PRELIMINARY (no live jam captured yet); these are the calibration
+// knobs. Read from KV (`config:jam_*`), default here, clamped to sane bounds.
+export const JAM_CONFIG_DEFAULTS = {
+  tSingle: 300, // lone vehicle (not currently surfaced; kept for parity/anchor)
+  tCluster: 180, // >=2 same-direction on an adjacent segment
+  tSubstitute: 90, // a substitute bus corroborates the line → halve the cluster threshold
+  clusterMin: 2, // >=2; NEVER 3 (would miss real jams on short/sparse lines)
+} as const;
+
+export interface JamConfig {
+  tSingle: number;
+  tCluster: number;
+  tSubstitute: number;
+  clusterMin: number;
+}
+
+async function readJamConfig(env: Env): Promise<JamConfig> {
+  const num = async (key: string, def: number, lo: number, hi: number) => {
+    const raw = await env.STIGLA_KV.get(`config:${key}`);
+    const v = raw == null ? def : Number(raw);
+    return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def;
+  };
+  const [tSingle, tCluster, tSubstitute, clusterMin] = await Promise.all([
+    num("jam_t_single", JAM_CONFIG_DEFAULTS.tSingle, 60, 1800),
+    num("jam_t_cluster", JAM_CONFIG_DEFAULTS.tCluster, 60, 1800),
+    num("jam_t_substitute", JAM_CONFIG_DEFAULTS.tSubstitute, 30, 1800),
+    num("jam_cluster_min", JAM_CONFIG_DEFAULTS.clusterMin, 2, 5),
+  ]);
+  return { tSingle, tCluster, tSubstitute, clusterMin };
+}
 
 // Tram fleet garage-number ranges (mirror app/assets/data/fleet_models.json —
 // classes with powertrain tram/trolleybus). Used ONLY for the bus-substitution
@@ -158,9 +196,13 @@ export interface JamDto {
   // faithfully carry the vehicles, it degrades to marker badges). Null when the
   // direction shape is unavailable (→ client shows badges, no segment).
   segment: { rear: LatLon; front: LatLon } | null;
-  // Stops ahead of the jam on this direction (capped), for the downstream delay
-  // banners. Ordering only (GTFS seq) — no shape projection on the worker.
-  downstream_stop_ids: string[];
+  // Stops the jam affects: those WITHIN the stalled span (rear.seq..front.seq —
+  // the stops sitting under the red segment, which a rider naturally taps) PLUS
+  // the downstream stops ahead of it (capped). Both the delay banner and the stop
+  // glow key off this union. Ordering only (GTFS seq) — no shape projection on the
+  // worker. (Round-2 fix: within-segment stops used to be omitted, so tapping an
+  // obviously-affected stop showed nothing.)
+  affected_stop_ids: string[];
   simulated?: boolean; // staging-only synthetic jam
 }
 
@@ -212,6 +254,7 @@ export async function computeJams(
   }
   const feedHealthy = sample >= MIN_FEED_SAMPLE ? moving / sample >= FEED_HEALTHY_MIN_MOVING : true;
 
+  const cfg = await readJamConfig(env);
   const tramLines = new Set(
     (await getAllLines(env)).filter((l) => l.vehicle_type === "tram").map((l) => l.line),
   );
@@ -240,12 +283,20 @@ export async function computeJams(
     const substituteLines = new Set(substitutions.map((s) => s.line));
 
     // ── Frozen trams, terminals excluded ──
+    // "Frozen" here already means BOTH the GPS is static (<30 m) AND
+    // stops_remaining hasn't progressed — because `moved_at` is bumped whenever
+    // EITHER changes (see recordVehicleFixes). So a slowly-crawling caravan
+    // (bunching: still moving, still crossing stops) never reads as frozen and
+    // never forms a jam cluster — bunching is a headway problem, not a stall, and
+    // is left to the analytics headway-CV metric (report §7d), not alerted here.
     const frozen: (VehicleFixRow & { frozenSecs: number; isSub: boolean })[] = [];
     for (const r of rows) {
       if (!tramLines.has(r.line)) continue;
       const frozenSecs = Math.floor((now - r.moved_at) / 1000);
-      // A line with a substitute bus is corroborated → relaxed threshold.
-      const threshold = substituteLines.has(r.line) ? T_JAM_CORROBORATED_SECS : T_JAM_SECS;
+      // Cascading threshold: a substitute-bus-corroborated line relaxes furthest,
+      // then the plain cluster threshold. (A lone vehicle never becomes a jam, so
+      // the stricter single threshold isn't applied to cluster candidates.)
+      const threshold = substituteLines.has(r.line) ? cfg.tSubstitute : cfg.tCluster;
       if (frozenSecs < threshold) continue;
       if (await isAtTerminal(env, r)) continue;
       frozen.push({ ...r, frozenSecs, isSub: garageVehicleType(r.garage_no) === "bus" });
@@ -259,7 +310,7 @@ export async function computeJams(
     }
     for (const [, group] of byDir) {
       for (const cluster of clusterByProximity(group)) {
-        if (cluster.length < 2) continue;
+        if (cluster.length < cfg.clusterMin) continue;
         const geom = await enrichJamGeometry(env, cluster[0].direction_route_id, cluster);
         jams.push({
           line: cluster[0].line,
@@ -275,7 +326,7 @@ export async function computeJams(
           frozen_secs: Math.max(...cluster.map((c) => c.frozenSecs)),
           has_substitute: cluster.some((c) => c.isSub),
           segment: geom.segment,
-          downstream_stop_ids: geom.downstreamStopIds,
+          affected_stop_ids: geom.affectedStopIds,
         });
       }
     }
@@ -298,22 +349,21 @@ export async function computeJams(
   };
 }
 
-const DOWNSTREAM_STOP_CAP = 8; // localize the delay banner to the next N stops
-
 /**
  * Cheap (ordering-only, no shape projection) jam geometry: bound the stalled span
  * by the rear vehicle's last stop and the front vehicle's next stop, and list the
- * downstream stops for the delay banners. Each vehicle is placed by its nearest
- * stop on the direction's ordered stop list (haversine sweep over ~30 stops).
+ * affected stops — those WITHIN the span (under the red segment) plus the
+ * downstream ones ahead of it (capped). Each vehicle is placed by its nearest stop
+ * on the direction's ordered stop list (haversine sweep over ~30 stops).
  */
 async function enrichJamGeometry(
   env: Env,
   directionRouteId: string | null,
   cluster: { lat: number; lon: number }[],
-): Promise<{ segment: { rear: LatLon; front: LatLon } | null; downstreamStopIds: string[] }> {
-  if (!directionRouteId) return { segment: null, downstreamStopIds: [] };
+): Promise<{ segment: { rear: LatLon; front: LatLon } | null; affectedStopIds: string[] }> {
+  if (!directionRouteId) return { segment: null, affectedStopIds: [] };
   const shape = await getRouteShape(env, directionRouteId);
-  if (!shape || shape.stops.length < 2) return { segment: null, downstreamStopIds: [] };
+  if (!shape || shape.stops.length < 2) return { segment: null, affectedStopIds: [] };
   const stops = [...shape.stops].sort((a, b) => a.seq - b.seq);
   const nearestSeqIdx = (p: { lat: number; lon: number }) => {
     let best = 0;
@@ -328,17 +378,17 @@ async function enrichJamGeometry(
     return best;
   };
   const idxs = cluster.map(nearestSeqIdx);
-  const rearIdx = Math.min(...idxs);
-  const frontIdx = Math.max(...idxs);
-  const rearStop = stops[Math.max(0, rearIdx - 1)];
-  const frontStop = stops[Math.min(stops.length - 1, frontIdx + 1)];
-  const downstreamStopIds = stops
-    .slice(Math.min(stops.length - 1, frontIdx + 1) + 1)
-    .slice(0, DOWNSTREAM_STOP_CAP)
+  const rearIdx = Math.max(0, Math.min(...idxs) - 1);
+  const frontIdx = Math.min(stops.length - 1, Math.max(...idxs) + 1);
+  const rearStop = stops[rearIdx];
+  const frontStop = stops[frontIdx];
+  // Within-span stops (under the red segment) + downstream stops ahead (capped).
+  const affectedStopIds = stops
+    .slice(rearIdx, frontIdx + 1 + DOWNSTREAM_STOP_CAP)
     .map((s) => s.stop_id);
   return {
     segment: { rear: { lat: rearStop.lat, lon: rearStop.lon }, front: { lat: frontStop.lat, lon: frontStop.lon } },
-    downstreamStopIds,
+    affectedStopIds,
   };
 }
 
@@ -414,8 +464,10 @@ async function buildSimulatedJam(
     const mid = Math.floor(stops.length / 2);
     const s1 = stops[mid];
     const s2 = stops[mid + 1];
-    const rear = stops[Math.max(0, mid - 1)];
-    const front = stops[Math.min(stops.length - 1, mid + 2)];
+    const rearIdx = Math.max(0, mid - 1);
+    const frontIdx = Math.min(stops.length - 1, mid + 2);
+    const rear = stops[rearIdx];
+    const front = stops[frontIdx];
     return {
       jam: {
         line: line.line,
@@ -427,9 +479,8 @@ async function buildSimulatedJam(
         frozen_secs: 360,
         has_substitute: false,
         segment: { rear: { lat: rear.lat, lon: rear.lon }, front: { lat: front.lat, lon: front.lon } },
-        downstream_stop_ids: stops
-          .slice(Math.min(stops.length - 1, mid + 2) + 1)
-          .slice(0, DOWNSTREAM_STOP_CAP)
+        affected_stop_ids: stops
+          .slice(rearIdx, frontIdx + 1 + DOWNSTREAM_STOP_CAP)
           .map((s) => s.stop_id),
         simulated: true,
       },

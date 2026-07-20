@@ -197,4 +197,9 @@
   "@jamStopBannerTitle": {"placeholders": {"line": {"type": "String"}}},
   "jamSubstitutionNotice": "Buses are running instead of trams on line {line}",
   "@jamSubstitutionNotice": {"placeholders": {"line": {"type": "String"}}},
-  "jamStalledLabel": "Possibly stopped"}
+  "jamStalledLabel": "Possibly stopped",
+  "jamModeTooltip": "Show stalled segments",
+  "jamNearbyDelay": "Possible delay on line {line}",
+  "@jamNearbyDelay": {"placeholders": {"line": {"type": "String"}}},
+  "jamAffectedStopsTitle": "Affected stops",
+  "jamFollowAhead": "Possible delay ahead on the route"}
