@@ -32,7 +32,7 @@ Jam _jam({
       hasSubstitute: false,
       segmentRear: rear,
       segmentFront: front,
-      downstreamStopIds: const {'sX'},
+      affectedStopIds: const {'sX'},
       simulated: false,
     );
 
@@ -92,7 +92,7 @@ void main() {
         hasSubstitute: false,
         segmentRear: null,
         segmentFront: null,
-        downstreamStopIds: const {},
+        affectedStopIds: const {},
         simulated: false,
       );
       final res = buildJamSegment(jam, path);
@@ -102,7 +102,7 @@ void main() {
   });
 
   group('JamsBoard', () {
-    test('downstreamJamAt matches a jam listing the stop', () {
+    test('affectedJamAt matches a jam listing the stop', () {
       final board = JamsBoard(
         feedHealthy: true,
         jams: [
@@ -114,8 +114,8 @@ void main() {
         ],
         substitutions: const [],
       );
-      expect(board.downstreamJamAt('sX'), isNotNull);
-      expect(board.downstreamJamAt('nope'), isNull);
+      expect(board.affectedJamAt('sX'), isNotNull);
+      expect(board.affectedJamAt('nope'), isNull);
     });
 
     test('parses the wire format including segment + downstream stops', () {
@@ -132,7 +132,7 @@ void main() {
             'frozen_secs': 360,
             'has_substitute': false,
             'segment': {'rear': {'lat': 44.79, 'lon': 20.45}, 'front': {'lat': 44.81, 'lon': 20.47}},
-            'downstream_stop_ids': ['a', 'b', 'c'],
+            'affected_stop_ids': ['a', 'b', 'c'],
           }
         ],
         'substitutions': [
@@ -143,7 +143,7 @@ void main() {
       expect(board.jams, hasLength(1));
       expect(board.jams.first.vehicles, hasLength(2));
       expect(board.jams.first.segmentRear, isNotNull);
-      expect(board.jams.first.downstreamStopIds, containsAll(['a', 'b', 'c']));
+      expect(board.jams.first.affectedStopIds, containsAll(['a', 'b', 'c']));
       expect(board.substitutions.first.garageNos, contains('P93475'));
     });
 

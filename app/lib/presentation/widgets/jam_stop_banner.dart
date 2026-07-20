@@ -28,13 +28,24 @@ class JamStopBanner extends ConsumerWidget {
 
     final widgets = <Widget>[];
 
-    // Delay banner: a jam lists this stop as downstream.
-    final jam = board.downstreamJamAt(stopId);
+    // Delay banner: this stop is within/ahead of a jam on a line it serves.
+    final jam = board.affectedJamAt(stopId);
     if (jam != null) {
+      // 7b — official confirmation: if an active route alert already names this
+      // line, that's the *cause* (bgprevoz). Show the alert's own text (its tone),
+      // not our inference. Without an alert, our signal stays an observation.
+      final alert = alerts
+          .where((a) => !a.isExpired && a.isActiveNow && a.matchesLine(jam.line))
+          .cast<RouteAlert?>()
+          .firstWhere((a) => true, orElse: () => null);
+      final locale = Localizations.localeOf(context).languageCode;
       widgets.add(_banner(
         context,
         icon: Icons.hourglass_bottom,
-        text: l10n.jamStopBannerTitle(jam.line),
+        text: alert != null
+            ? alert.localizedSummary(locale)
+            : l10n.jamStopBannerTitle(jam.line),
+        official: alert != null,
       ));
     }
 
@@ -60,24 +71,32 @@ class JamStopBanner extends ConsumerWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: widgets);
   }
 
-  Widget _banner(BuildContext context, {required IconData icon, required String text}) {
+  Widget _banner(
+    BuildContext context, {
+    required IconData icon,
+    required String text,
+    bool official = false,
+  }) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    // Amber-tinted, matching the map jam colour; a confirmed alert reads a touch
+    // stronger than our soft inference.
+    final tint = const Color(0xFFE8A317).withValues(alpha: official ? 0.20 : 0.13);
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: scheme.tertiaryContainer.withValues(alpha: 0.55),
+        color: tint,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: scheme.onTertiaryContainer),
+          Icon(icon, size: 18, color: scheme.onSurface),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: theme.textTheme.bodySmall?.copyWith(color: scheme.onTertiaryContainer),
+              style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurface),
             ),
           ),
         ],

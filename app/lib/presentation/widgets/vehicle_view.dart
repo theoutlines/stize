@@ -98,6 +98,7 @@ class VehicleView extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         _statusChip(theme, l10n),
+        _jamAheadWarning(context, ref, theme, l10n),
         if (scheduled) ...[
           const SizedBox(height: 6),
           Row(
@@ -152,6 +153,42 @@ class VehicleView extends ConsumerWidget {
           ),
         ],
       ],
+    );
+  }
+
+  /// Compact "possible delay ahead" warning when the followed vehicle's line has
+  /// an active jam (item 5). Observation tone, amber-tinted like the map + banner.
+  /// Flag- and feed-health-gated (activeJams is empty when the feed is starving).
+  Widget _jamAheadWarning(
+    BuildContext context,
+    WidgetRef ref,
+    ThemeData theme,
+    AppLocalizations l10n,
+  ) {
+    if (!ref.watch(jamDetectionEnabledProvider)) return const SizedBox.shrink();
+    final board = ref.watch(jamsProvider).valueOrNull;
+    if (board == null || board.jamsForLine(line).isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8A317).withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.hourglass_bottom, size: 15, color: theme.colorScheme.onSurface),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                l10n.jamFollowAhead,
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

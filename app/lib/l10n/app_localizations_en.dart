@@ -489,4 +489,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get jamStalledLabel => 'Possibly stopped';
+
+  @override
+  String get jamModeTooltip => 'Show stalled segments';
+
+  @override
+  String jamNearbyDelay(String line) {
+    return 'Possible delay on line $line';
+  }
+
+  @override
+  String get jamAffectedStopsTitle => 'Affected stops';
+
+  @override
+  String get jamFollowAhead => 'Possible delay ahead on the route';
 }

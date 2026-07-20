@@ -38,7 +38,7 @@ class Jam {
     required this.hasSubstitute,
     required this.segmentRear,
     required this.segmentFront,
-    required this.downstreamStopIds,
+    required this.affectedStopIds,
     required this.simulated,
   });
 
@@ -54,8 +54,10 @@ class Jam {
   final ll.LatLng? segmentRear;
   final ll.LatLng? segmentFront;
 
-  /// Stops ahead of the jam on this direction — where the delay banner shows.
-  final Set<String> downstreamStopIds;
+  /// Stops the jam affects: WITHIN the stalled span (under the red segment) plus
+  /// the downstream stops ahead of it. Both the delay banner and the stop glow
+  /// key off this set. (Round-2 fix: within-span stops used to be omitted.)
+  final Set<String> affectedStopIds;
 
   final bool simulated;
 
@@ -77,8 +79,8 @@ class Jam {
       hasSubstitute: j['has_substitute'] == true,
       segmentRear: coord(seg?['rear']),
       segmentFront: coord(seg?['front']),
-      downstreamStopIds:
-          ((j['downstream_stop_ids'] as List<dynamic>?) ?? const []).map((e) => e.toString()).toSet(),
+      affectedStopIds:
+          ((j['affected_stop_ids'] as List<dynamic>?) ?? const []).map((e) => e.toString()).toSet(),
       simulated: j['simulated'] == true,
     );
   }
@@ -121,19 +123,28 @@ class JamsBoard {
 
   static const empty = JamsBoard(feedHealthy: true, jams: [], substitutions: []);
 
+  /// Active jams shown to the user: only when the feed is healthy (starvation =
+  /// nothing). Drives the jam-mode toggle's visibility and count.
+  List<Jam> get activeJams => feedHealthy ? jams : const [];
+
   /// Jams affecting a given line number (any direction).
   List<Jam> jamsForLine(String line) =>
-      jams.where((j) => j.line.toLowerCase() == line.toLowerCase()).toList();
+      activeJams.where((j) => j.line.toLowerCase() == line.toLowerCase()).toList();
 
-  /// Whether a given stop should show a delay banner for a line — i.e. some jam
-  /// on that line lists this stop as downstream.
-  Jam? downstreamJamAt(String stopId, {String? line}) {
-    for (final j in jams) {
+  /// The jam affecting a given stop (within its stalled span or downstream), if
+  /// any — drives the stop-board delay banner and the stop glow.
+  Jam? affectedJamAt(String stopId, {String? line}) {
+    for (final j in activeJams) {
       if (line != null && j.line.toLowerCase() != line.toLowerCase()) continue;
-      if (j.downstreamStopIds.contains(stopId)) return j;
+      if (j.affectedStopIds.contains(stopId)) return j;
     }
     return null;
   }
+
+  /// Every stop id touched by an active jam (for the map glow).
+  Set<String> get allAffectedStopIds => {
+        for (final j in activeJams) ...j.affectedStopIds,
+      };
 
   factory JamsBoard.fromJson(Map<String, dynamic> j) => JamsBoard(
         feedHealthy: j['feed_healthy'] != false,
