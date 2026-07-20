@@ -167,11 +167,17 @@ export async function getArrivals(
   // — it rides the board we already fetched. The upsert only bumps a vehicle's
   // freeze clock on a genuinely newer board (re-reads are no-ops), so this is
   // safe to fire on every call. Never blocks or fails the response.
+  //
+  // Gated on `jam_detection_collect`, NOT the UI flag `jam_detection_show`
+  // (analytics_collect/analytics_show pattern): recording must run BEFORE the UI
+  // ships so history has accumulated by the time a jam is shown — that's what makes
+  // "a jam appears the instant you open the app" real. Collect is ON in prod while
+  // show stays OFF.
   if (liveOk) {
     const boardAt = Date.parse(updatedAt);
     if (!Number.isNaN(boardAt)) {
       ctx.waitUntil(
-        getFlagMemoized(env, ctx, "jam_detection_show").then((on) =>
+        getFlagMemoized(env, ctx, "jam_detection_collect").then((on) =>
           on
             ? recordVehicleFixes(env, boardAt, arrivals, Date.now()).catch((e) =>
                 console.error("jam fix record failed", e),
