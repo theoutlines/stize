@@ -3955,19 +3955,39 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   /// The jam-mode toggle button. Present only when the city has active jams; a
   /// toggle (not a screen): on = camera fits all active jams, off = normal view.
-  /// A red count badge shows how many jams are active. Empty → SizedBox (no gap).
+  ///
+  /// It only NAGS (loud amber icon + red count badge) when at least one jam is
+  /// relevant to the user's context — near them, on the followed vehicle's line,
+  /// or at the open stop. Jams elsewhere keep the button present but QUIET (muted,
+  /// no badge). No jams → no button. The count badge shows the relevant count.
   Widget _jamModeButton(ThemeData theme) {
     if (!ref.watch(jamDetectionEnabledProvider)) return const SizedBox.shrink();
     final board = ref.watch(jamsProvider).valueOrNull;
-    final count = board?.activeJams.length ?? 0;
-    if (count == 0) {
+    final jams = board?.activeJams ?? const <Jam>[];
+    if (jams.isEmpty) {
       // Falling out of jam mode when the last jam clears.
       if (_jamModeOn) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _setJamMode(false));
       }
       return const SizedBox.shrink();
     }
+    final followedLine = _selectedVehicleKey == null
+        ? null
+        : _vehAnimator.trackFor(_selectedVehicleKey!)?.line;
+    final openStopId = _slotStopId ?? _stopContextId;
+    final relevant = jams
+        .where((j) => isJamRelevant(
+              j,
+              followedLine: followedLine,
+              openStopId: openStopId,
+              userLocation: _meTo,
+            ))
+        .length;
+    final loud = relevant > 0;
     final l10n = AppLocalizations.of(context);
+    final iconColor = _jamModeOn
+        ? Colors.white
+        : (loud ? _jamAmber : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.55));
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: PointerInterceptor(
@@ -3980,33 +4000,34 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               shape: const CircleBorder(),
               clipBehavior: Clip.antiAlias,
               child: IconButton(
-                icon: Icon(
-                  Icons.warning_amber_rounded,
-                  color: _jamModeOn ? Colors.white : _jamAmber,
-                ),
+                icon: Icon(Icons.warning_amber_rounded, color: iconColor),
                 tooltip: l10n.jamModeTooltip,
                 onPressed: () => _setJamMode(!_jamModeOn),
               ),
             ),
-            Positioned(
-              right: -2,
-              top: -2,
-              child: IgnorePointer(
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFD90429),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    '$count',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, height: 1.0),
+            // Red count badge ONLY for context-relevant jams — a far-away jam
+            // never lights it up.
+            if (loud)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFD90429),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$relevant',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, height: 1.0),
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),

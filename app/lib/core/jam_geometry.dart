@@ -69,6 +69,41 @@ JamSegment buildJamSegment(
 /// "already past it" by GPS noise.
 const double kJamAheadToleranceM = 25.0;
 
+/// Default radius (metres) for "near the user" relevance — roughly the Nearby
+/// list's reach, so a jam physically around the user counts as relevant.
+const double kJamRelevanceRadiusM = 1500.0;
+
+const ll.Distance _jamDistance = ll.Distance();
+
+/// Whether [jam] is relevant to the user's current context — used to decide
+/// whether the jam-mode button shows its loud red count or stays quiet. Relevant
+/// when the jam is on the followed vehicle's line, touches the open stop, or sits
+/// within [radiusM] of the user. A jam elsewhere in the city is NOT relevant (the
+/// button still appears, but muted — it shouldn't nag).
+bool isJamRelevant(
+  Jam jam, {
+  String? followedLine,
+  String? openStopId,
+  ll.LatLng? userLocation,
+  double radiusM = kJamRelevanceRadiusM,
+}) {
+  if (followedLine != null && jam.line.toLowerCase() == followedLine.toLowerCase()) {
+    return true;
+  }
+  if (openStopId != null && jam.affectedStopIds.contains(openStopId)) return true;
+  if (userLocation != null) {
+    final pts = <ll.LatLng>[
+      for (final v in jam.vehicles) v.position,
+      if (jam.segmentFront != null) jam.segmentFront!,
+      if (jam.segmentRear != null) jam.segmentRear!,
+    ];
+    for (final p in pts) {
+      if (_jamDistance(userLocation, p) <= radiusM) return true;
+    }
+  }
+  return false;
+}
+
 /// Whether [jam] lies AHEAD of a vehicle travelling [vehicleDirectionRouteId] at
 /// along-track distance [vehicleAlong] on its direction [path]. True only when:
 ///   • the jam is on the SAME direction (opposite direction → false), and
