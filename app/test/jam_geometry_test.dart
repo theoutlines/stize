@@ -136,6 +136,38 @@ void main() {
     });
   });
 
+  group('isJamRelevant', () {
+    // A jam on line 7 around (44.80, 20.41) with two frozen vehicles.
+    final jam = _jam(
+      rear: const ll.LatLng(44.80, 20.408),
+      front: const ll.LatLng(44.80, 20.414),
+      vehicles: const [ll.LatLng(44.80, 20.410), ll.LatLng(44.80, 20.412)],
+    );
+
+    test('a far-away jam with no context match is NOT relevant (quiet button)', () {
+      expect(
+        isJamRelevant(jam,
+            followedLine: '2', openStopId: 'other', userLocation: const ll.LatLng(44.90, 20.60)),
+        isFalse,
+      );
+    });
+
+    test('a jam within the Nearby radius of the user IS relevant', () {
+      expect(
+        isJamRelevant(jam, userLocation: const ll.LatLng(44.801, 20.411)),
+        isTrue,
+      );
+    });
+
+    test('a jam on the followed vehicle line IS relevant', () {
+      expect(isJamRelevant(jam, followedLine: '7'), isTrue);
+    });
+
+    test('a jam touching the open stop IS relevant', () {
+      expect(isJamRelevant(jam, openStopId: 'sX'), isTrue); // sX is in affectedStopIds
+    });
+  });
+
   group('JamsBoard', () {
     test('affectedJamAt matches a jam listing the stop', () {
       final board = JamsBoard(
