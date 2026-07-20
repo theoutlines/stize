@@ -413,7 +413,16 @@ export async function aggregate(
   // Schedule delay — match new arrivals to the GTFS timetable (needs the
   // schedule assets + calendar, so it's a JS pass, not SQL). Additive into the
   // sched_delay_* columns of the buckets the activity pass already created.
-  await aggregateSchedDelay(env, db, now, lastRun);
+  // BEST-EFFORT: sched_delay is a secondary metric; a failure here (e.g. a
+  // schedule asset hiccup, or a heavy first backfill brushing a per-invocation
+  // limit) must NOT abort the core aggregate — otherwise the watermark below is
+  // never set and the job re-runs a full backfill forever. Log and carry on; the
+  // next incremental run picks the delay up.
+  try {
+    await aggregateSchedDelay(env, db, now, lastRun);
+  } catch (e) {
+    console.error("analytics sched_delay pass failed (continuing without it)", e);
+  }
 
   await db
     .prepare("DELETE FROM raw_observations WHERE observed_at < ?")
