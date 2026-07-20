@@ -58,6 +58,14 @@ import type { Env } from "../env";
 //                       unchanged; this entry only lets /config serve the flag so
 //                       it can default ON on staging / OFF on prod and be flipped
 //                       in KV. OFF is the killswitch (today's UI, untouched).
+//   jam_detection_show — tram-jam ("stalled segment") detection: the worker keeps
+//                       a light per-vehicle last-fix table (opportunistic, on the
+//                       existing SWR refreshes — no extra source calls) and serves
+//                       GET /api/v1/jams; the client draws the red stalled segment,
+//                       downstream-stop delay banners, and the bus-substitution
+//                       notice. Gates BOTH ends: OFF = the worker records nothing
+//                       and /jams is inert, and the client never calls it. OFF on
+//                       prod, ON on staging. OFF is the killswitch.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -69,6 +77,7 @@ export const FEATURE_FLAGS = [
   "product_analytics",
   "context_panel",
   "analytics_sweep",
+  "jam_detection_show",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

@@ -36,9 +36,15 @@ class VehicleView extends ConsumerWidget {
     this.upcomingStops = const [],
     this.routeUnavailable = false,
     this.showRouteButton = false,
+    this.jamAhead = false,
     this.onShowRoute,
     this.onOpenModel,
   });
+
+  /// A detected tram jam lies AHEAD of this vehicle on its own direction (item 5).
+  /// Computed by the host (it owns the along-track position + jam shapes); the
+  /// view just shows the compact warning. False = opposite direction / jam behind.
+  final bool jamAhead;
 
   final String line;
   final VehicleType type;
@@ -98,6 +104,7 @@ class VehicleView extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         _statusChip(theme, l10n),
+        if (jamAhead) _jamAheadWarning(theme, l10n),
         if (scheduled) ...[
           const SizedBox(height: 6),
           Row(
@@ -152,6 +159,34 @@ class VehicleView extends ConsumerWidget {
           ),
         ],
       ],
+    );
+  }
+
+  /// Compact "possible delay ahead" warning (item 5). Shown only when the host
+  /// determined a jam is ahead on THIS vehicle's direction. Observation tone,
+  /// amber-tinted like the map + banner.
+  Widget _jamAheadWarning(ThemeData theme, AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8A317).withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.hourglass_bottom, size: 15, color: theme.colorScheme.onSurface),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                l10n.jamFollowAhead,
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

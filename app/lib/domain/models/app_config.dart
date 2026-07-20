@@ -46,6 +46,12 @@ class AppConfig {
   /// default) is the killswitch — the app keeps today's independent sheets.
   bool get contextPanel => flag('context_panel');
 
+  /// Whether tram-jam ("stalled segment") detection is shown (remote
+  /// `jam_detection_show` flag): the red stalled segment, downstream-stop delay
+  /// banners, and the bus-substitution notice. OFF (the default) is the
+  /// killswitch — the client never calls /jams and draws none of it.
+  bool get jamDetectionShow => flag('jam_detection_show');
+
 
   static const empty = AppConfig(version: '', flags: {});
 

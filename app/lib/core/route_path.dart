@@ -84,6 +84,37 @@ class RoutePath {
     return globalAlong;
   }
 
+  /// Perpendicular distance (metres) from [p] to the nearest point on the path —
+  /// how far *off* the polyline the point sits. Used by the jam-detection
+  /// geometry gate: if a stalled vehicle (or the segment's bounding stops)
+  /// projects far off the direction shape (the 26/27/44 off-shape failure), the
+  /// red segment would land on the wrong street, so we degrade to marker badges.
+  double offsetOf(ll.LatLng p) {
+    var best = double.infinity;
+    for (var i = 0; i < points.length - 1; i++) {
+      final seg = _projectOnSegment(p, points[i], points[i + 1]);
+      if (seg.dist < best) best = seg.dist;
+    }
+    return best;
+  }
+
+  /// The polyline vertices between two distances-along [d0]..[d1] (metres),
+  /// with interpolated endpoints, so the caller can draw exactly that stretch of
+  /// the route. Returns fewer than 2 points only for a degenerate span.
+  List<ll.LatLng> subPath(double d0, double d1) {
+    if (points.length < 2) return const [];
+    final lo = d0.clamp(0.0, length);
+    final hi = d1.clamp(0.0, length);
+    final a = math.min(lo, hi);
+    final b = math.max(lo, hi);
+    final out = <ll.LatLng>[pointAt(a)];
+    for (var i = 0; i < points.length; i++) {
+      if (_cum[i] > a && _cum[i] < b) out.add(points[i]);
+    }
+    out.add(pointAt(b));
+    return out;
+  }
+
   /// The position at [dist] metres along the path (clamped to its ends).
   /// Called every animation frame per vehicle, so the segment lookup is a
   /// binary search over the cumulative distances (O(log n)).
