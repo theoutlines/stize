@@ -29,6 +29,7 @@ describe("featureFlags", () => {
     expect(Object.keys(flags).sort()).toEqual([
       "analytics_collect",
       "analytics_show",
+      "analytics_sweep",
       "context_panel",
       "coverage_map_show",
       "coverage_on_main_map",
