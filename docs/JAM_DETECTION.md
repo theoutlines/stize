@@ -1,7 +1,10 @@
 # Tram-jam detection ("stalled segment")
 
-*Design doc. Feature flag `jam_detection_show` (OFF prod / ON staging). Backend +
-Flutter client. Report with the measurement numbers:
+*Design doc. Two feature flags, split like `analytics_collect`/`analytics_show`:
+`jam_detection_collect` gates the backend recording (ON in prod + staging, so
+history accrues before the UI ships), `jam_detection_show` gates the UI (OFF in
+prod until the first live jam is captured and thresholds are calibrated, ON on
+staging). Backend + Flutter client. Report with the measurement numbers:
 `docs/reports/2026-07-20-jam-detection.md`.*
 
 ## What it does
@@ -151,6 +154,13 @@ The detector's memory is a single small last-fix table, kept **separate** from t
 transport-history analytics. It's written only from position refreshes the app
 already performs — no extra polling — and the map's heavy geometry (drawing and
 gating the segment) runs on the client, not the server.
+
+Recording is gated by `jam_detection_collect` and the UI by `jam_detection_show`,
+independently. Turning **collect** on early (in prod, while **show** stays off) is
+deliberate: the server-memory design only pays off if the table is already
+populated when a user opens the app — otherwise the first users after the UI ships
+would still have to wait out the freeze threshold before a jam could appear. It
+also lets the write volume be measured on real traffic before the UI goes live.
 
 ## Known limitation — thresholds are preliminary
 
