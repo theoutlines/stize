@@ -909,6 +909,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Coverage map is unavailable right now.'**
   String get coverageUnavailable;
+
+  /// No description provided for @jamStopBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trams {line} have been stopped longer than usual — possible delay'**
+  String jamStopBannerTitle(String line);
+
+  /// No description provided for @jamSubstitutionNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Buses are running instead of trams on line {line}'**
+  String jamSubstitutionNotice(String line);
+
+  /// No description provided for @jamStalledLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Possibly stopped'**
+  String get jamStalledLabel;
+
+  /// No description provided for @jamModeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Show stalled segments'**
+  String get jamModeTooltip;
+
+  /// No description provided for @jamNearbyDelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Possible delay on line {line}'**
+  String jamNearbyDelay(String line);
+
+  /// No description provided for @jamAffectedStopsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Affected stops'**
+  String get jamAffectedStopsTitle;
+
+  /// No description provided for @jamFollowAhead.
+  ///
+  /// In en, this message translates to:
+  /// **'Possible delay ahead on the route'**
+  String get jamFollowAhead;
 }
 
 class _AppLocalizationsDelegate

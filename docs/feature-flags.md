@@ -36,6 +36,7 @@ instant rollback.
 | `product_analytics` | anonymous product-usage events: client batches them to `POST /api/v1/events`, worker writes to `product_events` (client + backend) | ON | ON | 2026-07-18 | permanent (gate + killswitch) — enabled in prod 2026-07-19 (after `hour_bucket` privacy fix; volumes to be read from live prod) |
 | `context_panel` | adaptive "context slot": persistent left panel on desktop (≥840px) + unified bottom sheets on mobile, one nearby→stop→vehicle state machine (client) | ON | ON | 2026-07-18 | fresh, enabled in prod 2026-07-19 (killswitch = today's independent sheets) |
 | `analytics_sweep` | worker runs the citywide "sentinel sweep": slow Cron rotation over ~160 mid-route stops through the existing SWR/arrivals path, so history covers every line — not just the stops users open (backend) | OFF | ON | 2026-07-20 | permanent (gate + killswitch + auto circuit-breaker) — dormant on prod until a tempo is chosen |
+| `jam_detection_show` | tram-jam ("stalled segment") detection: worker keeps a last-fix table + serves `/api/v1/jams`; client draws the red stalled segment, downstream-stop delay banners, bus-substitution notice (client + backend) | OFF | ON | 2026-07-20 | in-dev (gate + killswitch) — OFF is the killswitch (worker records nothing, `/jams` inert, client never calls it) |
 
 Config parameters (KV, not boolean flags):
 
@@ -44,6 +45,12 @@ Config parameters (KV, not boolean flags):
 | `config:nearby_schedule_stops` | how many nearest "Nearby" stops inherit the schedule fallback (CPU cap) | 5 | 5 (default) | 5 (clamp 0..8) |
 | `config:sweep_interval_day_seconds` | daytime sentinel-sweep spacing; `round(60/interval)` stops per cron tick. The **only** knob facing the source — raise it slowly (start 20, target 11) | unset→20 | unset→20 | 20 (0 = paused) |
 | `config:sweep_interval_night_seconds` | night (01:00–05:00 Belgrade) sentinel-sweep spacing; **0 = paused** so the daily request profile looks human | unset→0 | unset→0 | 0 (paused) |
+| `jam:sim` | **staging only** — force a synthetic tram jam on the given line number so a stand shows the red segment + banner without a live jam (also as `?sim=<line>`). Ignored in prod. | (unset) | set to a tram line to demo | unset |
+| `config:jam_t_cluster` | freeze seconds before ≥2 same-direction trams on an adjacent segment count as a jam (cascading T_jam) | 180 | 180 | 180 (clamp 60..1800) |
+| `config:jam_t_substitute` | relaxed freeze seconds when a substitute bus corroborates the line (halves the cluster threshold) | 90 | 90 | 90 (clamp 30..1800) |
+| `config:jam_t_single` | freeze seconds for a lone vehicle (anchor only — a single vehicle is never surfaced as a jam) | 300 | 300 | 300 (clamp 60..1800) |
+| `config:jam_cluster_min` | minimum vehicles for a jam cluster — **keep at 2** (3 would miss real jams on short/sparse lines) | 2 | 2 | 2 (clamp 2..5) |
+| `config:jam_downstream_horizon_s` | how far past the jam's front the delay banner reaches, in **seconds of travel** (converted to a stop count via the line's mean segment time) — not a fixed stop count | 600 | 600 | 600 (clamp 120..3600) |
 
 Sweep bookkeeping keys (not knobs — the worker owns them): `sweep:cursor`
 (rotation index), `sweep:visits` (per-stop last sweep visit, for the adaptive

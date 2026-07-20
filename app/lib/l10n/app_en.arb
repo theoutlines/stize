@@ -192,4 +192,14 @@
   "coverageLegendTitle": "Transit density",
   "coverageLegendLow": "rarer",
   "coverageLegendHigh": "busier",
-  "coverageUnavailable": "Coverage map is unavailable right now."}
+  "coverageUnavailable": "Coverage map is unavailable right now.",
+  "jamStopBannerTitle": "Trams {line} have been stopped longer than usual — possible delay",
+  "@jamStopBannerTitle": {"placeholders": {"line": {"type": "String"}}},
+  "jamSubstitutionNotice": "Buses are running instead of trams on line {line}",
+  "@jamSubstitutionNotice": {"placeholders": {"line": {"type": "String"}}},
+  "jamStalledLabel": "Possibly stopped",
+  "jamModeTooltip": "Show stalled segments",
+  "jamNearbyDelay": "Possible delay on line {line}",
+  "@jamNearbyDelay": {"placeholders": {"line": {"type": "String"}}},
+  "jamAffectedStopsTitle": "Affected stops",
+  "jamFollowAhead": "Possible delay ahead on the route"}

@@ -52,6 +52,40 @@ that can't be collected retroactively, we start accumulating before we need it.
 
 ## In progress / behind a flag
 
+- 🚧 **Tram-jam ("stalled segment") detection** (`feature/tram-jam-detect`,
+  isolated preview pair `preview-jam.stigla.pages.dev`, merge owner-gated) —
+  detect when a whole tram line stacks up on one stalled segment, paint that
+  segment red, and softly warn downstream stops of a possible delay. **Phase-0
+  measurement (12.5 min live)** proved the "everything frozen" surface signal is
+  a **feed-starvation sawtooth** (upstream `updated_at` advances every ~60s; at
+  30s polling half the reads are re-stamps), not a jam — so the detector keys off
+  a per-vehicle freeze clock that survives the sawtooth, gates on global feed
+  health (all types frozen ⇒ suppress), and excludes terminals. **T_jam=300s is
+  PRELIMINARY** — no live jam was captured, only validated as "does not fire on
+  starvation". Storage **Variant B** (owner pick): a standalone `vehicle_fixes`
+  last-fix table (uncoupled from `raw_observations`) written opportunistically on
+  the existing SWR refresh — no extra source calls — so a jam shows instantly on
+  open. Backend `GET /api/v1/jams` does only cheap ordering; the client projects
+  the red segment onto the direction shape with a **geometry gate** (off-shape
+  lines like 26/27/44 → no segment, degrade to marker badges). Also: a
+  bus-on-a-tram-line **substitution** notice (garage-no classifier, cross-checked
+  against route alerts for tone). Flag `jam_detection_show` (OFF prod / ON
+  staging) = killswitch. Staging **`jam:sim`** KV / `?sim=<line>` injects a
+  synthetic jam to verify without a live one. Round-2 (owner-accepted): amber
+  pulsing segment + affected-stop glow (thinner than the route, under the pins,
+  cheap opacity pulse only while a jam is shown), off-shape lines get glow-only;
+  jam-mode map toggle (fit to all jams) with a red count badge that lights up ONLY
+  for context-relevant jams (near you / followed line / open stop) and stays quiet
+  otherwise; Nearby jam row + follow-ahead warning (direction + along-track "ahead"
+  gated); cascading KV thresholds (`config:jam_t_*`, `config:jam_downstream_horizon_s`
+  = downstream banner reach by travel time, not a fixed count). Design doc:
+  `docs/JAM_DETECTION.md`. Report `docs/reports/2026-07-20-jam-detection.md`.
+  **Merge order:** citywide-analytics (migration 0006) merges FIRST, this branch
+  second — resolve the `docs/feature-flags.md` overlap at that point. Follow-ups:
+  recalibrate the (preliminary) thresholds on the first real captured jam; watch D1
+  write volume before any prod enable; schedule-deviation (7a) + headway-CV (7d)
+  handed to the citywide branch.
+
 - 🚧 **Adaptive context panel** (`feature/context-panel`, isolated preview pair,
   merge owner-gated) — the nearby / stop / vehicle bottom sheets become one
   **context slot** with three views and back navigation (nearby → stop →

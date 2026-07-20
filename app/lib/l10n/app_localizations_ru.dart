@@ -482,4 +482,31 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get coverageUnavailable => 'Карта покрытия сейчас недоступна.';
+
+  @override
+  String jamStopBannerTitle(String line) {
+    return 'Трамваи $line стоят дольше обычного — возможна задержка';
+  }
+
+  @override
+  String jamSubstitutionNotice(String line) {
+    return 'На линии $line вместо трамваев работают автобусы';
+  }
+
+  @override
+  String get jamStalledLabel => 'Похоже, стоит';
+
+  @override
+  String get jamModeTooltip => 'Показать заторы';
+
+  @override
+  String jamNearbyDelay(String line) {
+    return 'Возможна задержка на линии $line';
+  }
+
+  @override
+  String get jamAffectedStopsTitle => 'Затронутые остановки';
+
+  @override
+  String get jamFollowAhead => 'Впереди по маршруту возможна задержка';
 }

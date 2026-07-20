@@ -30,6 +30,7 @@ import {
 } from "./lib/gtfsData";
 import { geocodeSearch } from "./lib/geocode";
 import { listAlerts, refreshAlerts } from "./lib/alerts";
+import { computeJams, pruneVehicleFixes, type JamsResponse } from "./lib/jamDetector";
 import {
   RateLimitedError,
   ValidationError,
@@ -357,6 +358,39 @@ app.post("/api/v1/admin/ideas/:id/hide", async (c) => {
 app.get("/api/v1/alerts", async (c) => {
   const alerts = await listAlerts(c.env);
   return c.json({ alerts });
+});
+
+// Tram-jam ("stalled segment") detection. Reads the last-fix table the arrivals
+// refresh maintains and returns the current jam set + bus substitutions. Inert
+// (empty) unless `jam_detection_show` is on — the client gates its polling on the
+// same flag, so with it off nothing is computed and nothing is drawn.
+//
+// Live positions — never cache (same zone Browser-Cache-TTL gotcha as /arrivals).
+app.get("/api/v1/jams", async (c) => {
+  c.header("cache-control", "no-store");
+  const empty: JamsResponse = {
+    feed_healthy: true,
+    jams: [],
+    substitutions: [],
+    updated_at: new Date().toISOString(),
+  };
+  if (!(await getFlagMemoized(c.env, c.executionCtx, "jam_detection_show"))) return c.json(empty);
+  if (await isServiceKilled(c.env)) return c.json(empty);
+  try {
+    const now = Date.now();
+    // Staging-only synthetic jam so a stand can be verified without a live jam:
+    // ?sim=<line> (or KV `jam:sim`) injects a jam on a real tram line+direction.
+    let simLine: string | null = null;
+    if (c.env.ENVIRONMENT === "staging") {
+      simLine = c.req.query("sim") ?? (await c.env.STIGLA_KV.get("jam:sim"));
+    }
+    const body = await computeJams(c.env, now, { simLine });
+    c.executionCtx.waitUntil(pruneVehicleFixes(c.env, now).catch(() => {}));
+    return c.json(body);
+  } catch (err) {
+    console.error("jams compute failed", err);
+    return c.json(empty);
+  }
 });
 
 app.post("/api/v1/admin/alerts/refresh", async (c) => {

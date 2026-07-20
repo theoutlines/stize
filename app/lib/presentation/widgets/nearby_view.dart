@@ -12,6 +12,7 @@ import '../../domain/models/nearby_arrival.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'empty_state.dart';
+import 'jam_nearby_strip.dart';
 import 'live_unavailable_banner.dart';
 import 'nearby_list.dart';
 
@@ -175,9 +176,11 @@ class NearbyViewState extends ConsumerState<NearbyView> {
 
   @override
   Widget build(BuildContext context) {
+    final contextLines = {for (final g in _groups ?? const <NearbyGroup>[]) g.line};
     return Column(
       children: [
         if (widget.showLocalSearch) _localSearch(Theme.of(context)),
+        if (contextLines.isNotEmpty) JamNearbyStrip(contextLines: contextLines),
         Expanded(child: _content(widget.scrollController)),
       ],
     );

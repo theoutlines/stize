@@ -20,6 +20,7 @@ import '../providers/providers.dart';
 import '../widgets/arrival_tile.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/fleet_model_card.dart';
+import '../widgets/jam_stop_banner.dart';
 import '../widgets/live_unavailable_banner.dart';
 import '../widgets/live_vehicles_map.dart';
 import '../widgets/route_alerts_strip.dart';
@@ -60,6 +61,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(kLiveRefreshInterval, (_) {
       ref.invalidate(arrivalsProvider(widget.stopId));
+      if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);
     });
   }
 
@@ -111,6 +113,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         child: ListView(
           children: [
             RouteAlertsStrip(alerts: relevantAlerts),
+            JamStopBanner(
+              stopId: widget.stopId,
+              lines: stopLocation?.lines ?? const [],
+            ),
             board.when(
               loading: () => EmptyState(icon: Icons.directions_transit_outlined, title: l10n.loadingArrivals),
               error: (err, st) => _errorState(l10n, err),
