@@ -58,14 +58,24 @@ import type { Env } from "../env";
 //                       unchanged; this entry only lets /config serve the flag so
 //                       it can default ON on staging / OFF on prod and be flipped
 //                       in KV. OFF is the killswitch (today's UI, untouched).
-//   jam_detection_show — tram-jam ("stalled segment") detection: the worker keeps
-//                       a light per-vehicle last-fix table (opportunistic, on the
-//                       existing SWR refreshes — no extra source calls) and serves
-//                       GET /api/v1/jams; the client draws the red stalled segment,
+//   jam_detection_collect — the worker records the per-vehicle last-fix table
+//                       (opportunistic, on the existing SWR refreshes — no extra
+//                       source calls). Split from `jam_detection_show` on purpose,
+//                       exactly like analytics_collect vs analytics_show: turn
+//                       COLLECT on EARLY (incl. prod) so history accumulates before
+//                       the UI ships — that is the whole point of the server-memory
+//                       design ("a jam shows the instant you open the app"); if
+//                       recording only started with the UI, the first users after
+//                       the flip would still wait out T_jam (Variant-A behaviour).
+//                       ON on prod + staging. OFF = the worker records nothing.
+//   jam_detection_show — reveals the tram-jam UI: the worker serves GET
+//                       /api/v1/jams and the client draws the red stalled segment,
 //                       downstream-stop delay banners, and the bus-substitution
-//                       notice. Gates BOTH ends: OFF = the worker records nothing
-//                       and /jams is inert, and the client never calls it. OFF on
-//                       prod, ON on staging. OFF is the killswitch.
+//                       notice. OFF on prod (enable after the first live jam +
+//                       threshold calibration), ON on staging. OFF is the UI
+//                       killswitch; with it off the client never calls /jams and
+//                       /jams returns empty (recording, gated separately by
+//                       jam_detection_collect, is unaffected).
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -77,6 +87,7 @@ export const FEATURE_FLAGS = [
   "product_analytics",
   "context_panel",
   "analytics_sweep",
+  "jam_detection_collect",
   "jam_detection_show",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
