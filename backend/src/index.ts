@@ -13,6 +13,7 @@ import type {
 import { isServiceKilled, setServiceKilled } from "./lib/killswitch";
 import { FEATURE_FLAGS, getAllFlags, getFlagMemoized, isFeatureFlag, setFlag } from "./lib/featureFlags";
 import { aggregate, getLineAnalytics } from "./lib/analytics";
+import { runSweepTick } from "./lib/sweep";
 import { logProductEvents, sanitizeBatch } from "./lib/productAnalytics";
 import { getArrivals } from "./lib/arrivals";
 import { getNearbyVehicles } from "./lib/vehicles";
@@ -454,9 +455,38 @@ app.post("/api/v1/admin/analytics/aggregate", async (c) => {
   return c.json(result);
 });
 
+// Run one sentinel-sweep tick on demand (same as the per-minute cron). Staging
+// has no cron, so this is how the sweep is exercised there while verifying —
+// remember staging ALSO reaches the source, so enable `analytics_sweep` on
+// staging only for the duration of a check.
+app.post("/api/v1/admin/sweep/tick", async (c) => {
+  const token = c.req.header("X-Admin-Token");
+  if (!token || token !== c.env.ADMIN_TOKEN) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  const result = await runSweepTick(c.env, c.executionCtx);
+  return c.json(result);
+});
+
 export default {
   fetch: app.fetch,
-  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    // Two triggers share this handler (see wrangler.toml). The per-minute one
+    // drives the sentinel sweep; the daily one refreshes alerts and rolls up
+    // analytics. Branch on which cron fired so a minute tick never runs the
+    // heavy daily job (and vice-versa).
+    if (event.cron === "* * * * *") {
+      ctx.waitUntil(
+        runSweepTick(env, ctx).then(
+          (r) =>
+            r.ran &&
+            console.log(`sweep: ${r.reason} swept=${r.swept.length} skipped=${r.skipped} fail=${r.failures}`),
+          (err) => console.error("sweep tick failed", err),
+        ),
+      );
+      return;
+    }
+
     ctx.waitUntil(
       refreshAlerts(env).then(
         (result) => console.log(`alerts refresh: +${result.added}, total ${result.total}`),

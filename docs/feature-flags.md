@@ -35,12 +35,21 @@ instant rollback.
 | `vehicles_on_demand` | the map's vehicle-mode toggle — the user's choice between on-demand vehicles (in context only) and the background "aquarium" (client) | OFF | ON | 2026-07-15 | permanent (toggle gate + killswitch) — two-level, see below |
 | `product_analytics` | anonymous product-usage events: client batches them to `POST /api/v1/events`, worker writes to `product_events` (client + backend) | ON | ON | 2026-07-18 | permanent (gate + killswitch) — enabled in prod 2026-07-19 (after `hour_bucket` privacy fix; volumes to be read from live prod) |
 | `context_panel` | adaptive "context slot": persistent left panel on desktop (≥840px) + unified bottom sheets on mobile, one nearby→stop→vehicle state machine (client) | ON | ON | 2026-07-18 | fresh, enabled in prod 2026-07-19 (killswitch = today's independent sheets) |
+| `analytics_sweep` | worker runs the citywide "sentinel sweep": slow Cron rotation over ~160 mid-route stops through the existing SWR/arrivals path, so history covers every line — not just the stops users open (backend) | OFF | ON | 2026-07-20 | permanent (gate + killswitch + auto circuit-breaker) — dormant on prod until a tempo is chosen |
 
 Config parameters (KV, not boolean flags):
 
 | key | controls | prod | staging | default |
 |---|---|---|---|---|
 | `config:nearby_schedule_stops` | how many nearest "Nearby" stops inherit the schedule fallback (CPU cap) | 5 | 5 (default) | 5 (clamp 0..8) |
+| `config:sweep_interval_day_seconds` | daytime sentinel-sweep spacing; `round(60/interval)` stops per cron tick. The **only** knob facing the source — raise it slowly (start 20, target 11) | unset→20 | unset→20 | 20 (0 = paused) |
+| `config:sweep_interval_night_seconds` | night (01:00–05:00 Belgrade) sentinel-sweep spacing; **0 = paused** so the daily request profile looks human | unset→0 | unset→0 | 0 (paused) |
+
+Sweep bookkeeping keys (not knobs — the worker owns them): `sweep:cursor`
+(rotation index), `sweep:visits` (per-stop last sweep visit, for the adaptive
+skip), `sweep:breaker` (consecutive-failure count; the circuit-breaker flips
+`analytics_sweep` OFF at 5). If any of these can't be **read**, the sweep stands
+down for that tick rather than running on defaults.
 
 Notes: the two analytics flags are independent on purpose — turn **collect** on
 early to accumulate history while **show** stays off. `nearby_sort_board` only
