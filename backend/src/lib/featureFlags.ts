@@ -40,6 +40,17 @@ import type { Env } from "../env";
 //                       TRANSPORT-observation logger). OFF on prod, ON on staging
 //                       until we've checked the volume/cost, then flip prod
 //                       deliberately.
+//   analytics_sweep   — the worker runs the citywide "sentinel sweep": a slow
+//                       Cron rotation over a small set of mid-route stops that
+//                       observes the active fleet of every line, so history
+//                       stops being limited to the stops users happen to open.
+//                       It reuses the existing SWR/arrivals path (no new source
+//                       calls) and the existing observation logger. OFF on prod
+//                       (dormant until a tempo is chosen) / ON on staging — but
+//                       staging ALSO reaches the source, so only enable it on
+//                       staging while actively verifying. OFF is the killswitch;
+//                       the circuit-breaker also flips it OFF on repeated
+//                       non-JSON/error responses (see lib/sweep.ts).
 //   context_panel     — the app presents the adaptive "context slot": a persistent
 //                       left panel on desktop (≥840px) and unified bottom sheets on
 //                       mobile, both driven by one state machine (nearby → stop →
@@ -57,6 +68,7 @@ export const FEATURE_FLAGS = [
   "vehicles_on_demand",
   "product_analytics",
   "context_panel",
+  "analytics_sweep",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
