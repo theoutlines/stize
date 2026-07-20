@@ -476,4 +476,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coverageUnavailable => 'Coverage map is unavailable right now.';
+
+  @override
+  String jamStopBannerTitle(String line) {
+    return 'Trams $line have been stopped longer than usual — possible delay';
+  }
+
+  @override
+  String jamSubstitutionNotice(String line) {
+    return 'Buses are running instead of trams on line $line';
+  }
+
+  @override
+  String get jamStalledLabel => 'Possibly stopped';
 }

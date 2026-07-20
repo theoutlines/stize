@@ -1,0 +1,158 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart' as ll;
+
+import 'package:stigla/core/jam_geometry.dart';
+import 'package:stigla/core/route_path.dart';
+import 'package:stigla/domain/models/jam.dart';
+
+// A straight west→east route along latitude 44.80, ~150m between vertices.
+RoutePath _straightPath() => RoutePath([
+      for (var i = 0; i < 20; i++) ll.LatLng(44.80, 20.40 + i * 0.002),
+    ]);
+
+Jam _jam({
+  required ll.LatLng rear,
+  required ll.LatLng front,
+  required List<ll.LatLng> vehicles,
+}) =>
+    Jam(
+      line: '7',
+      directionRouteId: 'r7',
+      vehicles: [
+        for (final v in vehicles)
+          JamVehicle(
+            garageNo: 'P8020${vehicles.indexOf(v)}',
+            position: v,
+            stopsRemaining: 5,
+            frozenSecs: 360,
+            isSubstitute: false,
+          ),
+      ],
+      frozenSecs: 360,
+      hasSubstitute: false,
+      segmentRear: rear,
+      segmentFront: front,
+      downstreamStopIds: const {'sX'},
+      simulated: false,
+    );
+
+void main() {
+  group('RoutePath.offsetOf / subPath', () {
+    final path = _straightPath();
+
+    test('offsetOf is ~0 on the line and grows off it', () {
+      expect(path.offsetOf(const ll.LatLng(44.80, 20.41)), lessThan(5));
+      // ~0.005° lat off the line ≈ 550 m.
+      expect(path.offsetOf(const ll.LatLng(44.805, 20.41)), greaterThan(400));
+    });
+
+    test('subPath returns the stretch between two along-distances', () {
+      final d0 = path.project(const ll.LatLng(44.80, 20.404));
+      final d1 = path.project(const ll.LatLng(44.80, 20.412));
+      final seg = path.subPath(d0, d1);
+      expect(seg.length, greaterThanOrEqualTo(2));
+      expect(seg.first.longitude, closeTo(20.404, 0.001));
+      expect(seg.last.longitude, closeTo(20.412, 0.001));
+    });
+  });
+
+  group('buildJamSegment', () {
+    final path = _straightPath();
+
+    test('draws a segment when vehicles sit on the shape', () {
+      final jam = _jam(
+        rear: const ll.LatLng(44.80, 20.404),
+        front: const ll.LatLng(44.80, 20.414),
+        vehicles: const [ll.LatLng(44.80, 20.408), ll.LatLng(44.80, 20.410)],
+      );
+      final res = buildJamSegment(jam, path);
+      expect(res.gated, isFalse);
+      expect(res.polyline, isNotNull);
+      expect(res.polyline!.length, greaterThanOrEqualTo(2));
+    });
+
+    test('gates (no segment) when a vehicle is far off the shape', () {
+      // The 26/27/44 failure: vehicles hundreds of metres off the polyline.
+      final jam = _jam(
+        rear: const ll.LatLng(44.805, 20.404),
+        front: const ll.LatLng(44.805, 20.414),
+        vehicles: const [ll.LatLng(44.805, 20.408), ll.LatLng(44.805, 20.410)],
+      );
+      final res = buildJamSegment(jam, path);
+      expect(res.gated, isTrue);
+      expect(res.polyline, isNull);
+    });
+
+    test('no segment info (null endpoints) → none, not gated', () {
+      final jam = Jam(
+        line: '7',
+        directionRouteId: 'r7',
+        vehicles: const [],
+        frozenSecs: 360,
+        hasSubstitute: false,
+        segmentRear: null,
+        segmentFront: null,
+        downstreamStopIds: const {},
+        simulated: false,
+      );
+      final res = buildJamSegment(jam, path);
+      expect(res.gated, isFalse);
+      expect(res.polyline, isNull);
+    });
+  });
+
+  group('JamsBoard', () {
+    test('downstreamJamAt matches a jam listing the stop', () {
+      final board = JamsBoard(
+        feedHealthy: true,
+        jams: [
+          _jam(
+            rear: const ll.LatLng(44.80, 20.40),
+            front: const ll.LatLng(44.80, 20.41),
+            vehicles: const [ll.LatLng(44.80, 20.405)],
+          ),
+        ],
+        substitutions: const [],
+      );
+      expect(board.downstreamJamAt('sX'), isNotNull);
+      expect(board.downstreamJamAt('nope'), isNull);
+    });
+
+    test('parses the wire format including segment + downstream stops', () {
+      final board = JamsBoard.fromJson({
+        'feed_healthy': true,
+        'jams': [
+          {
+            'line': '5',
+            'direction_route_id': 'r5',
+            'vehicles': [
+              {'garage_no': 'P80201', 'lat': 44.8, 'lon': 20.46, 'stops_remaining': 3, 'frozen_secs': 340, 'is_substitute': false},
+              {'garage_no': 'P80202', 'lat': 44.801, 'lon': 20.461, 'stops_remaining': 4, 'frozen_secs': 360, 'is_substitute': false},
+            ],
+            'frozen_secs': 360,
+            'has_substitute': false,
+            'segment': {'rear': {'lat': 44.79, 'lon': 20.45}, 'front': {'lat': 44.81, 'lon': 20.47}},
+            'downstream_stop_ids': ['a', 'b', 'c'],
+          }
+        ],
+        'substitutions': [
+          {'line': '5', 'direction_route_id': 'r5', 'garage_nos': ['P93475']}
+        ],
+      });
+      expect(board.feedHealthy, isTrue);
+      expect(board.jams, hasLength(1));
+      expect(board.jams.first.vehicles, hasLength(2));
+      expect(board.jams.first.segmentRear, isNotNull);
+      expect(board.jams.first.downstreamStopIds, containsAll(['a', 'b', 'c']));
+      expect(board.substitutions.first.garageNos, contains('P93475'));
+    });
+
+    test('feed_healthy defaults true when absent, false is honoured', () {
+      expect(JamsBoard.fromJson({'jams': [], 'substitutions': []}).feedHealthy, isTrue);
+      expect(
+        JamsBoard.fromJson({'feed_healthy': false, 'jams': [], 'substitutions': []}).feedHealthy,
+        isFalse,
+      );
+    });
+  });
+}

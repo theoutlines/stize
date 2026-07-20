@@ -478,4 +478,17 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get coverageUnavailable => 'Mapa pokrivenosti trenutno nije dostupna.';
+
+  @override
+  String jamStopBannerTitle(String line) {
+    return 'Tramvaji $line stoje duže nego obično — moguće kašnjenje';
+  }
+
+  @override
+  String jamSubstitutionNotice(String line) {
+    return 'Na liniji $line umesto tramvaja saobraćaju autobusi';
+  }
+
+  @override
+  String get jamStalledLabel => 'Izgleda da stoji';
 }

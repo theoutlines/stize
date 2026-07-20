@@ -22,6 +22,7 @@ import '../../core/hit_test.dart';
 import '../../core/map_refresh.dart';
 import '../../core/nearby_focus.dart';
 import '../../core/live_position.dart';
+import '../../core/jam_geometry.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
 import '../../core/moving_object_layer.dart';
@@ -36,6 +37,7 @@ import '../../domain/models/area_vehicle.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/geocode_result.dart';
+import '../../domain/models/jam.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/pinned_line.dart';
 import '../../domain/models/nearby_arrival.dart';
@@ -153,6 +155,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   String? _focusLayerError; // last focus-layer add failure, for the staging overlay
   static const _emptyFeatureCollection =
       '{"type":"FeatureCollection","features":[]}';
+
+  // Tram-jam ("stalled segment") overlay (feature/jam-detection, flag-gated). The
+  // red segment is drawn from the direction shape when the geometry gate passes;
+  // when it fails (off-shape line, the 26/27/44 case) the jam's vehicles are
+  // badged instead. Its OWN state, separate from the animator's "looks stuck".
+  static const _jamSegmentLayerId = 'stg-jam-segment';
+  bool _jamLayerAdded = false;
+  bool _jamsProcessing = false; // guards the async shape-load reentrancy
+  List<List<ll.LatLng>> _jamSegments = const []; // red polylines to draw
+  Set<String> _jammedGarages = const {}; // gated jams → badge these markers
+  final Map<String, RoutePath?> _jamShapeCache = {}; // by direction route_id
 
   // Live vehicles in the viewport: eased between refreshes by the animator, so
   // markers glide instead of teleporting. Only the vehicle WidgetLayer repaints
@@ -506,6 +519,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _refreshTick() {
     final action = mapRefreshAction(onDemand: _onDemand, stopContextId: _stopContextId);
     _refreshTicks++;
+    // Refresh the jam board on the same 30s cadence (no-op / no request when the
+    // flag is off — the provider short-circuits to an empty board).
+    if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);
     switch (action) {
       case MapRefresh.aquarium:
         _loadVehiclesForVisibleArea(force: true);
@@ -687,7 +703,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           label: track.line,
           heading: _vehAnimator.headingAt(entry.key, t),
           selected: entry.key == _selectedVehicleKey,
-          stuck: _vehAnimator.isStuck(entry.key),
+          // Crimson "stuck" visual doubles as the jam badge for a jam whose red
+          // segment was geometry-gated (off-shape line). This reuses the VISUAL,
+          // not the animator's stuck SIGNAL — the jam state comes from /jams. The
+          // track key is the garage number for a real vehicle.
+          stuck: _vehAnimator.isStuck(entry.key) || _jammedGarages.contains(entry.key),
           // Fade a vanishing/stale vehicle over its grace period (X6), and dim a
           // schedule-predicted object so it reads as "by schedule, not live".
           opacity: _vehAnimator.opacityFor(entry.key) *
@@ -2832,6 +2852,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // set changes (no widget rebuild needed for the markers themselves).
     ref.listen(favoriteStopLocationsProvider, (_, _) => _pushStopSources());
 
+    // Tram-jam overlay: whenever the jam board changes, (re)build the red segment
+    // layer and the badged-vehicle set. Flag-gated (empty board when off → clears).
+    ref.listen(jamsProvider, (_, next) {
+      final board = next.valueOrNull;
+      if (board != null) _onJamsUpdated(board);
+    });
+
     // Coverage overlay flag: usually flips false→true once the remote config
     // resolves. When it turns on, reconcile after this frame so the layer is
     // added if the map is already zoomed out.
@@ -4025,6 +4052,119 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // Only stopId (the tap handler looks the name up) — jsonEncode escapes
           // it correctly regardless, but the name isn't needed here.
           'properties': {'stopId': s.stopId},
+        },
+    ],
+  });
+
+  // ---- Tram-jam overlay -----------------------------------------------------
+
+  /// Turn a jam board into the red segment polylines + the badged-vehicle set,
+  /// then reconcile the map layer. Loads each jam's direction shape (cached) and
+  /// applies the geometry gate: a gated jam draws NO segment (wrong-street risk)
+  /// and instead badges its vehicles. Best-effort; failures leave the map clean.
+  Future<void> _onJamsUpdated(JamsBoard board) async {
+    if (_jamsProcessing) return;
+    _jamsProcessing = true;
+    try {
+      final segments = <List<ll.LatLng>>[];
+      final jammed = <String>{};
+      for (final jam in board.jams) {
+        final dir = jam.directionRouteId;
+        final path = dir == null ? null : await _jamShape(dir);
+        final seg = buildJamSegment(jam, path);
+        if (seg.polyline != null) {
+          segments.add(seg.polyline!);
+        } else {
+          // Gated (off-shape) or no segment info → badge the frozen vehicles.
+          for (final v in jam.vehicles) {
+            jammed.add(v.garageNo);
+          }
+        }
+      }
+      if (!mounted) return;
+      _jamSegments = segments;
+      _jammedGarages = jammed;
+      await _syncJamLayers();
+      _paintVehicles(); // refresh the badge state on the markers
+    } finally {
+      _jamsProcessing = false;
+    }
+  }
+
+  Future<RoutePath?> _jamShape(String directionRouteId) async {
+    if (_jamShapeCache.containsKey(directionRouteId)) {
+      return _jamShapeCache[directionRouteId];
+    }
+    try {
+      final shape = await ref.read(linesRepositoryProvider).getShapeByRouteId(directionRouteId);
+      final path = RoutePath.fromLatLon(shape.polyline);
+      _jamShapeCache[directionRouteId] = path;
+      return path;
+    } catch (_) {
+      _jamShapeCache[directionRouteId] = null;
+      return null;
+    }
+  }
+
+  /// (Re)build the red jam-segment line layer imperatively, inserted BELOW the
+  /// vehicle symbols (like the focus route) so a followed coin stays on top.
+  Future<void> _syncJamLayers() async {
+    final style = _style;
+    if (style == null) return;
+    if (_jamSegments.isEmpty) {
+      if (_jamLayerAdded) {
+        try {
+          await style.removeLayer(_jamSegmentLayerId);
+        } catch (_) {}
+        try {
+          await style.removeSource(_stopSourceId(_jamSegmentLayerId));
+        } catch (_) {}
+        _jamLayerAdded = false;
+      }
+      return;
+    }
+    final srcId = _stopSourceId(_jamSegmentLayerId);
+    try {
+      if (!_jamLayerAdded) {
+        await style.addSource(GeoJsonSource(id: srcId, data: _jamSegmentsGeoJson()));
+        // A strong alert red, distinct from the tram livery red, thick so the
+        // stalled stretch reads at a glance.
+        const jamLine = PolylineLayer(
+          polylines: [],
+          color: Color(0xFFD90429),
+          width: 7,
+        );
+        await style.addLayer(
+          LineStyleLayer(
+            id: _jamSegmentLayerId,
+            sourceId: srcId,
+            layout: jamLine.getLayout(),
+            paint: jamLine.getPaint(),
+          ),
+          belowLayerId: focusInsertBelowLayerId(vehicleLayersAdded: _vehLayerAdded),
+        );
+        _jamLayerAdded = true;
+      } else {
+        await style.updateGeoJsonSource(id: srcId, data: _jamSegmentsGeoJson());
+      }
+    } catch (_) {
+      _jamLayerAdded = false;
+    }
+  }
+
+  String _jamSegmentsGeoJson() => jsonEncode({
+    'type': 'FeatureCollection',
+    'features': [
+      for (final seg in _jamSegments)
+        {
+          'type': 'Feature',
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': [
+              for (final p in seg) [p.longitude, p.latitude],
+            ],
+          },
+          'properties': const <String, dynamic>{},
         },
     ],
   });

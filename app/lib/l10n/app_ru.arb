@@ -166,4 +166,7 @@
   "coverageLegendTitle": "Плотность транспорта",
   "coverageLegendLow": "реже",
   "coverageLegendHigh": "чаще",
-  "coverageUnavailable": "Карта покрытия сейчас недоступна."}
+  "coverageUnavailable": "Карта покрытия сейчас недоступна.",
+  "jamStopBannerTitle": "Трамваи {line} стоят дольше обычного — возможна задержка",
+  "jamSubstitutionNotice": "На линии {line} вместо трамваев работают автобусы",
+  "jamStalledLabel": "Похоже, стоит"}

@@ -482,4 +482,17 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get coverageUnavailable => 'Карта покрытия сейчас недоступна.';
+
+  @override
+  String jamStopBannerTitle(String line) {
+    return 'Трамваи $line стоят дольше обычного — возможна задержка';
+  }
+
+  @override
+  String jamSubstitutionNotice(String line) {
+    return 'На линии $line вместо трамваев работают автобусы';
+  }
+
+  @override
+  String get jamStalledLabel => 'Похоже, стоит';
 }

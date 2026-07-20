@@ -19,6 +19,7 @@ import '../providers/providers.dart';
 import 'arrival_tile.dart';
 import 'empty_state.dart';
 import 'fleet_model_card.dart';
+import 'jam_stop_banner.dart';
 import 'live_unavailable_banner.dart';
 import 'route_alerts_strip.dart';
 import 'scheduled_group_tile.dart';
@@ -107,6 +108,9 @@ class _StopBoardState extends ConsumerState<StopBoard> {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(kLiveRefreshInterval, (_) {
       ref.invalidate(arrivalsProvider(widget.stopId));
+      // Keep the jam banner fresh on the same 30s cadence (no-op when the flag
+      // is off — the provider short-circuits to an empty board with no request).
+      if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);
     });
   }
 
@@ -163,6 +167,10 @@ class _StopBoardState extends ConsumerState<StopBoard> {
             padding: EdgeInsets.zero,
             children: [
               RouteAlertsStrip(alerts: relevantAlerts),
+              JamStopBanner(
+                stopId: widget.stopId,
+                lines: stopLocation?.lines ?? const [],
+              ),
               board.when(
                 loading: () => EmptyState(
                   icon: Icons.directions_transit_outlined,
