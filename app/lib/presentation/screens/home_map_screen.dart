@@ -3196,6 +3196,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // A line with no route geometry in our GTFS (e.g. "Ada 4"): show an
           // honest note instead of an empty route list (owner R4 #2).
           routeUnavailable: _followNoRouteData,
+          // Item 5: warn only if a jam is on this vehicle's direction AND ahead of
+          // it — opposite direction / a jam already behind stays silent.
+          jamAhead: _jamAheadForFollowed(track),
           // The route is drawn on the panel-side map, so no "show route" button.
           showRouteButton: false,
           // Tapping the "About" card opens the model as a leaf IN the panel.
@@ -4008,6 +4011,27 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         ),
       ),
     );
+  }
+
+  /// Whether an active jam lies ahead of the followed vehicle on its own
+  /// direction. Uses the track's along-track position + its direction shape, so a
+  /// vehicle on the opposite direction or already past the jam gets no warning.
+  bool _jamAheadForFollowed(VehicleTrack? track) {
+    if (!ref.watch(jamDetectionEnabledProvider)) return false;
+    if (track == null || track.path == null) return false;
+    final board = ref.watch(jamsProvider).valueOrNull;
+    if (board == null) return false;
+    for (final jam in board.activeJams) {
+      if (isJamAhead(
+        jam: jam,
+        vehicleDirectionRouteId: track.directionRouteId,
+        path: track.path,
+        vehicleAlong: track.toDist,
+      )) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void _setJamMode(bool on) {

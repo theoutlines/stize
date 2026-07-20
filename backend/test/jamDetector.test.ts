@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
 import {
   computeJams,
+  downstreamStopCount,
   garageVehicleType,
   recordVehicleFixes,
   JAM_CONFIG_DEFAULTS,
@@ -218,6 +219,26 @@ describe("computeJams", () => {
     // The two sim vehicles sit at mid / mid+1, so the span's stops must be in the
     // affected set — a rider tapping a stop under the segment gets the banner.
     expect(sim.affected_stop_ids.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("downstream cap scales with the time horizon, not a fixed count", async () => {
+    const lines = await getAllLines(env);
+    const tram = lines.find((l) => l.vehicle_type === "tram")!;
+    const short = await downstreamStopCount(env, tram.route_id, 120); // ~2 min
+    const long = await downstreamStopCount(env, tram.route_id, 1200); // ~20 min
+    expect(long).toBeGreaterThan(short);
+    expect(short).toBeGreaterThanOrEqual(1);
+    expect(long).toBeLessThanOrEqual(20); // hard cap
+  });
+
+  it("KV horizon config widens the simulated jam's affected set", async () => {
+    const { line } = await firstTramLine();
+    await env.STIGLA_KV.put("config:jam_downstream_horizon_s", "120");
+    const narrow = (await computeJams(env, NOW, { simLine: line })).jams.find((j) => j.simulated)!;
+    await env.STIGLA_KV.put("config:jam_downstream_horizon_s", "1800");
+    const wide = (await computeJams(env, NOW, { simLine: line })).jams.find((j) => j.simulated)!;
+    await env.STIGLA_KV.delete("config:jam_downstream_horizon_s");
+    expect(wide.affected_stop_ids.length).toBeGreaterThanOrEqual(narrow.affected_stop_ids.length);
   });
 
   it("cascading threshold: a substitute bus relaxes the cluster to tSubstitute", async () => {

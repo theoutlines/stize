@@ -64,3 +64,37 @@ JamSegment buildJamSegment(
   if (poly.length < 2) return JamSegment.none;
   return JamSegment(polyline: poly, gated: false);
 }
+
+/// Tolerance (metres) so a vehicle sitting right at the jam's tail isn't read as
+/// "already past it" by GPS noise.
+const double kJamAheadToleranceM = 25.0;
+
+/// Whether [jam] lies AHEAD of a vehicle travelling [vehicleDirectionRouteId] at
+/// along-track distance [vehicleAlong] on its direction [path]. True only when:
+///   • the jam is on the SAME direction (opposite direction → false), and
+///   • some part of the jam (its farthest-along anchor) is still ahead of the
+///     vehicle (a jam already fully behind → false).
+/// This gates the follow warning so a vehicle on the return leg, or one that has
+/// already cleared the stalled stretch, stays silent.
+bool isJamAhead({
+  required Jam jam,
+  required String? vehicleDirectionRouteId,
+  required RoutePath? path,
+  required double vehicleAlong,
+}) {
+  if (jam.directionRouteId == null || vehicleDirectionRouteId == null) return false;
+  if (jam.directionRouteId != vehicleDirectionRouteId) return false;
+  if (path == null || !path.isUsable) return false;
+  final anchors = <ll.LatLng>[
+    if (jam.segmentFront != null) jam.segmentFront!,
+    if (jam.segmentRear != null) jam.segmentRear!,
+    for (final v in jam.vehicles) v.position,
+  ];
+  if (anchors.isEmpty) return false;
+  var maxAlong = double.negativeInfinity;
+  for (final a in anchors) {
+    final along = path.project(a, near: vehicleAlong);
+    if (along > maxAlong) maxAlong = along;
+  }
+  return maxAlong > vehicleAlong + kJamAheadToleranceM;
+}

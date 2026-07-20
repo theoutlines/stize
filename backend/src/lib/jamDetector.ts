@@ -1,7 +1,7 @@
 import type { Env } from "../env";
 import type { ArrivalDto, VehicleType } from "../types";
 import { haversineDistanceMeters } from "./haversine";
-import { getLineDirectionEndpoints, getRouteShape, getAllLines } from "./gtfsData";
+import { getLineDirectionEndpoints, getRouteShape, getAllLines, getRouteTrips } from "./gtfsData";
 
 // Tram-jam ("stalled segment") detection. Two responsibilities, both cheap:
 //
@@ -31,7 +31,6 @@ const FEED_HEALTH_WINDOW_MS = 90_000; // "moved recently" window for the feed-he
 const FEED_HEALTHY_MIN_MOVING = 0.35; // below this moving fraction the feed is starving → suppress
 const MIN_FEED_SAMPLE = 6; // don't judge feed health on too few vehicles
 const PRUNE_AGE_MS = 10 * 60_000; // drop rows older than this
-const DOWNSTREAM_STOP_CAP = 8; // localize the delay banner to the next N stops
 
 // ── Cascading freeze thresholds — KV config, NOT hardcode (owner, round 2) ──
 // The threshold to flag a stalled vehicle scales with signal strength, because a
@@ -50,11 +49,14 @@ export const JAM_CONFIG_DEFAULTS = {
   clusterMin: 2, // >=2; NEVER 3 (would miss real jams on short/sparse lines)
 } as const;
 
+export const JAM_DOWNSTREAM_HORIZON_S_DEFAULT = 600; // ~10 min of travel ahead
+
 export interface JamConfig {
   tSingle: number;
   tCluster: number;
   tSubstitute: number;
   clusterMin: number;
+  downstreamHorizonS: number;
 }
 
 async function readJamConfig(env: Env): Promise<JamConfig> {
@@ -63,13 +65,58 @@ async function readJamConfig(env: Env): Promise<JamConfig> {
     const v = raw == null ? def : Number(raw);
     return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def;
   };
-  const [tSingle, tCluster, tSubstitute, clusterMin] = await Promise.all([
+  const [tSingle, tCluster, tSubstitute, clusterMin, downstreamHorizonS] = await Promise.all([
     num("jam_t_single", JAM_CONFIG_DEFAULTS.tSingle, 60, 1800),
     num("jam_t_cluster", JAM_CONFIG_DEFAULTS.tCluster, 60, 1800),
     num("jam_t_substitute", JAM_CONFIG_DEFAULTS.tSubstitute, 30, 1800),
     num("jam_cluster_min", JAM_CONFIG_DEFAULTS.clusterMin, 2, 5),
+    num("jam_downstream_horizon_s", JAM_DOWNSTREAM_HORIZON_S_DEFAULT, 120, 3600),
   ]);
-  return { tSingle, tCluster, tSubstitute, clusterMin };
+  return { tSingle, tCluster, tSubstitute, clusterMin, downstreamHorizonS };
+}
+
+// Fallback downstream count when a line has no usable timetable to derive segment
+// times from — a modest stop count so the banner still localizes.
+const DOWNSTREAM_STOP_FALLBACK = 6;
+// Never let the horizon paint half the city even on a very fast line.
+const DOWNSTREAM_STOP_HARD_CAP = 20;
+
+/**
+ * How many downstream stops fall within [horizonS] seconds of travel past the
+ * jam's front — derived from the line's MEAN segment time (a representative trip's
+ * total run time / its segment count), NOT a fixed stop count. Beyond this the jam
+ * shows up as an absence of live vehicles in the board anyway, so the banner there
+ * only duplicates that emptiness and stretches the alert across half the city.
+ */
+export async function downstreamStopCount(
+  env: Env,
+  routeId: string,
+  horizonS: number,
+): Promise<number> {
+  const avg = await avgSegmentSeconds(env, routeId);
+  if (avg == null || avg <= 0) return DOWNSTREAM_STOP_FALLBACK;
+  return Math.min(DOWNSTREAM_STOP_HARD_CAP, Math.max(1, Math.round(horizonS / avg)));
+}
+
+// Mean seconds between consecutive timed stops on a route. `TripTimed.times` are
+// minutes since midnight, aligned to the shape stops — but the array carries
+// quirks (an out-of-order first element; degenerate all-equal trips), so instead
+// of trusting positions we take, per trip, (max − min) / (segments) and return the
+// MEDIAN across trips. Null when the line carries no usable trip data.
+async function avgSegmentSeconds(env: Env, routeId: string): Promise<number | null> {
+  const trips = await getRouteTrips(env, routeId);
+  if (!trips || trips.length === 0) return null;
+  const perTrip: number[] = [];
+  for (const t of trips) {
+    const nn = t.times.filter((x): x is number => x != null);
+    if (nn.length < 3) continue;
+    const spanMin = Math.max(...nn) - Math.min(...nn);
+    if (spanMin <= 0) continue; // degenerate (all-equal) trip
+    perTrip.push((spanMin * 60) / (nn.length - 1));
+  }
+  if (perTrip.length === 0) return null;
+  perTrip.sort((a, b) => a - b);
+  return perTrip[Math.floor(perTrip.length / 2)];
 }
 
 // Tram fleet garage-number ranges (mirror app/assets/data/fleet_models.json —
@@ -311,7 +358,7 @@ export async function computeJams(
     for (const [, group] of byDir) {
       for (const cluster of clusterByProximity(group)) {
         if (cluster.length < cfg.clusterMin) continue;
-        const geom = await enrichJamGeometry(env, cluster[0].direction_route_id, cluster);
+        const geom = await enrichJamGeometry(env, cluster[0].direction_route_id, cluster, cfg.downstreamHorizonS);
         jams.push({
           line: cluster[0].line,
           direction_route_id: cluster[0].direction_route_id,
@@ -334,7 +381,7 @@ export async function computeJams(
 
   // ── Staging simulation ──
   if (opts.simLine) {
-    const sim = await buildSimulatedJam(env, opts.simLine);
+    const sim = await buildSimulatedJam(env, opts.simLine, cfg.downstreamHorizonS);
     if (sim) {
       jams.push(sim.jam);
       if (sim.substitution) substitutions.push(sim.substitution);
@@ -360,11 +407,13 @@ async function enrichJamGeometry(
   env: Env,
   directionRouteId: string | null,
   cluster: { lat: number; lon: number }[],
+  downstreamHorizonS: number,
 ): Promise<{ segment: { rear: LatLon; front: LatLon } | null; affectedStopIds: string[] }> {
   if (!directionRouteId) return { segment: null, affectedStopIds: [] };
   const shape = await getRouteShape(env, directionRouteId);
   if (!shape || shape.stops.length < 2) return { segment: null, affectedStopIds: [] };
   const stops = [...shape.stops].sort((a, b) => a.seq - b.seq);
+  const downstreamCap = await downstreamStopCount(env, directionRouteId, downstreamHorizonS);
   const nearestSeqIdx = (p: { lat: number; lon: number }) => {
     let best = 0;
     let bestD = Infinity;
@@ -382,9 +431,10 @@ async function enrichJamGeometry(
   const frontIdx = Math.min(stops.length - 1, Math.max(...idxs) + 1);
   const rearStop = stops[rearIdx];
   const frontStop = stops[frontIdx];
-  // Within-span stops (under the red segment) + downstream stops ahead (capped).
+  // Within-span stops (under the red segment) + downstream stops ahead, capped by
+  // TRAVEL TIME (downstreamCap = stops within the horizon), not a fixed count.
   const affectedStopIds = stops
-    .slice(rearIdx, frontIdx + 1 + DOWNSTREAM_STOP_CAP)
+    .slice(rearIdx, frontIdx + 1 + downstreamCap)
     .map((s) => s.stop_id);
   return {
     segment: { rear: { lat: rearStop.lat, lon: rearStop.lon }, front: { lat: frontStop.lat, lon: frontStop.lon } },
@@ -453,6 +503,7 @@ function clusterByProximity<T extends { lat: number; lon: number }>(items: T[]):
 async function buildSimulatedJam(
   env: Env,
   simLine: string,
+  downstreamHorizonS: number,
 ): Promise<{ jam: JamDto; substitution?: SubstitutionDto } | null> {
   const tramLines = (await getAllLines(env)).filter((l) => l.vehicle_type === "tram");
   const wanted = simLine && simLine !== "auto" && simLine !== "1" ? simLine : null;
@@ -461,6 +512,7 @@ async function buildSimulatedJam(
     const shape = await getRouteShape(env, line.route_id);
     if (!shape || shape.stops.length < 6) continue;
     const stops = [...shape.stops].sort((a, b) => a.seq - b.seq);
+    const downstreamCap = await downstreamStopCount(env, line.route_id, downstreamHorizonS);
     const mid = Math.floor(stops.length / 2);
     const s1 = stops[mid];
     const s2 = stops[mid + 1];
@@ -480,7 +532,7 @@ async function buildSimulatedJam(
         has_substitute: false,
         segment: { rear: { lat: rear.lat, lon: rear.lon }, front: { lat: front.lat, lon: front.lon } },
         affected_stop_ids: stops
-          .slice(rearIdx, frontIdx + 1 + DOWNSTREAM_STOP_CAP)
+          .slice(rearIdx, frontIdx + 1 + downstreamCap)
           .map((s) => s.stop_id),
         simulated: true,
       },

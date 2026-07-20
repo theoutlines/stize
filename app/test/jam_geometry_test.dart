@@ -14,10 +14,11 @@ Jam _jam({
   required ll.LatLng rear,
   required ll.LatLng front,
   required List<ll.LatLng> vehicles,
+  String dir = 'r7',
 }) =>
     Jam(
       line: '7',
-      directionRouteId: 'r7',
+      directionRouteId: dir,
       vehicles: [
         for (final v in vehicles)
           JamVehicle(
@@ -98,6 +99,40 @@ void main() {
       final res = buildJamSegment(jam, path);
       expect(res.gated, isFalse);
       expect(res.polyline, isNull);
+    });
+  });
+
+  group('isJamAhead', () {
+    final path = _straightPath(); // west→east along lat 44.80
+    // A vehicle sitting mid-route, travelling east (direction "r7").
+    final vehAlong = path.project(const ll.LatLng(44.80, 20.418));
+
+    Jam jamAt(double lon, {String dir = 'r7'}) => _jam(
+          rear: ll.LatLng(44.80, lon - 0.001),
+          front: ll.LatLng(44.80, lon + 0.001),
+          vehicles: [ll.LatLng(44.80, lon)],
+          dir: dir,
+        );
+
+    test('true when the jam is ahead on the same direction', () {
+      expect(
+        isJamAhead(jam: jamAt(20.430), vehicleDirectionRouteId: 'r7', path: path, vehicleAlong: vehAlong),
+        isTrue,
+      );
+    });
+
+    test('false for the opposite direction (different direction_route_id)', () {
+      expect(
+        isJamAhead(jam: jamAt(20.430, dir: 'r7-1'), vehicleDirectionRouteId: 'r7', path: path, vehicleAlong: vehAlong),
+        isFalse,
+      );
+    });
+
+    test('false when the jam is already behind the vehicle', () {
+      expect(
+        isJamAhead(jam: jamAt(20.405), vehicleDirectionRouteId: 'r7', path: path, vehicleAlong: vehAlong),
+        isFalse,
+      );
     });
   });
 
