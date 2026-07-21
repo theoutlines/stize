@@ -263,11 +263,31 @@ that can't be collected retroactively, we start accumulating before we need it.
   KV `config:jam_t_*`) — validated only as "does not fire on feed starvation", never
   against a real jam's magnitude. Recalibrate on the first captured live jam; the
   prod enable of the UI flag is gated on that calibration.
-- ⏭️ **Verify the first prod aggregate backfill** (Cron `0 6 * * *`, first run
-  **2026-07-21**): confirm `agg_line_dir_time` populated, reads stayed inside the
-  free tier (incremental ≈0.2M/day, not the ~12.3M full recompute), and
-  `sched_delay_*` actually computed. Staging verified 4,754 buckets == every raw
-  row counted once; prod is the first live check.
+- 🟡 **Prod aggregate backfill — windowed rewrite done, primary metric correct,
+  secondary passes blocked on CPU budget** (branch `fix/aggregate-windowed-backfill`,
+  NOT merged). Full story: `docs/reports/2026-07-21-aggregate-windowed-backfill.md`
+  (and the original failure `docs/reports/2026-07-21-prod-backfill-verify.md`).
+  - The one-shot full backfill was replaced by a **windowed** aggregate: each run
+    processes ≤ `config:agg_backfill_window_s` (KV, default 1 day) and advances
+    `last_run` **atomically with the bucket writes in one `db.batch()`** (found &
+    fixed a double-count where a CPU-limit kill between separate bucket/watermark
+    writes inflated samples to 2.5×). `aggregateVehicles`/`sched_delay` are
+    best-effort after the atomic commit. sched_delay match made O(1)-per-arrival
+    via memoisation (hub stop 21577 had 3789 arrivals on the 07-17 outage day).
+    172/172 backend tests green (convergence + idempotency + config-window).
+  - **Prod state:** primary metric correct & converged to 07-20 18:28
+    (`SUM(samples)==COUNT(raw)=401,273`, no double-count); ~17h window left;
+    `agg_vehicle_line`=1478; **`sched_delay_count`=0**. No user impact
+    (`analytics_show` OFF).
+  - **Open blocker:** the full `aggregate()` (all passes) does NOT fit the admin
+    **fetch-path** CPU budget at these volumes — it dies in the secondary passes
+    after the atomic commit, so sched_delay stays 0 (over-forcing ~60 admin calls
+    also exhausted the fetch CPU budget: heavy call → 503/1102, light paths 200).
+  - **Next:** confirm at the 06:00 UTC **cron** (bigger budget) whether a clean
+    1-day-window run completes (log `caughtUp` + `sched_delay_count>0`); if not,
+    **split aggregate** — primary in cron, heavy vehicles/sched in a separate
+    deferred pass / smaller windows. Backfill the historical sched_delay gap
+    off-peak afterwards. Chip stays OPEN.
 - ⏭️ **Monitor D1 write volume against the free tier.** Three writers now feed D1:
   `vehicle_fixes` upsert on every fresh board (jam), the sweep (~27k rows/day), and
   organic (~41k/day) → ~68k/day writes, 32% headroom under the 100k/day free tier.

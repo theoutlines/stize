@@ -17,6 +17,24 @@ const RAW_RETENTION_DAYS = 30;
 // filter below: headway gap < 7200s and speed dt < 1800s → 7200s is enough.
 const AGG_LOOKBACK_SECONDS = 7200;
 
+// Max observed_at span processed per aggregate() invocation. On a fresh backfill
+// the whole retained raw (hundreds of k rows, ~12M row-reads) can't fit one Cron
+// invocation — it dies mid-write and never advances the watermark (see
+// 2026-07-21-prod-backfill-verify.md). So each run processes AT MOST this much
+// time, advances `last_run` to the window end, and the backfill CONVERGES over
+// several bounded runs; once caught up the daily run is a light increment.
+// Runtime-tunable (KV, no redeploy) so the window can be narrowed if a run still
+// can't finish.
+const AGG_WINDOW_KV_KEY = "config:agg_backfill_window_s";
+const AGG_WINDOW_DEFAULT_SECONDS = 86400; // 1 day
+
+async function resolveAggWindowSeconds(env: Env): Promise<number> {
+  const raw = await env.STIGLA_KV.get(AGG_WINDOW_KV_KEY);
+  if (raw === null) return AGG_WINDOW_DEFAULT_SECONDS;
+  const n = parseInt(raw, 10);
+  return Number.isNaN(n) || n <= 0 ? AGG_WINDOW_DEFAULT_SECONDS : n;
+}
+
 // D1 caps bound parameters at 100 per statement — far below SQLite's own 999
 // default. The 2026-07-13 fix chunked by a fixed 40 *rows*, which for a 7-column
 // insert is 280 params (2.8× the real cap): still "too many SQL variables". So
@@ -281,37 +299,65 @@ function headwayHistogramSelect(): string {
 
 /**
  * Roll raw observations up into `agg_line_dir_time` (per line × direction × dow ×
- * hour) and the per-vehicle tables, then prune old raw. **Incremental**: only raw
- * newer than the last run (plus a lookback for windowed metrics) is read, and its
- * contributions are ADDED to the existing buckets — so the daily job reads ~one
- * day of rows, not the whole table. Buckets are additive/mergeable by design; the
- * per-hour histogram is what makes any percentile / "as-usual" baseline derivable
- * later. Idempotent within a run via the `last_run` watermark: re-running
- * immediately processes zero new rows.
+ * hour) and the per-vehicle tables, then prune old raw. **Windowed & incremental**:
+ * each invocation processes at most one `config:agg_backfill_window_s` slice of
+ * `observed_at` (default 1 day) starting at the `last_run` watermark, ADDS its
+ * contributions to the existing buckets (additive/mergeable by design), and
+ * advances the watermark to the window end. So the FIRST backfill converges over
+ * several bounded runs instead of dying in one over-budget invocation, and once
+ * caught up the daily run is a light increment (window end clamps to `now`).
+ *
+ * Progress is monotonic: the watermark only ever moves FORWARD, and to the end of
+ * the slice this run actually processed. A run that can't advance (no raw at all)
+ * leaves the data untouched. `caughtUp` is true once the window reached `now`.
  */
 export async function aggregate(
   env: Env,
   now: number = Math.floor(Date.now() / 1000),
-): Promise<{ buckets: number }> {
+): Promise<{ buckets: number; from: number; to: number; caughtUp: boolean }> {
   const db = env.STIGLA_ANALYTICS_DB;
 
   const lastRunRow = await db
     .prepare("SELECT value FROM agg_state WHERE key = 'last_run'")
     .first<{ value: string }>();
   const lastRun = lastRunRow ? Number(lastRunRow.value) : 0;
-  const windowStart = Math.max(0, lastRun - AGG_LOOKBACK_SECONDS);
-  const fullBackfill = lastRun === 0;
+  const fresh = lastRun === 0;
 
-  // A full backfill recomputes from all retained raw, so clear the aggregate
-  // tables first — makes re-backfilling (e.g. after clearing the watermark)
-  // idempotent instead of colliding on the primary keys / double-counting.
-  if (fullBackfill) {
+  // Where this run starts. On a fresh backfill anchor just before the OLDEST raw
+  // row (not epoch 0 — otherwise the first windows land on decades of empty time)
+  // and clear the aggregate tables once for a clean slate. Otherwise resume at the
+  // watermark.
+  let cursor: number;
+  if (fresh) {
+    const oldest = await db
+      .prepare("SELECT MIN(observed_at) AS m FROM raw_observations")
+      .first<{ m: number | null }>();
+    if (!oldest || oldest.m == null) {
+      // No raw at all — nothing to roll up. Pin the watermark to `now` so the next
+      // run is a normal (empty) increment rather than another fresh anchor scan.
+      await db
+        .prepare("INSERT OR REPLACE INTO agg_state (key, value) VALUES ('last_run', ?)")
+        .bind(String(now))
+        .run();
+      return { buckets: 0, from: now, to: now, caughtUp: true };
+    }
+    cursor = oldest.m - 1;
     await db.batch([
       db.prepare("DELETE FROM agg_line_dir_time"),
       db.prepare("DELETE FROM agg_vehicle_line"),
       db.prepare("DELETE FROM agg_vehicle_line_dow"),
     ]);
+  } else {
+    cursor = lastRun;
   }
+
+  // This run's window: (cursor, windowEnd]. Bounded by the runtime-tunable slice
+  // so one over-budget invocation can't happen; clamped to `now` once caught up.
+  const windowSize = await resolveAggWindowSeconds(env);
+  const windowEnd = Math.min(now, cursor + windowSize);
+  const caughtUp = windowEnd >= now;
+  // Lookback so a headway/speed pair straddling the window's start still resolves.
+  const windowStart = Math.max(0, cursor - AGG_LOOKBACK_SECONDS);
 
   const map = new Map<string, Bucket>();
   const at = (line: string, dir: string, dow: number, hour: number): Bucket => {
@@ -333,7 +379,7 @@ export async function aggregate(
        WHERE observed_at > ? AND observed_at <= ?
        GROUP BY line, dir, dow, hour`,
     )
-    .bind(lastRun, now)
+    .bind(cursor, windowEnd)
     .all<{ line: string; dir: string; dow: number; hour: number; samples: number; arrivals: number }>();
   for (const r of activity.results) {
     const b = at(r.line, r.dir, r.dow, r.hour);
@@ -342,7 +388,7 @@ export async function aggregate(
   }
 
   // Speed — read the lookback window so LAG has the earlier fix, but only count
-  // pairs whose LATER fix is new (observed_at > lastRun) to avoid double-counting.
+  // pairs whose LATER fix is new (observed_at > cursor) to avoid double-counting.
   const speed = await db
     .prepare(
       `SELECT line, dir, dow, hour, COUNT(*) AS n, SUM(sp) AS s FROM (
@@ -362,7 +408,7 @@ export async function aggregate(
        WHERE dt > 20 AND dt < 1800 AND dstops > 0 AND oa > ?
        GROUP BY line, dir, dow, hour`,
     )
-    .bind(windowStart, now, lastRun)
+    .bind(windowStart, windowEnd, cursor)
     .all<{ line: string; dir: string; dow: number; hour: number; n: number; s: number }>();
   for (const r of speed.results) {
     const b = at(r.line, r.dir, r.dow, r.hour);
@@ -389,7 +435,7 @@ export async function aggregate(
        WHERE gap > 60 AND gap < 7200 AND vehicle_id <> prev_g AND oa > ?
        GROUP BY line, dir, dow, hour`,
     )
-    .bind(windowStart, now, lastRun)
+    .bind(windowStart, windowEnd, cursor)
     .all<
       { line: string; dir: string; dow: number; hour: number; n: number; s: number } & Record<
         `hb${number}`,
@@ -405,35 +451,58 @@ export async function aggregate(
     }
   }
 
-  await mergeBuckets(db, [...map.values()], now, fullBackfill);
+  // --- ATOMIC commit: every bucket UPSERT for this window PLUS the watermark
+  // advance go in ONE db.batch() (a single D1 transaction). So the run either
+  // commits its window AND moves the watermark, or does neither — it can NEVER
+  // leave buckets written without advancing the watermark, which the next run
+  // would then re-add (the 2026-07-21 double-count: repeated CPU-limit kills
+  // between the bucket write and a separate watermark write inflated samples to
+  // 2.5× the raw count). The CPU-heavy part (the window-function scans above) runs
+  // BEFORE this batch, so a resource-limit kill there just leaves the watermark
+  // unmoved and the next run safely reprocesses the same slice from scratch.
+  // Buckets per bounded window are a few hundred (line×dir×dow×hour for one time
+  // slice) — well within a single batch; narrow config:agg_backfill_window_s if a
+  // window's write set ever grows too large.
+  const cols = AGG_LINE_DIR_TIME_COLUMNS.join(",");
+  const ph = AGG_LINE_DIR_TIME_COLUMNS.map(() => "?").join(",");
+  const upsertSql = `INSERT INTO agg_line_dir_time (${cols}) VALUES (${ph}) ON CONFLICT(line,direction_route_id,dow,hour) DO UPDATE SET ${AGG_UPSERT_SET}`;
+  const writes = [...map.values()].map((b) => db.prepare(upsertSql).bind(...bucketRow(b, now)));
+  writes.push(
+    db
+      .prepare("INSERT OR REPLACE INTO agg_state (key, value) VALUES ('last_run', ?)")
+      .bind(String(windowEnd)),
+  );
+  await db.batch(writes);
 
-  // Per-vehicle aggregates — computed BEFORE pruning the raw rows they read.
-  await aggregateVehicles(db, now, lastRun, windowStart);
-
-  // Schedule delay — match new arrivals to the GTFS timetable (needs the
-  // schedule assets + calendar, so it's a JS pass, not SQL). Additive into the
-  // sched_delay_* columns of the buckets the activity pass already created.
-  // BEST-EFFORT: sched_delay is a secondary metric; a failure here (e.g. a
-  // schedule asset hiccup, or a heavy first backfill brushing a per-invocation
-  // limit) must NOT abort the core aggregate — otherwise the watermark below is
-  // never set and the job re-runs a full backfill forever. Log and carry on; the
-  // next incremental run picks the delay up.
+  // Secondary metrics — per-vehicle + schedule-delay. BEST-EFFORT, and deliberately
+  // AFTER the watermark has already advanced: they add onto agg rows for THIS
+  // window, so if the run dies here the next run (watermark already past this slice)
+  // won't reprocess it — the secondary data is simply MISSING for this window, never
+  // double-counted. A thrown error is likewise swallowed (secondary; not worth
+  // stalling the whole aggregate). They read raw before the prune below.
   try {
-    await aggregateSchedDelay(env, db, now, lastRun);
+    await aggregateVehicles(db, now, cursor, windowEnd, windowStart);
+  } catch (e) {
+    console.error("analytics per-vehicle pass failed (continuing without it)", e);
+  }
+  try {
+    await aggregateSchedDelay(env, db, now, cursor, windowEnd);
   } catch (e) {
     console.error("analytics sched_delay pass failed (continuing without it)", e);
   }
 
-  await db
-    .prepare("DELETE FROM raw_observations WHERE observed_at < ?")
-    .bind(now - RAW_RETENTION_DAYS * 86400)
-    .run();
-  await db
-    .prepare("INSERT OR REPLACE INTO agg_state (key, value) VALUES ('last_run', ?)")
-    .bind(String(now))
-    .run();
+  // Prune old raw ONLY once caught up — while still catching up, rows older than
+  // retention may not have been aggregated into their window yet, and pruning them
+  // would drop history unread. (Retention is 30d and current raw is <30d, so this
+  // is belt-and-braces, but keep it correct.)
+  if (caughtUp) {
+    await db
+      .prepare("DELETE FROM raw_observations WHERE observed_at < ?")
+      .bind(now - RAW_RETENTION_DAYS * 86400)
+      .run();
+  }
 
-  return { buckets: map.size };
+  return { buckets: map.size, from: cursor, to: windowEnd, caughtUp };
 }
 
 const AGG_UPSERT_SET =
@@ -449,41 +518,6 @@ function bucketRow(b: Bucket, now: number): (string | number)[] {
 }
 
 /**
- * Write bucket contributions into agg_line_dir_time. On a full backfill (empty
- * table) a plain chunked INSERT is fastest; on an incremental run each bucket is
- * an additive UPSERT so existing history is preserved (sched_delay_* columns,
- * absent from the column list, are left untouched).
- */
-async function mergeBuckets(
-  db: D1Database,
-  buckets: Bucket[],
-  now: number,
-  fullBackfill: boolean,
-): Promise<void> {
-  if (buckets.length === 0) return;
-  if (fullBackfill) {
-    await chunkedInsert(
-      db,
-      "agg_line_dir_time",
-      AGG_LINE_DIR_TIME_COLUMNS,
-      buckets.map((b) => bucketRow(b, now)),
-    );
-    return;
-  }
-  const cols = AGG_LINE_DIR_TIME_COLUMNS.join(",");
-  const placeholders = AGG_LINE_DIR_TIME_COLUMNS.map(() => "?").join(",");
-  const sql = `INSERT INTO agg_line_dir_time (${cols}) VALUES (${placeholders}) ON CONFLICT(line,direction_route_id,dow,hour) DO UPDATE SET ${AGG_UPSERT_SET}`;
-  // Batch the upserts (chunked so a huge incremental run can't build an
-  // unbounded single batch).
-  const BATCH = 50;
-  for (let i = 0; i < buckets.length; i += BATCH) {
-    await db.batch(
-      buckets.slice(i, i + BATCH).map((b) => db.prepare(sql).bind(...bucketRow(b, now))),
-    );
-  }
-}
-
-/**
  * Per-vehicle aggregates, incremental. Totals/arrivals are additive; first_seen
  * takes the min and last_seen the max, so merging a new window is exact. Real
  * vehicles only (NULL vehicle_id excluded). Reads only new rows (activity) or the
@@ -492,7 +526,8 @@ async function mergeBuckets(
 async function aggregateVehicles(
   db: D1Database,
   now: number,
-  lastRun: number,
+  lo: number,
+  hi: number,
   windowStart: number,
 ): Promise<void> {
   const pairs = await db
@@ -504,7 +539,7 @@ async function aggregateVehicles(
        WHERE observed_at > ? AND observed_at <= ? AND vehicle_id IS NOT NULL
        GROUP BY vehicle_id, line`,
     )
-    .bind(lastRun, now)
+    .bind(lo, hi)
     .all<{
       vehicle_id: string;
       line: string;
@@ -524,7 +559,7 @@ async function aggregateVehicles(
        WHERE observed_at > ? AND observed_at <= ? AND vehicle_id IS NOT NULL
        GROUP BY vehicle_id, line, dow`,
     )
-    .bind(lastRun, now)
+    .bind(lo, hi)
     .all<{ vehicle_id: string; line: string; dow: number; samples: number; arrivals: number }>();
 
   const dowSpeed = await db
@@ -545,7 +580,7 @@ async function aggregateVehicles(
        WHERE dt > 20 AND dt < 1800 AND dstops > 0 AND oa > ?
        GROUP BY vehicle_id, line, dow`,
     )
-    .bind(windowStart, now, lastRun)
+    .bind(windowStart, hi, lo)
     .all<{ vehicle_id: string; line: string; dow: number; n: number; s: number }>();
 
   const dowMap = new Map<
@@ -630,7 +665,8 @@ async function aggregateSchedDelay(
   env: Env,
   db: D1Database,
   now: number,
-  lastRun: number,
+  lo: number,
+  hi: number,
 ): Promise<void> {
   const meta = await getScheduleMeta(env);
   if (!meta) return;
@@ -641,12 +677,26 @@ async function aggregateSchedDelay(
        FROM raw_observations
        WHERE observed_at > ? AND observed_at <= ? AND stops_remaining = 0`,
     )
-    .bind(lastRun, now)
+    .bind(lo, hi)
     .all<{ stop_id: string; line: string; dir: string; observed_at: number }>();
   if (arrivals.results.length === 0) return;
 
   const schedCache = new Map<string, StopSchedule | null>();
   const buckets = new Map<string, SchedBucket>();
+
+  // The scheduled-departure minutes for a given (stop, line, dir, service-day) are
+  // identical for EVERY arrival that shares them, so memoise them. Without this the
+  // match is O(arrivals × all-departures-at-stop): a mega-hub with an anomalous
+  // arrival count (e.g. stop 21577 had 3789 arrivals on 2026-07-17) makes one
+  // window's sched pass blow the Worker CPU limit. Memoised, the departure scan
+  // runs once per (line, dir, day) instead of once per arrival.
+  const minsMemo = new Map<string, number[]>();
+  const activeMemo = new Map<string, Set<string>>();
+  const activeFor = (dateISO: string): Set<string> => {
+    let a = activeMemo.get(dateISO);
+    if (!a) activeMemo.set(dateISO, (a = activeServices(dateISO, meta)));
+    return a;
+  };
 
   for (const a of arrivals.results) {
     let sched = schedCache.get(a.stop_id);
@@ -658,21 +708,26 @@ async function aggregateSchedDelay(
 
     const d = new Date(a.observed_at * 1000);
     const ctx = belgradeNow(d);
-    const active = activeServices(ctx.dateISO, meta);
-    const yestActive = activeServices(ctx.yesterdayISO, meta);
 
-    const mins: number[] = [];
-    for (const dep of sched.deps) {
-      if (dep.line !== a.line) continue;
-      // Match direction when we know it; when the row predates direction logging
-      // (dir === '') fall back to any direction of the line at this stop.
-      if (a.dir !== "" && dep.route_id !== a.dir) continue;
-      for (const [svc, m] of Object.entries(dep.svc)) {
-        if (active.has(svc)) for (const t of m) mins.push(t);
-        // Yesterday's overnight trips (>= 1440) run in today's small hours;
-        // schedDelaySeconds' ±1440 shift lines them up.
-        if (yestActive.has(svc)) for (const t of m) if (t >= OVERNIGHT_MINUTES) mins.push(t);
+    const memoKey = `${a.stop_id}|${a.line}|${a.dir}|${ctx.dateISO}`;
+    let mins = minsMemo.get(memoKey);
+    if (mins === undefined) {
+      const active = activeFor(ctx.dateISO);
+      const yestActive = activeFor(ctx.yesterdayISO);
+      mins = [];
+      for (const dep of sched.deps) {
+        if (dep.line !== a.line) continue;
+        // Match direction when we know it; when the row predates direction logging
+        // (dir === '') fall back to any direction of the line at this stop.
+        if (a.dir !== "" && dep.route_id !== a.dir) continue;
+        for (const [svc, m] of Object.entries(dep.svc)) {
+          if (active.has(svc)) for (const t of m) mins.push(t);
+          // Yesterday's overnight trips (>= 1440) run in today's small hours;
+          // schedDelaySeconds' ±1440 shift lines them up.
+          if (yestActive.has(svc)) for (const t of m) if (t >= OVERNIGHT_MINUTES) mins.push(t);
+        }
       }
+      minsMemo.set(memoKey, mins);
     }
     if (mins.length === 0) continue;
 

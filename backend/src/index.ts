@@ -597,7 +597,10 @@ export default {
     // Roll raw observations into per-line metrics and prune old raw.
     ctx.waitUntil(
       aggregate(env).then(
-        (result) => console.log(`analytics aggregate: ${result.buckets} buckets`),
+        (r) =>
+          console.log(
+            `analytics aggregate: ${r.buckets} buckets, window ${r.from}..${r.to}, caughtUp=${r.caughtUp}`,
+          ),
         (err) => console.error("analytics aggregate failed", err),
       ),
     );
