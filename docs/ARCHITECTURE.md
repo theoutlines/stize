@@ -1,6 +1,6 @@
 # Architecture & conventions
 
-How Stigla is put together, and the non-obvious gotchas worth knowing before you
+How Stiže is put together, and the non-obvious gotchas worth knowing before you
 touch the map or the backend. For setup and run commands see the
 [README](../README.md) and [CONTRIBUTING](../CONTRIBUTING.md).
 

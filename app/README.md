@@ -1,3 +1,3 @@
-# Stigla App
+# Stiže App
 
-Flutter app (iOS / Android / Web) for Stigla. Details land in Stage 2.
+Flutter app (iOS / Android / Web) for Stiže. Details land in Stage 2.

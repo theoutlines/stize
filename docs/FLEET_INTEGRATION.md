@@ -1,4 +1,4 @@
-# Stigla — Fleet Identification
+# Stiže — Fleet Identification
 
 Goal: from the garage number in the real-time API (`P80209`, `P93052`, …), show
 the rider **which vehicle they're about to board** — model, age, air
