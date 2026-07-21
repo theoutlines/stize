@@ -36,7 +36,8 @@ instant rollback.
 | `product_analytics` | anonymous product-usage events: client batches them to `POST /api/v1/events`, worker writes to `product_events` (client + backend) | ON | ON | 2026-07-18 | permanent (gate + killswitch) — enabled in prod 2026-07-19 (after `hour_bucket` privacy fix; volumes to be read from live prod) |
 | `context_panel` | adaptive "context slot": persistent left panel on desktop (≥840px) + unified bottom sheets on mobile, one nearby→stop→vehicle state machine (client) | ON | ON | 2026-07-18 | fresh, enabled in prod 2026-07-19 (killswitch = today's independent sheets) |
 | `feedback_form` | drawer footer's in-app feedback form + `POST /api/v1/feedback` (client + backend). OFF hides the "Write to me" form action AND the endpoint refuses with 403 — full killswitch | OFF | ON | 2026-07-20 | fresh (gate + killswitch) — awaiting owner review on the preview pair |
-| `analytics_sweep` | worker runs the citywide "sentinel sweep": slow Cron rotation over ~160 mid-route stops through the existing SWR/arrivals path, so history covers every line — not just the stops users open (backend) | ON | ON | 2026-07-20 | permanent (gate + killswitch + auto circuit-breaker) — enabled in prod 2026-07-20 at the start tempo (day 20s / night paused; target 11s, see `config:sweep_interval_*`) |
+| `analytics_sweep` | worker runs the citywide "sentinel sweep": slow Cron rotation over ~160 mid-route stops through the existing SWR/arrivals path, so history covers every line — not just the stops users open (backend) | **OFF** | ON | 2026-07-20 | permanent (gate + killswitch + auto circuit-breaker) — **shuttered OFF in prod 2026-07-21** after the 20s tempo pushed combined upstream load past the source's tolerance. Safe return prepared on `feature/sweep-rate-guard`: reduced tempo (day **60s** / night paused), request budget + degradation breaker behind `upstream_budget`. Re-enable is a manual, staged step (see the report's checklist) |
+| `upstream_budget` | worker meters every actual upstream fetch (live + sweep, D1 `upstream_events`) and enforces a shared rolling-hour request budget + a degradation breaker on top; OFF = fully dormant (live path unchanged), ON = metering + budget gate for the sweep (live never throttled) + auto-OFF of `analytics_sweep` on source degradation (backend) | OFF | ON | 2026-07-21 | permanent (control + guard) — turn ON FIRST (sweep still off) to measure the live baseline via `/admin/sweep/status`, set the ceiling, then re-enable the sweep |
 | `jam_detection_collect` | worker records the per-vehicle last-fix table (`vehicle_fixes`) opportunistically on the existing SWR refreshes — no extra source calls (backend) | ON | ON | 2026-07-20 | permanent (control) — ON early so history accrues before the UI ships (Variant B needs pre-accumulated history); split from `_show` like `analytics_collect`/`analytics_show` |
 | `jam_detection_show` | reveals the tram-jam UI: worker serves `/api/v1/jams`; client draws the red stalled segment, downstream-stop delay banners, bus-substitution notice (client + backend) | OFF | ON | 2026-07-20 | in-dev (UI killswitch) — OFF: client never calls `/jams`, `/jams` returns empty; recording (gated by `jam_detection_collect`) is unaffected. Enable after the first live jam + threshold calibration |
 
@@ -46,8 +47,15 @@ Config parameters (KV, not boolean flags):
 |---|---|---|---|---|
 | `config:nearby_schedule_stops` | how many nearest "Nearby" stops inherit the schedule fallback (CPU cap) | 5 | 5 (default) | 5 (clamp 0..8) |
 | `config:donate_url` | the drawer footer's Donate link. Empty/unset ⇒ the item is hidden; set a URL ⇒ it appears and opens that URL. Served to the client via `/api/v1/config`'s `config` map. No boolean flag — presence of a non-empty value is the switch | _(unset)_ | _(unset)_ | _(unset ⇒ hidden)_ |
-| `config:sweep_interval_day_seconds` | daytime sentinel-sweep spacing; `round(60/interval)` stops per cron tick. The **only** knob facing the source — raise it slowly (start 20, target 11) | unset→20 | unset→20 | 20 (0 = paused) |
+| `config:sweep_interval_day_seconds` | daytime sentinel-sweep spacing; `round(60/interval)` stops per cron tick. A knob facing the source — raise it slowly. **Reduced-tempo default is now 60s** (was 20s) after the 2026-07-21 shutter | unset→60 | unset→60 | 60 (0 = paused) |
 | `config:sweep_interval_night_seconds` | night (01:00–05:00 Belgrade) sentinel-sweep spacing; **0 = paused** so the daily request profile stays even and gentle | unset→0 | unset→0 | 0 (paused) |
+| `config:sweep_jitter_seconds` | randomized pre-fetch delay per cron tick, drawn uniform in `[0, 2×jitter]` (mean = jitter), so upstream hits don't land on a fixed minute phase | unset→10 | unset→10 | 10 (0 = no jitter) |
+| `config:upstream_budget_hourly` | shared rolling-hour upstream request ceiling (live + sweep). The sweep stands down when its batch would cross `(ceiling − live reserve)`; **live is never gated**. Meter must be ON (`upstream_budget`). Starting value — confirm from the live baseline in `/admin/sweep/status` | unset→1200 | unset→1200 | 1200 |
+| `config:upstream_live_reserve_hourly` | headroom reserved for live under the ceiling; the sweep must always leave this free | unset→300 | unset→300 | 300 |
+| `config:breaker_latency_p95_ms` | degradation breaker: p95 upstream latency over the window above this trips the breaker (auto-OFF `analytics_sweep`) | unset→3000 | unset→3000 | 3000 |
+| `config:breaker_non_json_fraction` | degradation breaker: share (0..1) of non-JSON/empty responses over the window above this trips the breaker | unset→0.3 | unset→0.3 | 0.3 |
+| `config:breaker_window_seconds` | rolling window the breaker's p95 / non-JSON share are computed over | unset→300 | unset→300 | 300 |
+| `config:breaker_min_samples` | minimum upstream samples in the window before the breaker may trip (noise guard) | unset→20 | unset→20 | 20 |
 | `jam:sim` | **staging only** — force a synthetic tram jam on the given line number so a stand shows the red segment + banner without a live jam (also as `?sim=<line>`). Ignored in prod. | (unset) | set to a tram line to demo | unset |
 | `config:jam_t_cluster` | freeze seconds before ≥2 same-direction trams on an adjacent segment count as a jam (cascading T_jam) | 180 | 180 | 180 (clamp 60..1800) |
 | `config:jam_t_substitute` | relaxed freeze seconds when a substitute bus corroborates the line (halves the cluster threshold) | 90 | 90 | 90 (clamp 30..1800) |
@@ -64,6 +72,12 @@ than running on defaults. There is no `visits` state anymore — the adaptive sk
 derives "organic traffic refreshed this sentinel within the current cycle" from
 `MAX(observed_at)` in `raw_observations` (see `SKIP_MARGIN_SECONDS` in
 `lib/sweep.ts`).
+
+The request meter (behind `upstream_budget`) writes one row per **actual** upstream
+fetch to D1 `upstream_events` (`stigla-analytics`, migration `0008`), never on a
+cache hit and never in KV — same KV-vs-D1 principle. It backs the rolling-hour
+budget, the degradation breaker (p95 latency + non-JSON share), and the
+`/api/v1/admin/sweep/status` read-out; rows are pruned to a ~2h retention.
 
 > **Principle — KV vs D1.** KV holds **human-flipped knobs and flags** only
 > (`flag:*`, `config:*`): tiny, rarely written, read-mostly. **Machine state
@@ -134,6 +148,10 @@ the aquarium's `/vehicles/nearby` fan-out becomes opt-in.
     -H "X-Admin-Token: $ADMIN_TOKEN" \
     -d '{"flag":"analytics_show","value":true}'
   ```
+- `GET /api/v1/admin/sweep/status` (header `X-Admin-Token: $ADMIN_TOKEN`): current
+  upstream req/hr (live vs sweep), remaining sweep budget, and degradation-breaker
+  health — so the sweep's pacing/guard can be checked without `wrangler tail`.
+  Returns counts/config only, never secrets.
 
 ## Releasing while a feature is unfinished
 

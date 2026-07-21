@@ -13,7 +13,7 @@ import type {
 import { isServiceKilled, setServiceKilled } from "./lib/killswitch";
 import { FEATURE_FLAGS, getAllFlags, getFlagMemoized, isFeatureFlag, setFlag } from "./lib/featureFlags";
 import { aggregate, getLineAnalytics } from "./lib/analytics";
-import { runSweepTick } from "./lib/sweep";
+import { runSweepTick, sweepStatus } from "./lib/sweep";
 import { logProductEvents, sanitizeBatch } from "./lib/productAnalytics";
 import { getArrivals } from "./lib/arrivals";
 import { getNearbyVehicles } from "./lib/vehicles";
@@ -566,8 +566,23 @@ app.post("/api/v1/admin/sweep/tick", async (c) => {
   if (!token || token !== c.env.ADMIN_TOKEN) {
     return c.json({ error: "unauthorized" }, 401);
   }
-  const result = await runSweepTick(c.env, c.executionCtx);
+  // No jitter on the manual path — a staging check should return promptly, not
+  // sleep up to ~2×jitter seconds like the cron tick does.
+  const result = await runSweepTick(c.env, c.executionCtx, new Date(), { applyJitter: false });
   return c.json(result);
+});
+
+// Read-out of the request budget + degradation breaker: current req/hr (live vs
+// sweep), remaining sweep budget, and breaker health — so it can be checked
+// WITHOUT `wrangler tail`. Admin-token gated (metrics are operational, not public).
+// Contains NO secrets/tokens — only counts, config values, and derived metrics.
+app.get("/api/v1/admin/sweep/status", async (c) => {
+  const token = c.req.header("X-Admin-Token");
+  if (!token || token !== c.env.ADMIN_TOKEN) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  c.header("cache-control", "no-store");
+  return c.json(await sweepStatus(c.env));
 });
 
 export default {
@@ -578,11 +593,24 @@ export default {
     // analytics. Branch on which cron fired so a minute tick never runs the
     // heavy daily job (and vice-versa).
     if (event.cron === "* * * * *") {
+      // Cron path applies jitter (randomized 0..2×jitter-s pre-fetch delay) so the
+      // upstream hit doesn't land on a fixed phase every minute.
       ctx.waitUntil(
-        runSweepTick(env, ctx).then(
-          (r) =>
-            r.ran &&
-            console.log(`sweep: ${r.reason} swept=${r.swept.length} skipped=${r.skipped} fail=${r.failures}`),
+        runSweepTick(env, ctx, new Date(), { applyJitter: true }).then(
+          (r) => {
+            // One greppable line per tick: reason + counts + the budget/breaker
+            // numbers behind the decision (no secrets). Logged even on a no-op so a
+            // "budget-exhausted" / "degradation-breaker" stand-down is visible.
+            const m = r.meter
+              ? ` live_hr=${r.meter.liveHr} sweep_hr=${r.meter.sweepHr}` +
+                ` sweep_ceiling=${r.meter.sweepCeiling} p95=${r.meter.p95LatencyMs ?? "-"}ms` +
+                ` nonjson=${(r.meter.nonJsonFraction * 100).toFixed(0)}% samples=${r.meter.samples}`
+              : "";
+            console.log(
+              `sweep: ${r.reason} swept=${r.swept.length} skipped=${r.skipped}` +
+                ` fail=${r.failures} jitter=${r.jitterMs ?? 0}ms${m}`,
+            );
+          },
           (err) => console.error("sweep tick failed", err),
         ),
       );
