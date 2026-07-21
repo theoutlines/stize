@@ -684,6 +684,20 @@ async function aggregateSchedDelay(
   const schedCache = new Map<string, StopSchedule | null>();
   const buckets = new Map<string, SchedBucket>();
 
+  // The scheduled-departure minutes for a given (stop, line, dir, service-day) are
+  // identical for EVERY arrival that shares them, so memoise them. Without this the
+  // match is O(arrivals × all-departures-at-stop): a mega-hub with an anomalous
+  // arrival count (e.g. stop 21577 had 3789 arrivals on 2026-07-17) makes one
+  // window's sched pass blow the Worker CPU limit. Memoised, the departure scan
+  // runs once per (line, dir, day) instead of once per arrival.
+  const minsMemo = new Map<string, number[]>();
+  const activeMemo = new Map<string, Set<string>>();
+  const activeFor = (dateISO: string): Set<string> => {
+    let a = activeMemo.get(dateISO);
+    if (!a) activeMemo.set(dateISO, (a = activeServices(dateISO, meta)));
+    return a;
+  };
+
   for (const a of arrivals.results) {
     let sched = schedCache.get(a.stop_id);
     if (sched === undefined) {
@@ -694,21 +708,26 @@ async function aggregateSchedDelay(
 
     const d = new Date(a.observed_at * 1000);
     const ctx = belgradeNow(d);
-    const active = activeServices(ctx.dateISO, meta);
-    const yestActive = activeServices(ctx.yesterdayISO, meta);
 
-    const mins: number[] = [];
-    for (const dep of sched.deps) {
-      if (dep.line !== a.line) continue;
-      // Match direction when we know it; when the row predates direction logging
-      // (dir === '') fall back to any direction of the line at this stop.
-      if (a.dir !== "" && dep.route_id !== a.dir) continue;
-      for (const [svc, m] of Object.entries(dep.svc)) {
-        if (active.has(svc)) for (const t of m) mins.push(t);
-        // Yesterday's overnight trips (>= 1440) run in today's small hours;
-        // schedDelaySeconds' ±1440 shift lines them up.
-        if (yestActive.has(svc)) for (const t of m) if (t >= OVERNIGHT_MINUTES) mins.push(t);
+    const memoKey = `${a.stop_id}|${a.line}|${a.dir}|${ctx.dateISO}`;
+    let mins = minsMemo.get(memoKey);
+    if (mins === undefined) {
+      const active = activeFor(ctx.dateISO);
+      const yestActive = activeFor(ctx.yesterdayISO);
+      mins = [];
+      for (const dep of sched.deps) {
+        if (dep.line !== a.line) continue;
+        // Match direction when we know it; when the row predates direction logging
+        // (dir === '') fall back to any direction of the line at this stop.
+        if (a.dir !== "" && dep.route_id !== a.dir) continue;
+        for (const [svc, m] of Object.entries(dep.svc)) {
+          if (active.has(svc)) for (const t of m) mins.push(t);
+          // Yesterday's overnight trips (>= 1440) run in today's small hours;
+          // schedDelaySeconds' ±1440 shift lines them up.
+          if (yestActive.has(svc)) for (const t of m) if (t >= OVERNIGHT_MINUTES) mins.push(t);
+        }
       }
+      minsMemo.set(memoKey, mins);
     }
     if (mins.length === 0) continue;
 
