@@ -214,6 +214,24 @@ abstract class AppLocalizations {
   /// **'Nothing found. Try a different spelling?'**
   String get searchNoResults;
 
+  /// Section label between nearby matches and global stop/line results in the unified mobile search
+  ///
+  /// In en, this message translates to:
+  /// **'More results'**
+  String get searchMoreResults;
+
+  /// Tooltip on the desktop context-panel collapse tab (hides the panel)
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse panel'**
+  String get panelCollapse;
+
+  /// Tooltip on the collapse tab once the panel is collapsed (restores it)
+  ///
+  /// In en, this message translates to:
+  /// **'Expand panel'**
+  String get panelExpand;
+
   /// No description provided for @locationDenied.
   ///
   /// In en, this message translates to:
@@ -909,6 +927,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Coverage map is unavailable right now.'**
   String get coverageUnavailable;
+
+  /// Indie framing in the drawer feedback banner; owner will review the wording
+  ///
+  /// In en, this message translates to:
+  /// **'Built solo by Ivan in Belgrade — found a bug? Tell me.'**
+  String get drawerFeedbackBannerLine;
+
+  /// No description provided for @drawerFeedbackSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback'**
+  String get drawerFeedbackSheetTitle;
+
+  /// No description provided for @feedbackWriteToMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Write to me'**
+  String get feedbackWriteToMe;
+
+  /// No description provided for @feedbackWriteToMeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a message — bugs, ideas, anything.'**
+  String get feedbackWriteToMeSubtitle;
+
+  /// No description provided for @feedbackGithubIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub Issues'**
+  String get feedbackGithubIssues;
+
+  /// No description provided for @feedbackGithubIssuesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'For technical reports (public).'**
+  String get feedbackGithubIssuesSubtitle;
+
+  /// No description provided for @feedbackFormTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Write to me'**
+  String get feedbackFormTitle;
+
+  /// No description provided for @feedbackMessageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your message'**
+  String get feedbackMessageLabel;
+
+  /// No description provided for @feedbackMessageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A bug, an idea, a kind word…'**
+  String get feedbackMessageHint;
+
+  /// No description provided for @feedbackContactLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact (optional)'**
+  String get feedbackContactLabel;
+
+  /// No description provided for @feedbackContactHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Email or Telegram, if you want a reply'**
+  String get feedbackContactHint;
+
+  /// No description provided for @feedbackSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get feedbackSend;
+
+  /// No description provided for @feedbackSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks — your message was sent.'**
+  String get feedbackSent;
+
+  /// No description provided for @feedbackErrorGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send. Please try again later.'**
+  String get feedbackErrorGeneric;
+
+  /// No description provided for @feedbackErrorRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait a moment before sending more.'**
+  String get feedbackErrorRateLimited;
+
+  /// No description provided for @feedbackEmptyValidation.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a message first.'**
+  String get feedbackEmptyValidation;
+
+  /// No description provided for @drawerLicenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Open source licenses'**
+  String get drawerLicenses;
+
+  /// No description provided for @drawerPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get drawerPrivacy;
+
+  /// No description provided for @drawerDonate.
+  ///
+  /// In en, this message translates to:
+  /// **'Support Stigla'**
+  String get drawerDonate;
+
+  /// No description provided for @licensesLegalese.
+  ///
+  /// In en, this message translates to:
+  /// **'Stigla is free software under the AGPL-3.0 license.'**
+  String get licensesLegalese;
+
+  /// No description provided for @privacyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get privacyTitle;
+
+  /// No description provided for @privacyIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Stigla is private by default. Here\'s exactly what it does with data, in plain language.'**
+  String get privacyIntro;
+
+  /// No description provided for @privacyLocationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your location'**
+  String get privacyLocationTitle;
+
+  /// No description provided for @privacyLocationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'When you ask to see nearby stops and vehicles, your device\'s location is sent to our API with that request to find what\'s around you. It is used only to answer that request and is never stored on our servers.'**
+  String get privacyLocationBody;
+
+  /// No description provided for @privacyAnalyticsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Anonymous usage'**
+  String get privacyAnalyticsTitle;
+
+  /// No description provided for @privacyAnalyticsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The app may record anonymous usage events (for example, that a stop was opened) to understand which features are used. These carry no identifiers and no accounts, and cannot be traced back to you.'**
+  String get privacyAnalyticsBody;
+
+  /// No description provided for @privacyTrackersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No ads, no trackers'**
+  String get privacyTrackersTitle;
+
+  /// No description provided for @privacyTrackersBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Stigla shows no ads and includes no third-party advertising or tracking SDKs.'**
+  String get privacyTrackersBody;
+
+  /// No description provided for @privacyFeedbackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback you send'**
+  String get privacyFeedbackTitle;
+
+  /// No description provided for @privacyFeedbackBody.
+  ///
+  /// In en, this message translates to:
+  /// **'If you send feedback, your message — and the optional contact you provide — are stored so we can read it and reply to you. Nothing else is collected with it.'**
+  String get privacyFeedbackBody;
+
+  /// No description provided for @privacyOpenSourceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open source'**
+  String get privacyOpenSourceTitle;
+
+  /// No description provided for @privacyOpenSourceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Stigla\'s code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.'**
+  String get privacyOpenSourceBody;
 }
 
 class _AppLocalizationsDelegate

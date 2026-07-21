@@ -32,6 +32,7 @@ describe("featureFlags", () => {
       "context_panel",
       "coverage_map_show",
       "coverage_on_main_map",
+      "feedback_form",
       "nearby_list",
       "nearby_sort_board",
       "product_analytics",

@@ -4,10 +4,10 @@ import 'package:stigla/core/context_slot.dart';
 
 void main() {
   group('map geometry owner (single source of camera padding)', () {
-    test('desktop → left inset is the panel width', () {
+    test('desktop → left inset clears the island (margin + panel width)', () {
       expect(
         mapInsetsFor(panelActive: true, panelWidth: 384, mobileSheetPx: 300),
-        const EdgeInsets.only(left: 384),
+        const EdgeInsets.only(left: kPanelIslandInset + 384),
       );
     });
 
@@ -25,12 +25,36 @@ void main() {
       );
     });
 
+    test('collapsed desktop panel → zero left inset (view hidden, A#3)', () {
+      expect(
+        mapInsetsFor(
+          panelActive: true,
+          panelWidth: 384,
+          mobileSheetPx: 0,
+          panelCollapsed: true,
+        ),
+        EdgeInsets.zero,
+      );
+    });
+
+    test('collapse flag is ignored on mobile (no panel to hide)', () {
+      expect(
+        mapInsetsFor(
+          panelActive: false,
+          panelWidth: 384,
+          mobileSheetPx: 260,
+          panelCollapsed: true,
+        ),
+        const EdgeInsets.only(bottom: 260),
+      );
+    });
+
     test('crossing desktop→mobile drops the left inset (R3 #2 resize drift)', () {
       final desktop =
           mapInsetsFor(panelActive: true, panelWidth: 384, mobileSheetPx: 0);
       final mobile =
           mapInsetsFor(panelActive: false, panelWidth: 384, mobileSheetPx: 0);
-      expect(desktop.left, 384);
+      expect(desktop.left, kPanelIslandInset + 384);
       expect(mobile.left, 0); // the panel padding is gone on mobile
     });
   });

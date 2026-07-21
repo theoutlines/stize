@@ -35,12 +35,14 @@ instant rollback.
 | `vehicles_on_demand` | the map's vehicle-mode toggle — the user's choice between on-demand vehicles (in context only) and the background "aquarium" (client) | OFF | ON | 2026-07-15 | permanent (toggle gate + killswitch) — two-level, see below |
 | `product_analytics` | anonymous product-usage events: client batches them to `POST /api/v1/events`, worker writes to `product_events` (client + backend) | ON | ON | 2026-07-18 | permanent (gate + killswitch) — enabled in prod 2026-07-19 (after `hour_bucket` privacy fix; volumes to be read from live prod) |
 | `context_panel` | adaptive "context slot": persistent left panel on desktop (≥840px) + unified bottom sheets on mobile, one nearby→stop→vehicle state machine (client) | ON | ON | 2026-07-18 | fresh, enabled in prod 2026-07-19 (killswitch = today's independent sheets) |
+| `feedback_form` | drawer footer's in-app feedback form + `POST /api/v1/feedback` (client + backend). OFF hides the "Write to me" form action AND the endpoint refuses with 403 — full killswitch | OFF | ON | 2026-07-20 | fresh (gate + killswitch) — awaiting owner review on the preview pair |
 
 Config parameters (KV, not boolean flags):
 
 | key | controls | prod | staging | default |
 |---|---|---|---|---|
 | `config:nearby_schedule_stops` | how many nearest "Nearby" stops inherit the schedule fallback (CPU cap) | 5 | 5 (default) | 5 (clamp 0..8) |
+| `config:donate_url` | the drawer footer's Donate link. Empty/unset ⇒ the item is hidden; set a URL ⇒ it appears and opens that URL. Served to the client via `/api/v1/config`'s `config` map. No boolean flag — presence of a non-empty value is the switch | _(unset)_ | _(unset)_ | _(unset ⇒ hidden)_ |
 
 Notes: the two analytics flags are independent on purpose — turn **collect** on
 early to accumulate history while **show** stays off. `nearby_sort_board` only

@@ -37,6 +37,13 @@ const double kPanelWidthFraction = 0.28;
 double panelWidthFor(double width) =>
     (width * kPanelWidthFraction).clamp(kPanelMinWidth, kPanelMaxWidth);
 
+/// The gap the desktop "islands" leave from the screen edges (Google-Maps look):
+/// the search island and the context island float [kPanelIslandInset] px in from
+/// the left/top/bottom instead of sitting flush. The map's left inset therefore
+/// clears the island's RIGHT edge = this margin + the panel width (see
+/// [mapInsetsFor]).
+const double kPanelIslandInset = 12.0;
+
 // ---- Mobile sheet detents (shared, enforced in the common sheet container) --
 //
 // One vocabulary of heights for EVERY mobile bottom sheet (nearby, stop, model,
@@ -59,12 +66,26 @@ const List<double> kSheetDetents = [kSheetPeek, kSheetHalf, kSheetLarge];
 /// desktop panel covers the left ([panelWidth]); the mobile sheet covers the
 /// bottom ([mobileSheetPx]); nothing → zero. Pure so it can be unit-tested for
 /// every layout without a live map (owner R3 #1/#2: one owner, all paths).
+///
+/// [panelCollapsed] is the desktop collapse control (the ◄/► tab): the panel's
+/// state (current context) is unchanged, but its view is hidden and slid off, so
+/// it no longer overlaps the map — the left inset drops to zero. This MUST route
+/// through here rather than any camera call, so every path (follow / stop /
+/// deep-link / resize) sees the same zero-left geometry while collapsed.
 EdgeInsets mapInsetsFor({
   required bool panelActive,
   required double panelWidth,
   required double mobileSheetPx,
+  bool panelCollapsed = false,
 }) {
-  if (panelActive) return EdgeInsets.only(left: panelWidth);
+  if (panelActive) {
+    // The island floats [kPanelIslandInset] in from the left edge, so the map
+    // must clear its RIGHT edge: margin + panel width. Collapsed ⇒ nothing to
+    // clear.
+    return EdgeInsets.only(
+      left: panelCollapsed ? 0 : kPanelIslandInset + panelWidth,
+    );
+  }
   if (mobileSheetPx > 0) return EdgeInsets.only(bottom: mobileSheetPx);
   return EdgeInsets.zero;
 }

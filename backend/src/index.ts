@@ -40,6 +40,11 @@ import {
   listIdeas,
   toggleVote,
 } from "./lib/ideas";
+import { createFeedback, createFeedbackIssue } from "./lib/feedback";
+
+// KV key for the drawer's optional Donate link. Empty/unset ⇒ the client hides
+// the Donate item; set it (dashboard/wrangler) to reveal it. See feature-flags.md.
+const DONATE_URL_KV_KEY = "config:donate_url";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -57,10 +62,15 @@ app.get("/api/v1/health", async (c) => {
 // Runtime config + feature flags the app reads at startup. no-store so a remote
 // flag flip (via /admin/flags) reaches clients on their next fetch, no rebuild.
 app.get("/api/v1/config", async (c) => {
+  const config: Record<string, string> = {};
+  const donateUrl = (await c.env.STIGLA_KV.get(DONATE_URL_KV_KEY))?.trim();
+  if (donateUrl) config.donate_url = donateUrl;
+
   const body: ConfigResponse = {
     version: c.env.API_VERSION,
     environment: c.env.ENVIRONMENT ?? "production",
     flags: await getAllFlags(c.env),
+    config,
   };
   c.header("cache-control", "no-store");
   return c.json(body);
@@ -432,6 +442,63 @@ app.post("/api/v1/events", async (c) => {
     );
   }
   return c.json({ accepted: events.length }, 202);
+});
+
+// In-app feedback (drawer footer). D1 is the durable primary store; a GitHub
+// issue is created best-effort on top for triage (see createFeedbackIssue).
+// Gated by the `feedback_form` flag — OFF makes it a full killswitch (the client
+// hides the form, and a stale client that still posts gets 403). Abuse guards
+// live in createFeedback: per-IP rate limit, message length cap, honeypot. The
+// contact email is never exposed; replies happen out-of-band via the issue.
+app.post("/api/v1/feedback", async (c) => {
+  c.header("cache-control", "no-store");
+  if (!(await getFlagMemoized(c.env, c.executionCtx, "feedback_form"))) {
+    return c.json({ error: "feedback form disabled" }, 403);
+  }
+  const ip = c.req.header("CF-Connecting-IP") ?? "unknown";
+  const body = await c.req
+    .json<{
+      message?: string;
+      contact?: string;
+      website?: string; // honeypot
+      app_version?: string;
+      platform?: string;
+      locale?: string;
+    }>()
+    .catch(() => ({}) as {
+      message?: string;
+      contact?: string;
+      website?: string;
+      app_version?: string;
+      platform?: string;
+      locale?: string;
+    });
+
+  const input = {
+    message: body.message ?? "",
+    contact: body.contact,
+    honeypot: body.website,
+    appVersion: body.app_version,
+    platform: body.platform,
+    locale: body.locale,
+  };
+
+  try {
+    const row = await createFeedback(c.env, ip, input);
+    // Store succeeded → best-effort GitHub triage issue. A failure here is
+    // logged and swallowed: the durable D1 row already exists, so the caller
+    // still got a 201 and nothing is lost.
+    c.executionCtx.waitUntil(
+      createFeedbackIssue(c.env, input).catch((err) =>
+        console.error("feedback issue create failed", err),
+      ),
+    );
+    return c.json({ id: row.id, created_at: row.created_at }, 201);
+  } catch (err) {
+    if (err instanceof RateLimitedError) return c.json({ error: err.message }, 429);
+    if (err instanceof ValidationError) return c.json({ error: err.message }, 400);
+    throw err;
+  }
 });
 
 // Transport analytics: rolled-up metrics for one line, served from the

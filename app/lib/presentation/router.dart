@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/adaptive.dart';
 import 'screens/about_screen.dart';
+import 'screens/privacy_screen.dart';
 import 'screens/analytics_home_screen.dart';
 import 'screens/analytics_line_screen.dart';
 import 'screens/coverage_screen.dart';
@@ -51,6 +52,11 @@ final appRouter = GoRouter(
       path: '/about',
       pageBuilder: (context, state) =>
           adaptivePage(key: state.pageKey, child: const AboutScreen()),
+    ),
+    GoRoute(
+      path: '/privacy',
+      pageBuilder: (context, state) =>
+          adaptivePage(key: state.pageKey, child: const PrivacyScreen()),
     ),
     // Coverage map (infographic) — reachable via the drawer entry, gated on the
     // remote `coverage_map_show` flag. Also a section of the root IndexedStack;

@@ -41,14 +41,16 @@ class NearbyList extends StatelessWidget {
     final leading = header == null ? 0 : 1;
     final list = ListView.separated(
       controller: scrollController,
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+      // Top padding matches the horizontal (side) padding so the first card is
+      // inset equally from the island's top and sides (owner desktop request).
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: groups.length + leading,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, i) {
         if (i < leading) return header!;
         final g = groups[i - leading];
-        return _NearbyCard(
+        return NearbyCard(
           group: g,
           onTap: onTapGroup == null ? null : () => onTapGroup!(g),
         );
@@ -59,8 +61,11 @@ class NearbyList extends StatelessWidget {
   }
 }
 
-class _NearbyCard extends StatelessWidget {
-  const _NearbyCard({required this.group, this.onTap});
+/// One nearby line+direction card. Public so the unified nearby-sheet search can
+/// render nearby matches above the global stop/line results (owner C#3) with the
+/// exact same card the plain list uses.
+class NearbyCard extends StatelessWidget {
+  const NearbyCard({super.key, required this.group, this.onTap});
 
   final NearbyGroup group;
   final VoidCallback? onTap;

@@ -52,6 +52,7 @@ dependencies:
   geolocator_web: ^4.1.4
   url_launcher: ^6.3.1
   fl_chart: ^0.69.2
+  package_info_plus: ^8.1.2
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +84,7 @@ flutter:
   assets:
     - assets/icons/
     - assets/data/
+    - assets/images/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

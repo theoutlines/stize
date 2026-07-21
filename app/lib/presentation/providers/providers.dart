@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/fleet_matcher.dart';
+import '../../core/search.dart';
 import '../../core/vehicle_map_mode.dart';
 import '../../data/analytics/event_logger.dart';
 import '../../data/api/stigla_api_client.dart';
@@ -14,6 +16,7 @@ import '../../data/repositories/alerts_repository_impl.dart';
 import '../../data/repositories/arrivals_repository_impl.dart';
 import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/geocode_repository_impl.dart';
+import '../../data/repositories/feedback_repository_impl.dart';
 import '../../data/repositories/ideas_repository_impl.dart';
 import '../../data/repositories/lines_repository_impl.dart';
 import '../../data/repositories/nearby_arrivals_repository_impl.dart';
@@ -34,6 +37,7 @@ import '../../domain/repositories/arrivals_repository.dart';
 import '../../domain/repositories/favorites_repository.dart';
 import '../../domain/repositories/pinned_favorites_repository.dart';
 import '../../domain/repositories/geocode_repository.dart';
+import '../../domain/repositories/feedback_repository.dart';
 import '../../domain/repositories/ideas_repository.dart';
 import '../../domain/repositories/lines_repository.dart';
 import '../../domain/repositories/nearby_arrivals_repository.dart';
@@ -94,6 +98,19 @@ final vehiclesOnDemandEnabledProvider = Provider<bool>(
 /// keeps today's independent sheets if config can't be reached (killswitch).
 final contextPanelEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.contextPanel ?? false,
+);
+
+/// Whether the in-app feedback form is available (remote `feedback_form` flag).
+/// Defaults to false until config resolves, so the "Write to me" form stays
+/// hidden if config is unreachable (matches the endpoint's killswitch).
+final feedbackFormEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.feedbackForm ?? false,
+);
+
+/// The optional Donate URL (KV `config:donate_url`). Null ⇒ the drawer hides the
+/// Donate item; a non-empty value ⇒ it appears and opens this URL.
+final donateUrlProvider = Provider<String?>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.donateUrl,
 );
 
 /// The map's vehicle mode: the user's Settings choice resolved against the flag
@@ -178,6 +195,19 @@ final ideasRepositoryProvider = Provider<IdeasRepository>(
   (ref) => IdeasRepositoryImpl(ref.watch(apiClientProvider), ref.watch(deviceIdServiceProvider)),
 );
 
+final feedbackRepositoryProvider = Provider<FeedbackRepository>(
+  (ref) =>
+      FeedbackRepositoryImpl(ref.watch(apiClientProvider), ref.watch(deviceIdServiceProvider)),
+);
+
+/// The app's version string — `Stigla <version> (<build>)` — the SINGLE source
+/// reused by the drawer footer AND attached to feedback submissions (Part D#5),
+/// so a future mobile client reports the same string.
+final appVersionProvider = FutureProvider<String>((ref) async {
+  final info = await PackageInfo.fromPlatform();
+  return 'Stigla ${info.version} (${info.buildNumber})';
+});
+
 final gtfsOfflineCacheProvider = Provider<GtfsOfflineCache>(
   (ref) => GtfsOfflineCache(ref.watch(apiClientProvider)),
 );
@@ -205,6 +235,24 @@ final linesRepositoryProvider = Provider<LinesRepository>(
 final geocodeRepositoryProvider = Provider<GeocodeRepository>(
   (ref) => GeocodeRepositoryImpl(ref.watch(apiClientProvider)),
 );
+
+/// One shared global search for BOTH breakpoints (owner C#4): the desktop
+/// persistent panel search and the mobile nearby-sheet search both fan out
+/// through here to the same stop + line repositories, so the query matching /
+/// ranking lives in exactly one place. (Desktop additionally fans in geocoded
+/// places on its own — those are desktop-only in the nearby merge.)
+final globalSearchProvider = Provider<GlobalSearch>((ref) => GlobalSearch(ref));
+
+class GlobalSearch {
+  GlobalSearch(this._ref);
+  final Ref _ref;
+
+  Future<GlobalSearchResults> run(String query) async {
+    final stops = await _ref.read(stopsRepositoryProvider).search(query);
+    final lines = await _ref.read(linesRepositoryProvider).search(query);
+    return GlobalSearchResults(stops: stops, lines: lines);
+  }
+}
 
 final locationServiceProvider = Provider<LocationService>((ref) => LocationService());
 

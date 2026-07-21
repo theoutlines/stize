@@ -2,12 +2,32 @@
 /// plus remotely-togglable feature flags. Flags default to *off* so a missing
 /// or unreachable config never accidentally reveals an in-progress feature.
 class AppConfig {
-  const AppConfig({required this.version, required this.flags});
+  const AppConfig({
+    required this.version,
+    required this.flags,
+    this.config = const {},
+  });
 
   final String version;
   final Map<String, bool> flags;
 
+  /// String KV config values (`config:*`) served alongside the flags. Only
+  /// non-empty keys are present, so an unset value is simply absent.
+  final Map<String, String> config;
+
   bool flag(String name) => flags[name] ?? false;
+
+  /// The optional Donate URL (KV `config:donate_url`). Null/absent ⇒ the drawer
+  /// hides the Donate item; a non-empty value ⇒ it shows and opens this URL.
+  String? get donateUrl {
+    final url = config['donate_url'];
+    return (url != null && url.isNotEmpty) ? url : null;
+  }
+
+  /// Whether the in-app feedback form is available (remote `feedback_form`
+  /// flag). OFF (the default) hides the "Write to me" form action entirely and
+  /// the endpoint refuses — a full killswitch.
+  bool get feedbackForm => flag('feedback_form');
 
   /// Whether the (draft) transport-analytics screens should be shown to the
   /// user. Gated remotely so screens can ship dormant and be revealed later.
@@ -47,7 +67,7 @@ class AppConfig {
   bool get contextPanel => flag('context_panel');
 
 
-  static const empty = AppConfig(version: '', flags: {});
+  static const empty = AppConfig(version: '', flags: {}, config: {});
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {
     final raw = json['flags'];
@@ -55,6 +75,17 @@ class AppConfig {
     if (raw is Map) {
       raw.forEach((k, v) => flags[k.toString()] = v == true);
     }
-    return AppConfig(version: (json['version'] as String?) ?? '', flags: flags);
+    final rawConfig = json['config'];
+    final config = <String, String>{};
+    if (rawConfig is Map) {
+      rawConfig.forEach((k, v) {
+        if (v != null) config[k.toString()] = v.toString();
+      });
+    }
+    return AppConfig(
+      version: (json['version'] as String?) ?? '',
+      flags: flags,
+      config: config,
+    );
   }
 }
