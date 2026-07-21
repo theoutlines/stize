@@ -17,17 +17,19 @@ async function sha256Hex(input) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// The legacy production host is redirect-only: the app is served on the new
-// canonical apex (stize.app), and any hit to the old domain 301-redirects there
-// with the path and query string preserved (so deep links like /stop/:id and
-// ?params survive). It stays a Pages custom domain but never serves the app.
-const LEGACY_HOST = "stigla.theoutlines.xyz";
+// Redirect-only hosts: the app is served on the new canonical apex (stize.app),
+// and any hit to these 301-redirects there with path + query preserved (so deep
+// links like /stop/:id and ?params survive). They stay Pages custom domains but
+// never serve the app:
+//   - stigla.theoutlines.xyz — the legacy production host;
+//   - www.stize.app          — the www subdomain (apex is canonical).
+const REDIRECT_HOSTS = new Set(["stigla.theoutlines.xyz", "www.stize.app"]);
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    if (url.hostname === LEGACY_HOST) {
+    if (REDIRECT_HOSTS.has(url.hostname)) {
       return Response.redirect("https://stize.app" + url.pathname + url.search, 301);
     }
 
