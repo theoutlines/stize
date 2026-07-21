@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/widgets/app_drawer.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/widgets/app_drawer.dart';
 
 Widget _wrap() => ProviderScope(
   child: MaterialApp(

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/fleet_matcher.dart';
+import 'package:stize/core/fleet_matcher.dart';
 
 /// B1 — the fleet matcher, tested against the *real* reference asset (loaded
 /// straight from disk, no Flutter harness) plus a few synthetic broken inputs

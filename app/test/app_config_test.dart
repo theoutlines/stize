@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/domain/models/app_config.dart';
+import 'package:stize/domain/models/app_config.dart';
 
 void main() {
   test('vehicles_on_demand flag maps to the getter', () {

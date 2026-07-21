@@ -41,13 +41,13 @@
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="stigla">
+  <meta name="apple-mobile-web-app-title" content="Stiže">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Stigla</title>
+  <title>Stiže</title>
   <link rel="manifest" href="manifest.json">
 
   <script>
@@ -94,10 +94,10 @@
       function patch() {
         if (!(window.maplibregl && window.maplibregl.Map)) return false;
         var Orig = window.maplibregl.Map;
-        if (Orig.__stiglaPatched) return true;
+        if (Orig.__stizePatched) return true;
         function Patched(opts) {
           var m = new Orig(opts);
-          window.__stiglaMap = m;
+          window.__stizeMap = m;
           // A map created when its container is ALREADY sized (e.g. the SECOND
           // map in the app — the Coverage tab, created after the home map) gets
           // no size change from resize(), so maplibre never kicks its initial
@@ -142,7 +142,7 @@
         }
         Patched.prototype = Orig.prototype;
         Object.keys(Orig).forEach(function (k) { try { Patched[k] = Orig[k]; } catch (e) {} });
-        Patched.__stiglaPatched = true;
+        Patched.__stizePatched = true;
         window.maplibregl.Map = Patched;
         return true;
       }
@@ -177,7 +177,7 @@
     @media (prefers-color-scheme: dark) {
       html, body { background: #10140f; }
     }
-    #stigla-loading {
+    #stize-loading {
       position: fixed;
       inset: 0;
       display: flex;
@@ -192,17 +192,17 @@
       pointer-events: none;
     }
     @media (prefers-color-scheme: dark) {
-      #stigla-loading { color: #8a9992; }
+      #stize-loading { color: #8a9992; }
     }
   </style>
 </head>
 <body>
-  <div id="stigla-loading">Loading Stigla…</div>
+  <div id="stize-loading">Loading Stiže…</div>
   <script>
     // Drop the loading splash once Flutter paints its first frame, so it never
     // lingers over the app.
     window.addEventListener('flutter-first-frame', function () {
-      var el = document.getElementById('stigla-loading');
+      var el = document.getElementById('stize-loading');
       if (el) el.remove();
     });
   </script>

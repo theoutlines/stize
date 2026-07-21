@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/search.dart';
-import 'package:stigla/domain/models/line_info.dart';
-import 'package:stigla/domain/models/nearby_arrival.dart';
-import 'package:stigla/domain/models/stop.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
+import 'package:stize/core/search.dart';
+import 'package:stize/domain/models/line_info.dart';
+import 'package:stize/domain/models/nearby_arrival.dart';
+import 'package:stize/domain/models/stop.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 
 NearbyGroup _group({
   required String line,

@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/eta_format.dart';
-import 'package:stigla/l10n/app_localizations.dart';
+import 'package:stize/core/eta_format.dart';
+import 'package:stize/l10n/app_localizations.dart';
 
 void main() {
   final l10n = lookupAppLocalizations(const Locale('en'));

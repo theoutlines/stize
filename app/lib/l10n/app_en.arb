@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
 
-  "appTitle": "Stigla",
+  "appTitle": "Stiže",
   "@appTitle": {"description": "App name, shown in title bars and the OS app switcher"},
 
   "navHome": "Map",
@@ -11,7 +11,7 @@
 
   "ideasEmptyTitle": "No ideas yet",
   "ideasEmptySubtitle": "Be the first to suggest something.",
-  "ideaInputHint": "What should Stigla do better?",
+  "ideaInputHint": "What should Stiže do better?",
   "ideaSubmit": "Suggest",
   "ideaRateLimited": "One new idea at a time — try again in a few minutes.",
   "ideaVotesCount": "{count, plural, =0{No votes yet} =1{1 vote} other{{count} votes}}",
@@ -139,11 +139,11 @@
   "vehicleModeSwitched": "Transport on the map: {mode}",
   "@vehicleModeSwitched": {"description": "Toast shown right after the map's toggle flips the mode; {mode} is vehicleModeOnDemand or vehicleModeAll", "placeholders": {"mode": {"type": "String"}}},
 
-  "aboutTitle": "About Stigla",
+  "aboutTitle": "About Stiže",
   "aboutRouteData": "Route data: {date}",
   "@aboutRouteData": {"placeholders": {"date": {"type": "String"}}},
   "aboutDisclaimer": "Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.",
-  "aboutDescription": "Stigla shows real-time Belgrade public transport arrivals. Built for personal use.",
+  "aboutDescription": "Stiže shows real-time Belgrade public transport arrivals. Built for personal use.",
 
   "lineFilterAll": "All lines",
 
@@ -219,20 +219,20 @@
   "feedbackEmptyValidation": "Write a message first.",
   "drawerLicenses": "Open source licenses",
   "drawerPrivacy": "Privacy policy",
-  "drawerDonate": "Support Stigla",
-  "licensesLegalese": "Stigla is free software under the AGPL-3.0 license.",
+  "drawerDonate": "Support Stiže",
+  "licensesLegalese": "Stiže is free software under the AGPL-3.0 license.",
   "privacyTitle": "Privacy policy",
-  "privacyIntro": "Stigla is private by default. Here's exactly what it does with data, in plain language.",
+  "privacyIntro": "Stiže is private by default. Here's exactly what it does with data, in plain language.",
   "privacyLocationTitle": "Your location",
   "privacyLocationBody": "When you ask to see nearby stops and vehicles, your device's location is sent to our API with that request to find what's around you. It is used only to answer that request and is never stored on our servers.",
   "privacyAnalyticsTitle": "Anonymous usage",
   "privacyAnalyticsBody": "The app may record anonymous usage events (for example, that a stop was opened) to understand which features are used. These carry no identifiers and no accounts, and cannot be traced back to you.",
   "privacyTrackersTitle": "No ads, no trackers",
-  "privacyTrackersBody": "Stigla shows no ads and includes no third-party advertising or tracking SDKs.",
+  "privacyTrackersBody": "Stiže shows no ads and includes no third-party advertising or tracking SDKs.",
   "privacyFeedbackTitle": "Feedback you send",
   "privacyFeedbackBody": "If you send feedback, your message — and the optional contact you provide — are stored so we can read it and reply to you. Nothing else is collected with it.",
   "privacyOpenSourceTitle": "Open source",
-  "privacyOpenSourceBody": "Stigla's code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.",
+  "privacyOpenSourceBody": "Stiže's code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.",
   "jamStopBannerTitle": "Trams {line} have been stopped longer than usual — possible delay",
   "@jamStopBannerTitle": {"placeholders": {"line": {"type": "String"}}},
   "jamSubstitutionNotice": "Buses are running instead of trams on line {line}",

@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:stigla/data/api/stigla_api_client.dart';
-import 'package:stigla/data/local/gtfs_offline_cache.dart';
+import 'package:stize/data/api/stigla_api_client.dart';
+import 'package:stize/data/local/gtfs_offline_cache.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

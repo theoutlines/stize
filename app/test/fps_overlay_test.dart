@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/core/fps_overlay.dart';
+import 'package:stize/core/fps_overlay.dart';
 
 void main() {
   test('FPS overlay is disabled by default (prod build, no URL param)', () {

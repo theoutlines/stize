@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/core/map_support.dart';
-import 'package:stigla/presentation/app.dart';
+import 'package:stize/core/map_support.dart';
+import 'package:stize/presentation/app.dart';
 
 void main() {
   // MapLibre has no platform implementation under `flutter test`; render the

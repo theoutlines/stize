@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/core/map_support.dart';
-import 'package:stigla/domain/models/arrival.dart';
-import 'package:stigla/domain/models/favorite_stop.dart';
-import 'package:stigla/domain/models/stop.dart';
-import 'package:stigla/domain/repositories/arrivals_repository.dart';
-import 'package:stigla/domain/repositories/favorites_repository.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/providers/providers.dart';
-import 'package:stigla/presentation/screens/stop_screen.dart';
+import 'package:stize/core/map_support.dart';
+import 'package:stize/domain/models/arrival.dart';
+import 'package:stize/domain/models/favorite_stop.dart';
+import 'package:stize/domain/models/stop.dart';
+import 'package:stize/domain/repositories/arrivals_repository.dart';
+import 'package:stize/domain/repositories/favorites_repository.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/screens/stop_screen.dart';
 
 const _stop = Stop(stopId: '20091', name: 'Batutova', lat: 44.79, lon: 20.49, lines: ['12']);
 

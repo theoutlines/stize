@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/domain/models/arrival.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/widgets/arrival_tile.dart';
+import 'package:stize/domain/models/arrival.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/widgets/arrival_tile.dart';
 
 Arrival _arrival({
   required String garageNo,

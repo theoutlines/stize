@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/live_position.dart';
-import 'package:stigla/domain/models/arrival.dart';
-import 'package:stigla/domain/models/area_vehicle.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
+import 'package:stize/core/live_position.dart';
+import 'package:stize/domain/models/arrival.dart';
+import 'package:stize/domain/models/area_vehicle.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 
 Arrival _arrival({String? garageNo, LatLon? gps, bool scheduled = false}) => Arrival(
       line: '71',

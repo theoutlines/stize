@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:stigla/core/vehicle_map_mode.dart';
-import 'package:stigla/domain/models/app_config.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/providers/providers.dart';
-import 'package:stigla/presentation/screens/settings_screen.dart';
+import 'package:stize/core/vehicle_map_mode.dart';
+import 'package:stize/domain/models/app_config.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/screens/settings_screen.dart';
 
 /// Settings with the `vehicles_on_demand` flag forced to [flagOn], reading the
 /// real store on top of mocked prefs — the same path the app takes.

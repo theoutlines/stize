@@ -1,6 +1,6 @@
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/context_slot.dart';
+import 'package:stize/core/context_slot.dart';
 
 void main() {
   group('map geometry owner (single source of camera padding)', () {

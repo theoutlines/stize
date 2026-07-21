@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre/maplibre.dart' show CameraChangeReason;
-import 'package:stigla/core/follow_camera.dart';
-import 'package:stigla/core/moving_object_layer.dart';
+import 'package:stize/core/follow_camera.dart';
+import 'package:stize/core/moving_object_layer.dart';
 
 void main() {
   group('shouldBreakFollow — follow must not cancel itself', () {

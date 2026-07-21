@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/data/api/api_exceptions.dart';
-import 'package:stigla/domain/models/idea.dart';
-import 'package:stigla/domain/repositories/ideas_repository.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/providers/providers.dart';
-import 'package:stigla/presentation/screens/ideas_screen.dart';
+import 'package:stize/data/api/api_exceptions.dart';
+import 'package:stize/domain/models/idea.dart';
+import 'package:stize/domain/repositories/ideas_repository.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/screens/ideas_screen.dart';
 
 class _FakeIdeasRepository implements IdeasRepository {
   _FakeIdeasRepository(this._ideas);

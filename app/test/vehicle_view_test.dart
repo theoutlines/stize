@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/core/fleet_matcher.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/providers/providers.dart';
-import 'package:stigla/presentation/widgets/vehicle_view.dart';
+import 'package:stize/core/fleet_matcher.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/widgets/vehicle_view.dart';
 
 // A garage in [81531,81560] resolves to the Bozankaya class (AC / low-floor /
 // comfort 5); anything else is unknown; a P1..P999 id is a junk placeholder.

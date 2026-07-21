@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
-import 'package:stigla/core/user_location_tracker.dart';
+import 'package:stize/core/user_location_tracker.dart';
 
 void main() {
   group('lerpLatLng', () {

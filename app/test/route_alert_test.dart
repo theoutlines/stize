@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/domain/models/route_alert.dart';
+import 'package:stize/domain/models/route_alert.dart';
 
 RouteAlert _alert({
   DateTime? validFrom,

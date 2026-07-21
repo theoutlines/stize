@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
-import 'package:stigla/core/route_path.dart';
-import 'package:stigla/core/vehicle_track_animator.dart';
-import 'package:stigla/domain/models/arrival.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
+import 'package:stize/core/route_path.dart';
+import 'package:stize/core/vehicle_track_animator.dart';
+import 'package:stize/domain/models/arrival.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 
 Arrival _arrival({required String garageNo, required double lat, required double lon}) {
   return Arrival(

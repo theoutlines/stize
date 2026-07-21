@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/vehicle_map_mode.dart';
-import 'package:stigla/core/vehicle_track_animator.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
+import 'package:stize/core/vehicle_map_mode.dart';
+import 'package:stize/core/vehicle_track_animator.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
 void main() {

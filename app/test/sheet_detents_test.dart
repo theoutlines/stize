@@ -3,18 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
-import 'package:stigla/core/context_slot.dart';
-import 'package:stigla/domain/models/arrival.dart';
-import 'package:stigla/domain/models/favorite_stop.dart';
-import 'package:stigla/domain/models/stop.dart';
-import 'package:stigla/domain/repositories/arrivals_repository.dart';
-import 'package:stigla/domain/repositories/favorites_repository.dart';
-import 'package:stigla/domain/repositories/nearby_arrivals_repository.dart';
-import 'package:stigla/domain/models/nearby_arrival.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/providers/providers.dart';
-import 'package:stigla/presentation/widgets/nearby_sheet.dart';
-import 'package:stigla/presentation/widgets/stop_sheet.dart';
+import 'package:stize/core/context_slot.dart';
+import 'package:stize/domain/models/arrival.dart';
+import 'package:stize/domain/models/favorite_stop.dart';
+import 'package:stize/domain/models/stop.dart';
+import 'package:stize/domain/repositories/arrivals_repository.dart';
+import 'package:stize/domain/repositories/favorites_repository.dart';
+import 'package:stize/domain/repositories/nearby_arrivals_repository.dart';
+import 'package:stize/domain/models/nearby_arrival.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/widgets/nearby_sheet.dart';
+import 'package:stize/presentation/widgets/stop_sheet.dart';
 
 // Every mobile bottom sheet must cap at `large` (owner R2 #4 / R3 #3): dragged
 // to the top it stops at kSheetLarge, leaving a strip of map — never fullscreen.

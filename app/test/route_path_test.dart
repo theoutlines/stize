@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart' as ll;
-import 'package:stigla/core/route_path.dart';
+import 'package:stize/core/route_path.dart';
 
 void main() {
   // An L-shaped route: A -> B goes east, B -> C goes north.

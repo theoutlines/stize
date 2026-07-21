@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart' as ll;
-import 'package:stigla/core/moving_object_layer.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
+import 'package:stize/core/moving_object_layer.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 
 void main() {
   group('MovingObjectKind', () {

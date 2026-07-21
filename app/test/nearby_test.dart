@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/domain/models/arrival.dart' show ServiceStatus;
+import 'package:stize/domain/models/arrival.dart' show ServiceStatus;
 import 'package:latlong2/latlong.dart' as ll;
 
-import 'package:stigla/data/api/api_exceptions.dart';
-import 'package:stigla/domain/models/nearby_arrival.dart';
-import 'package:stigla/domain/repositories/nearby_arrivals_repository.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/providers/providers.dart';
-import 'package:stigla/presentation/widgets/nearby_list.dart';
-import 'package:stigla/presentation/widgets/nearby_sheet.dart';
+import 'package:stize/data/api/api_exceptions.dart';
+import 'package:stize/domain/models/nearby_arrival.dart';
+import 'package:stize/domain/repositories/nearby_arrivals_repository.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/widgets/nearby_list.dart';
+import 'package:stize/presentation/widgets/nearby_sheet.dart';
 
 NearbyGroup _group({
   required String line,

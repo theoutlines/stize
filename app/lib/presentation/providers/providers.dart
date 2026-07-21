@@ -232,12 +232,12 @@ final feedbackRepositoryProvider = Provider<FeedbackRepository>(
       FeedbackRepositoryImpl(ref.watch(apiClientProvider), ref.watch(deviceIdServiceProvider)),
 );
 
-/// The app's version string — `Stigla <version> (<build>)` — the SINGLE source
+/// The app's version string — `Stiže <version> (<build>)` — the SINGLE source
 /// reused by the drawer footer AND attached to feedback submissions (Part D#5),
 /// so a future mobile client reports the same string.
 final appVersionProvider = FutureProvider<String>((ref) async {
   final info = await PackageInfo.fromPlatform();
-  return 'Stigla ${info.version} (${info.buildNumber})';
+  return 'Stiže ${info.version} (${info.buildNumber})';
 });
 
 final gtfsOfflineCacheProvider = Provider<GtfsOfflineCache>(

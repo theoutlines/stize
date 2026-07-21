@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
-import 'package:stigla/core/jam_geometry.dart';
-import 'package:stigla/core/route_path.dart';
-import 'package:stigla/domain/models/jam.dart';
+import 'package:stize/core/jam_geometry.dart';
+import 'package:stize/core/route_path.dart';
+import 'package:stize/domain/models/jam.dart';
 
 // A straight west→east route along latitude 44.80, ~150m between vertices.
 RoutePath _straightPath() => RoutePath([

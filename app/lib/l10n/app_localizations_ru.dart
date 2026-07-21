@@ -9,7 +9,7 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
-  String get appTitle => 'Stigla';
+  String get appTitle => 'Stiže';
 
   @override
   String get navHome => 'Карта';
@@ -30,7 +30,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get ideasEmptySubtitle => 'Стань первым, кто что-то предложит.';
 
   @override
-  String get ideaInputHint => 'Что улучшить в Stigla?';
+  String get ideaInputHint => 'Что улучшить в Stiže?';
 
   @override
   String get ideaSubmit => 'Предложить';
@@ -330,7 +330,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get aboutTitle => 'О Stigla';
+  String get aboutTitle => 'О Stiže';
 
   @override
   String aboutRouteData(String date) {
@@ -343,7 +343,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get aboutDescription =>
-      'Stigla показывает прибытие транспорта Белграда в реальном времени. Сделано для личного использования.';
+      'Stiže показывает прибытие транспорта Белграда в реальном времени. Сделано для личного использования.';
 
   @override
   String get lineFilterAll => 'Все линии';
@@ -551,18 +551,17 @@ class AppLocalizationsRu extends AppLocalizations {
   String get drawerPrivacy => 'Политика конфиденциальности';
 
   @override
-  String get drawerDonate => 'Поддержать Stigla';
+  String get drawerDonate => 'Поддержать Stiže';
 
   @override
-  String get licensesLegalese =>
-      'Stigla — свободное ПО под лицензией AGPL-3.0.';
+  String get licensesLegalese => 'Stiže — свободное ПО под лицензией AGPL-3.0.';
 
   @override
   String get privacyTitle => 'Политика конфиденциальности';
 
   @override
   String get privacyIntro =>
-      'Stigla приватна по умолчанию. Вот что именно она делает с данными — простыми словами.';
+      'Stiže приватна по умолчанию. Вот что именно она делает с данными — простыми словами.';
 
   @override
   String get privacyLocationTitle => 'Ваше местоположение';
@@ -583,7 +582,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get privacyTrackersBody =>
-      'В Stigla нет рекламы и нет сторонних рекламных или трекинговых SDK.';
+      'В Stiže нет рекламы и нет сторонних рекламных или трекинговых SDK.';
 
   @override
   String get privacyFeedbackTitle => 'Отправленная вами обратная связь';
@@ -597,7 +596,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get privacyOpenSourceBody =>
-      'Код Stigla открыт под лицензией AGPL-3.0, так что любой может проверить, как именно она работает.';
+      'Код Stiže открыт под лицензией AGPL-3.0, так что любой может проверить, как именно она работает.';
 
   @override
   String jamStopBannerTitle(String line) {

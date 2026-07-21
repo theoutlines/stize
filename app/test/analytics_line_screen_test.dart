@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/domain/models/line_analytics.dart';
-import 'package:stigla/presentation/providers/providers.dart';
-import 'package:stigla/presentation/screens/analytics_line_screen.dart';
-import 'package:stigla/presentation/widgets/analytics/distribution_dots.dart';
-import 'package:stigla/presentation/widgets/analytics/hourly_sparkline.dart';
-import 'package:stigla/presentation/widgets/analytics/metric_chips.dart';
-import 'package:stigla/presentation/widgets/analytics/time_heatmap.dart';
+import 'package:stize/domain/models/line_analytics.dart';
+import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/screens/analytics_line_screen.dart';
+import 'package:stize/presentation/widgets/analytics/distribution_dots.dart';
+import 'package:stize/presentation/widgets/analytics/hourly_sparkline.dart';
+import 'package:stize/presentation/widgets/analytics/metric_chips.dart';
+import 'package:stize/presentation/widgets/analytics/time_heatmap.dart';
 
 AnalyticsBucket _b(int key, {int samples = 0, double? headway, double? speed}) =>
     AnalyticsBucket(

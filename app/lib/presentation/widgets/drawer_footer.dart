@@ -88,7 +88,7 @@ class DrawerFooter extends ConsumerWidget {
             ),
           ),
           child: LicensePage(
-            applicationName: 'Stigla',
+            applicationName: 'Stiže',
             applicationVersion: version,
             applicationLegalese: '${l10n.licensesLegalese}\n$kRepoUrl',
           ),

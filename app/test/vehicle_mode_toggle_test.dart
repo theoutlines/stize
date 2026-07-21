@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:stigla/core/vehicle_map_mode.dart';
-import 'package:stigla/domain/models/app_config.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/providers/providers.dart';
-import 'package:stigla/presentation/widgets/vehicle_mode_toggle.dart';
+import 'package:stize/core/vehicle_map_mode.dart';
+import 'package:stize/domain/models/app_config.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/widgets/vehicle_mode_toggle.dart';
 
 /// The toggle as the map hosts it: a Scaffold (so the toast has a messenger)
 /// with the `vehicles_on_demand` flag forced to [flagOn].
