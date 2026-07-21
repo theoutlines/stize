@@ -21,7 +21,7 @@ describe("createFeedback (lib)", () => {
     const row = await createFeedback(env, "1.1.1.1", {
       message: "  The nearby list froze on line 79.  ",
       contact: "  @ivan_tg  ",
-      appVersion: "Stigla 1.0.0 (1)",
+      appVersion: "Stiže 1.0.0 (1)",
       platform: "web",
       locale: "sr",
     });
@@ -34,7 +34,7 @@ describe("createFeedback (lib)", () => {
       .first<{ message: string; contact: string; app_version: string; platform: string; locale: string }>();
     expect(stored?.message).toBe("The nearby list froze on line 79."); // trimmed
     expect(stored?.contact).toBe("@ivan_tg");
-    expect(stored?.app_version).toBe("Stigla 1.0.0 (1)");
+    expect(stored?.app_version).toBe("Stiže 1.0.0 (1)");
     expect(stored?.platform).toBe("web");
     expect(stored?.locale).toBe("sr");
   });
@@ -90,7 +90,7 @@ describe("POST /api/v1/feedback", () => {
     });
 
   it("stores a row and returns 201 (GitHub token absent = store-only, no failure)", async () => {
-    const res = await post({ message: "map is blank on my phone", app_version: "Stigla 1.0.0 (1)", platform: "web", locale: "en" });
+    const res = await post({ message: "map is blank on my phone", app_version: "Stiže 1.0.0 (1)", platform: "web", locale: "en" });
     expect(res.status).toBe(201);
     const json = await res.json<{ id: number }>();
     expect(json.id).toBeGreaterThan(0);

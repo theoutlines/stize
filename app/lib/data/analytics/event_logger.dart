@@ -5,7 +5,7 @@ import '../api/stigla_api_client.dart';
 
 /// Anonymous product-analytics event logger.
 ///
-/// Our own contour: events are batched and POSTed to the Stigla backend
+/// Our own contour: events are batched and POSTed to our own backend
 /// (`/api/v1/events`), never to an external analytics vendor. By design it
 /// carries **nothing** that could identify a person — no device id, no IP, no
 /// coordinates, no free text. The only linkage is [_session]: a random id
