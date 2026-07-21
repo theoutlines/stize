@@ -1,4 +1,4 @@
-# Stigla
+# Stiže
 
 Real-time Belgrade public transport, from one Flutter codebase — iOS, Android, and Web.
 
