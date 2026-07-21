@@ -3,8 +3,11 @@ import 'package:latlong2/latlong.dart' as ll;
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/context_slot.dart';
+import '../../domain/models/line_info.dart';
 import '../../domain/models/nearby_arrival.dart';
+import '../../domain/models/stop.dart';
 import 'nearby_view.dart';
+import 'sheet_chrome.dart';
 
 // Re-exported so existing importers keep working after the data logic moved to
 // [NearbyView].
@@ -22,6 +25,8 @@ class NearbySheet extends StatelessWidget {
     required this.active,
     required this.onEnableLocation,
     this.onTapGroup,
+    this.onSelectStop,
+    this.onSelectLine,
     this.onHeightChanged,
   });
 
@@ -39,6 +44,11 @@ class NearbySheet extends StatelessWidget {
   final VoidCallback onEnableLocation;
 
   final void Function(NearbyGroup group)? onTapGroup;
+
+  /// Selecting a GLOBAL search result (stop / line) in the unified search —
+  /// opens that context, like the desktop search (owner C#3).
+  final void Function(Stop stop)? onSelectStop;
+  final void Function(LineInfo line)? onSelectLine;
 
   /// Reports the sheet's current pixel height on every layout/drag frame, so the
   /// map's geometry owner can keep a followed vehicle above the sheet. Optional.
@@ -69,8 +79,7 @@ class NearbySheet extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: kSheetRadius,
               boxShadow: const [
                 BoxShadow(
                     color: Colors.black26, blurRadius: 12, offset: Offset(0, -2)),
@@ -78,7 +87,7 @@ class NearbySheet extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _handle(theme),
+                const SheetDragHandle(),
                 Expanded(
                   child: NearbyView(
                     userLocation: userLocation,
@@ -86,6 +95,8 @@ class NearbySheet extends StatelessWidget {
                     active: active,
                     onEnableLocation: onEnableLocation,
                     onTapGroup: onTapGroup,
+                    onSelectStop: onSelectStop,
+                    onSelectLine: onSelectLine,
                     scrollController: scrollController,
                   ),
                 ),
@@ -97,16 +108,4 @@ class NearbySheet extends StatelessWidget {
       ),
     );
   }
-
-  Widget _handle(ThemeData theme) => Padding(
-        padding: const EdgeInsets.only(top: 8, bottom: 8),
-        child: Container(
-          width: 36,
-          height: 4,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.outlineVariant,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-      );
 }

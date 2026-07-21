@@ -172,6 +172,10 @@ export interface ConfigResponse {
   version: string;
   environment: string; // "production" | "staging"
   flags: Record<string, boolean>;
+  // String KV config values (config:*) the client needs at startup. Only
+  // non-empty keys are included, so an unset value is simply absent (e.g.
+  // `donate_url` present ⇒ show the drawer's Donate item, absent ⇒ hide it).
+  config: Record<string, string>;
 }
 
 // Bundle freshness metadata, written by scripts/build-gtfs.mjs into

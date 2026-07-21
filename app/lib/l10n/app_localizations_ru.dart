@@ -80,6 +80,15 @@ class AppLocalizationsRu extends AppLocalizations {
       'Ничего не нашлось. Может, стоит попробовать иначе написать?';
 
   @override
+  String get searchMoreResults => 'Ещё результаты';
+
+  @override
+  String get panelCollapse => 'Свернуть панель';
+
+  @override
+  String get panelExpand => 'Развернуть панель';
+
+  @override
   String get locationDenied =>
       'Доступ к геолокации запрещён. Разрешите его в браузере или настройках, чтобы видеть себя на карте.';
 
@@ -482,4 +491,111 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get coverageUnavailable => 'Карта покрытия сейчас недоступна.';
+
+  @override
+  String get drawerFeedbackBannerLine =>
+      'Приложение делает один человек — Иван из Белграда. Нашли баг? Напишите мне.';
+
+  @override
+  String get drawerFeedbackSheetTitle => 'Обратная связь';
+
+  @override
+  String get feedbackWriteToMe => 'Написать мне';
+
+  @override
+  String get feedbackWriteToMeSubtitle =>
+      'Отправьте сообщение — баги, идеи, что угодно.';
+
+  @override
+  String get feedbackGithubIssues => 'GitHub Issues';
+
+  @override
+  String get feedbackGithubIssuesSubtitle =>
+      'Для технических отчётов (публично).';
+
+  @override
+  String get feedbackFormTitle => 'Написать мне';
+
+  @override
+  String get feedbackMessageLabel => 'Ваше сообщение';
+
+  @override
+  String get feedbackMessageHint => 'Баг, идея, доброе слово…';
+
+  @override
+  String get feedbackContactLabel => 'Контакт (необязательно)';
+
+  @override
+  String get feedbackContactHint => 'Email или Telegram, если хотите ответ';
+
+  @override
+  String get feedbackSend => 'Отправить';
+
+  @override
+  String get feedbackSent => 'Спасибо — сообщение отправлено.';
+
+  @override
+  String get feedbackErrorGeneric => 'Не удалось отправить. Попробуйте позже.';
+
+  @override
+  String get feedbackErrorRateLimited =>
+      'Подождите немного перед следующей отправкой.';
+
+  @override
+  String get feedbackEmptyValidation => 'Сначала напишите сообщение.';
+
+  @override
+  String get drawerLicenses => 'Лицензии открытого кода';
+
+  @override
+  String get drawerPrivacy => 'Политика конфиденциальности';
+
+  @override
+  String get drawerDonate => 'Поддержать Stigla';
+
+  @override
+  String get licensesLegalese =>
+      'Stigla — свободное ПО под лицензией AGPL-3.0.';
+
+  @override
+  String get privacyTitle => 'Политика конфиденциальности';
+
+  @override
+  String get privacyIntro =>
+      'Stigla приватна по умолчанию. Вот что именно она делает с данными — простыми словами.';
+
+  @override
+  String get privacyLocationTitle => 'Ваше местоположение';
+
+  @override
+  String get privacyLocationBody =>
+      'Когда вы запрашиваете ближайшие остановки и транспорт, местоположение вашего устройства отправляется в наш API вместе с этим запросом, чтобы найти то, что рядом. Оно используется только для ответа на этот запрос и никогда не сохраняется на наших серверах.';
+
+  @override
+  String get privacyAnalyticsTitle => 'Анонимная статистика';
+
+  @override
+  String get privacyAnalyticsBody =>
+      'Приложение может записывать анонимные события использования (например, что остановка была открыта), чтобы понимать, какие функции востребованы. В них нет идентификаторов и аккаунтов, и их нельзя связать с вами.';
+
+  @override
+  String get privacyTrackersTitle => 'Без рекламы и трекеров';
+
+  @override
+  String get privacyTrackersBody =>
+      'В Stigla нет рекламы и нет сторонних рекламных или трекинговых SDK.';
+
+  @override
+  String get privacyFeedbackTitle => 'Отправленная вами обратная связь';
+
+  @override
+  String get privacyFeedbackBody =>
+      'Если вы отправляете обратную связь, ваше сообщение — и указанный по желанию контакт — сохраняются, чтобы мы могли его прочитать и ответить вам. Больше вместе с ним ничего не собирается.';
+
+  @override
+  String get privacyOpenSourceTitle => 'Открытый код';
+
+  @override
+  String get privacyOpenSourceBody =>
+      'Код Stigla открыт под лицензией AGPL-3.0, так что любой может проверить, как именно она работает.';
 }

@@ -327,6 +327,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // desktop model card lives INSIDE the panel — no second surface). Null = not
   // showing the model. (`(fleet, garageNo, type)`.)
   ({FleetVehicle fleet, String? garageNo, VehicleType type})? _slotModel;
+  // Desktop collapse (the ◄/► tab). Session-only, default expanded (owner A#5):
+  // no persistence — a fresh load always opens expanded. Collapsing hides the
+  // panel view and drops the left map inset to zero (via `_mapInsets`); it NEVER
+  // touches the state machine's current context (A#4). Entering a context while
+  // collapsed re-expands (see `_expandPanelIfCollapsed`).
+  bool _panelCollapsed = false;
   EdgeInsets? _appliedInsets; // last geometry the camera was settled for
   // ETA anchoring for the followed vehicle's worded route (owner R1 #5), taken
   // from the arrival it was opened from; null for a marker-tap follow (the route
@@ -1845,7 +1851,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         panelActive: _panelActive,
         panelWidth: panelWidthFor(MediaQuery.sizeOf(context).width),
         mobileSheetPx: _mobileSheetPx,
+        panelCollapsed: _panelCollapsed,
       );
+
+  /// Entering a context (stop / vehicle) while the panel is collapsed re-expands
+  /// it so the new view is visible (owner A#4). The collapse is a view-only hide;
+  /// the state machine already advanced, so this only flips the visibility flag.
+  void _expandPanelIfCollapsed() {
+    if (_panelActive && _panelCollapsed) {
+      setState(() => _panelCollapsed = false);
+    }
+  }
 
   /// Instant camera move (jumpTo) carrying the current geometry padding.
   void _camMove({Geographic? center, double? zoom}) {
@@ -1936,6 +1952,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     bool scheduled = false,
     bool refreshVehicles = false,
   }) {
+    // Entering a vehicle context while collapsed re-expands the panel (A#4).
+    _expandPanelIfCollapsed();
     // Single funnel for all three follow entries (marker / sheet / nearby), so
     // this one log point captures every "follow started" with its source.
     ref.read(eventLoggerProvider).log(Ev.vehicleFollow, props: {'source': source});
@@ -2537,6 +2555,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       });
       return;
     }
+    // The results render in the panel body, which is hidden while collapsed —
+    // so starting a search re-expands the panel (a search is a context entry,
+    // owner A#4) to give the results (and the row you'll tap) somewhere to show.
+    _expandPanelIfCollapsed();
     setState(() => _searching = true);
     _searchDebounce = Timer(
       const Duration(milliseconds: 300),
@@ -2549,18 +2571,18 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _searchLogged = true;
       ref.read(eventLoggerProvider).log(Ev.searchUsed);
     }
-    final stops = await ref.read(stopsRepositoryProvider).search(query);
-    final lines = await ref.read(linesRepositoryProvider).search(query);
+    // Shared stop+line fan-out (one fork for both breakpoints — C#4).
+    final results = await ref.read(globalSearchProvider).run(query);
     List<GeocodeResult> places = [];
     try {
       places = await ref.read(geocodeRepositoryProvider).search(query);
     } catch (_) {
-      // Geocoding is best-effort.
+      // Geocoding is best-effort, and desktop-only in the search scope.
     }
     if (!mounted) return;
     setState(() {
-      _resultStops = stops;
-      _resultLines = lines;
+      _resultStops = results.stops;
+      _resultLines = results.lines;
       _resultPlaces = places;
     });
   }
@@ -2628,6 +2650,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// map's markers (state B); closing the sheet (unless a vehicle was tapped)
   /// clears them back to A.
   void _openStopById(String stopId, {String? stopName, ll.LatLng? at, String? source}) {
+    // Entering a stop context while collapsed re-expands the panel (A#4).
+    _expandPanelIfCollapsed();
     // `source` non-null marks a fresh user-initiated open (pin / nearby / search
     // / favorites) — logged here, the single funnel for every such entry. The
     // internal return-to-stop after a follow passes no source, so it isn't
@@ -2668,10 +2692,24 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       context,
       stopId: stopId,
       stopName: stopName,
+      // Open at the nearby sheet's current height so nearby → stop is a
+      // continuous detent, not a jump (owner acceptance #3). `_mobileSheetPx`
+      // still holds the nearby height here (reset on the next build).
+      initialSize: _mobileSheetPx > 0
+          ? _mobileSheetPx / MediaQuery.sizeOf(context).height
+          : null,
+      // Feed the stop sheet's live height to the geometry owner so the map
+      // shifts up to keep the stop above the sheet — same wiring as the nearby
+      // sheet (owner R2 #3, regression fix). Without this the geometry owner
+      // treats the stop modal as a zero bottom inset and the stop lands under it.
+      onHeightChanged: _setMobileSheetPx,
       // Tapping a vehicle row hands the whole arrival to the map so it builds a
       // guaranteed marker, highlights the route and follows (§C).
       onFocusVehicle: (a, asOf) => _focusVehicleFromArrival(a, asOf, source: Ev.srcSheet),
     ).then((_) {
+      // The stop modal is gone — clear its bottom inset so the geometry owner
+      // doesn't keep a phantom one (the nearby sheet re-feeds its own on return).
+      _setMobileSheetPx(0);
       if (mounted) setState(() => _stopSheetOpen = false);
       _onStopSheetClosed(stopId);
     });
@@ -2869,16 +2907,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // window resize, breakpoint flip, or the mobile sheet detent), re-settle the
     // camera so the focus stays centred in the new visible area / the scene
     // shifts by the delta — one owner, [_mapInsets] (owner R3 #1/#2).
-    // Only the mobile Nearby sheet feeds its live height; when it isn't shown
-    // (desktop panel, a stop modal, a follow bar) drop the stale value so the
-    // geometry owner doesn't keep a phantom bottom inset. (Assigned during build,
-    // no setState — the value is read just below.)
+    // The nearby sheet AND the stop sheet feed their live height to the geometry
+    // owner (owner R2 #3). When NEITHER is shown (desktop panel, a follow bar)
+    // drop the stale value so the owner doesn't keep a phantom bottom inset.
+    // (Assigned during build, no setState — the value is read just below.)
     final showingNearbySheet = !_panelActive &&
         nearbyEnabled &&
         !_stopSheetOpen &&
         _focus == null &&
         _selectedVehicleKey == null;
-    if (!showingNearbySheet && _mobileSheetPx != 0) _mobileSheetPx = 0;
+    final mobileSheetShowing = !_panelActive && (showingNearbySheet || _stopSheetOpen);
+    if (!mobileSheetShowing && _mobileSheetPx != 0) _mobileSheetPx = 0;
 
     final insets = _mapInsets;
     if (insets != _appliedInsets) {
@@ -3004,6 +3043,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               active: _tabActive && _appResumed,
               onEnableLocation: _recenterOnMe,
               onTapGroup: _focusNearbyVehicle,
+              // Unified global search in the nearby sheet: selecting a global
+              // stop / line opens that context exactly like the desktop search.
+              onSelectStop: (stop) => _openStop(stop, source: Ev.srcSearch),
+              onSelectLine: _openLine,
               // Feed the mobile sheet height to the geometry owner so a followed
               // vehicle is kept above the sheet as it's dragged (R2 #2).
               onHeightChanged: _setMobileSheetPx,
@@ -3029,19 +3072,90 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   /// The desktop panel overlay + the conditional "Back to vehicle" pill. Only
   /// built when [_panelActive] (flag ON *and* wide); mobile never reaches here.
+  // The panel collapse slide/tab share one short duration + curve (owner A#2:
+  // ~200ms, no fancy physics).
+  static const _panelCollapseDuration = Duration(milliseconds: 200);
+  static const _panelCollapseCurve = Curves.easeInOut;
+
+  // Gap between the search island and the panel island (and, on staging, between
+  // the panel island and the diagnostics overlay) — one value so they match.
+  static const double _kIslandGap = 8.0;
+
   List<Widget> _contextSlot(
     AppLocalizations l10n,
     ThemeData theme, {
     required Size size,
   }) {
+    final panelW = panelWidthFor(size.width);
+    final collapsed = _panelCollapsed;
+
+    // The global search is a PERSISTENT element above the panel body (owner
+    // A#6 + decision #6): it stays put and visible whether the panel is open or
+    // collapsed, so it lives OUTSIDE the collapsing body. The body (nav +
+    // content) is what slides away.
+    // Google-Maps "islands": the search row (burger + pill, each its OWN
+    // floating backdrop — no shared container, owner R2 #1) and the panel body
+    // island, inset from the edges with a SMALL gap between them (R2 #2).
+    const inset = kPanelIslandInset;
+    const searchToPanelGap = _kIslandGap;
+    final searchCard = PointerInterceptor(
+      child: _panelSearchField(l10n, theme),
+    );
+
+    final body = ContextPanel(
+      width: panelW,
+      searchField: null, // search is hoisted above (searchCard); see above
+      navRow: _slotNavRow(l10n),
+      borderRadius: BorderRadius.circular(16), // island corners
+      child: _searching ? _searchResultsList(l10n) : _slotContent(l10n),
+    );
+
     final widgets = <Widget>[
-      Align(
-        alignment: Alignment.centerLeft,
-        child: ContextPanel(
-          width: panelWidthFor(size.width),
-          searchField: _panelSearchField(l10n, theme),
-          navRow: _slotNavRow(l10n),
-          child: _searching ? _searchResultsList(l10n) : _slotContent(l10n),
+      // Left region: the persistent search island on top, a gap, then the
+      // collapsible panel island — both inset from the screen edges.
+      Positioned.fill(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(left: inset, top: inset, bottom: inset),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: panelW,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    searchCard,
+                    const SizedBox(height: searchToPanelGap),
+                    // The panel island slides fully off the left screen edge when
+                    // collapsed (offset > 1 ⇒ entirely past x=0 ⇒ "fully hidden",
+                    // A#2), leaving only the search island. No ClipRect, so the
+                    // island keeps its drop shadow toward the map.
+                    Expanded(
+                      child: AnimatedSlide(
+                        duration: _panelCollapseDuration,
+                        curve: _panelCollapseCurve,
+                        offset: collapsed ? const Offset(-1.3, 0) : Offset.zero,
+                        child: body,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      // The collapse tab: docked to the panel island's right edge when open, to
+      // the screen's left edge when collapsed. Vertically centred, chevron flips.
+      AnimatedPositioned(
+        duration: _panelCollapseDuration,
+        curve: _panelCollapseCurve,
+        left: collapsed ? 0 : inset + panelW,
+        top: (size.height - PanelCollapseTab.height) / 2,
+        child: PanelCollapseTab(
+          collapsed: collapsed,
+          tooltip: collapsed ? l10n.panelExpand : l10n.panelCollapse,
+          onTap: () => setState(() => _panelCollapsed = !_panelCollapsed),
         ),
       ),
     ];
@@ -3248,22 +3362,36 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// nearby (root) view (owner R1 #4). Reuses the same search state as the
   /// legacy bottom search, so results render in the panel body.
   Widget _panelSearchField(AppLocalizations l10n, ThemeData theme) {
-    final showBurger = _slotModel == null && _activeView == ContextView.nearby;
+    // The burger lives in the search row on the nearby root — and, while
+    // collapsed, in EVERY view: the context nav row (its usual back/drawer
+    // chrome) is slid away, so the persistent search is the only place left to
+    // reach the drawer (owner A#2: burger reachable in both states).
+    final showBurger = _panelCollapsed ||
+        (_slotModel == null && _activeView == ContextView.nearby);
+    // Owner R2 #1: no shared container behind the row — the burger is its OWN
+    // round button with its own backdrop, the search is its OWN floating pill.
     return Row(
       children: [
-        if (showBurger)
-          IconButton(
-            icon: const Icon(Icons.menu),
-            tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
-            onPressed: widget.onOpenDrawer,
-          )
-        else
-          const SizedBox(width: 4),
+        if (showBurger) ...[
+          Material(
+            color: theme.colorScheme.surface,
+            elevation: 3,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: IconButton(
+              icon: const Icon(Icons.menu),
+              tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+              onPressed: widget.onOpenDrawer,
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
         Expanded(
           child: Material(
             borderRadius: BorderRadius.circular(28),
-            color:
-                theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            elevation: 3,
+            color: theme.colorScheme.surface,
+            clipBehavior: Clip.antiAlias,
             child: Row(
               children: [
                 const SizedBox(width: 12),
@@ -3620,11 +3748,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         alignment: Alignment.topLeft,
         child: IgnorePointer(
           child: Container(
-            // Clear of the desktop panel (block #6): shift right of it so the
-            // staging overlay isn't hidden underneath.
+            // Clear of the desktop panel island (block #6): sit right of it with
+            // the same gap the search island leaves above the panel, so it
+            // doesn't stick to the island's edge.
             margin: EdgeInsets.only(
               top: 72,
-              left: 8 + (_panelActive ? panelWidthFor(MediaQuery.sizeOf(context).width) : 0),
+              left: _panelActive
+                  ? kPanelIslandInset +
+                      panelWidthFor(MediaQuery.sizeOf(context).width) +
+                      _kIslandGap
+                  : _kIslandGap,
               right: 8,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -3843,12 +3976,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _roundButton(
-              theme,
-              icon: Icons.menu,
-              tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
-              onTap: widget.onOpenDrawer,
-            ),
+            // The desktop panel carries its own burger in the persistent search
+            // row (visible whether open or collapsed), so suppress this floating
+            // one whenever the panel is active — otherwise a collapsed panel
+            // would show two burgers. Keep the right-hand controls in place.
+            if (_panelActive)
+              const SizedBox.shrink()
+            else
+              _roundButton(
+                theme,
+                icon: Icons.menu,
+                tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+                onTap: widget.onOpenDrawer,
+              ),
             Column(
               children: [
                 // Hides itself — gap and all — while the flag is off, so the

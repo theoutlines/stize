@@ -47,6 +47,11 @@ import type { Env } from "../env";
 //                       unchanged; this entry only lets /config serve the flag so
 //                       it can default ON on staging / OFF on prod and be flipped
 //                       in KV. OFF is the killswitch (today's UI, untouched).
+//   feedback_form     — the drawer's in-app feedback form + its POST
+//                       /api/v1/feedback endpoint. OFF hides the "Write to me"
+//                       action on the client AND makes the endpoint refuse
+//                       (403), so it's a full killswitch for the feature. Off on
+//                       prod until the preview pair is reviewed, on on staging.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -57,6 +62,7 @@ export const FEATURE_FLAGS = [
   "vehicles_on_demand",
   "product_analytics",
   "context_panel",
+  "feedback_form",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

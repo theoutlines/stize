@@ -34,6 +34,10 @@ crons = ["0 6 * * *"]
 [vars]
 API_VERSION = "v1"
 ENVIRONMENT = "production"
+# Private feedback-triage repo ("owner/name"). Non-secret; the issues:write PAT
+# is set separately via `wrangler secret put GITHUB_FEEDBACK_TOKEN`. Absent token
+# ⇒ feedback is stored in D1 only (no GitHub issue), never an error.
+GITHUB_FEEDBACK_REPO = "theoutlines/stigla-feedback"
 
 # --- Staging environment ----------------------------------------------------
 # Deployed on demand from a feature branch (`npm run deploy:staging`). A fully
@@ -56,6 +60,7 @@ routes = [
 [env.staging.vars]
 API_VERSION = "v1"
 ENVIRONMENT = "staging"
+GITHUB_FEEDBACK_REPO = "theoutlines/stigla-feedback"
 
 [env.staging.assets]
 directory = "./public"

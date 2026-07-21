@@ -77,6 +77,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchNoResults => 'Nothing found. Try a different spelling?';
 
   @override
+  String get searchMoreResults => 'More results';
+
+  @override
+  String get panelCollapse => 'Collapse panel';
+
+  @override
+  String get panelExpand => 'Expand panel';
+
+  @override
   String get locationDenied =>
       'Location access is denied. Allow it in your browser or settings to see where you are.';
 
@@ -476,4 +485,110 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coverageUnavailable => 'Coverage map is unavailable right now.';
+
+  @override
+  String get drawerFeedbackBannerLine =>
+      'Built solo by Ivan in Belgrade — found a bug? Tell me.';
+
+  @override
+  String get drawerFeedbackSheetTitle => 'Feedback';
+
+  @override
+  String get feedbackWriteToMe => 'Write to me';
+
+  @override
+  String get feedbackWriteToMeSubtitle =>
+      'Send a message — bugs, ideas, anything.';
+
+  @override
+  String get feedbackGithubIssues => 'GitHub Issues';
+
+  @override
+  String get feedbackGithubIssuesSubtitle => 'For technical reports (public).';
+
+  @override
+  String get feedbackFormTitle => 'Write to me';
+
+  @override
+  String get feedbackMessageLabel => 'Your message';
+
+  @override
+  String get feedbackMessageHint => 'A bug, an idea, a kind word…';
+
+  @override
+  String get feedbackContactLabel => 'Contact (optional)';
+
+  @override
+  String get feedbackContactHint => 'Email or Telegram, if you want a reply';
+
+  @override
+  String get feedbackSend => 'Send';
+
+  @override
+  String get feedbackSent => 'Thanks — your message was sent.';
+
+  @override
+  String get feedbackErrorGeneric => 'Couldn\'t send. Please try again later.';
+
+  @override
+  String get feedbackErrorRateLimited =>
+      'Please wait a moment before sending more.';
+
+  @override
+  String get feedbackEmptyValidation => 'Write a message first.';
+
+  @override
+  String get drawerLicenses => 'Open source licenses';
+
+  @override
+  String get drawerPrivacy => 'Privacy policy';
+
+  @override
+  String get drawerDonate => 'Support Stigla';
+
+  @override
+  String get licensesLegalese =>
+      'Stigla is free software under the AGPL-3.0 license.';
+
+  @override
+  String get privacyTitle => 'Privacy policy';
+
+  @override
+  String get privacyIntro =>
+      'Stigla is private by default. Here\'s exactly what it does with data, in plain language.';
+
+  @override
+  String get privacyLocationTitle => 'Your location';
+
+  @override
+  String get privacyLocationBody =>
+      'When you ask to see nearby stops and vehicles, your device\'s location is sent to our API with that request to find what\'s around you. It is used only to answer that request and is never stored on our servers.';
+
+  @override
+  String get privacyAnalyticsTitle => 'Anonymous usage';
+
+  @override
+  String get privacyAnalyticsBody =>
+      'The app may record anonymous usage events (for example, that a stop was opened) to understand which features are used. These carry no identifiers and no accounts, and cannot be traced back to you.';
+
+  @override
+  String get privacyTrackersTitle => 'No ads, no trackers';
+
+  @override
+  String get privacyTrackersBody =>
+      'Stigla shows no ads and includes no third-party advertising or tracking SDKs.';
+
+  @override
+  String get privacyFeedbackTitle => 'Feedback you send';
+
+  @override
+  String get privacyFeedbackBody =>
+      'If you send feedback, your message — and the optional contact you provide — are stored so we can read it and reply to you. Nothing else is collected with it.';
+
+  @override
+  String get privacyOpenSourceTitle => 'Open source';
+
+  @override
+  String get privacyOpenSourceBody =>
+      'Stigla\'s code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.';
 }

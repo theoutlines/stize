@@ -78,6 +78,15 @@ class AppLocalizationsSr extends AppLocalizations {
   String get searchNoResults => 'Ništa nije pronađeno. Probaj drugačiji unos.';
 
   @override
+  String get searchMoreResults => 'Više rezultata';
+
+  @override
+  String get panelCollapse => 'Skupi panel';
+
+  @override
+  String get panelExpand => 'Proširi panel';
+
+  @override
   String get locationDenied =>
       'Pristup lokaciji je odbijen. Dozvoli ga u pregledaču ili podešavanjima da vidiš gde se nalaziš.';
 
@@ -478,4 +487,110 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get coverageUnavailable => 'Mapa pokrivenosti trenutno nije dostupna.';
+
+  @override
+  String get drawerFeedbackBannerLine =>
+      'Aplikaciju sam pravi Ivan iz Beograda — našli ste grešku? Javite mi.';
+
+  @override
+  String get drawerFeedbackSheetTitle => 'Utisci';
+
+  @override
+  String get feedbackWriteToMe => 'Piši mi';
+
+  @override
+  String get feedbackWriteToMeSubtitle =>
+      'Pošalji poruku — greške, ideje, bilo šta.';
+
+  @override
+  String get feedbackGithubIssues => 'GitHub Issues';
+
+  @override
+  String get feedbackGithubIssuesSubtitle => 'Za tehničke prijave (javno).';
+
+  @override
+  String get feedbackFormTitle => 'Piši mi';
+
+  @override
+  String get feedbackMessageLabel => 'Tvoja poruka';
+
+  @override
+  String get feedbackMessageHint => 'Greška, ideja, lepa reč…';
+
+  @override
+  String get feedbackContactLabel => 'Kontakt (opciono)';
+
+  @override
+  String get feedbackContactHint => 'Email ili Telegram, ako želiš odgovor';
+
+  @override
+  String get feedbackSend => 'Pošalji';
+
+  @override
+  String get feedbackSent => 'Hvala — poruka je poslata.';
+
+  @override
+  String get feedbackErrorGeneric => 'Slanje nije uspelo. Pokušaj kasnije.';
+
+  @override
+  String get feedbackErrorRateLimited =>
+      'Sačekaj trenutak pre sledećeg slanja.';
+
+  @override
+  String get feedbackEmptyValidation => 'Prvo napiši poruku.';
+
+  @override
+  String get drawerLicenses => 'Licence otvorenog koda';
+
+  @override
+  String get drawerPrivacy => 'Politika privatnosti';
+
+  @override
+  String get drawerDonate => 'Podrži Stigla';
+
+  @override
+  String get licensesLegalese =>
+      'Stigla je slobodan softver pod AGPL-3.0 licencom.';
+
+  @override
+  String get privacyTitle => 'Politika privatnosti';
+
+  @override
+  String get privacyIntro =>
+      'Stigla je privatna podrazumevano. Evo tačno šta radi sa podacima, jednostavnim rečima.';
+
+  @override
+  String get privacyLocationTitle => 'Tvoja lokacija';
+
+  @override
+  String get privacyLocationBody =>
+      'Kada zatražiš obližnja stajališta i vozila, lokacija tvog uređaja se šalje našem API-ju uz taj zahtev da bismo pronašli šta je u blizini. Koristi se samo za odgovor na taj zahtev i nikada se ne čuva na našim serverima.';
+
+  @override
+  String get privacyAnalyticsTitle => 'Anonimna upotreba';
+
+  @override
+  String get privacyAnalyticsBody =>
+      'Aplikacija može beležiti anonimne događaje korišćenja (na primer, da je stajalište otvoreno) da bismo razumeli koje se funkcije koriste. Nemaju identifikatore ni naloge i ne mogu se povezati s tobom.';
+
+  @override
+  String get privacyTrackersTitle => 'Bez reklama i trekera';
+
+  @override
+  String get privacyTrackersBody =>
+      'Stigla ne prikazuje reklame i ne sadrži oglašivačke ni treking SDK-ove trećih strana.';
+
+  @override
+  String get privacyFeedbackTitle => 'Utisci koje pošalješ';
+
+  @override
+  String get privacyFeedbackBody =>
+      'Ako pošalješ utiske, tvoja poruka — i opcioni kontakt koji navedeš — čuvaju se da bismo je pročitali i odgovorili ti. Ništa drugo se uz nju ne prikuplja.';
+
+  @override
+  String get privacyOpenSourceTitle => 'Otvoren kod';
+
+  @override
+  String get privacyOpenSourceBody =>
+      'Kod aplikacije Stigla je otvoren pod AGPL-3.0 licencom, tako da svako može proveriti kako tačno radi.';
 }

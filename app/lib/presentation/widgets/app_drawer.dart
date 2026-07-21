@@ -6,6 +6,7 @@ import '../../core/adaptive.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../screens/my_stops_screen.dart';
+import 'drawer_footer.dart';
 
 /// Whether the Ideas section is offered in the drawer. Off by owner decision —
 /// the screen, its route and its backend stay in place (the drawer is the only
@@ -163,6 +164,9 @@ class AppDrawer extends StatelessWidget {
                 ],
               ),
             ),
+            // "About & contact" footer (Part D): feedback, licenses, privacy,
+            // optional donate, version. Appended below the existing items.
+            const DrawerFooter(),
           ],
         ),
       ),
