@@ -9,12 +9,13 @@ class ArrivalsRepositoryImpl implements ArrivalsRepository {
 
   @override
   Future<ArrivalsBoard> getArrivals(String stopId) async {
+    // No cache-buster: ride the backend SWR cache. A `cb=<millis>` query makes
+    // every 30s poll a unique key that BYPASSES the SWR cache and forces a fresh
+    // upstream fetch, so this surface hangs (10s client timeout) the moment the
+    // upstream source is slow. Riding SWR serves the last good board as stale
+    // during an upstream blip instead of failing. (Prod incident 2026-07-21.)
     final json = await _client.getJson('/api/v1/arrivals', {
       'stop': stopId,
-      // Cache-buster so the stop screen's 30s poll re-reads live arrivals from
-      // the origin instead of a stale browser/zone HTTP cache (Browser Cache TTL
-      // gotcha); backend also sets no-store.
-      'cb': DateTime.now().millisecondsSinceEpoch.toString(),
     });
     return ArrivalsBoard.fromJson(json);
   }

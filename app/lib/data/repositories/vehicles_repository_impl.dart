@@ -15,14 +15,16 @@ class VehiclesRepositoryImpl implements VehiclesRepository {
     double radiusMeters = 800,
   }) async {
     try {
+      // No cache-buster: ride the backend SWR cache. A `cb=<millis>` query makes
+      // every 30s poll a unique key that BYPASSES the SWR cache and forces a
+      // fresh upstream fan-out (≤12 stops), so this surface hangs (10s client
+      // timeout → empty) the moment the upstream source is slow. Riding SWR
+      // serves the last good fixes as stale during an upstream blip instead of
+      // going blank. (Prod incident 2026-07-21.)
       final json = await _client.getJson('/api/v1/vehicles/nearby', {
         'lat': lat.toString(),
         'lon': lon.toString(),
         'radius': radiusMeters.toString(),
-        // Cache-buster: the 30s poll must hit the origin, not a stale browser /
-        // zone HTTP cache (Browser Cache TTL gotcha). Backend also sets
-        // no-store; this is the belt-and-suspenders on the client side.
-        'cb': DateTime.now().millisecondsSinceEpoch.toString(),
       });
       return (json['vehicles'] as List<dynamic>)
           .map((e) => AreaVehicle.fromJson(e as Map<String, dynamic>))
