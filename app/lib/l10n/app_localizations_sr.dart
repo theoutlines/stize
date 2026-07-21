@@ -593,4 +593,31 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get privacyOpenSourceBody =>
       'Kod aplikacije Stigla je otvoren pod AGPL-3.0 licencom, tako da svako može proveriti kako tačno radi.';
+
+  @override
+  String jamStopBannerTitle(String line) {
+    return 'Tramvaji $line stoje duže nego obično — moguće kašnjenje';
+  }
+
+  @override
+  String jamSubstitutionNotice(String line) {
+    return 'Na liniji $line umesto tramvaja saobraćaju autobusi';
+  }
+
+  @override
+  String get jamStalledLabel => 'Izgleda da stoji';
+
+  @override
+  String get jamModeTooltip => 'Prikaži zastoje';
+
+  @override
+  String jamNearbyDelay(String line) {
+    return 'Moguće kašnjenje na liniji $line';
+  }
+
+  @override
+  String get jamAffectedStopsTitle => 'Pogođene stanice';
+
+  @override
+  String get jamFollowAhead => 'Moguće kašnjenje ispred na trasi';
 }

@@ -591,4 +591,31 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get privacyOpenSourceBody =>
       'Stigla\'s code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.';
+
+  @override
+  String jamStopBannerTitle(String line) {
+    return 'Trams $line have been stopped longer than usual — possible delay';
+  }
+
+  @override
+  String jamSubstitutionNotice(String line) {
+    return 'Buses are running instead of trams on line $line';
+  }
+
+  @override
+  String get jamStalledLabel => 'Possibly stopped';
+
+  @override
+  String get jamModeTooltip => 'Show stalled segments';
+
+  @override
+  String jamNearbyDelay(String line) {
+    return 'Possible delay on line $line';
+  }
+
+  @override
+  String get jamAffectedStopsTitle => 'Affected stops';
+
+  @override
+  String get jamFollowAhead => 'Possible delay ahead on the route';
 }

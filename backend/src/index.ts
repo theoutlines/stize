@@ -13,6 +13,7 @@ import type {
 import { isServiceKilled, setServiceKilled } from "./lib/killswitch";
 import { FEATURE_FLAGS, getAllFlags, getFlagMemoized, isFeatureFlag, setFlag } from "./lib/featureFlags";
 import { aggregate, getLineAnalytics } from "./lib/analytics";
+import { runSweepTick } from "./lib/sweep";
 import { logProductEvents, sanitizeBatch } from "./lib/productAnalytics";
 import { getArrivals } from "./lib/arrivals";
 import { getNearbyVehicles } from "./lib/vehicles";
@@ -29,6 +30,7 @@ import {
 } from "./lib/gtfsData";
 import { geocodeSearch } from "./lib/geocode";
 import { listAlerts, refreshAlerts } from "./lib/alerts";
+import { computeJams, pruneVehicleFixes, type JamsResponse } from "./lib/jamDetector";
 import {
   RateLimitedError,
   ValidationError,
@@ -368,6 +370,39 @@ app.get("/api/v1/alerts", async (c) => {
   return c.json({ alerts });
 });
 
+// Tram-jam ("stalled segment") detection. Reads the last-fix table the arrivals
+// refresh maintains and returns the current jam set + bus substitutions. Inert
+// (empty) unless `jam_detection_show` is on — the client gates its polling on the
+// same flag, so with it off nothing is computed and nothing is drawn.
+//
+// Live positions — never cache (same zone Browser-Cache-TTL gotcha as /arrivals).
+app.get("/api/v1/jams", async (c) => {
+  c.header("cache-control", "no-store");
+  const empty: JamsResponse = {
+    feed_healthy: true,
+    jams: [],
+    substitutions: [],
+    updated_at: new Date().toISOString(),
+  };
+  if (!(await getFlagMemoized(c.env, c.executionCtx, "jam_detection_show"))) return c.json(empty);
+  if (await isServiceKilled(c.env)) return c.json(empty);
+  try {
+    const now = Date.now();
+    // Staging-only synthetic jam so a stand can be verified without a live jam:
+    // ?sim=<line> (or KV `jam:sim`) injects a jam on a real tram line+direction.
+    let simLine: string | null = null;
+    if (c.env.ENVIRONMENT === "staging") {
+      simLine = c.req.query("sim") ?? (await c.env.STIGLA_KV.get("jam:sim"));
+    }
+    const body = await computeJams(c.env, now, { simLine });
+    c.executionCtx.waitUntil(pruneVehicleFixes(c.env, now).catch(() => {}));
+    return c.json(body);
+  } catch (err) {
+    console.error("jams compute failed", err);
+    return c.json(empty);
+  }
+});
+
 app.post("/api/v1/admin/alerts/refresh", async (c) => {
   const token = c.req.header("X-Admin-Token");
   if (!token || token !== c.env.ADMIN_TOKEN) {
@@ -521,9 +556,38 @@ app.post("/api/v1/admin/analytics/aggregate", async (c) => {
   return c.json(result);
 });
 
+// Run one sentinel-sweep tick on demand (same as the per-minute cron). Staging
+// has no cron, so this is how the sweep is exercised there while verifying —
+// remember staging ALSO reaches the source, so enable `analytics_sweep` on
+// staging only for the duration of a check.
+app.post("/api/v1/admin/sweep/tick", async (c) => {
+  const token = c.req.header("X-Admin-Token");
+  if (!token || token !== c.env.ADMIN_TOKEN) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  const result = await runSweepTick(c.env, c.executionCtx);
+  return c.json(result);
+});
+
 export default {
   fetch: app.fetch,
-  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    // Two triggers share this handler (see wrangler.toml). The per-minute one
+    // drives the sentinel sweep; the daily one refreshes alerts and rolls up
+    // analytics. Branch on which cron fired so a minute tick never runs the
+    // heavy daily job (and vice-versa).
+    if (event.cron === "* * * * *") {
+      ctx.waitUntil(
+        runSweepTick(env, ctx).then(
+          (r) =>
+            r.ran &&
+            console.log(`sweep: ${r.reason} swept=${r.swept.length} skipped=${r.skipped} fail=${r.failures}`),
+          (err) => console.error("sweep tick failed", err),
+        ),
+      );
+      return;
+    }
+
     ctx.waitUntil(
       refreshAlerts(env).then(
         (result) => console.log(`alerts refresh: +${result.added}, total ${result.total}`),

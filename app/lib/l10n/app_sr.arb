@@ -202,4 +202,11 @@
   "privacyFeedbackTitle": "Utisci koje pošalješ",
   "privacyFeedbackBody": "Ako pošalješ utiske, tvoja poruka — i opcioni kontakt koji navedeš — čuvaju se da bismo je pročitali i odgovorili ti. Ništa drugo se uz nju ne prikuplja.",
   "privacyOpenSourceTitle": "Otvoren kod",
-  "privacyOpenSourceBody": "Kod aplikacije Stigla je otvoren pod AGPL-3.0 licencom, tako da svako može proveriti kako tačno radi."}
+  "privacyOpenSourceBody": "Kod aplikacije Stigla je otvoren pod AGPL-3.0 licencom, tako da svako može proveriti kako tačno radi.",
+  "jamStopBannerTitle": "Tramvaji {line} stoje duže nego obično — moguće kašnjenje",
+  "jamSubstitutionNotice": "Na liniji {line} umesto tramvaja saobraćaju autobusi",
+  "jamStalledLabel": "Izgleda da stoji",
+  "jamModeTooltip": "Prikaži zastoje",
+  "jamNearbyDelay": "Moguće kašnjenje na liniji {line}",
+  "jamAffectedStopsTitle": "Pogođene stanice",
+  "jamFollowAhead": "Moguće kašnjenje ispred na trasi"}

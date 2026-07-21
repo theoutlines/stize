@@ -232,4 +232,14 @@
   "privacyFeedbackTitle": "Feedback you send",
   "privacyFeedbackBody": "If you send feedback, your message — and the optional contact you provide — are stored so we can read it and reply to you. Nothing else is collected with it.",
   "privacyOpenSourceTitle": "Open source",
-  "privacyOpenSourceBody": "Stigla's code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works."}
+  "privacyOpenSourceBody": "Stigla's code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.",
+  "jamStopBannerTitle": "Trams {line} have been stopped longer than usual — possible delay",
+  "@jamStopBannerTitle": {"placeholders": {"line": {"type": "String"}}},
+  "jamSubstitutionNotice": "Buses are running instead of trams on line {line}",
+  "@jamSubstitutionNotice": {"placeholders": {"line": {"type": "String"}}},
+  "jamStalledLabel": "Possibly stopped",
+  "jamModeTooltip": "Show stalled segments",
+  "jamNearbyDelay": "Possible delay on line {line}",
+  "@jamNearbyDelay": {"placeholders": {"line": {"type": "String"}}},
+  "jamAffectedStopsTitle": "Affected stops",
+  "jamFollowAhead": "Possible delay ahead on the route"}

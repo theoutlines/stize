@@ -5,6 +5,34 @@ history (what changed for riders and developers), not a commit log.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
+## 2026-07-20
+
+### Added
+- **Vehicle-mode toggle** — on-demand vehicles (shown only in context: a tapped
+  stop's arrivals and a followed vehicle) is now the default, with a single map
+  toggle to switch back to the background "aquarium." The choice persists locally.
+- **Adaptive context panel** — on desktop the nearby / stop / vehicle views become
+  a persistent left panel beside a full-height map with a global search; on mobile
+  they stay as unified bottom sheets with one back-navigating flow.
+- **ETA-change badge** — the stop shutter flags when a vehicle's predicted arrival
+  time shifts, diffed against the absolute arrival time (not ticking minutes).
+
+### Changed
+- **Arrivals list dedup** — live and scheduled rows of the same line no longer
+  double-count; scheduled entries collapse into one cell, and the list is ordered
+  so nothing scheduled ever sits above a live arrival.
+
+### Behind the scenes (not yet rider-visible)
+- **Anonymous product analytics** — a small set of enumerated, identity-free usage
+  events (see the Privacy section of the README), collection off by default.
+- **Citywide reliability history** — a background sentinel sweep so accumulated
+  history covers every line, not just the stops riders open; plus a v2 analytics
+  aggregate (per direction, headway histograms, best-effort schedule delay). The
+  screens that surface it are still off.
+- **Tram-jam detection groundwork** — the backend now records the data needed to
+  detect a whole tram line stalling on one segment; the rider-facing warnings stay
+  behind a flag until the thresholds are calibrated on a real jam.
+
 ## 2026-07-14
 
 ### Added

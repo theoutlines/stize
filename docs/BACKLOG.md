@@ -49,8 +49,63 @@ that can't be collected retroactively, we start accumulating before we need it.
   Backend carries the `swrCache` hard-stale (>40s → block on one fresh fetch) +
   single-flight fix. 6 rounds of owner acceptance; report
   `docs/reports/2026-07-15-vehicles-on-demand.md`.
+- **Citywide sentinel sweep + analytics v2** (`feature/citywide-analytics`,
+  **MERGED to `main` + in prod 2026-07-20**, `analytics_sweep` **ON prod**) —
+  demand-driven collection only sampled the owner's two commute corridors (top 8
+  stops = 57.6% of rows; of 474 GTFS lines only ~90 had usable history). The
+  **sentinel sweep** fixes the bias from the supply side: **163 mid-route
+  sentinels** (greedy set-cover) cover all 453 city line×directions, rotated by a
+  minute Cron through the **existing SWR/arrivals path** — no new source-calling
+  code, cache keys shared with user traffic. Tempo is the only knob facing the
+  source and lives entirely in KV (`config:sweep_interval_day_seconds`, start 20s
+  → target 11s; night paused so the daily request profile stays even and gentle);
+  an **adaptive skip** drops sentinels organic traffic already refreshed, and an **auto
+  circuit-breaker** flips the flag OFF after 5 consecutive failed ticks. **Analytics
+  v2** (migration `0006`): `direction_route_id` added to `raw_observations` (in raw
+  **only from 2026-07-20**), new `agg_line_dir_time` (line×dir×dow×hour with 12-bucket
+  headway histograms), and an **incremental aggregate** (reads raw since `last_run`
+  + a 2h lookback) that drops the daily D1 read from ~12.3M to ~0.2M — inside the
+  free tier. **`sched_delay` best-effort**: each arrival matched to the nearest
+  scheduled departure (81.6% match on staging; the 18.3% unmatched is a data-quality
+  signal — feed↔GTFS line-label mismatches), rolled into `sched_delay_*` but **not
+  yet exposed** (`punctuality` stays null; a later screen task). Design doc:
+  `docs/CITYWIDE_SWEEP.md`. Report `docs/reports/2026-07-20-citywide-analytics.md`.
 
 ## In progress / behind a flag
+
+- 🚧 **Tram-jam ("stalled segment") detection** — **MERGED to `main` + in prod
+  2026-07-20**, split like analytics: **recording ON prod** (`jam_detection_collect`),
+  **UI behind a flag OFF prod** (`jam_detection_show`). Detects when a whole tram
+  line stacks up on one stalled segment, paints that segment amber, and softly
+  warns downstream stops of a possible delay. **Phase-0 measurement (12.5 min
+  live)** proved the "everything frozen" surface signal is a **feed-starvation
+  sawtooth** (upstream `updated_at` advances every ~60s; at 30s polling half the
+  reads are re-stamps), not a jam — so the detector keys off a per-vehicle freeze
+  clock that survives the sawtooth, gates on global feed health (all types frozen
+  ⇒ suppress), and excludes terminals. **T_jam thresholds are PRELIMINARY** — no
+  live jam was captured, only validated as "does not fire on starvation".
+  Storage **Variant B**: a standalone `vehicle_fixes` last-fix table (migration
+  `0005`, uncoupled from `raw_observations`) written opportunistically on the
+  existing SWR refresh — no extra source calls — so a jam shows instantly on
+  open; the `collect`/`show` split (added at merge) is what makes this true, since
+  history must accrue *before* the UI ships. Backend `GET /api/v1/jams` does only
+  cheap ordering; the client projects the amber segment onto the direction shape
+  with a **geometry gate** (off-shape lines like 26/27/44 → no segment, degrade to
+  affected-stop glow). Also: a bus-on-a-tram-line **substitution** notice
+  (garage-no classifier, cross-checked against route alerts for tone). Round-2
+  (owner-accepted): amber pulsing segment + affected-stop glow (thinner than the
+  route, under the pins, cheap opacity pulse only while a jam is shown), off-shape
+  lines get glow-only; jam-mode map toggle (fit to all jams) with a red count badge
+  that lights up ONLY for context-relevant jams (near you / followed line / open
+  stop) and stays quiet otherwise; Nearby jam row + follow-ahead warning (direction
+  + along-track "ahead" gated); cascading KV thresholds (`config:jam_t_*`,
+  `config:jam_downstream_horizon_s` = downstream banner reach by travel time, not a
+  fixed count). Staging **`jam:sim`** KV / `?sim=<line>` injects a synthetic jam to
+  verify without a live one. Design doc: `docs/JAM_DETECTION.md`. Report
+  `docs/reports/2026-07-20-jam-detection.md`. **Open tails** (now separate chips in
+  Next): calibrate the preliminary thresholds on the first live jam → then decide on
+  `jam_detection_show` prod enable; watch `vehicle_fixes` D1 write volume;
+  schedule-deviation (7a) + headway-CV (7d) already handed to the citywide branch.
 
 - 🚧 **Adaptive context panel** (`feature/context-panel`, isolated preview pair,
   merge owner-gated) — the nearby / stop / vehicle bottom sheets become one
@@ -185,6 +240,41 @@ that can't be collected retroactively, we start accumulating before we need it.
   (filter by vehicle type, gradient legend), hidden on production for now.
 
 ## Next
+
+### Jam detection & citywide analytics — open tails (post-merge 2026-07-20)
+- ⏭️ **Calibrate the jam thresholds on the first live jam**, then decide on the
+  `jam_detection_show` prod enable. `T_jam` is preliminary (cascade 300/180/90s,
+  KV `config:jam_t_*`) — validated only as "does not fire on feed starvation", never
+  against a real jam's magnitude. Recalibrate on the first captured live jam; the
+  prod enable of the UI flag is gated on that calibration.
+- ⏭️ **Verify the first prod aggregate backfill** (Cron `0 6 * * *`, first run
+  **2026-07-21**): confirm `agg_line_dir_time` populated, reads stayed inside the
+  free tier (incremental ≈0.2M/day, not the ~12.3M full recompute), and
+  `sched_delay_*` actually computed. Staging verified 4,754 buckets == every raw
+  row counted once; prod is the first live check.
+- ⏭️ **Monitor D1 write volume against the free tier.** Three writers now feed D1:
+  `vehicle_fixes` upsert on every fresh board (jam), the sweep (~27k rows/day), and
+  organic (~41k/day) → ~68k/day writes, 32% headroom under the 100k/day free tier.
+  Watch the sum; killswitches are `jam_detection_collect` and `analytics_sweep`
+  (both single KV writes, no redeploy; the sweep also has the auto circuit-breaker).
+- ⏭️ **Raise the sweep tempo to 11s** (~early August, only if no challenge signs) —
+  KV `config:sweep_interval_day_seconds`, raised in steps, never hardcoded. The
+  only knob facing the source; start 20s, target 11s.
+- ⏭️ **Feed↔GTFS line-label mapping.** `sched_delay` surfaced a desync: 18.3% of
+  arrivals have no GTFS timetable at their stop, largely live-vs-GTFS label
+  mismatches (e.g. stop 21577 — the feed labels line 55, GTFS lists only 309 there).
+  A separate reconciliation/dictionary task; the unmatched fraction is itself a
+  data-quality signal, not a matcher bug (only 0.1% had a timetable but no trip).
+- ⏭️ **incident_journal / feed_hunger** — the deferred **phase 2** of the v2
+  migration (wiring the jam incident journal into analytics + a citywide
+  freeze-frequency map). Lands with a later jam↔analytics stitch.
+- ⏭️ **Surface punctuality (`sched_delay`) on the analytics screens** — the data is
+  accruing but the API returns null (`punctuality`); a later screen task once
+  1–2 weeks of citywide history exists.
+- 🧊 **Owner dashboard** — a flag-gated network overview for the owner (network
+  now, sweep health, weekly trends, incident log). Principle: **the flag is a
+  shutter, not a lock** — anything sensitive goes only through authenticated
+  endpoints, never merely hidden behind a client flag.
 
 ### Data freshness & suburban coverage
 - ✅ Verified the city GTFS feed is already the latest official export (a rebuild

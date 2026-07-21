@@ -51,6 +51,12 @@ a stable versioned API. Stop/line/shape/timetable reference data comes from the
 official Belgrade GTFS feed, not the live-arrivals source. See `backend/README.md`
 for the API contract and `backend/.env.example` for required configuration.
 
+In the background the backend also builds a **citywide reliability history** —
+a slow, even, human-shaped rotation over a small set of mid-route stops so the
+record covers every line, not just the ones riders happen to open. It rides the
+same shared cache (no extra load on the source) and feeds future reliability
+features; the rider-facing screens for it are still off.
+
 ## Running locally
 
 You'll need a (free) MapTiler API key to render maps.
