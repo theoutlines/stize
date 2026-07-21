@@ -39,6 +39,7 @@ describe("featureFlags", () => {
       "nearby_list",
       "nearby_sort_board",
       "product_analytics",
+      "upstream_budget",
       "vehicles_on_demand",
     ]);
   });

@@ -30,6 +30,20 @@ export interface RawArrival {
   routeStations: { lat: number; lon: number }[];
 }
 
+// A failed upstream round-trip, tagged with WHY so the request meter / degradation
+// breaker can tell a slow-but-broken source (non-JSON body on a 200, an HTTP error)
+// apart from a plain network failure. `outcome` mirrors upstreamBudget.UpstreamOutcome
+// for the failure cases; success/empty are inferred from the returned array length.
+export class UpstreamError extends Error {
+  constructor(
+    readonly outcome: "non_json" | "http_error",
+    message: string,
+  ) {
+    super(message);
+    this.name = "UpstreamError";
+  }
+}
+
 // Abstracts the upstream live-arrivals source. The concrete endpoint and its
 // request shape live entirely in env vars (see backend/.dev.vars, never
 // committed) — nothing about the real provider is hardcoded here or anywhere
@@ -61,10 +75,19 @@ export class BgnaplataTransitProvider implements TransitDataProvider {
     });
 
     if (!res.ok) {
-      throw new Error(`Transit source responded ${res.status}`);
+      throw new UpstreamError("http_error", `Transit source responded ${res.status}`);
     }
 
-    const raw = (await res.json()) as unknown;
+    // A degrading source can answer 200 with a non-JSON body (e.g. an HTML
+    // interstitial). Tag that distinctly so the meter counts it as non-JSON rather
+    // than a generic network error — it's the exact signal the degradation breaker
+    // needs, and it's invisible to the old all-failed breaker on a warm cache key.
+    let raw: unknown;
+    try {
+      raw = await res.json();
+    } catch {
+      throw new UpstreamError("non_json", "Transit source returned a non-JSON body");
+    }
     if (!Array.isArray(raw)) return [];
 
     return raw.map(parseRawArrival);
