@@ -359,10 +359,16 @@ describe("aggregate — windowed backfill convergence", () => {
     ).first<{ n: number }>())!.n;
     expect(veh).toBeGreaterThan(0);
 
-    // One more run is a light no-op increment — nothing new past the watermark.
+    // One more run is a light no-op increment — nothing new past the watermark —
+    // and it must NOT change the totals (idempotent: the watermark advanced
+    // atomically with the bucket writes, so a re-run can't double-count).
     const extra = await aggregate(env, now);
     expect(extra.buckets).toBe(0);
     expect(extra.caughtUp).toBe(true);
+    const sumAfter = (await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT SUM(samples) AS s FROM agg_line_dir_time",
+    ).first<{ s: number }>())!.s;
+    expect(sumAfter).toBe(rawCount);
   });
 
   it("honours config:agg_backfill_window_s — a narrower window advances less per run", async () => {

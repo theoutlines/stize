@@ -451,51 +451,56 @@ export async function aggregate(
     }
   }
 
-  // Buckets are ALWAYS merged additively (UPSERT): on a fresh backfill the tables
-  // were just cleared above, and every later window adds onto what earlier windows
-  // wrote (the same line×dir×dow×hour recurs across days).
-  await mergeBuckets(db, [...map.values()], now, false);
+  // --- ATOMIC commit: every bucket UPSERT for this window PLUS the watermark
+  // advance go in ONE db.batch() (a single D1 transaction). So the run either
+  // commits its window AND moves the watermark, or does neither — it can NEVER
+  // leave buckets written without advancing the watermark, which the next run
+  // would then re-add (the 2026-07-21 double-count: repeated CPU-limit kills
+  // between the bucket write and a separate watermark write inflated samples to
+  // 2.5× the raw count). The CPU-heavy part (the window-function scans above) runs
+  // BEFORE this batch, so a resource-limit kill there just leaves the watermark
+  // unmoved and the next run safely reprocesses the same slice from scratch.
+  // Buckets per bounded window are a few hundred (line×dir×dow×hour for one time
+  // slice) — well within a single batch; narrow config:agg_backfill_window_s if a
+  // window's write set ever grows too large.
+  const cols = AGG_LINE_DIR_TIME_COLUMNS.join(",");
+  const ph = AGG_LINE_DIR_TIME_COLUMNS.map(() => "?").join(",");
+  const upsertSql = `INSERT INTO agg_line_dir_time (${cols}) VALUES (${ph}) ON CONFLICT(line,direction_route_id,dow,hour) DO UPDATE SET ${AGG_UPSERT_SET}`;
+  const writes = [...map.values()].map((b) => db.prepare(upsertSql).bind(...bucketRow(b, now)));
+  writes.push(
+    db
+      .prepare("INSERT OR REPLACE INTO agg_state (key, value) VALUES ('last_run', ?)")
+      .bind(String(windowEnd)),
+  );
+  await db.batch(writes);
 
-  // Per-vehicle aggregates — computed BEFORE pruning the raw rows they read.
-  // BEST-EFFORT (like sched_delay below): a secondary metric must NOT abort the
-  // run, or the watermark never advances and the backfill can't converge. Log and
-  // carry on; this window's per-vehicle rows are simply skipped.
+  // Secondary metrics — per-vehicle + schedule-delay. BEST-EFFORT, and deliberately
+  // AFTER the watermark has already advanced: they add onto agg rows for THIS
+  // window, so if the run dies here the next run (watermark already past this slice)
+  // won't reprocess it — the secondary data is simply MISSING for this window, never
+  // double-counted. A thrown error is likewise swallowed (secondary; not worth
+  // stalling the whole aggregate). They read raw before the prune below.
   try {
     await aggregateVehicles(db, now, cursor, windowEnd, windowStart);
   } catch (e) {
     console.error("analytics per-vehicle pass failed (continuing without it)", e);
   }
-
-  // Schedule delay — match new arrivals to the GTFS timetable (needs the
-  // schedule assets + calendar, so it's a JS pass, not SQL). Additive into the
-  // sched_delay_* columns of the buckets the activity pass already created.
-  // BEST-EFFORT: sched_delay is a secondary metric; a failure here (e.g. a
-  // schedule asset hiccup) must NOT abort the core aggregate — otherwise the
-  // watermark below never advances and the backfill can't converge. Log and carry
-  // on; the next run picks the delay up for its window.
   try {
     await aggregateSchedDelay(env, db, now, cursor, windowEnd);
   } catch (e) {
     console.error("analytics sched_delay pass failed (continuing without it)", e);
   }
 
-  // Prune old raw ONLY once the backfill has caught up — while still catching up,
-  // rows older than retention may not have been aggregated into their window yet,
-  // and pruning them would drop history unread. (Our retention window is 30d and
-  // current raw is <30d, so this is belt-and-braces, but keep it correct.)
+  // Prune old raw ONLY once caught up — while still catching up, rows older than
+  // retention may not have been aggregated into their window yet, and pruning them
+  // would drop history unread. (Retention is 30d and current raw is <30d, so this
+  // is belt-and-braces, but keep it correct.)
   if (caughtUp) {
     await db
       .prepare("DELETE FROM raw_observations WHERE observed_at < ?")
       .bind(now - RAW_RETENTION_DAYS * 86400)
       .run();
   }
-
-  // Advance the watermark to the end of the slice we actually processed — the
-  // final write, so the run's progress is retained and the next run resumes here.
-  await db
-    .prepare("INSERT OR REPLACE INTO agg_state (key, value) VALUES ('last_run', ?)")
-    .bind(String(windowEnd))
-    .run();
 
   return { buckets: map.size, from: cursor, to: windowEnd, caughtUp };
 }
@@ -510,41 +515,6 @@ const AGG_UPSERT_SET =
 
 function bucketRow(b: Bucket, now: number): (string | number)[] {
   return [b.line, b.dir, b.dow, b.hour, b.samples, b.arrivals, b.headway_count, b.headway_secs_sum, ...b.hist, b.speed_count, b.speed_stops_per_min_sum, now];
-}
-
-/**
- * Write bucket contributions into agg_line_dir_time. On a full backfill (empty
- * table) a plain chunked INSERT is fastest; on an incremental run each bucket is
- * an additive UPSERT so existing history is preserved (sched_delay_* columns,
- * absent from the column list, are left untouched).
- */
-async function mergeBuckets(
-  db: D1Database,
-  buckets: Bucket[],
-  now: number,
-  fullBackfill: boolean,
-): Promise<void> {
-  if (buckets.length === 0) return;
-  if (fullBackfill) {
-    await chunkedInsert(
-      db,
-      "agg_line_dir_time",
-      AGG_LINE_DIR_TIME_COLUMNS,
-      buckets.map((b) => bucketRow(b, now)),
-    );
-    return;
-  }
-  const cols = AGG_LINE_DIR_TIME_COLUMNS.join(",");
-  const placeholders = AGG_LINE_DIR_TIME_COLUMNS.map(() => "?").join(",");
-  const sql = `INSERT INTO agg_line_dir_time (${cols}) VALUES (${placeholders}) ON CONFLICT(line,direction_route_id,dow,hour) DO UPDATE SET ${AGG_UPSERT_SET}`;
-  // Batch the upserts (chunked so a huge incremental run can't build an
-  // unbounded single batch).
-  const BATCH = 50;
-  for (let i = 0; i < buckets.length; i += BATCH) {
-    await db.batch(
-      buckets.slice(i, i + BATCH).map((b) => db.prepare(sql).bind(...bucketRow(b, now))),
-    );
-  }
 }
 
 /**
