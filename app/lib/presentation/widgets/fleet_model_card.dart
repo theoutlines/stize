@@ -35,17 +35,28 @@ Future<void> showFleetModelCard(
 /// The model-card content. Hosted by the mobile modal ([showFleetModelCard]) and
 /// by the desktop context panel (as a leaf sub-view of the vehicle view — the
 /// desktop model details live INSIDE the panel, never a second surface over it).
+///
+/// [scrollController] switches on the **embedded** layout: the same content, but
+/// scrolling with the host's controller and WITHOUT its own SafeArea /
+/// max-height clamp — used when the card is a subview inside a mobile bottom
+/// sheet (owner B#2, so the sheet's chrome/detents own the frame). Null keeps the
+/// standalone layout (the legacy modal + the desktop panel leaf).
 class FleetModelView extends StatelessWidget {
   const FleetModelView({
     super.key,
     required this.fleet,
     required this.fallbackType,
     this.garageNo,
+    this.scrollController,
   });
 
   final FleetVehicle fleet;
   final VehicleType fallbackType;
   final String? garageNo;
+
+  /// When non-null, embed inside a scrollable host (the mobile sheet) using this
+  /// controller instead of wrapping in a self-sized modal frame.
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +65,42 @@ class FleetModelView extends StatelessWidget {
     final lang = Localizations.localeOf(context).languageCode;
     final note = fleet.humanNoteFor(lang);
 
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _header(context, theme, l10n, lang),
+        const SizedBox(height: 12),
+        _heroSlot(context, theme),
+        if (note != null) ...[
+          const SizedBox(height: 14),
+          Text(note, style: theme.textTheme.bodyMedium),
+        ],
+        const SizedBox(height: 16),
+        ..._attributes(context, theme, l10n, lang),
+        if (fleet.approximate) ...[
+          const SizedBox(height: 14),
+          Text(
+            l10n.fleetApproxNote,
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.outline),
+          ),
+        ],
+      ],
+    );
+
+    // Embedded in a mobile sheet: fill the sheet, scroll with its controller.
+    // The sheet already provides the drag handle, radius, background and back
+    // header — so no SafeArea / ConstrainedBox / own handle here.
+    if (scrollController != null) {
+      return SingleChildScrollView(
+        controller: scrollController,
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        child: content,
+      );
+    }
+
+    // Standalone (legacy modal / desktop panel leaf) — unchanged.
     return SafeArea(
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -61,29 +108,7 @@ class FleetModelView extends StatelessWidget {
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(context, theme, l10n, lang),
-              const SizedBox(height: 12),
-              _heroSlot(context, theme),
-              if (note != null) ...[
-                const SizedBox(height: 14),
-                Text(note, style: theme.textTheme.bodyMedium),
-              ],
-              const SizedBox(height: 16),
-              ..._attributes(context, theme, l10n, lang),
-              if (fleet.approximate) ...[
-                const SizedBox(height: 14),
-                Text(
-                  l10n.fleetApproxNote,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.outline),
-                ),
-              ],
-            ],
-          ),
+          child: content,
         ),
       ),
     );

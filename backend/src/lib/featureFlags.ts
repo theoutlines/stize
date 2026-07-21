@@ -58,6 +58,11 @@ import type { Env } from "../env";
 //                       unchanged; this entry only lets /config serve the flag so
 //                       it can default ON on staging / OFF on prod and be flipped
 //                       in KV. OFF is the killswitch (today's UI, untouched).
+//   feedback_form     — the drawer's in-app feedback form + its POST
+//                       /api/v1/feedback endpoint. OFF hides the "Write to me"
+//                       action on the client AND makes the endpoint refuse
+//                       (403), so it's a full killswitch for the feature. Off on
+//                       prod until the preview pair is reviewed, on on staging.
 //   jam_detection_collect — the worker records the per-vehicle last-fix table
 //                       (opportunistic, on the existing SWR refreshes — no extra
 //                       source calls). Split from `jam_detection_show` on purpose,
@@ -86,6 +91,7 @@ export const FEATURE_FLAGS = [
   "vehicles_on_demand",
   "product_analytics",
   "context_panel",
+  "feedback_form",
   "analytics_sweep",
   "jam_detection_collect",
   "jam_detection_show",

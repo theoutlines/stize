@@ -21,4 +21,10 @@ export interface Env {
   NOMINATIM_USER_AGENT_CONTACT: string;
 
   ANTHROPIC_API_KEY: string;
+
+  // Feedback triage (Part D). Optional: absent = store-only (D1), no GitHub issue.
+  // GITHUB_FEEDBACK_REPO is a non-secret "owner/name" in [vars]; the token is a
+  // fine-grained PAT (issues:write on that PRIVATE repo) set via `wrangler secret`.
+  GITHUB_FEEDBACK_REPO?: string;
+  GITHUB_FEEDBACK_TOKEN?: string;
 }

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
+import '../../core/context_slot.dart';
 import '../../core/vehicle_route.dart';
 import '../../domain/models/route_shape.dart';
 import '../../domain/models/stop.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../screens/map_screen_args.dart';
+import 'sheet_chrome.dart';
 import 'vehicle_icon.dart';
 
 /// Slides up a Yandex-style detail panel for a tapped live vehicle: line +
@@ -22,10 +24,8 @@ Future<void> showVehicleDetailSheet(
   required RouteShape shape,
   required VehicleRoutePlan plan,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
+  return showAppSheet<void>(
+    context,
     builder: (context) => _VehicleDetailSheet(
       line: line,
       type: type,
@@ -59,85 +59,95 @@ class _VehicleDetailSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
-    return PointerInterceptor(
-      child: SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.7,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Row(
-                children: [
-                  _pill(),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '${shape.origin} → ${shape.destination}',
-                      style: theme.textTheme.titleSmall,
-                    ),
+    // Same chrome + detents as the nearby / stop sheets (owner acceptance #3):
+    // full width, shared drag handle + radius, one draggable scroll view.
+    return DraggableScrollableSheet(
+      initialChildSize: kSheetHalf,
+      minChildSize: kSheetPeek,
+      maxChildSize: kSheetLarge,
+      snap: true,
+      snapSizes: const [kSheetPeek, kSheetHalf, kSheetLarge],
+      expand: false,
+      builder: (context, scrollController) {
+        return PointerInterceptor(
+          child: Material(
+            color: theme.colorScheme.surface,
+            borderRadius: kSheetRadius,
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                const SheetDragHandle(bottom: 4),
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.only(bottom: 12),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Row(
+                          children: [
+                            _pill(),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                '${shape.origin} → ${shape.destination}',
+                                style: theme.textTheme.titleSmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _statusChip(context, l10n),
+                      ),
+                      const SizedBox(height: 8),
+                      if (plan.nextStop != null)
+                        ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.my_location, size: 20),
+                          title: Text(plan.nextStop!.name),
+                          subtitle: Text(l10n.vehicleNextStop),
+                        ),
+                      const Divider(height: 1),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                        child: Text(
+                          l10n.vehicleUpcomingStops,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                      ),
+                      for (final u in plan.stops) _stopRow(context, l10n, u),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                        child: Text(
+                          l10n.vehicleEtaApprox,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            icon: const Icon(Icons.map_outlined),
+                            label: Text(l10n.vehicleShowRoute),
+                            onPressed: () => _showRoute(context),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _statusChip(context, l10n),
-            ),
-            const SizedBox(height: 8),
-            if (plan.nextStop != null)
-              ListTile(
-                dense: true,
-                leading: const Icon(Icons.my_location, size: 20),
-                title: Text(plan.nextStop!.name),
-                subtitle: Text(l10n.vehicleNextStop),
-              ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                l10n.vehicleUpcomingStops,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.outline,
                 ),
-              ),
+              ],
             ),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: const EdgeInsets.only(bottom: 4),
-                itemCount: plan.stops.length,
-                itemBuilder: (context, i) => _stopRow(context, l10n, plan.stops[i]),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: Text(
-                l10n.vehicleEtaApprox,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  icon: const Icon(Icons.map_outlined),
-                  label: Text(l10n.vehicleShowRoute),
-                  onPressed: () => _showRoute(context),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      ),
+          ),
+        );
+      },
     );
   }
 
