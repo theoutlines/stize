@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Stigla';
+  String get appTitle => 'Stiže';
 
   @override
   String get navHome => 'Map';
@@ -30,7 +30,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ideasEmptySubtitle => 'Be the first to suggest something.';
 
   @override
-  String get ideaInputHint => 'What should Stigla do better?';
+  String get ideaInputHint => 'What should Stiže do better?';
 
   @override
   String get ideaSubmit => 'Suggest';
@@ -324,7 +324,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get aboutTitle => 'About Stigla';
+  String get aboutTitle => 'About Stiže';
 
   @override
   String aboutRouteData(String date) {
@@ -337,7 +337,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutDescription =>
-      'Stigla shows real-time Belgrade public transport arrivals. Built for personal use.';
+      'Stiže shows real-time Belgrade public transport arrivals. Built for personal use.';
 
   @override
   String get lineFilterAll => 'All lines';
@@ -544,18 +544,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get drawerPrivacy => 'Privacy policy';
 
   @override
-  String get drawerDonate => 'Support Stigla';
+  String get drawerDonate => 'Support Stiže';
 
   @override
   String get licensesLegalese =>
-      'Stigla is free software under the AGPL-3.0 license.';
+      'Stiže is free software under the AGPL-3.0 license.';
 
   @override
   String get privacyTitle => 'Privacy policy';
 
   @override
   String get privacyIntro =>
-      'Stigla is private by default. Here\'s exactly what it does with data, in plain language.';
+      'Stiže is private by default. Here\'s exactly what it does with data, in plain language.';
 
   @override
   String get privacyLocationTitle => 'Your location';
@@ -576,7 +576,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyTrackersBody =>
-      'Stigla shows no ads and includes no third-party advertising or tracking SDKs.';
+      'Stiže shows no ads and includes no third-party advertising or tracking SDKs.';
 
   @override
   String get privacyFeedbackTitle => 'Feedback you send';
@@ -590,7 +590,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyOpenSourceBody =>
-      'Stigla\'s code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.';
+      'Stiže\'s code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.';
 
   @override
   String jamStopBannerTitle(String line) {

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/core/arrival_grouping.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/widgets/scheduled_group_tile.dart';
+import 'package:stize/core/arrival_grouping.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/widgets/scheduled_group_tile.dart';
 
 Widget _wrap(ScheduledGroupCell cell) => MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,

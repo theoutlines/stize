@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/map_refresh.dart';
+import 'package:stize/core/map_refresh.dart';
 
 void main() {
   group('mapRefreshAction — a live context never stops polling', () {

@@ -103,7 +103,7 @@ abstract class AppLocalizations {
   /// App name, shown in title bars and the OS app switcher
   ///
   /// In en, this message translates to:
-  /// **'Stigla'**
+  /// **'Stiže'**
   String get appTitle;
 
   /// No description provided for @navHome.
@@ -145,7 +145,7 @@ abstract class AppLocalizations {
   /// No description provided for @ideaInputHint.
   ///
   /// In en, this message translates to:
-  /// **'What should Stigla do better?'**
+  /// **'What should Stiže do better?'**
   String get ideaInputHint;
 
   /// No description provided for @ideaSubmit.
@@ -643,7 +643,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTitle.
   ///
   /// In en, this message translates to:
-  /// **'About Stigla'**
+  /// **'About Stiže'**
   String get aboutTitle;
 
   /// No description provided for @aboutRouteData.
@@ -661,7 +661,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutDescription.
   ///
   /// In en, this message translates to:
-  /// **'Stigla shows real-time Belgrade public transport arrivals. Built for personal use.'**
+  /// **'Stiže shows real-time Belgrade public transport arrivals. Built for personal use.'**
   String get aboutDescription;
 
   /// No description provided for @lineFilterAll.
@@ -1039,13 +1039,13 @@ abstract class AppLocalizations {
   /// No description provided for @drawerDonate.
   ///
   /// In en, this message translates to:
-  /// **'Support Stigla'**
+  /// **'Support Stiže'**
   String get drawerDonate;
 
   /// No description provided for @licensesLegalese.
   ///
   /// In en, this message translates to:
-  /// **'Stigla is free software under the AGPL-3.0 license.'**
+  /// **'Stiže is free software under the AGPL-3.0 license.'**
   String get licensesLegalese;
 
   /// No description provided for @privacyTitle.
@@ -1057,7 +1057,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyIntro.
   ///
   /// In en, this message translates to:
-  /// **'Stigla is private by default. Here\'s exactly what it does with data, in plain language.'**
+  /// **'Stiže is private by default. Here\'s exactly what it does with data, in plain language.'**
   String get privacyIntro;
 
   /// No description provided for @privacyLocationTitle.
@@ -1093,7 +1093,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyTrackersBody.
   ///
   /// In en, this message translates to:
-  /// **'Stigla shows no ads and includes no third-party advertising or tracking SDKs.'**
+  /// **'Stiže shows no ads and includes no third-party advertising or tracking SDKs.'**
   String get privacyTrackersBody;
 
   /// No description provided for @privacyFeedbackTitle.
@@ -1117,7 +1117,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyOpenSourceBody.
   ///
   /// In en, this message translates to:
-  /// **'Stigla\'s code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.'**
+  /// **'Stiže\'s code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.'**
   String get privacyOpenSourceBody;
 
   /// No description provided for @jamStopBannerTitle.

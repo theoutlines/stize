@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/core/search.dart';
-import 'package:stigla/domain/models/stop.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/providers/providers.dart';
-import 'package:stigla/presentation/widgets/nearby_view.dart';
+import 'package:stize/core/search.dart';
+import 'package:stize/domain/models/stop.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/widgets/nearby_view.dart';
 
 class _FakeGlobalSearch implements GlobalSearch {
   @override

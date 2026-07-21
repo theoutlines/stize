@@ -2,7 +2,7 @@
 ///   flutter run --dart-define=API_BASE_URL=http://localhost:8787
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'https://stigla-api.theoutlines.xyz',
+  defaultValue: 'https://api.stize.app',
 );
 
 /// Which environment this build targets: "production" (default) or "staging".

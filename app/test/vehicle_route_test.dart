@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
-import 'package:stigla/core/vehicle_route.dart';
-import 'package:stigla/domain/models/route_shape.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
+import 'package:stize/core/vehicle_route.dart';
+import 'package:stize/domain/models/route_shape.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 
 RouteShape _shape() {
   // A straight line heading north; five evenly-spaced stops.

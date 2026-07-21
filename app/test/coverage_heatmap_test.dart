@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/core/coverage_heatmap.dart';
+import 'package:stize/core/coverage_heatmap.dart';
 
 void main() {
   group('coverageMainHeatmapActive (threshold + hysteresis)', () {

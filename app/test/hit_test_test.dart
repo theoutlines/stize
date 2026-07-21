@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/hit_test.dart';
+import 'package:stize/core/hit_test.dart';
 
 void main() {
   group('pickNearest — tap opens the pin under the finger, not the first', () {

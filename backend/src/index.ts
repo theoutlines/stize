@@ -51,7 +51,8 @@ const DONATE_URL_KV_KEY = "config:donate_url";
 const app = new Hono<{ Bindings: Env }>();
 
 // Public read-only API consumed directly from the Flutter web build running
-// on an arbitrary origin (stigla.theoutlines.xyz, localhost during dev, ...).
+// on an arbitrary origin (stize.app, legacy stigla.theoutlines.xyz, localhost
+// during dev, ...).
 // Nothing here is per-user or cookie-authenticated, so a permissive origin is fine.
 app.use("*", cors({ origin: "*", allowHeaders: ["Content-Type", "X-Admin-Token", "X-Device-Id"] }));
 

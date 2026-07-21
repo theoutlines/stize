@@ -1,11 +1,11 @@
 {
-    "name": "stigla",
-    "short_name": "stigla",
+    "name": "Stiže",
+    "short_name": "Stiže",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#10140f",
     "theme_color": "#10140f",
-    "description": "A new Flutter project.",
+    "description": "Real-time Belgrade public transport arrivals.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

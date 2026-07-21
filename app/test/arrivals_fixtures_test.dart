@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/live_position.dart';
-import 'package:stigla/domain/models/arrival.dart';
+import 'package:stize/core/live_position.dart';
+import 'package:stize/domain/models/arrival.dart';
 
 // Real /arrivals responses captured from staging for Batutova (the owner said
 // "works") and Zvezdara (reported as "all here / dead rows"). This locks the

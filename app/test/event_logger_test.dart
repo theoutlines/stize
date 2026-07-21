@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:stigla/data/analytics/event_logger.dart';
-import 'package:stigla/data/api/stigla_api_client.dart';
+import 'package:stize/data/analytics/event_logger.dart';
+import 'package:stize/data/api/stigla_api_client.dart';
 
 /// Records every POST body the logger sends, so tests can assert on the batches
 /// (and, crucially, on there being none when the flag is off).

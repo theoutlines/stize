@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/nearby_focus.dart';
-import 'package:stigla/domain/models/arrival.dart';
-import 'package:stigla/domain/models/nearby_arrival.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
+import 'package:stize/core/nearby_focus.dart';
+import 'package:stize/domain/models/arrival.dart';
+import 'package:stize/domain/models/nearby_arrival.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 
 NearbyGroup _group({
   required List<NearbyEta> arrivals,

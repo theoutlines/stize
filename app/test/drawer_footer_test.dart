@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/providers/providers.dart';
-import 'package:stigla/presentation/widgets/app_drawer.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/widgets/app_drawer.dart';
 
 Widget _host({required bool feedbackOn, String? donateUrl}) {
   return ProviderScope(
     overrides: [
       feedbackFormEnabledProvider.overrideWithValue(feedbackOn),
       donateUrlProvider.overrideWithValue(donateUrl),
-      appVersionProvider.overrideWith((ref) => Future.value('Stigla 1.0.0 (1)')),
+      appVersionProvider.overrideWith((ref) => Future.value('Stiže 1.0.0 (1)')),
     ],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -25,7 +25,7 @@ void main() {
   testWidgets('renders the dimmed version line at the bottom', (tester) async {
     await tester.pumpWidget(_host(feedbackOn: true));
     await tester.pumpAndSettle();
-    expect(find.text('Stigla 1.0.0 (1)'), findsOneWidget);
+    expect(find.text('Stiže 1.0.0 (1)'), findsOneWidget);
     // The footer entries are present.
     expect(find.text('Open source licenses'), findsOneWidget);
     expect(find.text('Privacy policy'), findsOneWidget);
@@ -34,14 +34,14 @@ void main() {
   testWidgets('donate item is hidden when donate_url is empty', (tester) async {
     await tester.pumpWidget(_host(feedbackOn: true, donateUrl: null));
     await tester.pumpAndSettle();
-    expect(find.text('Support Stigla'), findsNothing);
+    expect(find.text('Support Stiže'), findsNothing);
   });
 
   testWidgets('donate item appears when donate_url is set', (tester) async {
     await tester.pumpWidget(
         _host(feedbackOn: true, donateUrl: 'https://example.org/donate'));
     await tester.pumpAndSettle();
-    expect(find.text('Support Stigla'), findsOneWidget);
+    expect(find.text('Support Stiže'), findsOneWidget);
   });
 
   testWidgets('feedback form action is hidden when feedback_form is off',

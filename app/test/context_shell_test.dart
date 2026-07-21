@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/widgets/context_shell.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/widgets/context_shell.dart';
 
 Widget _wrap(Widget child, {Locale? locale}) => MaterialApp(
       locale: locale,

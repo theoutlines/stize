@@ -3,11 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
-import 'package:stigla/core/route_path.dart';
-import 'package:stigla/core/timed_trajectory.dart';
-import 'package:stigla/core/vehicle_track_animator.dart';
-import 'package:stigla/domain/models/trajectory_point.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
+import 'package:stize/core/route_path.dart';
+import 'package:stize/core/timed_trajectory.dart';
+import 'package:stize/core/vehicle_track_animator.dart';
+import 'package:stize/domain/models/trajectory_point.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 
 // A straight route heading due east along lat 44.80, lon 20.50 -> 20.60. On it,
 // distance-along grows monotonically with longitude, so tests reason about

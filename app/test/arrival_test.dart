@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/domain/models/arrival.dart';
+import 'package:stize/domain/models/arrival.dart';
 
 Map<String, dynamic> _board(List<Map<String, dynamic>> arrivals) => {
   'stop_id': 'S1',

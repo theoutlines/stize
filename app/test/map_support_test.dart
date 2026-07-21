@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/map_support.dart';
-import 'package:stigla/domain/models/stop.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
+import 'package:stize/core/map_support.dart';
+import 'package:stize/domain/models/stop.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 
 Stop _stop(List<String> lines) => Stop(stopId: '1', name: 'X', lat: 44.8, lon: 20.4, lines: lines);
 

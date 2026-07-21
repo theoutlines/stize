@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/eta_delta.dart';
-import 'package:stigla/domain/models/arrival.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
+import 'package:stize/core/eta_delta.dart';
+import 'package:stize/domain/models/arrival.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 
 /// A genuinely live vehicle: real GPS, real garage.
 Arrival _live(String line, int eta, {String garage = '101'}) => Arrival(

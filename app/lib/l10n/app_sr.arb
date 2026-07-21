@@ -1,7 +1,7 @@
 {
   "@@locale": "sr",
 
-  "appTitle": "Stigla",
+  "appTitle": "Stiže",
 
   "navHome": "Mapa",
   "navMyStops": "Moja stajališta",
@@ -10,7 +10,7 @@
 
   "ideasEmptyTitle": "Još nema ideja",
   "ideasEmptySubtitle": "Budi prvi koji će nešto predložiti.",
-  "ideaInputHint": "Šta bi Stigla trebalo da radi bolje?",
+  "ideaInputHint": "Šta bi Stiže trebalo da radi bolje?",
   "ideaSubmit": "Predloži",
   "ideaRateLimited": "Jedna ideja odjednom — probaj ponovo za nekoliko minuta.",
   "ideaVotesCount": "{count, plural, =0{Još nema glasova} one{{count} glas} few{{count} glasa} other{{count} glasova}}",
@@ -111,10 +111,10 @@
   "vehicleModeTooltip": "Prevoz na mapi",
   "vehicleModeSwitched": "Prevoz na mapi: {mode}",
 
-  "aboutTitle": "O Stigla aplikaciji",
+  "aboutTitle": "O aplikaciji Stiže",
   "aboutRouteData": "Podaci o linijama: {date}",
   "aboutDisclaimer": "Nezvanična aplikacija. Nije povezana sa JKP Upravljanje javnim prevozom Beograd.",
-  "aboutDescription": "Stigla prikazuje dolaske javnog prevoza u Beogradu u realnom vremenu. Napravljeno za ličnu upotrebu.",
+  "aboutDescription": "Aplikacija Stiže prikazuje dolaske javnog prevoza u Beogradu u realnom vremenu. Napravljeno za ličnu upotrebu.",
 
   "lineFilterAll": "Sve linije",
 
@@ -189,20 +189,20 @@
   "feedbackEmptyValidation": "Prvo napiši poruku.",
   "drawerLicenses": "Licence otvorenog koda",
   "drawerPrivacy": "Politika privatnosti",
-  "drawerDonate": "Podrži Stigla",
-  "licensesLegalese": "Stigla je slobodan softver pod AGPL-3.0 licencom.",
+  "drawerDonate": "Podrži Stiže",
+  "licensesLegalese": "Aplikacija Stiže je slobodan softver pod AGPL-3.0 licencom.",
   "privacyTitle": "Politika privatnosti",
-  "privacyIntro": "Stigla je privatna podrazumevano. Evo tačno šta radi sa podacima, jednostavnim rečima.",
+  "privacyIntro": "Aplikacija Stiže je privatna podrazumevano. Evo tačno šta radi sa podacima, jednostavnim rečima.",
   "privacyLocationTitle": "Tvoja lokacija",
   "privacyLocationBody": "Kada zatražiš obližnja stajališta i vozila, lokacija tvog uređaja se šalje našem API-ju uz taj zahtev da bismo pronašli šta je u blizini. Koristi se samo za odgovor na taj zahtev i nikada se ne čuva na našim serverima.",
   "privacyAnalyticsTitle": "Anonimna upotreba",
   "privacyAnalyticsBody": "Aplikacija može beležiti anonimne događaje korišćenja (na primer, da je stajalište otvoreno) da bismo razumeli koje se funkcije koriste. Nemaju identifikatore ni naloge i ne mogu se povezati s tobom.",
   "privacyTrackersTitle": "Bez reklama i trekera",
-  "privacyTrackersBody": "Stigla ne prikazuje reklame i ne sadrži oglašivačke ni treking SDK-ove trećih strana.",
+  "privacyTrackersBody": "Aplikacija Stiže ne prikazuje reklame i ne sadrži oglašivačke ni treking SDK-ove trećih strana.",
   "privacyFeedbackTitle": "Utisci koje pošalješ",
   "privacyFeedbackBody": "Ako pošalješ utiske, tvoja poruka — i opcioni kontakt koji navedeš — čuvaju se da bismo je pročitali i odgovorili ti. Ništa drugo se uz nju ne prikuplja.",
   "privacyOpenSourceTitle": "Otvoren kod",
-  "privacyOpenSourceBody": "Kod aplikacije Stigla je otvoren pod AGPL-3.0 licencom, tako da svako može proveriti kako tačno radi.",
+  "privacyOpenSourceBody": "Kod aplikacije Stiže je otvoren pod AGPL-3.0 licencom, tako da svako može proveriti kako tačno radi.",
   "jamStopBannerTitle": "Tramvaji {line} stoje duže nego obično — moguće kašnjenje",
   "jamSubstitutionNotice": "Na liniji {line} umesto tramvaja saobraćaju autobusi",
   "jamStalledLabel": "Izgleda da stoji",

@@ -3,19 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 
-import 'package:stigla/core/map_support.dart';
-import 'package:stigla/data/location/location_service.dart';
-import 'package:stigla/domain/models/app_config.dart';
-import 'package:stigla/domain/models/geocode_result.dart';
-import 'package:stigla/domain/models/line_info.dart';
-import 'package:stigla/domain/models/stop.dart';
-import 'package:stigla/domain/repositories/geocode_repository.dart';
-import 'package:stigla/domain/repositories/lines_repository.dart';
-import 'package:stigla/domain/repositories/stops_repository.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/providers/providers.dart';
-import 'package:stigla/presentation/screens/home_map_screen.dart';
-import 'package:stigla/presentation/widgets/context_shell.dart';
+import 'package:stize/core/map_support.dart';
+import 'package:stize/data/location/location_service.dart';
+import 'package:stize/domain/models/app_config.dart';
+import 'package:stize/domain/models/geocode_result.dart';
+import 'package:stize/domain/models/line_info.dart';
+import 'package:stize/domain/models/stop.dart';
+import 'package:stize/domain/repositories/geocode_repository.dart';
+import 'package:stize/domain/repositories/lines_repository.dart';
+import 'package:stize/domain/repositories/stops_repository.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/screens/home_map_screen.dart';
+import 'package:stize/presentation/widgets/context_shell.dart';
 
 /// Location permanently denied → the map never starts a stream (hermetic).
 class _DeniedLocation extends LocationService {

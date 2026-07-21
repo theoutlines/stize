@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stigla/core/arrival_display.dart';
-import 'package:stigla/core/live_position.dart';
-import 'package:stigla/domain/models/arrival.dart';
+import 'package:stize/core/arrival_display.dart';
+import 'package:stize/core/live_position.dart';
+import 'package:stize/domain/models/arrival.dart';
 
 ArrivalsBoard _load(String name) => ArrivalsBoard.fromJson(
       jsonDecode(File('test/fixtures/$name.json').readAsStringSync())

@@ -3,11 +3,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart' as ll;
-import 'package:stigla/core/route_path.dart';
-import 'package:stigla/core/timed_trajectory.dart';
-import 'package:stigla/core/vehicle_track_animator.dart';
-import 'package:stigla/domain/models/trajectory_point.dart';
-import 'package:stigla/domain/models/vehicle_type.dart';
+import 'package:stize/core/route_path.dart';
+import 'package:stize/core/timed_trajectory.dart';
+import 'package:stize/core/vehicle_track_animator.dart';
+import 'package:stize/domain/models/trajectory_point.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 
 /// Replays a **real** plan on its **real** GTFS shape at 60 fps, refreshing the
 /// plan every 30 s exactly as the client does.

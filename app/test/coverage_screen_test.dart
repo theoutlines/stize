@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:stigla/core/map_support.dart';
-import 'package:stigla/l10n/app_localizations.dart';
-import 'package:stigla/presentation/screens/coverage_screen.dart';
+import 'package:stize/core/map_support.dart';
+import 'package:stize/l10n/app_localizations.dart';
+import 'package:stize/presentation/screens/coverage_screen.dart';
 
 Widget _wrap(Widget child) => ProviderScope(
   child: MaterialApp(

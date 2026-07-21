@@ -35,7 +35,7 @@ export default {
         return new Response("Authentication required.", {
           status: 401,
           headers: {
-            "WWW-Authenticate": 'Basic realm="Stigla preview", charset="UTF-8"',
+            "WWW-Authenticate": 'Basic realm="Stiže preview", charset="UTF-8"',
           },
         });
       }
