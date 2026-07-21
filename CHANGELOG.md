@@ -18,12 +18,13 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   separate islands, and the map reclaims the space when collapsed.
 
 ### Changed
-- **Rebrand: Stigla → Stiže** — the product is now **Stiže** (Serbian for
-  "arrives"), moving to **[stize.app](https://stize.app)**. The app name updates
-  everywhere it's shown (EN/RU/SR, title, PWA install name, About). The old
-  `stigla.theoutlines.xyz` address 301-redirects to `stize.app` (deep links
-  preserved), so existing bookmarks keep working. Internal infrastructure names
-  are unchanged.
+- **Rebrand: Stigla → Stiže, live on [stize.app](https://stize.app)** — the
+  product is now **Stiže** (Serbian for "arrives"). The app name updates
+  everywhere it's shown (EN/RU/SR, title, PWA install name, About), and prod
+  serves from `stize.app` (API `api.stize.app`). The old
+  `stigla.theoutlines.xyz` address keeps working and 301-redirects to `stize.app`
+  with the path preserved, so existing bookmarks and deep links migrate cleanly.
+  Internal infrastructure names are unchanged.
 - **Global search everywhere** — the mobile nearby sheet uses the same search as
   desktop: nearby matches first, then stops/lines; it works even before location
   is enabled.
