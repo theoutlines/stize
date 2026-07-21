@@ -1,196 +1,198 @@
-# Контракт: гибрид live + scheduled (расписательные объекты)
+# Contract: live + scheduled hybrid (scheduled objects)
 
-Координационный документ между сессиями **symbol-layer** (frontend: рендер и
-движение) и **gtfs-freshness** (backend: расписательные прибытия/объекты).
-Фронтенд уже реализован под этот контракт **tolerant + за флагом** — backend
-должен выдавать поля с этими именами. Флаг: `schedule_fallback` (OFF prod).
+A coordination document between the **symbol-layer** session (frontend: rendering
+and motion) and the **gtfs-freshness** session (backend: scheduled
+arrivals/objects). The frontend is already implemented against this contract
+**tolerant + behind a flag** — the backend must emit fields with these names.
+Flag: `schedule_fallback` (OFF prod).
 
-## Идея
+## Idea
 
-Расписательный объект — это **тот же движущийся объект**, не новый механизм:
-тот же `MovingObjectKind` (bus/tram/…), тот же формат движения (timed-план по
-геометрии), отличается только **источником** (`source`) и **прозрачностью**
-рендера. Клиент ведёт его **тем же кодом**, что и живой (timed-экстраполяция).
+A scheduled object is **the same moving object**, not a new mechanism: the same
+`MovingObjectKind` (bus/tram/…), the same motion format (a timed plan over
+geometry), differing only in **source** (`source`) and render **opacity**. The
+client drives it with **the same code** as a live one (timed extrapolation).
 
-## `/api/v1/vehicles/nearby` — `VehicleDto` (карта)
+## `/api/v1/vehicles/nearby` — `VehicleDto` (map)
 
-Аддитивные поля к существующему live-контракту (всё опционально, старый клиент
-не ломается):
+Additive fields on top of the existing live contract (all optional, an old client
+doesn't break):
 
-| поле | тип | для live | для scheduled |
+| field | type | for live | for scheduled |
 |---|---|---|---|
-| `source` | `"live" \| "scheduled"` | `"live"` или отсутствует | `"scheduled"` |
-| `trip_id` | `string?` | опц. (см. дедуп) | GTFS `trip_id` — идентичность рейса |
-| `line`, `vehicle_type`, `lat`, `lon`, `heading` | как сейчас | — | позиция = «где рейс сейчас» = интерполяция по shape + плановые времена |
-| `trajectory` | `TrajectoryPointDto[]` | как сейчас | **план вперёд из `stop_times`**, тот же формат `{lat, lon, eta_seconds}` |
-| `as_of` | `string` (ISO) | как сейчас | момент, к которому привязан план |
+| `source` | `"live" \| "scheduled"` | `"live"` or absent | `"scheduled"` |
+| `trip_id` | `string?` | opt. (see dedup) | GTFS `trip_id` — trip identity |
+| `line`, `vehicle_type`, `lat`, `lon`, `heading` | as now | — | position = "where the trip is now" = interpolation over the shape + scheduled times |
+| `trajectory` | `TrajectoryPointDto[]` | as now | **the plan ahead from `stop_times`**, the same `{lat, lon, eta_seconds}` format |
+| `as_of` | `string` (ISO) | as now | the moment the plan is anchored to |
 
-**Ключевое:** `trajectory` для scheduled должен быть **того же формата**, что у
-live (точки по геометрии маршрута + `eta_seconds` от `as_of`). Тогда клиент не
-пишет нового кода движения — scheduled ведётся `TimedTrajectory` как live.
-`eta_seconds` — кумулятивные секунды от `as_of` (0 в текущей точке, монотонно ↑).
+**Key:** the `trajectory` for scheduled must be **the same format** as for live
+(points over the route geometry + `eta_seconds` from `as_of`). Then the client
+writes no new motion code — scheduled is driven by `TimedTrajectory` like live.
+`eta_seconds` are cumulative seconds from `as_of` (0 at the current point,
+monotonically ↑).
 
-### Клиент (реализовано)
-- `source` парсится tolerant: всё, кроме явного `"scheduled"`, = `live`
-  (`VehicleSource.fromApi`).
-- Ключ трека scheduled = `sched:<trip_id>` (или coord-fallback) — **никогда не
-  коллизит** с live-ключом (гаражный номер).
-- Рендер: scheduled рисуется с базовой прозрачностью `0.5`
-  (`kScheduledBaseOpacity`), комбинируется с grace/crossing-затуханием; z-order —
-  scheduled **под** live (живой всегда сверху при наложении).
-- Движение: `trajectory`+`as_of` scheduled-объекта скармливаются аниматору **вне
-  зависимости** от флага `timed_trajectory` (у scheduled план — это и есть его
-  движение).
-- Тап по scheduled → та же шторка линии + честная пометка «по расписанию — не
-  живая позиция» (`vehicleScheduled`, EN/RU/SR).
+### Client (implemented)
+- `source` is parsed tolerant: anything other than an explicit `"scheduled"` =
+  `live` (`VehicleSource.fromApi`).
+- The scheduled track key = `sched:<trip_id>` (or a coord fallback) — it **never
+  collides** with a live key (the garage number).
+- Rendering: scheduled is drawn at a base opacity of `0.5`
+  (`kScheduledBaseOpacity`), combined with the grace/crossing fade; z-order —
+  scheduled **below** live (a live one is always on top on overlap).
+- Motion: a scheduled object's `trajectory`+`as_of` are fed to the animator
+  **regardless** of the `timed_trajectory` flag (for a scheduled one the plan is
+  its motion).
+- A tap on scheduled → the same line shutter + an honest note "by schedule — not a
+  live position" (`vehicleScheduled`, EN/RU/SR).
 
-## Дедупликация live vs scheduled (один рейс)
+## Deduplication live vs scheduled (one trip)
 
-- **Ответственность backend:** не отдавать scheduled-объект для рейса, у которого
-  есть live-ТС. У backend есть маппинг рейс↔ТС; клиент — нет.
-- **Клиентская подстраховка (реализовано):** ключ scheduled префиксован
-  (`sched:`), поэтому scheduled и live **не могут занять один трек**. Полная
-  дедупликация по рейсу — за backend (если live начнёт нести `trip_id`, клиент
-  сможет добавить дедуп по нему; сейчас live его не несёт — договориться).
+- **Backend responsibility:** don't emit a scheduled object for a trip that has a
+  live vehicle. The backend has a trip↔vehicle mapping; the client doesn't.
+- **Client safety net (implemented):** the scheduled key is prefixed
+  (`sched:`), so scheduled and live **can't occupy one track**. Full per-trip
+  dedup is the backend's (if live starts carrying `trip_id`, the client can add
+  dedup by it; live doesn't carry it today — to be agreed).
 
-## Список прибытий (экран остановки) — НЕ в этой сессии
+## Arrivals list (stop screen) — NOT in this session
 
-Item 3 из постановки (гибридный список: живые ярко/сверху, расписательные
-помечены, нет пустого состояния если по расписанию что-то идёт) **пересекается с
-работой сессии `gtfs-freshness`** над экраном остановки (сейчас показывает
-GTFS ∪ live, `stop_screen.dart`) и гашением «призраков». Чтобы не наступать на
-чужую сессию, список делается **скоординированно там** (или отдельной репликой
-владельца), на этом же контракте (`ArrivalDto.source`/`trip_id`). Symbol-layer
-сессия сделала **карту** (рендер+движение) — свою часть.
+Item 3 of the brief (a hybrid list: live bright/on-top, scheduled labeled, no empty
+state if something is coming by schedule) **overlaps with the `gtfs-freshness`
+session's work** on the stop screen (currently shows GTFS ∪ live,
+`stop_screen.dart`) and "ghost" suppression. To avoid stepping on another session,
+the list is built **coordinated there** (or by a separate owner replica), on this
+same contract (`ArrivalDto.source`/`trip_id`). The symbol-layer session did the
+**map** (render+motion) — its part.
 
-Предлагаемое расширение `ArrivalDto` (для списка, когда возьмётся):
-`source?: "live" | "scheduled"`, `trip_id?: string` — те же имена.
+Proposed `ArrivalDto` extension (for the list, when taken up):
+`source?: "live" | "scheduled"`, `trip_id?: string` — the same names.
 
-**Обновление (`arrivals-dedup`):** клиентские правила отображения списка теперь
-зафиксированы ниже — раздел «Правила отображения списка прибытий (шторка
-остановки)». Данные (`source`/`trip_id`) уже приходят; правка чисто
-отображенческая, бэкенд не меняется.
+**Update (`arrivals-dedup`):** the client list-display rules are now fixed below —
+the section "Arrivals list display rules (stop shutter)". The data
+(`source`/`trip_id`) already arrives; the change is purely display-side, the
+backend doesn't change.
 
-## Флаг
+## Flag
 
-- `schedule_fallback` (KV, env-aware): OFF prod / ON staging по умолчанию.
-- Клиент: при OFF scheduled-объекты **отбрасываются** до входа в аниматор (не
-  рисуются вовсе); при ON — рисуются полупрозрачно.
-- Backend гейтит **эмиссию** scheduled-объектов тем же (или своим) флагом.
-- Оба должны быть ON, чтобы scheduled поехали на staging.
+- `schedule_fallback` (KV, env-aware): OFF prod / ON staging by default.
+- Client: with OFF scheduled objects are **dropped** before entering the animator
+  (not drawn at all); with ON — drawn semi-transparent.
+- The backend gates the **emission** of scheduled objects with the same (or its
+  own) flag.
+- Both must be ON for scheduled to run on staging.
 
-## Что подтвердить у backend-сессии (gtfs-freshness)
-1. Имена полей: `source`, `trip_id` (snake_case) — ок?
-2. `trajectory` scheduled — точки по **road-shape** маршрута (как live
-   `all_stations`), `eta_seconds` кумулятивные от `as_of`. Ок?
-3. Дедуп рейса (live есть → scheduled не отдавать) — backend берёт на себя?
-4. Флаг эмиссии — `schedule_fallback` или отдельный? (клиент читает
+## To confirm with the backend session (gtfs-freshness)
+1. Field names: `source`, `trip_id` (snake_case) — ok?
+2. Scheduled `trajectory` — points over the route's **road-shape** (like live
+   `all_stations`), `eta_seconds` cumulative from `as_of`. Ok?
+3. Trip dedup (live exists → don't emit scheduled) — does the backend take it on?
+4. The emission flag — `schedule_fallback` or a separate one? (the client reads
    `schedule_fallback`.)
 
-## Правила отображения списка прибытий (шторка остановки)
+## Arrivals list display rules (stop shutter)
 
-Введено задачей `arrivals-dedup`. После включения фолбэка (Фаза 1) шторка стала
-нечитаемой: live-борта и Scheduled-строки той же линии **дублируют друг друга**
-(«транспорта как будто слишком много, но по факту они повторяют друг друга» —
-скрин Batutova 2026-07-16: live 79 «2 min»/«14 min» вперемешку с пятью Scheduled
-79 на 6/18/26/30 мин). Смысл фолбэка — **заполнять пустоту, а не задваивать
-живые данные**.
+Introduced by the `arrivals-dedup` task. After the fallback was turned on (Phase 1)
+the shutter became unreadable: live vehicles and Scheduled rows of the same line
+**duplicate each other** ("it looks like there's too much transport, but they
+actually just repeat each other" — the Batutova screenshot 2026-07-16: live 79
+"2 min"/"14 min" mixed with five Scheduled 79 at 6/18/26/30 min). The point of the
+fallback is to **fill emptiness, not to double live data**.
 
-Правила **чисто клиентские** (бэкенд не меняется, данные уже приходят).
-Группировка — по **линия × направление** (направление = `direction_route_id`,
-при отсутствии — `route_id`).
+The rules are **purely client-side** (the backend doesn't change, the data already
+arrives). Grouping — by **line × direction** (direction = `direction_route_id`, or
+`route_id` when absent).
 
-Три статуса строки (`ArrivalRowStatus`, уже в коде):
-- **live** — реально отслеживаемый борт (GPS, гараж); кликабелен, follow.
-- **expected** — валидный ETA-прогноз **без** живой позиции (placeholder-борт,
-  гараж `P1..P999`, привязан к остановке). Честное «Expected», не сломанный live.
-- **scheduled** — расписательный фолбэк (`source=scheduled`), борта нет вовсе.
+Three row statuses (`ArrivalRowStatus`, already in the code):
+- **live** — a really tracked vehicle (GPS, garage); clickable, follow.
+- **expected** — a valid ETA prediction **without** a live position (a placeholder
+  vehicle, garage `P1..P999`, anchored to the stop). An honest "Expected", not a
+  broken live.
+- **scheduled** — the schedule fallback (`source=scheduled`), no vehicle at all.
 
-### 1. Подавление дублей — два горизонта, наложенных
-Не-live строка (Expected/Scheduled) скрывается, если срабатывает **любой** из:
+### 1. Duplicate suppression — two overlaid horizons
+A non-live row (Expected/Scheduled) is hidden if **either** fires:
 
-- **Глобальный горизонт (по всей остановке).** Если на остановке есть **хоть
-  один** live-борт, любая не-live строка/ячейка **любой линии** с ETA **меньше
-  ближайшего live-ETA борта** — фантом (транспорт, который «приедет раньше»
-  видимого живого, сам был бы виден живым) и **скрывается**.
-  Граница: `eta < min(live_eta по борту)` → скрыта; ровно на минимуме — проходит
-  глобальный (дальше решает групповой). Примеры-нарушители: Bregalnička «29
-  Scheduled 1 min» при живых 5/12/14; Pijaca Đeram «7L Scheduled Now».
-- **Групповой горизонт (линия×направление).** Поверх глобального: не-live строки
-  своей группы с ETA **не позже** позднего live-ETA **этой линии** — те же
-  физические борта, скрываются (`eta ≤ max(live_eta) группы`).
+- **Global horizon (across the whole stop).** If the stop has **at least one** live
+  vehicle, any non-live row/cell of **any line** with an ETA **less than the nearest
+  live-ETA vehicle** is a phantom (transport that "arrives sooner" than the visible
+  live one would itself be visible as live) and is **hidden**.
+  Boundary: `eta < min(live_eta over vehicles)` → hidden; exactly at the minimum —
+  passes the global (the group decides next). Offender examples: Bregalnička "29
+  Scheduled 1 min" against live 5/12/14; Pijaca Đeram "7L Scheduled Now".
+- **Group horizon (line × direction).** On top of the global: non-live rows of the
+  own group with an ETA **no later** than the latest live-ETA of **this line** — the
+  same physical vehicles, hidden (`eta ≤ max(live_eta) of the group`).
 
-**Нет live на остановке вообще → не подавляем ничего** (ночной кейс: фолбэк
-заполняет пустоту, как задуман).
+**No live at the stop at all → suppress nothing** (the night case: the fallback
+fills emptiness, as intended).
 
-Пример (Batutova): live 79 на 2 и 14 → Scheduled 79 на 6 скрыт групповым; любой
-Scheduled другой линии с ETA < 2 скрыт глобальным; 79 на 18/26/30 остаются.
+Example (Batutova): live 79 at 2 and 14 → Scheduled 79 at 6 hidden by the group; any
+Scheduled of another line with ETA < 2 hidden by the global; 79 at 18/26/30 stay.
 
-### 2. Свёртка Scheduled в одну ячейку на группу
-Оставшиеся после п.1 **Scheduled** одной группы рендерятся **одной** строкой
-«<линия> · Scheduled» с иконкой часов. Время справа — в две строки (паттерн
-«ближайший + следующие», как у Яндекса):
-- верхняя строка, крупно: **ближайший** Scheduled за горизонтом;
-- нижняя строка, мельче/приглушённо: следующие **два** времени.
+### 2. Collapsing Scheduled into one cell per group
+The **Scheduled** remaining after (1) of one group render as **one** row
+"<line> · Scheduled" with a clock icon. The time on the right — in two lines (the
+"nearest + next" pattern, like Yandex):
+- top line, large: the **nearest** Scheduled past the horizon;
+- bottom line, smaller/dimmed: the next **two** times.
 
-Максимум **три** времени на ячейку, никогда больше — свёртка даёт «картину
-целиком», а не полный график. Доступно меньше (1–2 Scheduled) — показываем
-сколько есть.
+At most **three** times per cell, never more — the collapse gives "the whole
+picture", not a full timetable. Fewer available (1–2 Scheduled) — we show as many as
+there are.
 
-**Expected НЕ сворачивается.** Placeholder-борта (`ArrivalRowStatus.expected`)
-остаются **отдельными строками** с подписью «Expected» — у них есть валидный
-ETA-прогноз конкретного борта, это не строка графика. Свёртка касается только
+**Expected is NOT collapsed.** Placeholder vehicles (`ArrivalRowStatus.expected`)
+stay as **separate rows** labeled "Expected" — they have a valid ETA prediction of a
+specific vehicle, it's not a timetable row. Collapsing only touches
 `source=scheduled`.
 
-### 3. Порядок в списке — **две глобальные секции**, не по группам
-Список делится на две секции по всему стопу:
-1. **Секция live:** **все** live-строки всех линий, отсортированные по ETA.
-   Каждый борт — отдельной строкой (Fleet-ID, кликабельность, follow — не
-   трогаются).
-2. **Секция не-live:** **все** оставшиеся не-live — выжившие **Expected**-строки
-   и свёрнутые **Scheduled**-ячейки вперемешку, отсортированные по ближайшему
-   ETA.
+### 3. Order in the list — **two global sections**, not by group
+The list splits into two sections across the whole stop:
+1. **Live section:** **all** live rows of all lines, sorted by ETA. Each vehicle a
+   separate row (Fleet-ID, clickability, follow — untouched).
+2. **Non-live section:** **all** remaining non-live — surviving **Expected** rows
+   and collapsed **Scheduled** cells mixed together, sorted by nearest ETA.
 
-**Ни одна scheduled/expected строка никогда не стоит выше ни одной live** —
-независимо от линии и ETA. «Запланированный (пусть даже „Now") не приедет раньше
-того, кто уже едет». Подавление (п.1) остаётся **пер линия×направление** —
-глобально только упорядочивание. Сортировка «By comfort» (плоский live-only
-режим) и per-line фильтр — без изменений.
+**No scheduled/expected row ever sits above any live** — regardless of line and ETA.
+"A scheduled one (even 'Now') won't arrive before someone already on the move."
+Suppression (1) stays **per line × direction** — only the ordering is global. The
+"By comfort" sort (a flat live-only mode) and the per-line filter — unchanged.
 
-### 4. Семантика и подача не меняются
-Пометка «Scheduled» / «по расписанию — не живая позиция» остаётся; **«по графику
-≠ приедет»**. Никакой мимикрии под live.
+### 4. Semantics and rendering don't change
+The "Scheduled" / "by schedule — not a live position" label stays; **"on schedule ≠
+will arrive"**. No mimicry of live.
 
-**Яркость = кликабельность** (правило уже в коде, свёртка его наследует):
-- **live** — полная яркость + шеврон, кликабелен;
-- **expected / scheduled** — приглушены, без шеврона, некликабельны.
+**Brightness = clickability** (the rule is already in the code, the collapse
+inherits it):
+- **live** — full brightness + chevron, clickable;
+- **expected / scheduled** — dimmed, no chevron, non-clickable.
 
-Свёрнутая Scheduled-ячейка подаётся как `scheduled`: приглушена, некликабельна.
+A collapsed Scheduled cell is rendered as `scheduled`: dimmed, non-clickable.
 
-### 5. Nearby-шторка — карточка не смешивает live и scheduled
-Карточка Nearby уже сгруппирована по линия×направление (backend `NearbyGroup`,
-`route_id` = `direction_route_id`/fallback). Правила (клиентски, без бэкенда):
-- **Есть live** → карточка показывает **только live-времена** (ближайший +
-  следующий live, если есть); scheduled-времена в неё **не попадают вообще**
-  (`2 min / 🕐 11 min` → остаётся `2 min`). Живое время читается ярко.
-- **Нет live** → карточка scheduled-only, как сейчас: приглушена, иконка часов.
-  Schedule-only группа не опустошается (это и держит nearby непустым).
-- **Порядок карточек — то же глобальное правило (п.3):** live-карточки (по
-  ближайшему live-ETA) выше всех schedule-only карточек (по ближайшему ETA).
-- Кликабельность (follow live / открыть остановку) — прежняя
-  (`nearbyGroupHasLive` / `nearbyFollowTarget`).
+### 5. Nearby shutter — a card doesn't mix live and scheduled
+A Nearby card is already grouped by line × direction (backend `NearbyGroup`,
+`route_id` = `direction_route_id`/fallback). Rules (client-side, no backend):
+- **Has live** → the card shows **only live times** (nearest + next live, if any);
+  scheduled times **never make it in** (`2 min / 🕐 11 min` → `2 min` remains). A
+  live time reads bright.
+- **No live** → a scheduled-only card, as now: dimmed, clock icon. A schedule-only
+  group is not emptied (that's what keeps nearby non-empty).
+- **Card order — the same global rule (3):** live cards (by nearest live-ETA) above
+  all schedule-only cards (by nearest ETA).
+- Clickability (follow live / open the stop) — unchanged (`nearbyGroupHasLive` /
+  `nearbyFollowTarget`).
 
-### 6. Дальние времена — абсолютное время прибытия
-ETA **≥ `kFarEtaMinutes` (= 60)** показывается **временем прибытия** (`02:45`,
-24ч, формат по локали приложения), а не минутами — «75 min» в уме уже не
-считается. Порог 60 — именованная константа с комментарием
+### 6. Far times — an absolute arrival time
+An ETA **≥ `kFarEtaMinutes` (= 60)** is shown as an **arrival time** (`02:45`, 24h,
+formatted by the app locale), not minutes — "75 min" isn't computed in the head
+anymore. The threshold 60 is a named constant with a comment
 (`core/eta_format.dart → etaLabel`).
-Применяется **везде**, где рендерится ETA: строки шторки, свёрнутая
-Scheduled-ячейка (в т.ч. её **вторичные** времена), карточки nearby. Ниже порога
-— «Now» (≤0) / «N min», как раньше.
+Applied **everywhere** an ETA is rendered: shutter rows, the collapsed Scheduled
+cell (incl. its **secondary** times), nearby cards. Below the threshold — "Now"
+(≤0) / "N min", as before.
 
-### Область
-**Шторка остановки** (в приложении — bottom-sheet `stop_sheet.dart`; тот же
-рендер зеркалит `StopScreen` для deep-link `/stop/:id`) **и Nearby-шторка**
-(п.5). Мини-карта и Planned-строки при полном отсутствии live (поведение Фазы 1)
-— **вне** этой правки.
+### Scope
+The **stop shutter** (in-app — the `stop_sheet.dart` bottom sheet; the same render
+is mirrored by `StopScreen` for the deep link `/stop/:id`) **and the Nearby
+shutter** (5). The mini-map and Planned rows on a complete absence of live (Phase-1
+behaviour) are **outside** this change.
