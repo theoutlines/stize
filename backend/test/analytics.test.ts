@@ -309,3 +309,81 @@ describe("analytics.aggregate + getLineAnalytics", () => {
     expect(dow.results[0]).toMatchObject({ dow: DOW, samples: 3, speed_count: 2 });
   });
 });
+
+describe("aggregate — windowed backfill convergence", () => {
+  const DAY = 86400;
+
+  it("converges to SUM(samples)==COUNT(raw) over several bounded runs; last run is a light no-op", async () => {
+    // 5 days of raw, several rows/day — more than one default (1-day) window.
+    const days = 5;
+    for (let d = 0; d < days; d++) {
+      const base = BASE + d * DAY;
+      await seed([
+        ["V1", "S1", 2, base + 60],
+        ["V1", "S1", 0, base + 120],
+        ["V2", "S1", 0, base + 300],
+        [null, "S1", 5, base + 90], // activity-only (still counts as a sample)
+      ]);
+    }
+    const now = BASE + (days - 1) * DAY + 3600; // just past the last day's rows
+    const rawCount = (await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT COUNT(*) AS n FROM raw_observations WHERE observed_at <= ?",
+    )
+      .bind(now)
+      .first<{ n: number }>())!.n;
+    expect(rawCount).toBe(days * 4);
+
+    // Drive runs until caught up. Default window = 1 day → this must take several
+    // runs, and the watermark must advance strictly forward every run (monotonic).
+    let runs = 0;
+    let caughtUp = false;
+    let prevTo = -1;
+    while (!caughtUp) {
+      const r = await aggregate(env, now);
+      expect(r.to).toBeGreaterThan(prevTo); // monotonic progress
+      prevTo = r.to;
+      caughtUp = r.caughtUp;
+      if (++runs > 20) throw new Error("windowed backfill did not converge");
+    }
+    expect(runs).toBeGreaterThan(1); // genuinely windowed, not a one-shot backfill
+
+    // Invariant: every raw row counted exactly once across all windows.
+    const sumSamples = (await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT SUM(samples) AS s FROM agg_line_dir_time",
+    ).first<{ s: number }>())!.s;
+    expect(sumSamples).toBe(rawCount);
+
+    // Per-vehicle aggregates were populated too (not left empty by the backfill).
+    const veh = (await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT COUNT(*) AS n FROM agg_vehicle_line",
+    ).first<{ n: number }>())!.n;
+    expect(veh).toBeGreaterThan(0);
+
+    // One more run is a light no-op increment — nothing new past the watermark —
+    // and it must NOT change the totals (idempotent: the watermark advanced
+    // atomically with the bucket writes, so a re-run can't double-count).
+    const extra = await aggregate(env, now);
+    expect(extra.buckets).toBe(0);
+    expect(extra.caughtUp).toBe(true);
+    const sumAfter = (await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT SUM(samples) AS s FROM agg_line_dir_time",
+    ).first<{ s: number }>())!.s;
+    expect(sumAfter).toBe(rawCount);
+  });
+
+  it("honours config:agg_backfill_window_s — a narrower window advances less per run", async () => {
+    await env.STIGLA_KV.put("config:agg_backfill_window_s", "3600"); // 1h slices
+    try {
+      await seed([
+        ["V1", "S1", 0, BASE + 60],
+        ["V1", "S1", 0, BASE + 7200], // 2h after the first → needs >1 hourly window
+      ]);
+      const now = BASE + 7200 + 60;
+      const r1 = await aggregate(env, now);
+      expect(r1.caughtUp).toBe(false); // 2h span can't be covered by one 1h window
+      expect(r1.to - r1.from).toBeLessThanOrEqual(3600);
+    } finally {
+      await env.STIGLA_KV.delete("config:agg_backfill_window_s");
+    }
+  });
+});
