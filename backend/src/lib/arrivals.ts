@@ -1,7 +1,8 @@
 import type { Env } from "../env";
 import type { ArrivalDto, ArrivalsResponse } from "../types";
 import { getWithStaleWhileRevalidate, type WaitUntilCtx } from "./swrCache";
-import { BgnaplataTransitProvider, type RawArrival } from "./transitProvider";
+import { BgnaplataTransitProvider, UpstreamError, type RawArrival } from "./transitProvider";
+import { meterUpstreamFetch, type UpstreamKind, type UpstreamOutcome } from "./upstreamBudget";
 import {
   getStopById,
   getLineByNumber,
@@ -28,7 +29,10 @@ export async function getArrivals(
   // stop (getScheduleMeta / getStopSchedule / getLineByNumber). Across an
   // 18-stop map fan-out that alone blew Cloudflare's per-invocation subrequest +
   // CPU limits (→ 503). So the map path passes includeSchedule:false.
-  { includeSchedule = true }: { includeSchedule?: boolean } = {},
+  // `kind` tags which path issued any ACTUAL upstream fetch this call triggers, so
+  // the request meter (upstreamBudget) can count live vs sweep separately. Default
+  // "live": every caller except the sentinel sweep is live traffic.
+  { includeSchedule = true, kind = "live" }: { includeSchedule?: boolean; kind?: UpstreamKind } = {},
 ): Promise<ArrivalsResponse | null> {
   const stop = await getStopById(env, stopId);
   if (!stop) return null;
@@ -53,16 +57,34 @@ export async function getArrivals(
       ctx,
       // Wrap the fresh upstream fetch so analytics logs exactly what we just
       // pulled — this runs only on a real refresh (not cache hits), so it adds no
-      // extra load on the source. Fire-and-forget; never blocks the response.
-      () =>
-        provider.fetchArrivals(stopId).then((raw) => {
+      // extra load on the source. Fire-and-forget; never blocks the response. The
+      // same wrapper meters the fetch (latency + outcome) for the request budget /
+      // degradation breaker — also only on a real refresh, so the meter counts
+      // genuine upstream load, never cache hits.
+      async () => {
+        const started = Date.now();
+        try {
+          const raw = await provider.fetchArrivals(stopId);
+          meterUpstreamFetch(env, ctx, {
+            kind,
+            latencyMs: Date.now() - started,
+            outcome: raw.length > 0 ? "json" : "empty",
+          });
           ctx.waitUntil(
             logObservations(env, ctx, stopId, raw).catch((e) =>
               console.error("analytics log failed", e),
             ),
           );
           return raw;
-        }),
+        } catch (e) {
+          meterUpstreamFetch(env, ctx, {
+            kind,
+            latencyMs: Date.now() - started,
+            outcome: upstreamOutcomeOf(e),
+          });
+          throw e;
+        }
+      },
     );
     rawArrivals = live.data;
     updatedAt = live.updatedAt;
@@ -197,4 +219,11 @@ export async function getArrivals(
     // be a full timetable; the client says so with a banner rather than a wall.
     service_status: liveOk ? "ok" : "unavailable",
   };
+}
+
+// Map a thrown upstream failure to a meter outcome. A tagged UpstreamError carries
+// its own reason (non-JSON body vs HTTP error); anything else is a network/other
+// failure (DNS, timeout, aborted fetch).
+function upstreamOutcomeOf(e: unknown): UpstreamOutcome {
+  return e instanceof UpstreamError ? e.outcome : "network_error";
 }
