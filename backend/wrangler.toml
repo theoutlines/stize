@@ -28,8 +28,13 @@ database_name = "stigla-analytics"
 database_id = "ddefde2f-57f2-429f-ace3-87d140e50020"
 migrations_dir = "migrations-analytics"
 
+# "0 6 * * *"  — daily: refresh alerts + roll up analytics aggregates.
+# "* * * * *"  — per minute: sentinel-sweep tick. Cheap no-op while the
+#                `analytics_sweep` flag is OFF (a single KV read, then return),
+#                so shipping it dormant to prod costs ~nothing. The handler
+#                branches on event.cron (src/index.ts).
 [triggers]
-crons = ["0 6 * * *"]
+crons = ["0 6 * * *", "* * * * *"]
 
 [vars]
 API_VERSION = "v1"

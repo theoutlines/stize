@@ -22,6 +22,7 @@ import '../../core/hit_test.dart';
 import '../../core/map_refresh.dart';
 import '../../core/nearby_focus.dart';
 import '../../core/live_position.dart';
+import '../../core/jam_geometry.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
 import '../../core/moving_object_layer.dart';
@@ -36,6 +37,7 @@ import '../../domain/models/area_vehicle.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/geocode_result.dart';
+import '../../domain/models/jam.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/pinned_line.dart';
 import '../../domain/models/nearby_arrival.dart';
@@ -153,6 +155,27 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   String? _focusLayerError; // last focus-layer add failure, for the staging overlay
   static const _emptyFeatureCollection =
       '{"type":"FeatureCollection","features":[]}';
+
+  // Tram-jam ("stalled segment") overlay (feature/jam-detection, flag-gated). An
+  // amber, pulsing alert: a thin segment along the route where the geometry gate
+  // passes, plus a soft glow on every affected stop (always — the glow is the
+  // primary visual, not a fallback). Off-shape lines get glow only. Its OWN state,
+  // separate from the animator's "looks stuck". The pulse is a cheap opacity
+  // animation (data-driven `['get','opacity']`, tiny source re-push) driven by a
+  // timer that runs ONLY while a jam exists — an empty map spins nothing (thermal).
+  static const _jamSegmentLayerId = 'stg-jam-segment';
+  static const _jamGlowLayerId = 'stg-jam-glow';
+  bool _jamLayersAdded = false;
+  bool _jamsProcessing = false; // guards the async shape-load reentrancy
+  List<List<ll.LatLng>> _jamSegments = const []; // amber polylines to draw
+  List<ll.LatLng> _jamGlowStops = const []; // affected-stop points to glow
+  Set<String> _jammedGarages = const {}; // off-shape jams → badge these markers
+  // Direction route_id → its shape path + stop id→coord map (for segment + glow).
+  final Map<String, ({RoutePath? path, Map<String, ll.LatLng> stops})?> _jamShapeCache = {};
+  Timer? _jamPulseTimer; // runs only while a jam is shown
+  double _jamPulsePhase = 0; // 0..2π, advanced by the pulse timer
+  static const _jamAmber = Color(0xFFE8A317);
+  bool _jamModeOn = false; // the jam-mode map toggle (fit to all active jams)
 
   // Live vehicles in the viewport: eased between refreshes by the animator, so
   // markers glide instead of teleporting. Only the vehicle WidgetLayer repaints
@@ -424,6 +447,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _stopArrivalsSub?.close();
     _vehiclesTimer?.cancel();
     _shapeResyncTimer?.cancel();
+    _jamPulseTimer?.cancel();
     _stopVehDriver();
     _vehTicker?.dispose();
     _vehAnim.removeStatusListener(_onVehAnimStatus);
@@ -512,6 +536,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void _refreshTick() {
     final action = mapRefreshAction(onDemand: _onDemand, stopContextId: _stopContextId);
     _refreshTicks++;
+    // Refresh the jam board on the same 30s cadence (no-op / no request when the
+    // flag is off — the provider short-circuits to an empty board).
+    if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);
     switch (action) {
       case MapRefresh.aquarium:
         _loadVehiclesForVisibleArea(force: true);
@@ -693,7 +720,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           label: track.line,
           heading: _vehAnimator.headingAt(entry.key, t),
           selected: entry.key == _selectedVehicleKey,
-          stuck: _vehAnimator.isStuck(entry.key),
+          // Crimson "stuck" visual doubles as the jam badge for a jam whose red
+          // segment was geometry-gated (off-shape line). This reuses the VISUAL,
+          // not the animator's stuck SIGNAL — the jam state comes from /jams. The
+          // track key is the garage number for a real vehicle.
+          stuck: _vehAnimator.isStuck(entry.key) || _jammedGarages.contains(entry.key),
           // Fade a vanishing/stale vehicle over its grace period (X6), and dim a
           // schedule-predicted object so it reads as "by schedule, not live".
           opacity: _vehAnimator.opacityFor(entry.key) *
@@ -900,10 +931,25 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// so a zoom hovering at the threshold doesn't churn. No-op when the flag is
   /// off or the style/controller isn't ready yet.
   Future<void> _reconcileCoverageLayer() async {
-    if (!_coverageEnabled) return;
     final style = _style;
     final controller = _controller;
     if (style == null || controller == null) return;
+    // Jam mode: the event matters more than the ambient density backdrop, so hide
+    // the coverage heatmap while it's on (2c). Restored when jam mode turns off.
+    if (_jamModeOn) {
+      if (_coverageAdded) {
+        try {
+          await style.removeLayer(coverageMainLayerId);
+        } catch (_) {}
+        try {
+          await style.removeSource(coverageSourceId);
+        } catch (_) {}
+        _coverageAdded = false;
+        _coverageActive = false;
+      }
+      return;
+    }
+    if (!_coverageEnabled) return;
     final zoom = controller.getCamera().zoom;
     _coverageActive = coverageMainHeatmapActive(
       zoom: zoom,
@@ -2870,6 +2916,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // set changes (no widget rebuild needed for the markers themselves).
     ref.listen(favoriteStopLocationsProvider, (_, _) => _pushStopSources());
 
+    // Tram-jam overlay: whenever the jam board changes, (re)build the red segment
+    // layer and the badged-vehicle set. Flag-gated (empty board when off → clears).
+    ref.listen(jamsProvider, (_, next) {
+      final board = next.valueOrNull;
+      if (board != null) _onJamsUpdated(board);
+    });
+
     // Coverage overlay flag: usually flips false→true once the remote config
     // resolves. When it turns on, reconcile after this frame so the layer is
     // added if the map is already zoomed out.
@@ -3257,6 +3310,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // A line with no route geometry in our GTFS (e.g. "Ada 4"): show an
           // honest note instead of an empty route list (owner R4 #2).
           routeUnavailable: _followNoRouteData,
+          // Item 5: warn only if a jam is on this vehicle's direction AND ahead of
+          // it — opposite direction / a jam already behind stays silent.
+          jamAhead: _jamAheadForFollowed(track),
           // The route is drawn on the panel-side map, so no "show route" button.
           showRouteButton: false,
           // Tapping the "About" card opens the model as a leaf IN the panel.
@@ -3991,6 +4047,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               ),
             Column(
               children: [
+                // Jam-mode toggle: shows ONLY while the city has active jams; a
+                // toggle of the same map (fit to all jams / back), with a red count
+                // badge. No jams → not in the tree at all.
+                _jamModeButton(theme),
                 // Hides itself — gap and all — while the flag is off, so the
                 // killswitch leaves this stack exactly as production has it.
                 const VehicleModeToggle(),
@@ -4031,6 +4091,154 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       ),
       ),
     );
+  }
+
+  /// The jam-mode toggle button. Present only when the city has active jams; a
+  /// toggle (not a screen): on = camera fits all active jams, off = normal view.
+  ///
+  /// It only NAGS (loud amber icon + red count badge) when at least one jam is
+  /// relevant to the user's context — near them, on the followed vehicle's line,
+  /// or at the open stop. Jams elsewhere keep the button present but QUIET (muted,
+  /// no badge). No jams → no button. The count badge shows the relevant count.
+  Widget _jamModeButton(ThemeData theme) {
+    if (!ref.watch(jamDetectionEnabledProvider)) return const SizedBox.shrink();
+    final board = ref.watch(jamsProvider).valueOrNull;
+    final jams = board?.activeJams ?? const <Jam>[];
+    if (jams.isEmpty) {
+      // Falling out of jam mode when the last jam clears.
+      if (_jamModeOn) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _setJamMode(false));
+      }
+      return const SizedBox.shrink();
+    }
+    final followedLine = _selectedVehicleKey == null
+        ? null
+        : _vehAnimator.trackFor(_selectedVehicleKey!)?.line;
+    final openStopId = _slotStopId ?? _stopContextId;
+    final relevant = jams
+        .where((j) => isJamRelevant(
+              j,
+              followedLine: followedLine,
+              openStopId: openStopId,
+              userLocation: _meTo,
+            ))
+        .length;
+    final loud = relevant > 0;
+    final l10n = AppLocalizations.of(context);
+    final iconColor = _jamModeOn
+        ? Colors.white
+        : (loud ? _jamAmber : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.55));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: PointerInterceptor(
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Material(
+              color: _jamModeOn ? _jamAmber : theme.colorScheme.surface,
+              elevation: 3,
+              shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: IconButton(
+                icon: Icon(Icons.warning_amber_rounded, color: iconColor),
+                tooltip: l10n.jamModeTooltip,
+                onPressed: () => _setJamMode(!_jamModeOn),
+              ),
+            ),
+            // Red count badge ONLY for context-relevant jams — a far-away jam
+            // never lights it up.
+            if (loud)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFD90429),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$relevant',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, height: 1.0),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Whether an active jam lies ahead of the followed vehicle on its own
+  /// direction. Uses the track's along-track position + its direction shape, so a
+  /// vehicle on the opposite direction or already past the jam gets no warning.
+  bool _jamAheadForFollowed(VehicleTrack? track) {
+    if (!ref.watch(jamDetectionEnabledProvider)) return false;
+    if (track == null || track.path == null) return false;
+    final board = ref.watch(jamsProvider).valueOrNull;
+    if (board == null) return false;
+    for (final jam in board.activeJams) {
+      if (isJamAhead(
+        jam: jam,
+        vehicleDirectionRouteId: track.directionRouteId,
+        path: track.path,
+        vehicleAlong: track.toDist,
+      )) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _setJamMode(bool on) {
+    if (_jamModeOn == on) return;
+    setState(() => _jamModeOn = on);
+    _reconcileCoverageLayer(); // hide/restore the coverage backdrop (2c)
+    if (on) _fitToJams();
+  }
+
+  /// Fit the camera to the bounds of every active jam (its vehicles + segment
+  /// stops). A jam-mode toggle of the SAME map — no navigation, no back button.
+  void _fitToJams() {
+    final board = ref.read(jamsProvider).valueOrNull;
+    final controller = _controller;
+    if (board == null || controller == null) return;
+    final pts = <ll.LatLng>[];
+    for (final j in board.activeJams) {
+      for (final v in j.vehicles) {
+        pts.add(v.position);
+      }
+      if (j.segmentRear != null) pts.add(j.segmentRear!);
+      if (j.segmentFront != null) pts.add(j.segmentFront!);
+    }
+    if (pts.isEmpty) return;
+    var minLat = pts.first.latitude, maxLat = pts.first.latitude;
+    var minLon = pts.first.longitude, maxLon = pts.first.longitude;
+    for (final p in pts) {
+      minLat = math.min(minLat, p.latitude);
+      maxLat = math.max(maxLat, p.latitude);
+      minLon = math.min(minLon, p.longitude);
+      maxLon = math.max(maxLon, p.longitude);
+    }
+    // A little padding around the bounds so pins/segment aren't flush to the edge.
+    const pad = 0.004;
+    _selfMove(() {
+      controller.fitBounds(
+        bounds: LngLatBounds(
+          longitudeWest: minLon - pad,
+          latitudeSouth: minLat - pad,
+          longitudeEast: maxLon + pad,
+          latitudeNorth: maxLat + pad,
+        ),
+        nativeDuration: const Duration(milliseconds: 600),
+        padding: _mapInsets,
+      );
+    });
   }
 
   Widget _roundButton(
@@ -4168,6 +4376,205 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         },
     ],
   });
+
+  // ---- Tram-jam overlay -----------------------------------------------------
+
+  /// Turn a jam board into the amber segment polylines + affected-stop glow points
+  /// + the badged-vehicle set, then reconcile the map layers and run the pulse.
+  /// Each jam's direction shape (cached) gives both the polyline to project onto
+  /// and the affected stops' coords. Geometry gate: a gated (off-shape) jam draws
+  /// NO segment (wrong-street risk) — but its stops STILL glow (the glow is the
+  /// primary visual, not a fallback) and its vehicles are badged. Best-effort.
+  Future<void> _onJamsUpdated(JamsBoard board) async {
+    if (_jamsProcessing) return;
+    _jamsProcessing = true;
+    try {
+      final segments = <List<ll.LatLng>>[];
+      final glow = <ll.LatLng>[];
+      final jammed = <String>{};
+      for (final jam in board.activeJams) {
+        final dir = jam.directionRouteId;
+        final shape = dir == null ? null : await _jamShape(dir);
+        final seg = buildJamSegment(jam, shape?.path);
+        if (seg.polyline != null) {
+          segments.add(seg.polyline!);
+        } else {
+          for (final v in jam.vehicles) {
+            jammed.add(v.garageNo);
+          }
+        }
+        // Glow every affected stop we can resolve from the direction shape.
+        if (shape != null) {
+          for (final id in jam.affectedStopIds) {
+            final c = shape.stops[id];
+            if (c != null) glow.add(c);
+          }
+        }
+      }
+      if (!mounted) return;
+      _jamSegments = segments;
+      _jamGlowStops = glow;
+      _jammedGarages = jammed;
+      await _syncJamLayers();
+      _updateJamPulse(active: segments.isNotEmpty || glow.isNotEmpty);
+      _reconcileCoverageLayer(); // dim coverage under jam mode (2c)
+      _paintVehicles(); // refresh the badge state on the markers
+      if (mounted) setState(() {}); // jam-mode button visibility/count
+    } finally {
+      _jamsProcessing = false;
+    }
+  }
+
+  Future<({RoutePath? path, Map<String, ll.LatLng> stops})?> _jamShape(
+    String directionRouteId,
+  ) async {
+    final cached = _jamShapeCache[directionRouteId];
+    if (cached != null) return cached;
+    if (_jamShapeCache.containsKey(directionRouteId)) return null;
+    try {
+      final shape = await ref.read(linesRepositoryProvider).getShapeByRouteId(directionRouteId);
+      final rec = (
+        path: RoutePath.fromLatLon(shape.polyline),
+        stops: {for (final s in shape.stops) s.stopId: ll.LatLng(s.lat, s.lon)},
+      );
+      _jamShapeCache[directionRouteId] = rec;
+      return rec;
+    } catch (_) {
+      _jamShapeCache[directionRouteId] = null;
+      return null;
+    }
+  }
+
+  /// The pulse: a cheap opacity breath (0.5↔1.0, ~1.75s) driven by a timer that
+  /// runs ONLY while a jam is on screen — an empty map spins nothing (thermal).
+  void _updateJamPulse({required bool active}) {
+    if (active) {
+      _jamPulseTimer ??= Timer.periodic(const Duration(milliseconds: 90), (_) {
+        _jamPulsePhase = (_jamPulsePhase + (2 * math.pi * 0.09 / 1.75)) % (2 * math.pi);
+        _repushJamOpacity();
+      });
+    } else {
+      _jamPulseTimer?.cancel();
+      _jamPulseTimer = null;
+    }
+  }
+
+  double get _jamPulseOpacity => 0.5 + 0.5 * (0.5 + 0.5 * math.sin(_jamPulsePhase));
+
+  void _repushJamOpacity() {
+    final style = _style;
+    if (style == null || !_jamLayersAdded) return;
+    // Only the tiny feature collections are re-pushed (a few features carrying an
+    // opacity number) — not a geometry rebuild. line-opacity/circle-opacity read
+    // the per-feature `opacity` via a data expression.
+    style.updateGeoJsonSource(id: _stopSourceId(_jamSegmentLayerId), data: _jamSegmentsGeoJson());
+    style.updateGeoJsonSource(id: _stopSourceId(_jamGlowLayerId), data: _jamGlowGeoJson());
+  }
+
+  /// (Re)build the amber segment + stop-glow layers imperatively, inserted BELOW
+  /// the stop pins (so pins sit on top) but above the route line.
+  Future<void> _syncJamLayers() async {
+    final style = _style;
+    if (style == null) return;
+    final hasAnything = _jamSegments.isNotEmpty || _jamGlowStops.isNotEmpty;
+    if (!hasAnything) {
+      if (_jamLayersAdded) {
+        for (final id in const [_jamSegmentLayerId, _jamGlowLayerId]) {
+          try {
+            await style.removeLayer(id);
+          } catch (_) {}
+          try {
+            await style.removeSource(_stopSourceId(id));
+          } catch (_) {}
+        }
+        _jamLayersAdded = false;
+      }
+      return;
+    }
+    // Under the stop pins (bus pin is the lowest pin layer) when present, else
+    // just under the vehicle symbols.
+    final below = _stopLayersAdded
+        ? _busLayerId
+        : focusInsertBelowLayerId(vehicleLayersAdded: _vehLayerAdded);
+    try {
+      if (!_jamLayersAdded) {
+        // Glow first (lowest), then the segment on top of it.
+        await style.addSource(GeoJsonSource(id: _stopSourceId(_jamGlowLayerId), data: _jamGlowGeoJson()));
+        await style.addLayer(
+          CircleStyleLayer(
+            id: _jamGlowLayerId,
+            sourceId: _stopSourceId(_jamGlowLayerId),
+            paint: {
+              'circle-color': _jamAmber.toHexString(),
+              'circle-radius': 13.0,
+              'circle-blur': 0.9,
+              'circle-opacity': ['get', 'opacity'],
+            },
+          ),
+          belowLayerId: below,
+        );
+        await style.addSource(GeoJsonSource(id: _stopSourceId(_jamSegmentLayerId), data: _jamSegmentsGeoJson()));
+        await style.addLayer(
+          LineStyleLayer(
+            id: _jamSegmentLayerId,
+            sourceId: _stopSourceId(_jamSegmentLayerId),
+            layout: {'line-cap': 'round', 'line-join': 'round'},
+            paint: {
+              'line-color': _jamAmber.toHexString(),
+              'line-width': 4.0, // thinner than the route line (5)
+              'line-opacity': ['get', 'opacity'],
+            },
+          ),
+          belowLayerId: below,
+        );
+        _jamLayersAdded = true;
+      } else {
+        await style.updateGeoJsonSource(id: _stopSourceId(_jamGlowLayerId), data: _jamGlowGeoJson());
+        await style.updateGeoJsonSource(id: _stopSourceId(_jamSegmentLayerId), data: _jamSegmentsGeoJson());
+      }
+    } catch (_) {
+      _jamLayersAdded = false;
+    }
+  }
+
+  String _jamSegmentsGeoJson() {
+    final o = _jamSegments.isEmpty ? 0.0 : _jamPulseOpacity;
+    return jsonEncode({
+      'type': 'FeatureCollection',
+      'features': [
+        for (final seg in _jamSegments)
+          {
+            'type': 'Feature',
+            'geometry': {
+              'type': 'LineString',
+              'coordinates': [
+                for (final p in seg) [p.longitude, p.latitude],
+              ],
+            },
+            'properties': {'opacity': o},
+          },
+      ],
+    });
+  }
+
+  String _jamGlowGeoJson() {
+    // The glow breathes a touch softer than the line.
+    final o = _jamGlowStops.isEmpty ? 0.0 : (_jamPulseOpacity * 0.55);
+    return jsonEncode({
+      'type': 'FeatureCollection',
+      'features': [
+        for (final p in _jamGlowStops)
+          {
+            'type': 'Feature',
+            'geometry': {
+              'type': 'Point',
+              'coordinates': [p.longitude, p.latitude],
+            },
+            'properties': {'opacity': o},
+          },
+      ],
+    });
+  }
 
   // Widget-rendered marker images are captured at device pixel ratio, so they
   // come out larger than their logical size — scale down to taste.

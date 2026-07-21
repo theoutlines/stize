@@ -3,6 +3,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../../core/api_config.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/search.dart';
 import '../../core/vehicle_map_mode.dart';
@@ -18,6 +19,7 @@ import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/geocode_repository_impl.dart';
 import '../../data/repositories/feedback_repository_impl.dart';
 import '../../data/repositories/ideas_repository_impl.dart';
+import '../../data/repositories/jams_repository_impl.dart';
 import '../../data/repositories/lines_repository_impl.dart';
 import '../../data/repositories/nearby_arrivals_repository_impl.dart';
 import '../../data/repositories/pinned_favorites_repository_impl.dart';
@@ -29,6 +31,7 @@ import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/feed_meta.dart';
 import '../../domain/models/line_analytics.dart';
 import '../../domain/models/idea.dart';
+import '../../domain/models/jam.dart';
 import '../../domain/models/pinned_line.dart';
 import '../../domain/models/route_alert.dart';
 import '../../domain/models/stop.dart';
@@ -39,6 +42,7 @@ import '../../domain/repositories/pinned_favorites_repository.dart';
 import '../../domain/repositories/geocode_repository.dart';
 import '../../domain/repositories/feedback_repository.dart';
 import '../../domain/repositories/ideas_repository.dart';
+import '../../domain/repositories/jams_repository.dart';
 import '../../domain/repositories/lines_repository.dart';
 import '../../domain/repositories/nearby_arrivals_repository.dart';
 import '../../domain/repositories/stops_repository.dart';
@@ -112,6 +116,34 @@ final feedbackFormEnabledProvider = Provider<bool>(
 final donateUrlProvider = Provider<String?>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.donateUrl,
 );
+
+/// Whether tram-jam detection is enabled for this user (remote
+/// `jam_detection_show` flag). Defaults to false until config resolves, so the
+/// client never calls /jams or draws anything unless it's explicitly on.
+final jamDetectionEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.jamDetectionShow ?? false,
+);
+
+final jamsRepositoryProvider = Provider<JamsRepository>(
+  (ref) => JamsRepositoryImpl(ref.watch(apiClientProvider)),
+);
+
+/// The current tram-jam board. Inert (empty) while the flag is off — the client
+/// makes ZERO /jams calls in that case, mirroring the worker gate. Auto-refreshed
+/// by the map's existing 30s tick via `ref.invalidate`, like the vehicle feed.
+final jamsProvider = FutureProvider.autoDispose<JamsBoard>((ref) async {
+  if (!ref.watch(jamDetectionEnabledProvider)) return JamsBoard.empty;
+  // Staging-only: a `jam:sim` build/QА knob can force a synthetic jam. Off in
+  // prod (isStaging false), so this is a no-op there.
+  final sim = isStaging ? _jamSimLine : null;
+  return ref.watch(jamsRepositoryProvider).current(sim: sim);
+});
+
+/// Staging simulation line (null = no simulation). Flipped by the debug affordance
+/// so a stand can show a jam without a live one. Prod ignores it (see above).
+String? _jamSimLine;
+void setJamSimLine(String? line) => _jamSimLine = line;
+String? get jamSimLine => _jamSimLine;
 
 /// The map's vehicle mode: the user's Settings choice resolved against the flag
 /// (see [resolveVehicleMapMode]). Changing either re-resolves this and the map

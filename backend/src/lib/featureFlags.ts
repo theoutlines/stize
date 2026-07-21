@@ -40,6 +40,17 @@ import type { Env } from "../env";
 //                       TRANSPORT-observation logger). OFF on prod, ON on staging
 //                       until we've checked the volume/cost, then flip prod
 //                       deliberately.
+//   analytics_sweep   — the worker runs the citywide "sentinel sweep": a slow
+//                       Cron rotation over a small set of mid-route stops that
+//                       observes the active fleet of every line, so history
+//                       stops being limited to the stops users happen to open.
+//                       It reuses the existing SWR/arrivals path (no new source
+//                       calls) and the existing observation logger. OFF on prod
+//                       (dormant until a tempo is chosen) / ON on staging — but
+//                       staging ALSO reaches the source, so only enable it on
+//                       staging while actively verifying. OFF is the killswitch;
+//                       the circuit-breaker also flips it OFF on repeated
+//                       non-JSON/error responses (see lib/sweep.ts).
 //   context_panel     — the app presents the adaptive "context slot": a persistent
 //                       left panel on desktop (≥840px) and unified bottom sheets on
 //                       mobile, both driven by one state machine (nearby → stop →
@@ -52,6 +63,24 @@ import type { Env } from "../env";
 //                       action on the client AND makes the endpoint refuse
 //                       (403), so it's a full killswitch for the feature. Off on
 //                       prod until the preview pair is reviewed, on on staging.
+//   jam_detection_collect — the worker records the per-vehicle last-fix table
+//                       (opportunistic, on the existing SWR refreshes — no extra
+//                       source calls). Split from `jam_detection_show` on purpose,
+//                       exactly like analytics_collect vs analytics_show: turn
+//                       COLLECT on EARLY (incl. prod) so history accumulates before
+//                       the UI ships — that is the whole point of the server-memory
+//                       design ("a jam shows the instant you open the app"); if
+//                       recording only started with the UI, the first users after
+//                       the flip would still wait out T_jam (Variant-A behaviour).
+//                       ON on prod + staging. OFF = the worker records nothing.
+//   jam_detection_show — reveals the tram-jam UI: the worker serves GET
+//                       /api/v1/jams and the client draws the red stalled segment,
+//                       downstream-stop delay banners, and the bus-substitution
+//                       notice. OFF on prod (enable after the first live jam +
+//                       threshold calibration), ON on staging. OFF is the UI
+//                       killswitch; with it off the client never calls /jams and
+//                       /jams returns empty (recording, gated separately by
+//                       jam_detection_collect, is unaffected).
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -63,6 +92,9 @@ export const FEATURE_FLAGS = [
   "product_analytics",
   "context_panel",
   "feedback_form",
+  "analytics_sweep",
+  "jam_detection_collect",
+  "jam_detection_show",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
