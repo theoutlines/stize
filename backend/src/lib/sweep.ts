@@ -23,18 +23,34 @@ import { belgradeNow } from "./schedule";
 // Safety: the whole thing is gated by the `analytics_sweep` flag (OFF on prod
 // until a tempo is chosen; OFF is the killswitch). A circuit-breaker flips that
 // flag OFF after repeated non-JSON/error responses (an upstream challenge or
-// outage) — user traffic matters more than analytics. And if the KV state it
-// needs (cursor / config) can't be read, the sweep stays SILENT rather than
-// running on fabricated defaults.
+// outage) — user traffic matters more than analytics. And if the state it needs
+// (cursor in D1 / config in KV) can't be read, the sweep stays SILENT rather
+// than running on fabricated defaults.
+//
+// State split — KV vs D1: the human-flipped knobs (the flag + the tempo config)
+// live in KV, the no-redeploy mechanism. The sweep's own durable STATE (rotation
+// cursor + circuit-breaker) lives in D1 (`sweep_state`, migration 0007). It used
+// to sit in KV too, but a minute-cadence writer (2 writes/tick, ~2400/day) blew
+// KV's free 1000-writes/day budget 2.4× (the 2026-07-21 alert). D1's write
+// budget is ~100k/day and the sweep already writes raw_observations there, so
+// per-tick state writes are trivially cheap. Principle: KV = manual knobs/flags;
+// minute-cadence automation state = D1.
 // ---------------------------------------------------------------------------
 
-// KV keys. Configs are runtime-tunable without a redeploy, exactly like
-// `config:nearby_schedule_stops`.
+// KV keys — runtime-tunable knobs only, exactly like `config:nearby_schedule_stops`.
 const KV_INTERVAL_DAY = "config:sweep_interval_day_seconds";
 const KV_INTERVAL_NIGHT = "config:sweep_interval_night_seconds";
-const KV_CURSOR = "sweep:cursor";
-const KV_VISITS = "sweep:visits";
-const KV_BREAKER = "sweep:breaker";
+
+// D1 `sweep_state` keys — the sweep's durable rotation/breaker state (NOT KV).
+const STATE_CURSOR = "cursor";
+const STATE_BREAKER = "breaker";
+
+// Adaptive-skip margin. Our OWN sweep touches each sentinel once per
+// `cycleSeconds`, so any observation fresher than (cycle − this margin) must be
+// organic (user) traffic. The margin keeps the sweep from ever mistaking its own
+// last visit (~cycleSeconds old) for organic traffic and skipping it, which
+// would stall the rotation. Comfortably larger than any per-tick cron jitter.
+const SKIP_MARGIN_SECONDS = 300;
 
 // Conservative start tempo (owner-chosen 2026-07-20). Day: one sentinel / 20s.
 // Night 01:00–05:00: paused (a night interval of 0 means "don't sweep"). These
@@ -128,8 +144,8 @@ export async function runSweepTick(
   const hour = Math.floor(belgradeNow(now).minutes / 60);
   const night = isNightHour(hour);
 
-  // Read config + cursor from KV. A THROW here means KV is unavailable — stay
-  // silent rather than sweeping with defaults (owner constraint). A `null`
+  // Read config (KV) + cursor (D1). A THROW here means the store is unavailable —
+  // stay silent rather than sweeping with defaults (owner constraint). A `null`
   // (unset key) is normal and falls back to the documented default.
   let intervalSeconds: number;
   let cursor: number;
@@ -138,7 +154,7 @@ export async function runSweepTick(
     const [dayRaw, nightRaw, cursorRaw] = await Promise.all([
       env.STIGLA_KV.get(KV_INTERVAL_DAY),
       env.STIGLA_KV.get(KV_INTERVAL_NIGHT),
-      env.STIGLA_KV.get(KV_CURSOR),
+      readSweepState(env, STATE_CURSOR),
     ]);
     intervalSeconds = night
       ? parseInterval(nightRaw, DEFAULT_INTERVAL_NIGHT_SECONDS)
@@ -162,29 +178,29 @@ export async function runSweepTick(
 
   // Adaptive skip: drop a sentinel that organic (user) traffic already refreshed
   // within the current cycle — re-fetching it adds nothing and the SWR layer
-  // would only serve a cache hit anyway. "Organic" = an observation newer than
-  // this sweep's own last visit to the stop (tracked in `sweep:visits`), so the
-  // sweep never skips itself and can't stall. Best-effort: any failure here just
-  // means we don't skip (safe).
+  // would only serve a cache hit anyway. Derived purely from `raw_observations`:
+  // our own sweep touches each sentinel once per `cycleSeconds`, so any
+  // observation fresher than (cycle − SKIP_MARGIN_SECONDS) must be organic. The
+  // margin means the sweep never mistakes its own last visit for organic traffic,
+  // so it can't skip itself into a stall. No separate visit-state to persist.
+  // Best-effort: any failure here just means we don't skip (safe).
   const nowSec = Math.floor(now.getTime() / 1000);
-  let visits: Record<string, number> = {};
   const toFetch = [...batch];
   let skipped = 0;
   try {
-    const visitsRaw = await env.STIGLA_KV.get(KV_VISITS);
-    visits = visitsRaw ? (JSON.parse(visitsRaw) as Record<string, number>) : {};
     const lastObs = await latestObservationPerStop(env, batch);
-    const kept: string[] = [];
-    for (const stopId of batch) {
-      const obs = lastObs.get(stopId);
-      const lastVisit = visits[stopId] ?? 0;
-      const organicSinceVisit = obs !== undefined && obs > lastVisit + 60; // not our own write
-      const withinCycle = obs !== undefined && nowSec - obs < cycleSeconds;
-      if (organicSinceVisit && withinCycle) skipped++;
-      else kept.push(stopId);
+    const skipOlderThan = cycleSeconds - SKIP_MARGIN_SECONDS;
+    if (skipOlderThan > 0) {
+      const kept: string[] = [];
+      for (const stopId of batch) {
+        const obs = lastObs.get(stopId);
+        const organicWithinCycle = obs !== undefined && nowSec - obs < skipOlderThan;
+        if (organicWithinCycle) skipped++;
+        else kept.push(stopId);
+      }
+      toFetch.length = 0;
+      toFetch.push(...kept);
     }
-    toFetch.length = 0;
-    toFetch.push(...kept);
   } catch (e) {
     console.warn("sweep: adaptive-skip check failed; sweeping full batch", e);
   }
@@ -202,7 +218,6 @@ export async function runSweepTick(
         failures++;
       } else {
         swept.push(stopId);
-        visits[stopId] = nowSec;
       }
     } catch (e) {
       failures++;
@@ -214,10 +229,10 @@ export async function runSweepTick(
   // aren't retried next tick — they'll come round again next cycle.
   const nextCursor = (cursor + perTick) % sentinels.length;
 
-  // Persist cursor + visits, and update the breaker. Failure to WRITE here is
+  // Persist the cursor (D1) and update the breaker. Failure to WRITE here is
   // non-fatal (we already did one honest batch); log and move on.
   ctx.waitUntil(
-    persistState(env, nextCursor, pruneVisits(visits, sentinels), failures, toFetch.length).catch((e) =>
+    persistState(env, nextCursor, failures, toFetch.length).catch((e) =>
       console.error("sweep: state persist failed", e),
     ),
   );
@@ -245,23 +260,33 @@ async function latestObservationPerStop(env: Env, stopIds: string[]): Promise<Ma
   return new Map(results.map((r) => [r.stop_id, r.last]));
 }
 
-// Keep the visits map from growing without bound: only current sentinels.
-function pruneVisits(visits: Record<string, number>, sentinels: string[]): Record<string, number> {
-  const keep = new Set(sentinels);
-  const out: Record<string, number> = {};
-  for (const [k, v] of Object.entries(visits)) if (keep.has(k)) out[k] = v;
-  return out;
+// --- D1 sweep_state accessors (see migration 0007). One tiny key/value row per
+// state key; per-tick reads/writes are trivially cheap on D1's write budget. ---
+async function readSweepState(env: Env, key: string): Promise<string | null> {
+  const row = await env.STIGLA_ANALYTICS_DB.prepare(
+    "SELECT value FROM sweep_state WHERE key = ?",
+  )
+    .bind(key)
+    .first<{ value: string }>();
+  return row?.value ?? null;
+}
+
+async function writeSweepState(env: Env, key: string, value: string): Promise<void> {
+  await env.STIGLA_ANALYTICS_DB.prepare(
+    `INSERT INTO sweep_state (key, value, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+  )
+    .bind(key, value, Math.floor(Date.now() / 1000))
+    .run();
 }
 
 async function persistState(
   env: Env,
   nextCursor: number,
-  visits: Record<string, number>,
   failures: number,
   attempted: number,
 ): Promise<void> {
-  await env.STIGLA_KV.put(KV_CURSOR, String(nextCursor));
-  await env.STIGLA_KV.put(KV_VISITS, JSON.stringify(visits));
+  await writeSweepState(env, STATE_CURSOR, String(nextCursor));
   await updateBreaker(env, failures, attempted);
 }
 
@@ -276,7 +301,7 @@ async function updateBreaker(env: Env, failures: number, attempted: number): Pro
   if (attempted === 0) return;
   let breaker: Breaker;
   try {
-    const raw = await env.STIGLA_KV.get(KV_BREAKER);
+    const raw = await readSweepState(env, STATE_BREAKER);
     breaker = raw ? (JSON.parse(raw) as Breaker) : { consecutiveFailures: 0, trippedAt: null };
   } catch {
     breaker = { consecutiveFailures: 0, trippedAt: null };
@@ -285,7 +310,7 @@ async function updateBreaker(env: Env, failures: number, attempted: number): Pro
   const allFailed = failures >= attempted;
   if (!allFailed) {
     if (breaker.consecutiveFailures !== 0) {
-      await env.STIGLA_KV.put(KV_BREAKER, JSON.stringify({ consecutiveFailures: 0, trippedAt: null }));
+      await writeSweepState(env, STATE_BREAKER, JSON.stringify({ consecutiveFailures: 0, trippedAt: null }));
     }
     return;
   }
@@ -300,5 +325,5 @@ async function updateBreaker(env: Env, failures: number, attempted: number): Pro
         `analytics_sweep flipped OFF. Source likely challenging/down — investigate before re-enabling.`,
     );
   }
-  await env.STIGLA_KV.put(KV_BREAKER, JSON.stringify(breaker));
+  await writeSweepState(env, STATE_BREAKER, JSON.stringify(breaker));
 }

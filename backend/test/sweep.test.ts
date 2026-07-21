@@ -9,7 +9,7 @@ import {
 import { setFlag, getFlag } from "../src/lib/featureFlags";
 
 // A test ctx that collects waitUntil promises so the caller can await the
-// fire-and-forget state persistence (cursor / visits / breaker).
+// fire-and-forget state persistence (cursor / breaker, in D1).
 function collectingCtx() {
   const tasks: Promise<unknown>[] = [];
   return {
@@ -27,18 +27,26 @@ async function resetKv() {
   for (const k of [
     "config:sweep_interval_day_seconds",
     "config:sweep_interval_night_seconds",
-    "sweep:cursor",
-    "sweep:visits",
-    "sweep:breaker",
   ]) {
     await env.STIGLA_KV.delete(k);
   }
   await env.STIGLA_KV.delete("flag:analytics_sweep");
 }
 
+// Sweep durable state lives in D1 now (migration 0007), read via this helper.
+async function sweepState(key: string): Promise<string | null> {
+  const row = await env.STIGLA_ANALYTICS_DB.prepare(
+    "SELECT value FROM sweep_state WHERE key = ?",
+  )
+    .bind(key)
+    .first<{ value: string }>();
+  return row?.value ?? null;
+}
+
 beforeEach(async () => {
   await resetKv();
   await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM raw_observations").run();
+  await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM sweep_state").run();
 });
 
 afterEach(() => {
@@ -114,28 +122,25 @@ describe("runSweepTick — rotation", () => {
     const { ctx, settle } = collectingCtx();
     await runSweepTick(env, ctx, DAY);
     await settle();
-    expect(await env.STIGLA_KV.get("sweep:cursor")).toBe("3");
+    expect(await sweepState("cursor")).toBe("3");
 
     const c2 = collectingCtx();
     await runSweepTick(env, c2.ctx, DAY);
     await c2.settle();
-    expect(await env.STIGLA_KV.get("sweep:cursor")).toBe("6");
+    expect(await sweepState("cursor")).toBe("6");
   });
 });
 
 describe("runSweepTick — adaptive skip", () => {
-  it("skips sentinels with fresh organic observations since the last visit", async () => {
+  it("skips sentinels with a fresh organic observation within the current cycle", async () => {
     await setFlag(env, "analytics_sweep", true);
     const stops = await loadSentinels(env);
     const nowSec = Math.floor(DAY.getTime() / 1000);
     const batch = stops.slice(0, 3); // day interval → 3/tick, cursor starts at 0
 
-    // Organic observation NOW for each batch stop, and a last-visit an hour ago
-    // (so the fresh obs post-dates our visit → treated as organic).
-    await env.STIGLA_KV.put(
-      "sweep:visits",
-      JSON.stringify(Object.fromEntries(batch.map((s) => [s, nowSec - 3600]))),
-    );
+    // A fresh observation NOW for each batch stop. With 163 sentinels × 20s the
+    // cycle is ~3260s, so an age-0 observation is well inside (cycle − margin) →
+    // read as organic traffic → skipped. No separate visit-state needed.
     for (const s of batch) {
       await env.STIGLA_ANALYTICS_DB.prepare(
         `INSERT INTO raw_observations (line, stop_id, garage_no, vehicle_id, eta_minutes, stops_remaining, observed_at)
@@ -154,7 +159,7 @@ describe("runSweepTick — adaptive skip", () => {
     expect(r.skipped).toBe(3);
     expect(r.swept).toEqual([]);
     // Cursor still advances by the batch size so skipped stops aren't retried.
-    expect(await env.STIGLA_KV.get("sweep:cursor")).toBe("3");
+    expect(await sweepState("cursor")).toBe("3");
   });
 });
 
@@ -171,7 +176,7 @@ describe("runSweepTick — circuit breaker", () => {
 
     // The breaker flipped its own flag OFF (no redeploy).
     expect(await getFlag(env, "analytics_sweep")).toBe(false);
-    const breaker = JSON.parse((await env.STIGLA_KV.get("sweep:breaker"))!);
+    const breaker = JSON.parse((await sweepState("breaker"))!);
     expect(breaker.consecutiveFailures).toBeGreaterThanOrEqual(5);
     expect(breaker.trippedAt).not.toBeNull();
   });
@@ -185,19 +190,15 @@ describe("runSweepTick — circuit breaker", () => {
       await runSweepTick(env, ctx, DAY);
       await settle();
     }
-    let breaker = JSON.parse((await env.STIGLA_KV.get("sweep:breaker"))!);
+    let breaker = JSON.parse((await sweepState("breaker"))!);
     expect(breaker.consecutiveFailures).toBe(2);
 
     // Now a tick where every batch stop is skipped (attempted=0) must NOT count
     // as a success OR a failure — the counter is untouched.
     const stops = await loadSentinels(env);
     const nowSec = Math.floor(DAY.getTime() / 1000);
-    const cursor = Number(await env.STIGLA_KV.get("sweep:cursor"));
+    const cursor = Number(await sweepState("cursor"));
     const batch = [0, 1, 2].map((i) => stops[(cursor + i) % stops.length]);
-    await env.STIGLA_KV.put(
-      "sweep:visits",
-      JSON.stringify(Object.fromEntries(batch.map((s) => [s, nowSec - 3600]))),
-    );
     for (const s of batch) {
       await env.STIGLA_ANALYTICS_DB.prepare(
         `INSERT INTO raw_observations (line, stop_id, garage_no, vehicle_id, eta_minutes, stops_remaining, observed_at)
@@ -210,7 +211,7 @@ describe("runSweepTick — circuit breaker", () => {
     const r = await runSweepTick(env, ctx, DAY);
     await settle();
     expect(r.skipped).toBe(3);
-    breaker = JSON.parse((await env.STIGLA_KV.get("sweep:breaker"))!);
+    breaker = JSON.parse((await sweepState("breaker"))!);
     expect(breaker.consecutiveFailures).toBe(2); // untouched
   });
 });
