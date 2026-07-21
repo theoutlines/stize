@@ -1,10 +1,10 @@
-# Stigla
+# Stiže
 
 Real-time Belgrade public transport, from one Flutter codebase — iOS, Android, and Web.
 
 > Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.
 
-Stigla answers the two questions a rider at a stop actually has: **what's coming
+Stiže answers the two questions a rider at a stop actually has: **what's coming
 and when**, and **which vehicle am I about to board — and can I trust it?** It is
 deliberately *not* a journey planner: no A→B routing, just live arrivals, the
 vehicles themselves, and how reliable the picture is.
@@ -80,7 +80,7 @@ a local backend with `--dart-define=API_BASE_URL=http://localhost:8787`.
 
 ## Privacy
 
-Stigla has **no accounts and no tracking of people.** It uses no third-party
+Stiže has **no accounts and no tracking of people.** It uses no third-party
 analytics, no Google Analytics, no advertising or fingerprinting SDKs — nothing
 that ships your data to someone else.
 
