@@ -5,6 +5,27 @@ history (what changed for riders and developers), not a commit log.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
+## 2026-07-21
+
+### Added
+- **Drawer "about & contact" footer** — an in-app feedback form (a message + an
+  optional contact; the email is never exposed), a link to public GitHub issues,
+  open-source licenses (AGPL-3.0), an in-app privacy policy, an optional donate
+  link, and a dimmed version line. The feedback form ships behind a flag, off on
+  prod until reviewed.
+- **Desktop panel collapse** — a Google-Maps-style tab collapses the context
+  panel to the screen edge and back; the search and burger float above it as
+  separate islands, and the map reclaims the space when collapsed.
+
+### Changed
+- **Global search everywhere** — the mobile nearby sheet uses the same search as
+  desktop: nearby matches first, then stops/lines; it works even before location
+  is enabled.
+- **Unified bottom sheets** — stop, vehicle-info and "About the vehicle" are one
+  full-width sheet with a shared handle and detents; "About the vehicle" opens
+  in-place with a back arrow (no separate modal); the map shifts up so the stop
+  stays visible above the sheet.
+
 ## 2026-07-20
 
 ### Added
