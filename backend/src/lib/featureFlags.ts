@@ -51,6 +51,21 @@ import type { Env } from "../env";
 //                       staging while actively verifying. OFF is the killswitch;
 //                       the circuit-breaker also flips it OFF on repeated
 //                       non-JSON/error responses (see lib/sweep.ts).
+//   upstream_budget   — the worker meters every ACTUAL upstream fetch (live +
+//                       sweep, in D1 `upstream_events`) and enforces a shared
+//                       rolling-hour REQUEST BUDGET plus a degradation breaker on
+//                       top of it. With it OFF the whole mechanism is dormant: no
+//                       metering, no budget gate, no degradation breaker — the live
+//                       path is byte-for-byte unchanged, so shipping it to prod is
+//                       inert. With it ON the worker records fetch latency/outcome,
+//                       lets the sentinel sweep back off when the hourly budget is
+//                       near its ceiling (LIVE IS NEVER THROTTLED — only the sweep),
+//                       and can auto-flip `analytics_sweep` OFF when the source
+//                       degrades (slow-but-200 p95, or a rising non-JSON share). It
+//                       is the control the owner turns on FIRST — before re-enabling
+//                       the sweep — to measure the live baseline via
+//                       /admin/sweep/status and set the ceiling. OFF on prod / ON on
+//                       staging. See lib/upstreamBudget.ts.
 //   context_panel     — the app presents the adaptive "context slot": a persistent
 //                       left panel on desktop (≥840px) and unified bottom sheets on
 //                       mobile, both driven by one state machine (nearby → stop →
@@ -90,6 +105,7 @@ export const FEATURE_FLAGS = [
   "coverage_on_main_map",
   "vehicles_on_demand",
   "product_analytics",
+  "upstream_budget",
   "context_panel",
   "feedback_form",
   "analytics_sweep",
