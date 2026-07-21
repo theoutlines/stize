@@ -55,11 +55,25 @@ Config parameters (KV, not boolean flags):
 | `config:jam_cluster_min` | minimum vehicles for a jam cluster — **keep at 2** (3 would miss real jams on short/sparse lines) | 2 | 2 | 2 (clamp 2..5) |
 | `config:jam_downstream_horizon_s` | how far past the jam's front the delay banner reaches, in **seconds of travel** (converted to a stop count via the line's mean segment time) — not a fixed stop count | 600 | 600 | 600 (clamp 120..3600) |
 
-Sweep bookkeeping keys (not knobs — the worker owns them): `sweep:cursor`
-(rotation index), `sweep:visits` (per-stop last sweep visit, for the adaptive
-skip), `sweep:breaker` (consecutive-failure count; the circuit-breaker flips
-`analytics_sweep` OFF at 5). If any of these can't be **read**, the sweep stands
-down for that tick rather than running on defaults.
+Sweep bookkeeping state (not knobs — the worker owns it) lives in **D1**, not
+KV: table `sweep_state` in `stigla-analytics` (migration `0007_sweep_state.sql`),
+one key/value row per item — `cursor` (rotation index) and `breaker`
+(consecutive-failure count; the circuit-breaker flips `analytics_sweep` OFF at
+5). If this state can't be **read**, the sweep stands down for that tick rather
+than running on defaults. There is no `visits` state anymore — the adaptive skip
+derives "organic traffic refreshed this sentinel within the current cycle" from
+`MAX(observed_at)` in `raw_observations` (see `SKIP_MARGIN_SECONDS` in
+`lib/sweep.ts`).
+
+> **Principle — KV vs D1.** KV holds **human-flipped knobs and flags** only
+> (`flag:*`, `config:*`): tiny, rarely written, read-mostly. **Machine state
+> written on a minute cadence goes in D1**, never KV. Reason: KV's free tier is
+> **1000 writes/day**; the sweep persisting `cursor` (+ the old `visits`) every
+> cron tick was ~2400 writes/day and tripped Cloudflare's "50% daily KV
+> operation limit" alert on 2026-07-21. D1's write budget (~100k/day) absorbs
+> per-minute writes trivially, and the sweep already writes `raw_observations`
+> there. When adding automation, ask "how often is this written?" — anything
+> per-tick belongs in D1.
 
 Notes: the two analytics flags are independent on purpose — turn **collect** on
 early to accumulate history while **show** stays off. `nearby_sort_board` only
