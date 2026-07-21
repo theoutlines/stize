@@ -3,7 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 
+# api.stize.app is the new canonical prod API host; the legacy
+# stigla-api.theoutlines.xyz stays bound so already-shipped clients keep working.
+# Both custom domains are created/attached on the next full `wrangler deploy`.
 routes = [
+  { pattern = "api.stize.app", custom_domain = true },
   { pattern = "stigla-api.theoutlines.xyz", custom_domain = true }
 ]
 
@@ -59,6 +63,7 @@ name = "stigla-backend-staging"
 # staging is served via the custom domain route below.
 preview_urls = true
 routes = [
+  { pattern = "api-staging.stize.app", custom_domain = true },
   { pattern = "stigla-api-staging.theoutlines.xyz", custom_domain = true }
 ]
 
