@@ -143,7 +143,6 @@
   "aboutRouteData": "Route data: {date}",
   "@aboutRouteData": {"placeholders": {"date": {"type": "String"}}},
   "aboutDisclaimer": "Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.",
-  "aboutDescription": "Stiže shows real-time Belgrade public transport arrivals. Built for personal use.",
 
   "lineFilterAll": "All lines",
 
@@ -200,8 +199,12 @@
   "coverageLegendHigh": "busier",
   "coverageUnavailable": "Coverage map is unavailable right now.",
 
-  "drawerFeedbackBannerLine": "Built solo by Ivan in Belgrade — found a bug? Tell me.",
-  "@drawerFeedbackBannerLine": {"description": "Indie framing in the drawer feedback banner; owner will review the wording"},
+  "drawerDonateBannerTitle": "Support Stiže ♥",
+  "@drawerDonateBannerTitle": {"description": "Drawer support banner headline; tapping the banner opens config:donate_url"},
+  "drawerDonateBannerSubtitle": "Free and ad-free, built solo in Belgrade.",
+  "@drawerDonateBannerSubtitle": {"description": "Drawer support banner secondary line (dimmed)"},
+  "drawerShareFeedback": "Share feedback",
+  "@drawerShareFeedback": {"description": "Drawer footer list item that opens the feedback actions sheet"},
   "drawerFeedbackSheetTitle": "Feedback",
   "feedbackWriteToMe": "Write to me",
   "feedbackWriteToMeSubtitle": "Send a message — bugs, ideas, anything.",
@@ -219,7 +222,6 @@
   "feedbackEmptyValidation": "Write a message first.",
   "drawerLicenses": "Open source licenses",
   "drawerPrivacy": "Privacy policy",
-  "drawerDonate": "Support Stiže",
   "licensesLegalese": "Stiže is free software under the AGPL-3.0 license.",
   "privacyTitle": "Privacy policy",
   "privacyIntro": "Stiže is private by default. Here's exactly what it does with data, in plain language.",

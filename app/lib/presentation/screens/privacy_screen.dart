@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 
 /// In-app privacy policy (Part D#3) — not an external link. Concise, honest,
-/// plain-language, l10n triple EN/RU/SR. DRAFT: the owner reviews the wording on
-/// the preview before merge.
+/// plain-language, l10n triple EN/RU/SR. Wording reviewed and approved (EN/RU;
+/// SR is a translated mirror).
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
 

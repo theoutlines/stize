@@ -114,7 +114,6 @@
   "aboutTitle": "O aplikaciji Stiže",
   "aboutRouteData": "Podaci o linijama: {date}",
   "aboutDisclaimer": "Nezvanična aplikacija. Nije povezana sa JKP Upravljanje javnim prevozom Beograd.",
-  "aboutDescription": "Aplikacija Stiže prikazuje dolaske javnog prevoza u Beogradu u realnom vremenu. Napravljeno za ličnu upotrebu.",
 
   "lineFilterAll": "Sve linije",
 
@@ -171,7 +170,9 @@
   "coverageLegendHigh": "češće",
   "coverageUnavailable": "Mapa pokrivenosti trenutno nije dostupna.",
 
-  "drawerFeedbackBannerLine": "Aplikaciju sam pravi Ivan iz Beograda — našli ste grešku? Javite mi.",
+  "drawerDonateBannerTitle": "Podrži Stiže ♥",
+  "drawerDonateBannerSubtitle": "Besplatno i bez reklama, pravim sam u Beogradu.",
+  "drawerShareFeedback": "Pošaljite utisak",
   "drawerFeedbackSheetTitle": "Utisci",
   "feedbackWriteToMe": "Piši mi",
   "feedbackWriteToMeSubtitle": "Pošalji poruku — greške, ideje, bilo šta.",
@@ -189,7 +190,6 @@
   "feedbackEmptyValidation": "Prvo napiši poruku.",
   "drawerLicenses": "Licence otvorenog koda",
   "drawerPrivacy": "Politika privatnosti",
-  "drawerDonate": "Podrži Stiže",
   "licensesLegalese": "Aplikacija Stiže je slobodan softver pod AGPL-3.0 licencom.",
   "privacyTitle": "Politika privatnosti",
   "privacyIntro": "Aplikacija Stiže je privatna podrazumevano. Evo tačno šta radi sa podacima, jednostavnim rečima.",

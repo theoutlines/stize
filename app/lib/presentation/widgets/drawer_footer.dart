@@ -9,10 +9,11 @@ import '../../data/api/api_exceptions.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 
-/// The drawer's "about & contact" footer (Part D): an indie feedback banner, the
-/// open-source licenses, the privacy policy, an optional donate link, and a
-/// dimmed version line pinned at the very bottom. Appended BELOW the existing
-/// drawer items — the rest of the drawer is untouched (Part D non-goals).
+/// The drawer's "about & contact" footer (Part D): an optional support banner
+/// (the menu's most emotional slot, now given to donations), a "Share feedback"
+/// entry, the open-source licenses, the privacy policy, and a dimmed version
+/// line pinned at the very bottom. Appended BELOW the existing drawer items —
+/// the rest of the drawer is untouched (Part D non-goals).
 class DrawerFooter extends ConsumerWidget {
   const DrawerFooter({super.key});
 
@@ -26,10 +27,22 @@ class DrawerFooter extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Divider(height: 1),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: _FeedbackBanner(onTap: () => showFeedbackSheet(context)),
+        // Support banner, behind the KV `config:donate_url`: hidden while empty,
+        // shown (opening the URL) once the owner sets it. No new flag — the
+        // presence of a non-empty value is the switch. Empty ⇒ the footer starts
+        // straight at "Share feedback".
+        if (donateUrl != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            child: _DonateBanner(
+              onTap: () => launchUrl(Uri.parse(donateUrl),
+                  mode: LaunchMode.externalApplication),
+            ),
+          ),
+        _FooterTile(
+          icon: Icons.chat_bubble_outline,
+          label: l10n.drawerShareFeedback,
+          onTap: () => showFeedbackSheet(context),
         ),
         _FooterTile(
           icon: Icons.description_outlined,
@@ -44,17 +57,19 @@ class DrawerFooter extends ConsumerWidget {
             context.push('/privacy');
           },
         ),
-        // Donate is reserved behind the KV `config:donate_url`: hidden while
-        // empty, shown (opening the URL) once the owner sets it. No new flag.
-        if (donateUrl != null)
-          _FooterTile(
-            icon: Icons.favorite_outline,
-            label: l10n.drawerDonate,
-            onTap: () => launchUrl(Uri.parse(donateUrl),
-                mode: LaunchMode.externalApplication),
-          ),
+        // The unofficial disclaimer + version line close the footer, both in the
+        // same dimmed style (the disclaimer moved here from the old About block).
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+          child: Text(
+            l10n.aboutDisclaimer,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
           child: Text(
             version ?? '',
             style: theme.textTheme.bodySmall?.copyWith(
@@ -98,10 +113,12 @@ class DrawerFooter extends ConsumerWidget {
   }
 }
 
-/// The indie framing banner: creator photo + a short line. Tapping opens the
-/// feedback actions sheet.
-class _FeedbackBanner extends StatelessWidget {
-  const _FeedbackBanner({required this.onTap});
+/// The indie support banner: creator photo + a two-line CTA (an emphasized
+/// "Support Stiže ♥" headline over a dimmed one-liner). Tapping opens
+/// `config:donate_url` externally (same mechanic the old Donate item had). The
+/// heart lives in the headline text, keeping the style calm — no shouty CTA.
+class _DonateBanner extends StatelessWidget {
+  const _DonateBanner({required this.onTap});
 
   final VoidCallback onTap;
 
@@ -122,13 +139,26 @@ class _FeedbackBanner extends StatelessWidget {
               _CreatorAvatar(),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  l10n.drawerFeedbackBannerLine,
-                  style: theme.textTheme.bodySmall,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l10n.drawerDonateBannerTitle,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      l10n.drawerDonateBannerSubtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
             ],
           ),
         ),
