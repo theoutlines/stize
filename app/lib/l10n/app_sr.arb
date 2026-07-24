@@ -170,7 +170,8 @@
   "coverageLegendHigh": "češće",
   "coverageUnavailable": "Mapa pokrivenosti trenutno nije dostupna.",
 
-  "drawerDonateBannerLine": "Aplikaciju pravi jedan čovek u Beogradu — besplatno i bez reklama. Ako vam Stiže pomaže u vožnji, možete je podržati.",
+  "drawerDonateBannerTitle": "Podrži Stiže ♥",
+  "drawerDonateBannerSubtitle": "Besplatno i bez reklama, pravim sam u Beogradu.",
   "drawerShareFeedback": "Pošaljite utisak",
   "drawerFeedbackSheetTitle": "Utisci",
   "feedbackWriteToMe": "Piši mi",

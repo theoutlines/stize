@@ -199,8 +199,10 @@
   "coverageLegendHigh": "busier",
   "coverageUnavailable": "Coverage map is unavailable right now.",
 
-  "drawerDonateBannerLine": "Made solo in Belgrade — free and ad-free. If Stiže helps your ride, you can support it.",
-  "@drawerDonateBannerLine": {"description": "Indie framing in the drawer support banner; tapping opens config:donate_url"},
+  "drawerDonateBannerTitle": "Support Stiže ♥",
+  "@drawerDonateBannerTitle": {"description": "Drawer support banner headline; tapping the banner opens config:donate_url"},
+  "drawerDonateBannerSubtitle": "Free and ad-free, built solo in Belgrade.",
+  "@drawerDonateBannerSubtitle": {"description": "Drawer support banner secondary line (dimmed)"},
   "drawerShareFeedback": "Share feedback",
   "@drawerShareFeedback": {"description": "Drawer footer list item that opens the feedback actions sheet"},
   "drawerFeedbackSheetTitle": "Feedback",

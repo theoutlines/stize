@@ -483,8 +483,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coverageUnavailable => 'Coverage map is unavailable right now.';
 
   @override
-  String get drawerDonateBannerLine =>
-      'Made solo in Belgrade — free and ad-free. If Stiže helps your ride, you can support it.';
+  String get drawerDonateBannerTitle => 'Support Stiže ♥';
+
+  @override
+  String get drawerDonateBannerSubtitle =>
+      'Free and ad-free, built solo in Belgrade.';
 
   @override
   String get drawerShareFeedback => 'Share feedback';

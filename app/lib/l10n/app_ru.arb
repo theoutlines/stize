@@ -170,7 +170,8 @@
   "coverageLegendHigh": "чаще",
   "coverageUnavailable": "Карта покрытия сейчас недоступна.",
 
-  "drawerDonateBannerLine": "Приложение делает один человек в Белграде — бесплатно и без рекламы. Если Stiže помогает вам в дороге, его можно поддержать.",
+  "drawerDonateBannerTitle": "Поддержать Stiže ♥",
+  "drawerDonateBannerSubtitle": "Бесплатно и без рекламы, делаю в одиночку в Белграде",
   "drawerShareFeedback": "Оставить отзыв",
   "drawerFeedbackSheetTitle": "Обратная связь",
   "feedbackWriteToMe": "Написать мне",
