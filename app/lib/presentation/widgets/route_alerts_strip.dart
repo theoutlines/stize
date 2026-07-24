@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/external_link.dart';
 import '../../domain/models/route_alert.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -180,10 +180,7 @@ class _AlertRow extends StatelessWidget {
                     minimumSize: const Size(0, 32),
                     foregroundColor: fg,
                   ),
-                  onPressed: () => launchUrl(
-                    Uri.parse(alert.url),
-                    mode: LaunchMode.externalApplication,
-                  ),
+                  onPressed: () => openExternalUrl(alert.url),
                   child: Text(l10n.alertReadMore),
                 ),
               ],

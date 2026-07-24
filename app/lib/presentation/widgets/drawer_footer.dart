@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_links.dart';
+import '../../core/external_link.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
@@ -35,8 +35,10 @@ class DrawerFooter extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
             child: _DonateBanner(
-              onTap: () => launchUrl(Uri.parse(donateUrl),
-                  mode: LaunchMode.externalApplication),
+              // Fire synchronously in the tap callback with the URL already in
+              // provider state — no await before it, so Arc's user-activation
+              // window isn't lost. openExternalUrl navigates same-tab on web.
+              onTap: () => openExternalUrl(donateUrl),
             ),
           ),
         _FooterTile(
@@ -242,8 +244,7 @@ void showFeedbackSheet(BuildContext context) {
                 subtitle: Text(l10n.feedbackGithubIssuesSubtitle),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
-                  launchUrl(Uri.parse(kRepoIssuesUrl),
-                      mode: LaunchMode.externalApplication);
+                  openExternalUrl(kRepoIssuesUrl);
                 },
               ),
               const SizedBox(height: 8),
