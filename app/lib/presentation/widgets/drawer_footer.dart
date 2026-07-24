@@ -9,10 +9,11 @@ import '../../data/api/api_exceptions.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 
-/// The drawer's "about & contact" footer (Part D): an indie feedback banner, the
-/// open-source licenses, the privacy policy, an optional donate link, and a
-/// dimmed version line pinned at the very bottom. Appended BELOW the existing
-/// drawer items — the rest of the drawer is untouched (Part D non-goals).
+/// The drawer's "about & contact" footer (Part D): an optional support banner
+/// (the menu's most emotional slot, now given to donations), a "Share feedback"
+/// entry, the open-source licenses, the privacy policy, and a dimmed version
+/// line pinned at the very bottom. Appended BELOW the existing drawer items —
+/// the rest of the drawer is untouched (Part D non-goals).
 class DrawerFooter extends ConsumerWidget {
   const DrawerFooter({super.key});
 
@@ -27,9 +28,22 @@ class DrawerFooter extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Divider(height: 1),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: _FeedbackBanner(onTap: () => showFeedbackSheet(context)),
+        // Support banner, behind the KV `config:donate_url`: hidden while empty,
+        // shown (opening the URL) once the owner sets it. No new flag — the
+        // presence of a non-empty value is the switch. Empty ⇒ the footer starts
+        // straight at "Share feedback".
+        if (donateUrl != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            child: _DonateBanner(
+              onTap: () => launchUrl(Uri.parse(donateUrl),
+                  mode: LaunchMode.externalApplication),
+            ),
+          ),
+        _FooterTile(
+          icon: Icons.chat_bubble_outline,
+          label: l10n.drawerShareFeedback,
+          onTap: () => showFeedbackSheet(context),
         ),
         _FooterTile(
           icon: Icons.description_outlined,
@@ -44,15 +58,6 @@ class DrawerFooter extends ConsumerWidget {
             context.push('/privacy');
           },
         ),
-        // Donate is reserved behind the KV `config:donate_url`: hidden while
-        // empty, shown (opening the URL) once the owner sets it. No new flag.
-        if (donateUrl != null)
-          _FooterTile(
-            icon: Icons.favorite_outline,
-            label: l10n.drawerDonate,
-            onTap: () => launchUrl(Uri.parse(donateUrl),
-                mode: LaunchMode.externalApplication),
-          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
           child: Text(
@@ -98,10 +103,11 @@ class DrawerFooter extends ConsumerWidget {
   }
 }
 
-/// The indie framing banner: creator photo + a short line. Tapping opens the
-/// feedback actions sheet.
-class _FeedbackBanner extends StatelessWidget {
-  const _FeedbackBanner({required this.onTap});
+/// The indie support banner: creator photo + a short personal line. Tapping
+/// opens `config:donate_url` externally (same mechanic the old Donate item had).
+/// A small heart accent gives a gentle cue without a shouty CTA.
+class _DonateBanner extends StatelessWidget {
+  const _DonateBanner({required this.onTap});
 
   final VoidCallback onTap;
 
@@ -123,12 +129,12 @@ class _FeedbackBanner extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  l10n.drawerFeedbackBannerLine,
+                  l10n.drawerDonateBannerLine,
                   style: theme.textTheme.bodySmall,
                 ),
               ),
               const SizedBox(width: 4),
-              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+              Icon(Icons.favorite, size: 18, color: theme.colorScheme.primary),
             ],
           ),
         ),

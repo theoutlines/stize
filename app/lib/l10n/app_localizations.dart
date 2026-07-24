@@ -658,12 +658,6 @@ abstract class AppLocalizations {
   /// **'Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.'**
   String get aboutDisclaimer;
 
-  /// No description provided for @aboutDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Stiže shows real-time Belgrade public transport arrivals. Built for personal use.'**
-  String get aboutDescription;
-
   /// No description provided for @lineFilterAll.
   ///
   /// In en, this message translates to:
@@ -928,11 +922,17 @@ abstract class AppLocalizations {
   /// **'Coverage map is unavailable right now.'**
   String get coverageUnavailable;
 
-  /// Indie framing in the drawer feedback banner; owner will review the wording
+  /// Indie framing in the drawer support banner; tapping opens config:donate_url
   ///
   /// In en, this message translates to:
-  /// **'Built solo by Ivan in Belgrade — found a bug? Tell me.'**
-  String get drawerFeedbackBannerLine;
+  /// **'Made solo in Belgrade — free and ad-free. If Stiže helps your ride, you can support it.'**
+  String get drawerDonateBannerLine;
+
+  /// Drawer footer list item that opens the feedback actions sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Share feedback'**
+  String get drawerShareFeedback;
 
   /// No description provided for @drawerFeedbackSheetTitle.
   ///
@@ -1035,12 +1035,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Privacy policy'**
   String get drawerPrivacy;
-
-  /// No description provided for @drawerDonate.
-  ///
-  /// In en, this message translates to:
-  /// **'Support Stiže'**
-  String get drawerDonate;
 
   /// No description provided for @licensesLegalese.
   ///

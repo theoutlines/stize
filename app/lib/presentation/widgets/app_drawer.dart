@@ -149,13 +149,6 @@ class AppDrawer extends StatelessWidget {
                   Text(l10n.aboutTitle, style: theme.textTheme.titleSmall),
                   const SizedBox(height: 6),
                   Text(
-                    l10n.aboutDescription,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
                     l10n.aboutDisclaimer,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
