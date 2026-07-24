@@ -22,15 +22,22 @@ Widget _host({required bool feedbackOn, String? donateUrl}) {
   );
 }
 
-// The exact EN donate-banner line (l10n `drawerDonateBannerLine`).
-const _donateLine =
-    'Made solo in Belgrade — free and ad-free. If Stiže helps your ride, you can support it.';
+// The exact EN donate-banner headline (l10n `drawerDonateBannerTitle`).
+const _donateTitle = 'Support Stiže ♥';
+// The unofficial disclaimer (l10n `aboutDisclaimer`), moved into the footer.
+const _disclaimer =
+    'Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.';
 
 void main() {
-  testWidgets('renders the dimmed version line and footer entries', (tester) async {
+  testWidgets('renders the version line, disclaimer and footer entries',
+      (tester) async {
     await tester.pumpWidget(_host(feedbackOn: true));
     await tester.pumpAndSettle();
     expect(find.text('Stiže 1.0.0 (1)'), findsOneWidget);
+    // The disclaimer now closes the footer (moved out of the About block).
+    expect(find.text(_disclaimer), findsOneWidget);
+    // The former About block heading is gone from the drawer.
+    expect(find.text('About Stiže'), findsNothing);
     // The footer list entries are present, "Share feedback" among them.
     expect(find.text('Share feedback'), findsOneWidget);
     expect(find.text('Open source licenses'), findsOneWidget);
@@ -42,7 +49,8 @@ void main() {
     await tester.pumpWidget(
         _host(feedbackOn: true, donateUrl: 'https://example.org/donate'));
     await tester.pumpAndSettle();
-    // The old list item label is gone; the CTA now lives in the banner.
+    // The CTA lives only in the banner headline; there is no plain list item.
+    expect(find.text(_donateTitle), findsOneWidget);
     expect(find.text('Support Stiže'), findsNothing);
   });
 
@@ -50,7 +58,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(_host(feedbackOn: true, donateUrl: null));
     await tester.pumpAndSettle();
-    expect(find.text(_donateLine), findsNothing);
+    expect(find.text(_donateTitle), findsNothing);
     // With no banner, "Share feedback" is the first footer entry.
     expect(find.text('Share feedback'), findsOneWidget);
   });
@@ -84,9 +92,9 @@ void main() {
         _host(feedbackOn: true, donateUrl: 'https://example.org/donate'));
     await tester.pumpAndSettle();
 
-    expect(find.text(_donateLine), findsOneWidget);
+    expect(find.text(_donateTitle), findsOneWidget);
 
-    await tester.tap(find.text(_donateLine));
+    await tester.tap(find.text(_donateTitle));
     await tester.pumpAndSettle();
     expect(launched, [Uri.parse('https://example.org/donate')]);
   });

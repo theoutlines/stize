@@ -27,7 +27,6 @@ class DrawerFooter extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Divider(height: 1),
         // Support banner, behind the KV `config:donate_url`: hidden while empty,
         // shown (opening the URL) once the owner sets it. No new flag — the
         // presence of a non-empty value is the switch. Empty ⇒ the footer starts
@@ -58,8 +57,19 @@ class DrawerFooter extends ConsumerWidget {
             context.push('/privacy');
           },
         ),
+        // The unofficial disclaimer + version line close the footer, both in the
+        // same dimmed style (the disclaimer moved here from the old About block).
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+          child: Text(
+            l10n.aboutDisclaimer,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
           child: Text(
             version ?? '',
             style: theme.textTheme.bodySmall?.copyWith(
@@ -103,9 +113,10 @@ class DrawerFooter extends ConsumerWidget {
   }
 }
 
-/// The indie support banner: creator photo + a short personal line. Tapping
-/// opens `config:donate_url` externally (same mechanic the old Donate item had).
-/// A small heart accent gives a gentle cue without a shouty CTA.
+/// The indie support banner: creator photo + a two-line CTA (an emphasized
+/// "Support Stiže ♥" headline over a dimmed one-liner). Tapping opens
+/// `config:donate_url` externally (same mechanic the old Donate item had). The
+/// heart lives in the headline text, keeping the style calm — no shouty CTA.
 class _DonateBanner extends StatelessWidget {
   const _DonateBanner({required this.onTap});
 
@@ -128,13 +139,26 @@ class _DonateBanner extends StatelessWidget {
               _CreatorAvatar(),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  l10n.drawerDonateBannerLine,
-                  style: theme.textTheme.bodySmall,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l10n.drawerDonateBannerTitle,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      l10n.drawerDonateBannerSubtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.favorite, size: 18, color: theme.colorScheme.primary),
             ],
           ),
         ),

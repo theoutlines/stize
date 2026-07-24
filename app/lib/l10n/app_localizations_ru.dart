@@ -489,8 +489,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get coverageUnavailable => 'Карта покрытия сейчас недоступна.';
 
   @override
-  String get drawerDonateBannerLine =>
-      'Приложение делает один человек в Белграде — бесплатно и без рекламы. Если Stiže помогает вам в дороге, его можно поддержать.';
+  String get drawerDonateBannerTitle => 'Поддержать Stiže ♥';
+
+  @override
+  String get drawerDonateBannerSubtitle =>
+      'Бесплатно и без рекламы, делаю в одиночку в Белграде';
 
   @override
   String get drawerShareFeedback => 'Оставить отзыв';

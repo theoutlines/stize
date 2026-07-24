@@ -485,8 +485,11 @@ class AppLocalizationsSr extends AppLocalizations {
   String get coverageUnavailable => 'Mapa pokrivenosti trenutno nije dostupna.';
 
   @override
-  String get drawerDonateBannerLine =>
-      'Aplikaciju pravi jedan čovek u Beogradu — besplatno i bez reklama. Ako vam Stiže pomaže u vožnji, možete je podržati.';
+  String get drawerDonateBannerTitle => 'Podrži Stiže ♥';
+
+  @override
+  String get drawerDonateBannerSubtitle =>
+      'Besplatno i bez reklama, pravim sam u Beogradu.';
 
   @override
   String get drawerShareFeedback => 'Pošaljite utisak';

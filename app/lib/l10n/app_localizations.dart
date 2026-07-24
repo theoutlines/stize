@@ -922,11 +922,17 @@ abstract class AppLocalizations {
   /// **'Coverage map is unavailable right now.'**
   String get coverageUnavailable;
 
-  /// Indie framing in the drawer support banner; tapping opens config:donate_url
+  /// Drawer support banner headline; tapping the banner opens config:donate_url
   ///
   /// In en, this message translates to:
-  /// **'Made solo in Belgrade — free and ad-free. If Stiže helps your ride, you can support it.'**
-  String get drawerDonateBannerLine;
+  /// **'Support Stiže ♥'**
+  String get drawerDonateBannerTitle;
+
+  /// Drawer support banner secondary line (dimmed)
+  ///
+  /// In en, this message translates to:
+  /// **'Free and ad-free, built solo in Belgrade.'**
+  String get drawerDonateBannerSubtitle;
 
   /// Drawer footer list item that opens the feedback actions sheet
   ///
