@@ -98,6 +98,22 @@
         function Patched(opts) {
           var m = new Orig(opts);
           window.__stizeMap = m;
+          // Kill double-tap / double-click zoom on EVERY map (home, coverage,
+          // live-vehicles) at the source. We never use it — pinch is the only
+          // zoom gesture — and it is the one map gesture that survives a
+          // PointerInterceptor barrier in some iOS WebKit wrappers (Arc): a
+          // double-tap on the drawer / a sheet / an island leaks through the
+          // Flutter pointer barrier to the canvas underneath and zooms the map
+          // in the background. Disabling it here removes the whole class of bug,
+          // for every over-map overlay at once, independent of any wrapper's
+          // pointer quirks. The Flutter plugin re-enables doubleClickZoom right
+          // after construction (its `zoom` gesture bundles touch/scroll/dblclick
+          // together and calls doubleClickZoom.enable()), so neuter enable() too
+          // — otherwise the disable() below would be silently undone.
+          try {
+            m.doubleClickZoom.disable();
+            m.doubleClickZoom.enable = function () {};
+          } catch (e) {}
           // A map created when its container is ALREADY sized (e.g. the SECOND
           // map in the app — the Coverage tab, created after the home map) gets
           // no size change from resize(), so maplibre never kicks its initial

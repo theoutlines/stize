@@ -2,8 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:maplibre/maplibre.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import 'external_link.dart';
 import '../domain/models/stop.dart';
 import '../domain/models/vehicle_type.dart';
 import '../presentation/widgets/vehicle_icon.dart';
@@ -151,8 +151,7 @@ class CompactAttribution extends StatelessWidget {
     );
 
     Widget link(String label, String url) => GestureDetector(
-      onTap: () =>
-          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      onTap: () => openExternalUrl(url),
       child: Text(label, style: style),
     );
 
