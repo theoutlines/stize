@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/adaptive.dart';
 import '../../l10n/app_localizations.dart';
@@ -39,111 +40,119 @@ class AppDrawer extends StatelessWidget {
     }
 
     return Drawer(
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.directions_transit_rounded,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(l10n.appTitle, style: theme.textTheme.titleLarge),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            // Nav items — scroll if they ever outgrow the space, keeping About
-            // pinned to the bottom.
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                children: [
-                  _NavTile(
-                    icon: Icons.map_outlined,
-                    selectedIcon: Icons.map,
-                    label: l10n.navHome,
-                    selected: currentIndex == 0,
-                    onTap: () => select(0),
-                  ),
-                  if (kIdeasNavVisible)
-                    _NavTile(
-                      icon: Icons.lightbulb_outline,
-                      selectedIcon: Icons.lightbulb,
-                      label: l10n.navIdeas,
-                      selected: currentIndex == 1,
-                      onTap: () => select(1),
+      // The drawer floats over the MapLibre web platform view. Without a pointer
+      // barrier, native taps fall straight through the (canvas-drawn) drawer to
+      // the map underneath — the donate banner's tap selected a stop under it and
+      // the browser dropped the user-gesture, so `launchUrl` was silently blocked.
+      // PointerInterceptor makes Flutter own the gesture (same guard every other
+      // over-map overlay already uses). No-op off web.
+      child: PointerInterceptor(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.directions_transit_rounded,
+                      color: theme.colorScheme.primary,
                     ),
-                  // Coverage map (infographic) — shown only when the remote
-                  // `coverage_map_show` flag is on. It's the third IndexedStack
-                  // section (index 2), which only exists while the flag is on.
-                  Consumer(
-                    builder: (context, ref, _) {
-                      if (!ref.watch(coverageEnabledProvider)) {
-                        return const SizedBox.shrink();
-                      }
-                      return _NavTile(
-                        icon: Icons.hub_outlined,
-                        selectedIcon: Icons.hub,
-                        label: l10n.navCoverage,
-                        selected: currentIndex == 2,
-                        onTap: () => select(2),
-                      );
-                    },
-                  ),
-                  _NavTile(
-                    icon: Icons.star_outline,
-                    selectedIcon: Icons.star,
-                    label: l10n.navMyStops,
-                    selected: false,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).push(
-                        adaptiveRoute((_) => const MyStopsScreen()),
-                      );
-                    },
-                  ),
-                  // Draft transport-analytics — shown only when the remote
-                  // `analytics_show` flag is on (hidden from users otherwise).
-                  Consumer(
-                    builder: (context, ref, _) {
-                      if (!ref.watch(analyticsEnabledProvider)) {
-                        return const SizedBox.shrink();
-                      }
-                      return _NavTile(
-                        icon: Icons.query_stats_outlined,
-                        selectedIcon: Icons.query_stats,
-                        label: 'Аналитика',
-                        selected: false,
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          context.push('/analytics');
-                        },
-                      );
-                    },
-                  ),
-                  _NavTile(
-                    icon: Icons.settings_outlined,
-                    selectedIcon: Icons.settings,
-                    label: l10n.settingsTitle,
-                    selected: false,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      context.push('/settings');
-                    },
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Text(l10n.appTitle, style: theme.textTheme.titleLarge),
+                  ],
+                ),
               ),
-            ),
-            // "About & contact" footer: optional support banner, feedback,
-            // licenses, privacy, the unofficial disclaimer, version. Flows
-            // straight after the nav list — no divider around it.
-            const DrawerFooter(),
-          ],
+              const Divider(height: 1),
+              // Nav items — scroll if they ever outgrow the space, keeping About
+              // pinned to the bottom.
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  children: [
+                    _NavTile(
+                      icon: Icons.map_outlined,
+                      selectedIcon: Icons.map,
+                      label: l10n.navHome,
+                      selected: currentIndex == 0,
+                      onTap: () => select(0),
+                    ),
+                    if (kIdeasNavVisible)
+                      _NavTile(
+                        icon: Icons.lightbulb_outline,
+                        selectedIcon: Icons.lightbulb,
+                        label: l10n.navIdeas,
+                        selected: currentIndex == 1,
+                        onTap: () => select(1),
+                      ),
+                    // Coverage map (infographic) — shown only when the remote
+                    // `coverage_map_show` flag is on. It's the third IndexedStack
+                    // section (index 2), which only exists while the flag is on.
+                    Consumer(
+                      builder: (context, ref, _) {
+                        if (!ref.watch(coverageEnabledProvider)) {
+                          return const SizedBox.shrink();
+                        }
+                        return _NavTile(
+                          icon: Icons.hub_outlined,
+                          selectedIcon: Icons.hub,
+                          label: l10n.navCoverage,
+                          selected: currentIndex == 2,
+                          onTap: () => select(2),
+                        );
+                      },
+                    ),
+                    _NavTile(
+                      icon: Icons.star_outline,
+                      selectedIcon: Icons.star,
+                      label: l10n.navMyStops,
+                      selected: false,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(
+                          context,
+                        ).push(adaptiveRoute((_) => const MyStopsScreen()));
+                      },
+                    ),
+                    // Draft transport-analytics — shown only when the remote
+                    // `analytics_show` flag is on (hidden from users otherwise).
+                    Consumer(
+                      builder: (context, ref, _) {
+                        if (!ref.watch(analyticsEnabledProvider)) {
+                          return const SizedBox.shrink();
+                        }
+                        return _NavTile(
+                          icon: Icons.query_stats_outlined,
+                          selectedIcon: Icons.query_stats,
+                          label: 'Аналитика',
+                          selected: false,
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            context.push('/analytics');
+                          },
+                        );
+                      },
+                    ),
+                    _NavTile(
+                      icon: Icons.settings_outlined,
+                      selectedIcon: Icons.settings,
+                      label: l10n.settingsTitle,
+                      selected: false,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.push('/settings');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              // "About & contact" footer: optional support banner, feedback,
+              // licenses, privacy, the unofficial disclaimer, version. Flows
+              // straight after the nav list — no divider around it.
+              const DrawerFooter(),
+            ],
+          ),
         ),
       ),
     );
