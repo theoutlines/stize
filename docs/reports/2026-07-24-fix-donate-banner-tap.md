@@ -167,6 +167,51 @@ npx wrangler pages deploy build/web --project-name=stigla --branch=preview-fix-d
 
 ## Деплой
 
-Порядок исполнения (по команде владельца «go», 2026-07-24):
+Исполнено по команде владельца «go» (2026-07-24):
 
-_(заполняется по ходу)_
+1. **Merge.** `fix/donate-banner-tap` → `main` (`--no-ff`, merge-коммит
+   `3d2570a`), запушено в `origin/main` (`8859a90..3d2570a`). Worktree
+   `stigla-fix-donate-tap` и ветка удалены. Отчёт force-add’нут в коммит
+   (`docs/reports` в `.git/info/exclude`), поэтому доехал в `main`.
+
+2. **KV `config:donate_url` = `https://buymeacoffee.com/ivanpolushin`** (`--remote`):
+   - было (прод и staging): `https://github.com/sponsors/theoutlines`;
+   - прод-namespace `9908db7c…` → записано и прочитано обратно = BMC ✅;
+   - staging-namespace `ea2452f1…` → записано и прочитано обратно = BMC ✅;
+   - прод `GET https://api.stize.app/api/v1/config` → `donate_url =
+     https://buymeacoffee.com/ivanpolushin`, `environment = production` ✅.
+
+3. **Прод-деплой (только web).** Ветка воркер не трогала → backend-деплой
+   пропущен. `flutter build web --release --dart-define-from-file=dart_defines.json`
+   → `wrangler pages deploy build/web --project-name=stigla --branch=main`
+   (Production-деплоймент `c8f83a48`, source `3d2570a`). Sha `main.dart.js`
+   локального бандла = `c2b36b97…`; после ~1–2 мин пропагации апекса
+   `https://stize.app/main.dart.js` = `c2b36b97…` — **совпал** ✅.
+
+4. **Живой смоук на `stize.app` (мобильный вьюпорт 375×812).**
+   - Тап по донат-баннеру → `window.open("https://buymeacoffee.com/ivanpolushin")`
+     — открывается страница BMC (это и багфикс, и новая ссылка) ✅.
+   - «Share feedback» → поднимается лист обратной связи («Write to me…») ✅.
+   - Баннер и пункты футера тапаются, в карту не проваливаются (тот же
+     перехватчик `pv-9` покрывает весь дровер).
+   - Заголовок баннера — нейтральный «Support Stiže ♥», как и задумано.
+
+5. **FUNDING.yml.** На default-ветке `main` подтверждён обеими опциями
+   (`github: theoutlines` + `buy_me_a_coffee: ivanpolushin`) — проверено через
+   `raw.githubusercontent.com`.
+
+> **Незакрытый пункт (действие владельца).** Кнопка «Sponsor» в шапке
+> `github.com/theoutlines/stize` пока не отображается: FUNDING.yml готов, но сам
+> тумблер **Settings → Features → Sponsorships** в репозитории не включён
+> (`community/profile → files.funding: None`). Это тот же «GitHub Sponsor button
+> pending» из релиза drawer-donate. Включить его можно только в настройках репо
+> (не через код/CLI); после включения кнопка покажет обе опции.
+
+## Итог
+
+Баг починен и в проде: тап по донат-баннеру (и всем пунктам футера) больше не
+проваливается в карту — дровер обёрнут в `PointerInterceptor`, как все прочие
+оверлеи над MapLibre. Донат переведён на Buy Me a Coffee (KV прод+staging,
+FUNDING.yml). Всё смёржено в `main`, задеплоено, sha-сверено и проверено живым
+тапом на `stize.app`. Единственный остаток — owner-тумблер Sponsorships в
+настройках GitHub-репо.
