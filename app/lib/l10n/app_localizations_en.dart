@@ -336,10 +336,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.';
 
   @override
-  String get aboutDescription =>
-      'Stiže shows real-time Belgrade public transport arrivals. Built for personal use.';
-
-  @override
   String get lineFilterAll => 'All lines';
 
   @override
@@ -487,8 +483,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coverageUnavailable => 'Coverage map is unavailable right now.';
 
   @override
-  String get drawerFeedbackBannerLine =>
-      'Built solo by Ivan in Belgrade — found a bug? Tell me.';
+  String get drawerDonateBannerTitle => 'Support Stiže ♥';
+
+  @override
+  String get drawerDonateBannerSubtitle =>
+      'Free and ad-free, built solo in Belgrade.';
+
+  @override
+  String get drawerShareFeedback => 'Share feedback';
 
   @override
   String get drawerFeedbackSheetTitle => 'Feedback';
@@ -542,9 +544,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get drawerPrivacy => 'Privacy policy';
-
-  @override
-  String get drawerDonate => 'Support Stiže';
 
   @override
   String get licensesLegalese =>

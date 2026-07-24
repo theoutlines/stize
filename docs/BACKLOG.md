@@ -148,6 +148,14 @@ that can't be collected retroactively, we start accumulating before we need it.
   **feedback form stays behind `feedback_form` (OFF prod)** until the owner
   reviews the privacy text + enables it. Report
   `docs/reports/2026-07-20-ux-batch.md`.
+  - **Follow-up shipped to the branch** (`feature/drawer-donate-footer`,
+    isolated preview pair, merge owner-gated): the creator banner is reoriented
+    to **donations** (opens `config:donate_url`, shown only when set); feedback
+    becomes a **"Share feedback"** list item; the standalone Donate item is
+    removed; About is trimmed to the unofficial disclaimer; the privacy DRAFT
+    marker is dropped (wording approved); `.github/FUNDING.yml` added. Prod
+    go-live (owner, after preview accept): set `config:donate_url` + enable
+    `feedback_form`. Report `docs/reports/2026-07-24-drawer-donate-footer.md`.
 
 - 🚧 **Transport on the map — a map toggle** (`feature/vehicle-mode-setting`,
   isolated preview pair, merge owner-gated) — on-demand becomes the **new

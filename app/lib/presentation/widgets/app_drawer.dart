@@ -139,33 +139,9 @@ class AppDrawer extends StatelessWidget {
                 ],
               ),
             ),
-            const Divider(height: 1),
-            // About block, pinned to the bottom of the drawer.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.aboutTitle, style: theme.textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  Text(
-                    l10n.aboutDescription,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    l10n.aboutDisclaimer,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // "About & contact" footer (Part D): feedback, licenses, privacy,
-            // optional donate, version. Appended below the existing items.
+            // "About & contact" footer: optional support banner, feedback,
+            // licenses, privacy, the unofficial disclaimer, version. Flows
+            // straight after the nav list — no divider around it.
             const DrawerFooter(),
           ],
         ),

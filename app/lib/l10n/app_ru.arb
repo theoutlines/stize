@@ -114,7 +114,6 @@
   "aboutTitle": "О Stiže",
   "aboutRouteData": "Данные маршрутов: {date}",
   "aboutDisclaimer": "Неофициальное приложение. Не связано с JKP Upravljanje javnim prevozom Beograd.",
-  "aboutDescription": "Stiže показывает прибытие транспорта Белграда в реальном времени. Сделано для личного использования.",
 
   "lineFilterAll": "Все линии",
 
@@ -171,7 +170,9 @@
   "coverageLegendHigh": "чаще",
   "coverageUnavailable": "Карта покрытия сейчас недоступна.",
 
-  "drawerFeedbackBannerLine": "Приложение делает один человек — Иван из Белграда. Нашли баг? Напишите мне.",
+  "drawerDonateBannerTitle": "Поддержать Stiže ♥",
+  "drawerDonateBannerSubtitle": "Бесплатно и без рекламы, делаю в одиночку в Белграде",
+  "drawerShareFeedback": "Оставить отзыв",
   "drawerFeedbackSheetTitle": "Обратная связь",
   "feedbackWriteToMe": "Написать мне",
   "feedbackWriteToMeSubtitle": "Отправьте сообщение — баги, идеи, что угодно.",
@@ -189,7 +190,6 @@
   "feedbackEmptyValidation": "Сначала напишите сообщение.",
   "drawerLicenses": "Лицензии открытого кода",
   "drawerPrivacy": "Политика конфиденциальности",
-  "drawerDonate": "Поддержать Stiže",
   "licensesLegalese": "Stiže — свободное ПО под лицензией AGPL-3.0.",
   "privacyTitle": "Политика конфиденциальности",
   "privacyIntro": "Stiže приватна по умолчанию. Вот что именно она делает с данными — простыми словами.",

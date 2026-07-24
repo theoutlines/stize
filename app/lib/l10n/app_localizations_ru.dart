@@ -342,10 +342,6 @@ class AppLocalizationsRu extends AppLocalizations {
       'Неофициальное приложение. Не связано с JKP Upravljanje javnim prevozom Beograd.';
 
   @override
-  String get aboutDescription =>
-      'Stiže показывает прибытие транспорта Белграда в реальном времени. Сделано для личного использования.';
-
-  @override
   String get lineFilterAll => 'Все линии';
 
   @override
@@ -493,8 +489,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get coverageUnavailable => 'Карта покрытия сейчас недоступна.';
 
   @override
-  String get drawerFeedbackBannerLine =>
-      'Приложение делает один человек — Иван из Белграда. Нашли баг? Напишите мне.';
+  String get drawerDonateBannerTitle => 'Поддержать Stiže ♥';
+
+  @override
+  String get drawerDonateBannerSubtitle =>
+      'Бесплатно и без рекламы, делаю в одиночку в Белграде';
+
+  @override
+  String get drawerShareFeedback => 'Оставить отзыв';
 
   @override
   String get drawerFeedbackSheetTitle => 'Обратная связь';
@@ -549,9 +551,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get drawerPrivacy => 'Политика конфиденциальности';
-
-  @override
-  String get drawerDonate => 'Поддержать Stiže';
 
   @override
   String get licensesLegalese => 'Stiže — свободное ПО под лицензией AGPL-3.0.';

@@ -27,8 +27,6 @@ class AboutScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(24),
         children: [
           Text(l10n.appTitle, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 12),
-          Text(l10n.aboutDescription, style: theme.textTheme.bodyLarge),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(16),
