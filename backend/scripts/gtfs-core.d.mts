@@ -34,6 +34,32 @@ export function applyStopOverrides(
   doc: StopOverridesDoc | null | undefined,
 ): { applied: number; details: string[] };
 
+export interface BundleCounts {
+  stops: number;
+  lines: number;
+}
+
+export interface ShrinkProblem {
+  key: "stops" | "lines";
+  was: number;
+  now: number;
+  dropPct: number;
+}
+
+export interface ShrinkResult {
+  ok: boolean;
+  blocked: boolean;
+  allowShrink: boolean;
+  maxShrinkPct: number;
+  problems: ShrinkProblem[];
+}
+
+export function checkBundleShrink(
+  baseline: BundleCounts | null,
+  next: BundleCounts,
+  opts?: { maxShrinkPct?: number; allowShrink?: boolean },
+): ShrinkResult;
+
 export function nearestMetersToPolylines(
   lat: number,
   lon: number,

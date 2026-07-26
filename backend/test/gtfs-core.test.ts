@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { deriveStopTypes, applyStopOverrides, tramStopsWithoutRail } from "../scripts/gtfs-core.mjs";
+import {
+  deriveStopTypes,
+  applyStopOverrides,
+  tramStopsWithoutRail,
+  checkBundleShrink,
+} from "../scripts/gtfs-core.mjs";
 
 // line → authoritative vehicle type, as built from route_type. The collision
 // lines are the point: suffixed buses must NOT inherit a bare tram/trolley type.
@@ -102,5 +107,45 @@ describe("tramStopsWithoutRail — build-time guard", () => {
   it("ignores non-tram stops entirely", () => {
     const stops = [{ stop_id: "Z", name: "Bus", lat: 44.81, lon: 20.42, types: ["bus"] }];
     expect(tramStopsWithoutRail(stops, rail, 40)).toEqual([]);
+  });
+});
+
+describe("checkBundleShrink — refuse a bundle that lost a merged feed", () => {
+  const base = { stops: 3248, lines: 797 };
+
+  it("blocks when stops drop beyond 2% (the dropped-suburban-feed case)", () => {
+    // Forgetting the suburban feed drops ~340 lines and their stops.
+    const r = checkBundleShrink(base, { stops: 3100, lines: 453 });
+    expect(r.blocked).toBe(true);
+    expect(r.ok).toBe(false);
+    expect(r.problems.map((p) => p.key)).toEqual(["stops", "lines"]);
+  });
+
+  it("passes a small shrink within the 2% threshold", () => {
+    // ~1% fewer stops, same lines — a normal feed wobble, not a lost feed.
+    const r = checkBundleShrink(base, { stops: 3220, lines: 797 });
+    expect(r.blocked).toBe(false);
+    expect(r.ok).toBe(true);
+    expect(r.problems).toEqual([]);
+  });
+
+  it("passes growth", () => {
+    expect(checkBundleShrink(base, { stops: 3300, lines: 810 }).ok).toBe(true);
+  });
+
+  it("blocks at just over 2% but not at exactly 2%", () => {
+    expect(checkBundleShrink({ stops: 1000, lines: 100 }, { stops: 980, lines: 100 }).blocked).toBe(false); // −2.0%
+    expect(checkBundleShrink({ stops: 1000, lines: 100 }, { stops: 979, lines: 100 }).blocked).toBe(true); // −2.1%
+  });
+
+  it("allowShrink lets a big drop through but still reports it", () => {
+    const r = checkBundleShrink(base, { stops: 3100, lines: 453 }, { allowShrink: true });
+    expect(r.ok).toBe(true);
+    expect(r.blocked).toBe(true);
+    expect(r.problems.length).toBeGreaterThan(0);
+  });
+
+  it("no baseline (first build) always passes", () => {
+    expect(checkBundleShrink(null, { stops: 10, lines: 5 }).ok).toBe(true);
   });
 });

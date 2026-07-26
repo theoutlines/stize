@@ -118,6 +118,37 @@ export function nearestMetersToPolylines(lat, lon, polylines) {
   return best;
 }
 
+// --- Regression guard: refuse a bundle that shrinks too much ----------------
+
+/// Compares the about-to-be-written bundle against the existing one and decides
+/// whether the build may proceed. The committed bundle carries a MERGED suburban
+/// feed (~340 extra lines and their city stops); a naive rebuild that forgets the
+/// suburban feed silently drops all of it. This turns that silent loss into a
+/// hard stop.
+///
+/// `baseline`/`next`: `{ stops, lines }` counts. `baseline` null (no prior
+/// bundle) ⇒ nothing to lose, always ok. Any count that shrinks by MORE than
+/// `maxShrinkPct` (default 2%) is a problem; `allowShrink` lets the build proceed
+/// anyway (the caller must have opted in explicitly and say what's lost).
+/// Returns `{ ok, blocked, allowShrink, maxShrinkPct, problems }`.
+export function checkBundleShrink(baseline, next, { maxShrinkPct = 2, allowShrink = false } = {}) {
+  const problems = [];
+  if (baseline) {
+    for (const key of ["stops", "lines"]) {
+      const was = baseline[key];
+      const now = next[key];
+      if (typeof was === "number" && was > 0 && typeof now === "number") {
+        const dropPct = ((was - now) / was) * 100;
+        if (dropPct > maxShrinkPct) {
+          problems.push({ key, was, now, dropPct: Math.round(dropPct * 10) / 10 });
+        }
+      }
+    }
+  }
+  const blocked = problems.length > 0;
+  return { ok: !blocked || allowShrink, blocked, allowShrink, maxShrinkPct, problems };
+}
+
 /// Stops that are typed `tram` but have no tram rail within `thresholdM`.
 /// `stops`: [{ stop_id, name, lat, lon, types }]. `tramPolylines`: the tram
 /// shapes ([[lat, lon], ...]). After the "type by feed" fix this should be 0 —
