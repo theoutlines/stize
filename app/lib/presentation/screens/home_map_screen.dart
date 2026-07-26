@@ -976,6 +976,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (_tramRailsRequested) return;
     _tramRailsRequested = true;
     final repo = ref.read(linesRepositoryProvider);
+    // Install the authoritative line→type index (feed route_type) once. It
+    // drives the tram-rail set below (only tram lines the bundle actually
+    // carries — so no 404 on absent numbers 3/7/9) and is the fallback type
+    // source for any stop whose bundle predates per-stop `types`.
+    try {
+      final allLines = await repo.getAll();
+      if (allLines.isNotEmpty) {
+        setLineTypeIndex(LineTypeIndex.fromLines(allLines));
+        _pushStopSources(); // re-evaluate stop markers now types can resolve
+      }
+    } catch (_) {
+      // Offline with no cache yet: rails stay empty this run, self-heal later.
+    }
     final rails = <List<List<double>>>[];
     await Future.wait([
       for (final line in tramLineNumbers)
@@ -1689,11 +1702,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           key: v.key,
           position: ll.LatLng(v.lat, v.lon),
           line: v.line,
-          // Classify by the well-known Belgrade tram/trolley line sets rather
-          // than the feed's per-vehicle type, which mislabels some lines (e.g.
-          // trolley 40/40L as a bus). Keeps moving vehicles consistent with how
-          // the same line's stops are coloured.
-          type: classifyLine(v.line),
+          // The feed's authoritative per-line type (route_type), resolved
+          // backend-side — same source the stop markers now use, so a line's
+          // vehicles and its stops always agree.
+          type: v.vehicleType,
           heading: v.heading,
           // Stitch to the direction-resolved shape when available (fixes
           // "through houses"); null key ⇒ no path ⇒ straight-line ease.
@@ -1789,7 +1801,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       setState(() {
         _focus = _LineFocus(
           line: line,
-          type: classifyLine(line),
+          type: shape.vehicleType,
           origin: shape.origin,
           destination: shape.destination,
           polyline: shape.polyline,
@@ -1842,7 +1854,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       key: VehicleTrackAnimator.keyFor(a),
       position: ll.LatLng(a.gps!.lat, a.gps!.lon),
       line: a.line,
-      type: classifyLine(a.line),
+      type: a.vehicleType,
       heading: a.heading,
       path: _shapeCache[shapeKey],
       trajectory: a.trajectory,

@@ -421,7 +421,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   }
 
   Widget _lineTile(LineInfo line) {
-    final type = classifyLine(line.line);
+    final type = line.vehicleType;
     final color = vehicleColor(type);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),

@@ -24,6 +24,18 @@ class LinesRepositoryImpl implements LinesRepository {
   }
 
   @override
+  Future<List<LineInfo>> getAll() async {
+    try {
+      final json = await _client.getJson('/api/v1/lines/all');
+      return (json['lines'] as List<dynamic>)
+          .map((e) => LineInfo.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on NetworkException {
+      return _offlineCache.getLines();
+    }
+  }
+
+  @override
   Future<RouteShape> getShapeByLineNumber(String line) async {
     final json = await _client.getJson('/api/v1/lines/by-number/${Uri.encodeComponent(line)}/shape');
     return RouteShape.fromJson(json);
