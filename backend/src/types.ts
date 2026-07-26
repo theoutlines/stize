@@ -76,6 +76,11 @@ export interface StopDto {
   lat: number;
   lon: number;
   lines: string[];
+  // Authoritative vehicle types serving the stop (from the feed's route_type),
+  // emitted by the GTFS build. The client picks the marker from this instead of
+  // guessing by line number. Optional so a bundle predating the field still
+  // parses (the client then falls back to its line→type index).
+  types?: VehicleType[];
 }
 
 export interface StopsResponse {

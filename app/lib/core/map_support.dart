@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:maplibre/maplibre.dart';
 
 import 'external_link.dart';
+import '../domain/models/line_info.dart';
 import '../domain/models/stop.dart';
 import '../domain/models/vehicle_type.dart';
 import '../presentation/widgets/vehicle_icon.dart';
@@ -23,46 +24,73 @@ const belgradeMaxBounds = LngLatBounds(
 const kCityMinZoom = 11.0;
 const kCityMaxZoom = 18.0;
 
-// Belgrade line-number → vehicle-type heuristic. The stops feed only carries
-// line numbers (not a per-stop vehicle type), so classify by the well-known
-// GSP tram and trolleybus line sets; everything else is a bus. Good enough to
-// pick a stop's marker icon.
-const _tramLines = {'2', '3', '5', '6', '7', '9', '10', '11', '12', '13', '14'};
-const _trolleyLines = {'19', '21', '22', '28', '29', '40', '41'};
+/// Authoritative line-number → vehicle-type index, sourced from the bundle's
+/// lines (their `route_type`, via /api/v1/lines/all). This replaces the old
+/// classify-by-number heuristic, which collided suffixed bus lines onto tram
+/// numbers ("3A" → "3" → tram) and hardcoded trams 3/7/9 the feed doesn't
+/// carry. Set once at startup via [setLineTypeIndex]; used where only a line
+/// number is in hand — the tram-rail line set and a stop whose bundle predates
+/// per-stop `types`.
+class LineTypeIndex {
+  const LineTypeIndex(this._byLine);
+  const LineTypeIndex._empty() : _byLine = const {};
+
+  /// The empty index: everything resolves to bus until the real one loads.
+  static const empty = LineTypeIndex._empty();
+
+  final Map<String, VehicleType> _byLine;
+
+  factory LineTypeIndex.fromLines(Iterable<LineInfo> lines) {
+    final byLine = <String, VehicleType>{};
+    for (final l in lines) {
+      byLine[l.line] = l.vehicleType;
+    }
+    return LineTypeIndex(byLine);
+  }
+
+  /// The type of a line by its number; unknown lines fall back to bus (matching
+  /// the backend's default), so an unmapped live-only line never invents a tram.
+  VehicleType typeOf(String line) => _byLine[line] ?? VehicleType.bus;
+
+  /// The line numbers the feed types as trams — the tram rail network to draw
+  /// (C2). Only lines actually in the bundle, so it can't 404 on absent numbers.
+  List<String> get tramLineNumbers => [
+    for (final e in _byLine.entries)
+      if (e.value == VehicleType.tram) e.key,
+  ];
+}
+
+LineTypeIndex _lineTypeIndex = LineTypeIndex.empty;
+
+/// Installs the authoritative line→type index (from /api/v1/lines/all). Call
+/// once the lines are loaded; safe to call again on refresh.
+void setLineTypeIndex(LineTypeIndex index) => _lineTypeIndex = index;
 
 /// Tram line numbers, exposed so the map can draw the tram rail network (C2).
-List<String> get tramLineNumbers => _tramLines.toList();
+/// Empty until [setLineTypeIndex] has run.
+List<String> get tramLineNumbers => _lineTypeIndex.tramLineNumbers;
 
 /// Thin rail line colour: the tram red, semi-transparent, so the tracks read as
 /// tram infrastructure without competing with the markers on top.
 const tramRailColor = Color(0x99D3342B);
 
-VehicleType classifyLine(String line) {
-  final numeric = RegExp(r'^\d+').firstMatch(line)?.group(0) ?? line;
-  if (_tramLines.contains(numeric)) return VehicleType.tram;
-  if (_trolleyLines.contains(numeric)) return VehicleType.trolleybus;
-  return VehicleType.bus;
-}
-
-/// A stop's marker type: trams are the most distinctive, so a stop served by
-/// any tram line reads as a tram stop, then trolley, otherwise bus.
-VehicleType stopPrimaryType(Stop stop) {
-  var hasTrolley = false;
-  for (final line in stop.lines) {
-    final type = classifyLine(line);
-    if (type == VehicleType.tram) return VehicleType.tram;
-    if (type == VehicleType.trolleybus) hasTrolley = true;
-  }
-  return hasTrolley ? VehicleType.trolleybus : VehicleType.bus;
-}
-
-/// The distinct vehicle types a stop is served by (from its line numbers).
+/// The distinct vehicle types a stop is served by. Prefers the authoritative
+/// per-stop `types` emitted by the GTFS build (feed route_type); on a bundle
+/// that predates the field (or the offline cache) it resolves each line number
+/// through the [LineTypeIndex] instead. Never guesses a type from the number.
 Set<VehicleType> stopTypes(Stop stop) {
-  final types = <VehicleType>{};
-  for (final line in stop.lines) {
-    types.add(classifyLine(line));
-  }
-  return types;
+  if (stop.types.isNotEmpty) return stop.types.toSet();
+  return {for (final line in stop.lines) _lineTypeIndex.typeOf(line)};
+}
+
+/// A stop's single representative type for places that always want one colour
+/// (e.g. a favourite chip), never the mixed marker: tram, then trolley, else
+/// bus. Same authoritative type source as [stopTypes].
+VehicleType stopPrimaryType(Stop stop) {
+  final types = stopTypes(stop);
+  if (types.contains(VehicleType.tram)) return VehicleType.tram;
+  if (types.contains(VehicleType.trolleybus)) return VehicleType.trolleybus;
+  return VehicleType.bus;
 }
 
 /// The single marker type to draw for a stop, applying type priority.

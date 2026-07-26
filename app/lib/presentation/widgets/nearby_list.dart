@@ -74,10 +74,9 @@ class NearbyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    // Classify by the well-known Belgrade line sets (as the map does) rather
-    // than the feed's per-line type, which mislabels some lines — keeps a line's
-    // colour identical to its map marker.
-    final type = classifyLine(group.line);
+    // The feed's authoritative per-line type (resolved backend-side), the same
+    // source the map markers use — so a line's colour matches everywhere.
+    final type = group.vehicleType;
     final color = vehicleColor(type);
     final destination = group.destination;
     // Same rule as the arrivals list: brightness == "leads to a live vehicle you

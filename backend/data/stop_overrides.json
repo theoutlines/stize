@@ -1,0 +1,12 @@
+{
+  "_comment": "Point corrections to stop data applied at BUILD time (scripts/build-gtfs.mjs, via scripts/gtfs-core.mjs applyStopOverrides) so stops.json, /stops/nearby and the RAPTOR journey planner all see the fixed geometry. Each entry MUST carry reason/date/evidence — a coordinate patch without a paper trail is refused. Remove the whole file (or empty the array) to build exactly as the raw feed says. Only add an entry for a defect proven against an independent reference, not a hunch.",
+  "overrides": [
+    {
+      "op": "swap_coords",
+      "stop_ids": ["23029", "23030"],
+      "reason": "Petlja Radnicka tram platforms (lines 7L/9L/11/13) are placed on each other's side in the feed: the northbound-direction platform 23029 sits on the west and the southbound platform 23030 on the east, the mirror of right-hand running. A rider reads the opposite direction's arrivals at each physical curb. Swapping the two coordinates puts each platform back on its correct side.",
+      "date": "2026-07-26",
+      "evidence": "docs/reports/2026-07-26-stop-geo-audit.md - through double-track (dir0 350 deg N / dir1 170 deg S, not a loop); right-hand rule reversed for both platforms; live /arrivals is direction-consistent per stop_id (rules out upstream id resolution B2, so it is a feed coordinate swap B1). Confirmed identical in raw stops.txt."
+    }
+  ]
+}
