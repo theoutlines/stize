@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createExecutionContext, env, waitOnExecutionContext } from "cloudflare:test";
 import type { Env } from "../src/env";
 import worker from "../src/index";
@@ -10,6 +10,7 @@ import {
   runD1Governor,
 } from "../src/lib/d1Governor";
 import { getFlag, setFlag } from "../src/lib/featureFlags";
+import { loadSentinels } from "../src/lib/sweep";
 
 const DAY1 = new Date(Date.UTC(2026, 9, 5, 13, 0, 0));
 const DAY2_MIDNIGHT = new Date(Date.UTC(2026, 9, 6, 0, 0, 0));
@@ -187,6 +188,41 @@ describe("D1-backed routes answer 503, never 500, when D1 is down", () => {
     const res = await call("/api/v1/feedback", { method: "POST", body: JSON.stringify({ message: "A real message here" }) });
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: "temporarily_unavailable" });
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("/arrivals still serves a live board (all D1 writers on, every D1 call throwing)", async () => {
+    // The pre-migration-0009 / over-budget state: every analytics write throws.
+    // The live path must neither fail nor wait on them (all in waitUntil + catch).
+    for (const f of ["analytics_collect", "jam_detection_collect", "upstream_budget"] as const) {
+      await setFlag(env, f, true);
+    }
+    const e = env as { TRANSIT_SOURCE_FORM_EXTRA_JSON: string; TRANSIT_SOURCE_BASE_URL: string };
+    const orig = { extra: e.TRANSIT_SOURCE_FORM_EXTRA_JSON, url: e.TRANSIT_SOURCE_BASE_URL };
+    e.TRANSIT_SOURCE_FORM_EXTRA_JSON = "{}";
+    e.TRANSIT_SOURCE_BASE_URL = "https://source.invalid/api";
+    vi.stubGlobal("fetch", () =>
+      Promise.resolve(new Response("[]", { status: 200, headers: { "content-type": "application/json" } })),
+    );
+    try {
+      const stop = (await loadSentinels(env))[0];
+      const ctx = createExecutionContext();
+      const res = await worker.fetch(
+        new Request(`https://stigla-api.test/api/v1/arrivals?stop=${stop}&cb=${Date.now()}`),
+        { ...deadEnv, TRANSIT_SOURCE_FORM_EXTRA_JSON: "{}", TRANSIT_SOURCE_BASE_URL: "https://source.invalid/api" } as Env,
+        ctx,
+      );
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as { service_status: string }).service_status).toBe("ok");
+      await waitOnExecutionContext(ctx); // background writes fail quietly
+    } finally {
+      e.TRANSIT_SOURCE_FORM_EXTRA_JSON = orig.extra;
+      e.TRANSIT_SOURCE_BASE_URL = orig.url;
+      for (const f of ["analytics_collect", "jam_detection_collect", "upstream_budget"] as const) {
+        await setFlag(env, f, false);
+      }
+    }
   });
 
   it("/config still answers (D1 is not on its path)", async () => {
