@@ -7,9 +7,12 @@ import { getLineByNumber, getLineDirectionEndpoints, getScheduleMeta, getStopSch
 import { resolveDirectionRouteId } from "./direction";
 import { activeServices, belgradeNow, type StopSchedule } from "./schedule";
 
-// How long raw observations are kept before the aggregator prunes them. The
-// rolled-up metrics survive; only the bulky raw rows are dropped.
-const RAW_RETENTION_DAYS = 30;
+// Raw observations are kept INDEFINITELY — there is no retention prune. The
+// account lives on the D1 free tier, where rows_written (100k/day) is the scarce
+// resource and storage (5 GB) is not: every DELETE costs a written row per deleted
+// row, so a 30-day prune would double the lifetime cost of every observation (and
+// the 510k-row backlog alone would burn ~5 days of budget). See
+// docs/reports/2026-10-05-d1-write-budget.md.
 
 // Aggregation reads only raw newer than the last run, plus this much extra
 // history so a windowed metric (headway/speed) whose earlier half sits just
@@ -27,6 +30,23 @@ const AGG_LOOKBACK_SECONDS = 7200;
 // can't finish.
 const AGG_WINDOW_KV_KEY = "config:agg_backfill_window_s";
 const AGG_WINDOW_DEFAULT_SECONDS = 86400; // 1 day
+
+// Watermark drift guard. The daily cron advances the watermark by AT MOST one
+// window; once it fell behind by more than a window (a missed/failed run) it
+// stayed exactly that far behind forever — each run moved it one day while a day
+// passed — so `caughtUp` never came true (2026-10-05: lag ~35h before every run).
+// When the whole remaining backlog is small, take it in one window and catch up.
+// The bound is a raw ROW count (what the aggregate's CPU/read cost scales with),
+// not a time span: a heavy organic day is ~16k rows. Runtime-tunable.
+const AGG_CATCHUP_ROWS_KV_KEY = "config:agg_catchup_max_rows";
+export const AGG_CATCHUP_ROWS_DEFAULT = 50_000;
+
+async function resolveAggCatchupRows(env: Env): Promise<number> {
+  const raw = await env.STIGLA_KV.get(AGG_CATCHUP_ROWS_KV_KEY);
+  if (raw === null) return AGG_CATCHUP_ROWS_DEFAULT;
+  const n = parseInt(raw, 10);
+  return Number.isNaN(n) || n < 0 ? AGG_CATCHUP_ROWS_DEFAULT : n;
+}
 
 async function resolveAggWindowSeconds(env: Env): Promise<number> {
   const raw = await env.STIGLA_KV.get(AGG_WINDOW_KV_KEY);
@@ -250,6 +270,14 @@ export async function logObservations(
     ]);
   }
   await chunkedInsert(env.STIGLA_ANALYTICS_DB, "raw_observations", RAW_OBSERVATION_COLUMNS, rows);
+  // The sweep's adaptive-skip lookup (migration 0009): 1 written row per board.
+  await env.STIGLA_ANALYTICS_DB.prepare(
+    `INSERT INTO stop_last_observed (stop_id, observed_at) VALUES (?, ?)
+     ON CONFLICT(stop_id) DO UPDATE SET observed_at = excluded.observed_at
+     WHERE excluded.observed_at > stop_last_observed.observed_at`,
+  )
+    .bind(stopId, now)
+    .run();
 }
 
 // One (line, direction, dow, hour) bucket accumulated during an aggregate run.
@@ -299,13 +327,15 @@ function headwayHistogramSelect(): string {
 
 /**
  * Roll raw observations up into `agg_line_dir_time` (per line × direction × dow ×
- * hour) and the per-vehicle tables, then prune old raw. **Windowed & incremental**:
+ * hour) and the per-vehicle tables. **Windowed & incremental**:
  * each invocation processes at most one `config:agg_backfill_window_s` slice of
  * `observed_at` (default 1 day) starting at the `last_run` watermark, ADDS its
  * contributions to the existing buckets (additive/mergeable by design), and
  * advances the watermark to the window end. So the FIRST backfill converges over
  * several bounded runs instead of dying in one over-budget invocation, and once
- * caught up the daily run is a light increment (window end clamps to `now`).
+ * caught up the daily run is a light increment (window end clamps to `now`). If
+ * it is behind by more than a window but the whole backlog is under
+ * `config:agg_catchup_max_rows`, it takes the backlog in one go (drift guard).
  *
  * Progress is monotonic: the watermark only ever moves FORWARD, and to the end of
  * the slice this run actually processed. A run that can't advance (no raw at all)
@@ -354,7 +384,16 @@ export async function aggregate(
   // This run's window: (cursor, windowEnd]. Bounded by the runtime-tunable slice
   // so one over-budget invocation can't happen; clamped to `now` once caught up.
   const windowSize = await resolveAggWindowSeconds(env);
-  const windowEnd = Math.min(now, cursor + windowSize);
+  let windowEnd = Math.min(now, cursor + windowSize);
+  if (windowEnd < now) {
+    // Behind by more than one window: if the entire backlog is small enough, take
+    // it all now (see AGG_CATCHUP_ROWS_KV_KEY) so the watermark can't drift.
+    const backlog = await db
+      .prepare("SELECT COUNT(*) AS n FROM raw_observations WHERE observed_at > ? AND observed_at <= ?")
+      .bind(cursor, now)
+      .first<{ n: number }>();
+    if ((backlog?.n ?? 0) <= (await resolveAggCatchupRows(env))) windowEnd = now;
+  }
   const caughtUp = windowEnd >= now;
   // Lookback so a headway/speed pair straddling the window's start still resolves.
   const windowStart = Math.max(0, cursor - AGG_LOOKBACK_SECONDS);
@@ -479,7 +518,7 @@ export async function aggregate(
   // window, so if the run dies here the next run (watermark already past this slice)
   // won't reprocess it — the secondary data is simply MISSING for this window, never
   // double-counted. A thrown error is likewise swallowed (secondary; not worth
-  // stalling the whole aggregate). They read raw before the prune below.
+  // stalling the whole aggregate).
   try {
     await aggregateVehicles(db, now, cursor, windowEnd, windowStart);
   } catch (e) {
@@ -491,16 +530,7 @@ export async function aggregate(
     console.error("analytics sched_delay pass failed (continuing without it)", e);
   }
 
-  // Prune old raw ONLY once caught up — while still catching up, rows older than
-  // retention may not have been aggregated into their window yet, and pruning them
-  // would drop history unread. (Retention is 30d and current raw is <30d, so this
-  // is belt-and-braces, but keep it correct.)
-  if (caughtUp) {
-    await db
-      .prepare("DELETE FROM raw_observations WHERE observed_at < ?")
-      .bind(now - RAW_RETENTION_DAYS * 86400)
-      .run();
-  }
+  // No raw prune: raw is kept indefinitely (see the note at the top of this file).
 
   return { buckets: map.size, from: cursor, to: windowEnd, caughtUp };
 }

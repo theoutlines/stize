@@ -27,4 +27,10 @@ export interface Env {
   // fine-grained PAT (issues:write on that PRIVATE repo) set via `wrangler secret`.
   GITHUB_FEEDBACK_REPO?: string;
   GITHUB_FEEDBACK_TOKEN?: string;
+
+  // D1 write-budget governor (lib/d1Governor.ts). Both secrets, set via
+  // `wrangler secret put`: a Cloudflare API token with ONLY "Account Analytics:
+  // Read", and the account id it reads. Absent = the governor logs and does nothing.
+  CF_ANALYTICS_API_TOKEN?: string;
+  CF_ACCOUNT_ID?: string;
 }

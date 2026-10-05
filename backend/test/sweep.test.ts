@@ -7,6 +7,7 @@ import {
   runSweepTick,
 } from "../src/lib/sweep";
 import { setFlag, getFlag } from "../src/lib/featureFlags";
+import { recordUpstreamEvent, type UpstreamOutcome } from "../src/lib/upstreamBudget";
 
 // A test ctx that collects waitUntil promises so the caller can await the
 // fire-and-forget state persistence (cursor / breaker, in D1).
@@ -41,17 +42,23 @@ async function resetKv() {
   await env.STIGLA_KV.delete("flag:upstream_budget");
 }
 
-// Seed one upstream-fetch meter row (used by the budget/breaker guard tests).
+// Seed one upstream fetch into the meter ring (used by the budget/breaker guard tests).
 async function seedUpstream(
   ts: number,
   kind: "live" | "sweep",
   latencyMs: number,
   outcome: string,
 ): Promise<void> {
+  await recordUpstreamEvent(env, { kind, latencyMs, outcome: outcome as UpstreamOutcome }, ts);
+}
+
+// An organic observation of `stop` at `at` — what logObservations leaves for the
+// sweep's adaptive skip (the stop_last_observed lookup, migration 0009).
+async function seedObserved(stop: string, at: number): Promise<void> {
   await env.STIGLA_ANALYTICS_DB.prepare(
-    "INSERT INTO upstream_events (ts, kind, latency_ms, outcome) VALUES (?, ?, ?, ?)",
+    "INSERT OR REPLACE INTO stop_last_observed (stop_id, observed_at) VALUES (?, ?)",
   )
-    .bind(ts, kind, latencyMs, outcome)
+    .bind(stop, at)
     .run();
 }
 
@@ -69,7 +76,10 @@ beforeEach(async () => {
   await resetKv();
   await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM raw_observations").run();
   await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM sweep_state").run();
-  await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM upstream_events").run();
+  await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM upstream_meter").run();
+  await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM stop_last_observed").run();
+  // The sweep only runs while it has something to record (see "collect-off").
+  await setFlag(env, "analytics_collect", true);
 });
 
 afterEach(() => {
@@ -168,12 +178,7 @@ describe("runSweepTick — adaptive skip", () => {
     // cycle is ~3260s, so an age-0 observation is well inside (cycle − margin) →
     // read as organic traffic → skipped. No separate visit-state needed.
     for (const s of batch) {
-      await env.STIGLA_ANALYTICS_DB.prepare(
-        `INSERT INTO raw_observations (line, stop_id, garage_no, vehicle_id, eta_minutes, stops_remaining, observed_at)
-         VALUES ('79', ?, 'P26624', 'P26624', 3, 3, ?)`,
-      )
-        .bind(s, nowSec)
-        .run();
+      await seedObserved(s, nowSec);
     }
 
     // fetch would fail if reached; the point is it must NOT be reached.
@@ -227,12 +232,7 @@ describe("runSweepTick — circuit breaker", () => {
     const cursor = Number(await sweepState("cursor"));
     const batch = [0, 1, 2].map((i) => stops[(cursor + i) % stops.length]);
     for (const s of batch) {
-      await env.STIGLA_ANALYTICS_DB.prepare(
-        `INSERT INTO raw_observations (line, stop_id, garage_no, vehicle_id, eta_minutes, stops_remaining, observed_at)
-         VALUES ('79', ?, 'P1', NULL, 3, 3, ?)`,
-      )
-        .bind(s, nowSec)
-        .run();
+      await seedObserved(s, nowSec);
     }
     const { ctx, settle } = collectingCtx();
     const r = await runSweepTick(env, ctx, DAY);
@@ -285,6 +285,20 @@ describe("runSweepTick — request budget gate (upstream_budget on)", () => {
     expect(r.reason).toBe("day-active");
     expect(await sweepState("cursor")).toBe("1");
     expect(r.meter?.liveHr).toBe(1);
+  });
+});
+
+describe("runSweepTick — collection off", () => {
+  it("stands down without touching the source when analytics_collect is OFF (e.g. the D1 governor)", async () => {
+    await setFlag(env, "analytics_sweep", true);
+    await setFlag(env, "analytics_collect", false);
+    vi.stubGlobal("fetch", () => Promise.reject(new Error("must not fetch while collection is off")));
+    const { ctx, settle } = collectingCtx();
+    const r = await runSweepTick(env, ctx, DAY);
+    await settle();
+    expect(r.ran).toBe(false);
+    expect(r.reason).toBe("collect-off");
+    expect(await sweepState("cursor")).toBeNull();
   });
 });
 
