@@ -663,7 +663,7 @@ export default {
     // heavy daily job (and vice-versa).
     if (event.cron === "* * * * *") {
       // D1 write-budget governor: every `config:d1_governor_interval_min` minutes
-      // (default hourly, incl. 00:00 UTC for the day-rollover restore). KV + one
+      // (default every 15 min, incl. 00:00 UTC for the day-rollover restore). KV + one
       // GraphQL read; never touches D1 itself.
       const tickAt = new Date(event.scheduledTime);
       ctx.waitUntil(

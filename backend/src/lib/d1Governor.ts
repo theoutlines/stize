@@ -11,7 +11,7 @@ import { getFlag, setFlag, type FeatureFlag } from "./featureFlags";
 // one long map session burned the day's budget by early afternoon).
 //
 // So, periodically (on the minute cron, every `config:d1_governor_interval_min`
-// minutes, default 60), read today's account-wide rows_written from the Cloudflare
+// minutes, default 15), read today's account-wide rows_written from the Cloudflare
 // GraphQL Analytics API. At >= threshold (default 70% of 100k) switch the
 // analytics WRITERS off — `analytics_collect` (raw observations) and
 // `jam_detection_collect` (last-fix table) — until the UTC day rolls over, then
@@ -43,7 +43,9 @@ const KV_INTERVAL_MIN = "config:d1_governor_interval_min";
 
 export const DEFAULT_THRESHOLD_PCT = 70;
 export const DEFAULT_DAILY_LIMIT = 100_000;
-export const DEFAULT_INTERVAL_MIN = 60;
+// 15 min: one map session adds ~17k rows/hour, so an hourly check could overshoot
+// the threshold by a full session-hour (owner decision 2026-10-05).
+export const DEFAULT_INTERVAL_MIN = 15;
 
 const GRAPHQL_URL = "https://api.cloudflare.com/client/v4/graphql";
 
