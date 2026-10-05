@@ -44,10 +44,11 @@ import {
 } from "./lib/ideas";
 import { createFeedback, createFeedbackIssue } from "./lib/feedback";
 import {
-  fetchRowsWrittenToday,
+  fetchUsageToday,
   forgetGovernedFlag,
   governorDue,
   readGovernorState,
+  readsConstrained,
   resolveGovernorConfig,
   runD1Governor,
 } from "./lib/d1Governor";
@@ -581,6 +582,9 @@ app.post("/api/v1/admin/analytics/aggregate", async (c) => {
   if (!token || token !== c.env.ADMIN_TOKEN) {
     return c.json({ error: "unauthorized" }, 401);
   }
+  if (await readsConstrained(c.env)) {
+    return c.json({ error: "deferred: D1 read budget governor tripped; retry after 00:00 UTC" }, 503);
+  }
   const result = await aggregate(c.env);
   return c.json(result);
 });
@@ -610,11 +614,16 @@ app.get("/api/v1/admin/sweep/status", async (c) => {
     return c.json({ error: "unauthorized" }, 401);
   }
   c.header("cache-control", "no-store");
+  // Non-essential read: stood down while the D1 read-budget governor is tripped
+  // (answers from KV only — use /admin/d1-budget for the budget read-out).
+  if (await readsConstrained(c.env)) {
+    return c.json({ error: "stood down: D1 read budget governor tripped until 00:00 UTC" }, 503);
+  }
   return c.json(await sweepStatus(c.env));
 });
 
-// D1 write-budget governor read-out (see lib/d1Governor.ts): config, today's
-// account-wide rows_written, and which flags the governor is holding OFF.
+// D1 budget governor read-out (see lib/d1Governor.ts): config, today's account-wide
+// rows_written + rows_read (GraphQL — costs no D1 rows), and the governor state.
 // Admin-token gated; no secrets in the response.
 app.get("/api/v1/admin/d1-budget", async (c) => {
   const token = c.req.header("X-Admin-Token");
@@ -624,19 +633,23 @@ app.get("/api/v1/admin/d1-budget", async (c) => {
   c.header("cache-control", "no-store");
   const now = new Date();
   const [config, state] = await Promise.all([resolveGovernorConfig(c.env), readGovernorState(c.env)]);
-  let rowsWritten: number | null = null;
+  let usage: { rowsWritten: number; rowsRead: number } | null = null;
   let usageError: string | null = null;
   try {
-    rowsWritten = await fetchRowsWrittenToday(c.env, now);
+    usage = await fetchUsageToday(c.env, now);
   } catch (e) {
     usageError = String(e);
   }
+  const pct = (v: number, limit: number) => Math.round((v / limit) * 1000) / 10;
   return c.json({
     now: now.toISOString(),
     config,
     threshold_rows: (config.dailyLimit * config.thresholdPct) / 100,
-    rows_written_today: rowsWritten,
-    used_pct: rowsWritten === null ? null : Math.round((rowsWritten / config.dailyLimit) * 1000) / 10,
+    threshold_rows_read: (config.dailyReadLimit * config.readThresholdPct) / 100,
+    rows_written_today: usage?.rowsWritten ?? null,
+    used_pct: usage ? pct(usage.rowsWritten, config.dailyLimit) : null,
+    rows_read_today: usage?.rowsRead ?? null,
+    read_used_pct: usage ? pct(usage.rowsRead, config.dailyReadLimit) : null,
     usage_error: usageError,
     governor_state: state,
   });
@@ -704,15 +717,24 @@ export default {
         (err) => console.error("alerts refresh failed", err),
       ),
     );
-    // Roll raw observations into per-line metrics (raw is kept; no prune).
+    // Roll raw observations into per-line metrics (raw is kept; no prune). Deferred
+    // (whole run, incl. its catch-up) while the D1 read-budget governor is tripped —
+    // the drift guard takes the backlog on the next run.
     ctx.waitUntil(
-      aggregate(env).then(
-        (r) =>
+      readsConstrained(env).then(async (constrained) => {
+        if (constrained) {
+          console.warn("analytics aggregate deferred: D1 read budget governor tripped");
+          return;
+        }
+        try {
+          const r = await aggregate(env);
           console.log(
             `analytics aggregate: ${r.buckets} buckets, window ${r.from}..${r.to}, caughtUp=${r.caughtUp}`,
-          ),
-        (err) => console.error("analytics aggregate failed", err),
-      ),
+          );
+        } catch (err) {
+          console.error("analytics aggregate failed", err);
+        }
+      }),
     );
   },
 };
