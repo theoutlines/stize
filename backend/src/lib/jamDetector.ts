@@ -30,7 +30,10 @@ const SEEN_RECENT_MS = 120_000; // ignore vehicles not observed in the last 2 mi
 const FEED_HEALTH_WINDOW_MS = 90_000; // "moved recently" window for the feed-health gate
 const FEED_HEALTHY_MIN_MOVING = 0.35; // below this moving fraction the feed is starving → suppress
 const MIN_FEED_SAMPLE = 6; // don't judge feed health on too few vehicles
-const PRUNE_AGE_MS = 10 * 60_000; // drop rows older than this
+// A not-moving vehicle's row is rewritten at most this often, just to keep its
+// `seen_at` fresh. Must stay well under SEEN_RECENT_MS so a frozen tram — exactly
+// what a jam IS — never drops out of the "recently seen" set between rewrites.
+export const FIX_HEARTBEAT_MS = 60_000;
 
 // ── Cascading freeze thresholds — KV config, NOT hardcode (owner, round 2) ──
 // The threshold to flag a stalled vehicle scales with signal strength, because a
@@ -153,9 +156,24 @@ const DEG_LON_30M = FROZEN_MOVE_M / (111_000 * Math.cos((44.8 * Math.PI) / 180))
 /**
  * Upsert one board's live vehicles into the last-fix table. `moved_at` is bumped
  * only when the fix actually moved (>=~30 m by bounding box) or `stops_remaining`
- * changed; a re-read of the SAME board (board_at not newer) is a no-op via the
- * WHERE guard, so the feed's re-stamp sawtooth never resets a real freeze clock.
- * Idempotent and batched; safe to fire-and-forget from ctx.waitUntil.
+ * changed. Idempotent and batched; safe to fire-and-forget from ctx.waitUntil.
+ *
+ * Write budget (D1 free tier, rows_written is the scarce resource — see
+ * docs/reports/2026-10-05-d1-write-budget.md). A row update costs 2 written rows
+ * (row + the `seen_at` index), and the same vehicle sits on the boards of many
+ * stops, so this used to rewrite every vehicle on every board (~23% of all D1
+ * writes). Now:
+ *   • only TRAM-line vehicles are recorded — jams and bus substitutions are
+ *     computed for tram lines only, and the feed-health gate works on the same
+ *     tram sample (`vehicle_type` here is the LINE's type, so a substitute bus on
+ *     a tram line is still recorded);
+ *   • an existing row is rewritten only on a REAL change: a newer board AND
+ *     (moved >=30 m, or a different line/direction, or the heartbeat is due).
+ *     `stops_remaining` alone does not trigger a write — it is relative to the
+ *     stop whose board carried the fix, so it differs between the boards of two
+ *     stops even for a parked vehicle.
+ * The table is bounded by the tram fleet (one row per garage, upserted in place),
+ * so there is no prune — a DELETE would only churn rows that get re-inserted.
  */
 export async function recordVehicleFixes(
   env: Env,
@@ -164,6 +182,9 @@ export async function recordVehicleFixes(
   now: number,
 ): Promise<void> {
   const db = env.STIGLA_ANALYTICS_DB;
+  const moved =
+    `(abs(excluded.lat - vehicle_fixes.lat) > ${DEG_LAT_30M}` +
+    ` OR abs(excluded.lon - vehicle_fixes.lon) > ${DEG_LON_30M})`;
   const stmt = db.prepare(
     `INSERT INTO vehicle_fixes
        (garage_no, line, direction_route_id, vehicle_type, lat, lon, stops_remaining, moved_at, seen_at, board_at)
@@ -173,8 +194,7 @@ export async function recordVehicleFixes(
        direction_route_id = excluded.direction_route_id,
        vehicle_type = excluded.vehicle_type,
        moved_at = CASE
-         WHEN abs(excluded.lat - vehicle_fixes.lat) > ${DEG_LAT_30M}
-           OR abs(excluded.lon - vehicle_fixes.lon) > ${DEG_LON_30M}
+         WHEN ${moved}
            OR excluded.stops_remaining IS NOT vehicle_fixes.stops_remaining
          THEN excluded.seen_at
          ELSE vehicle_fixes.moved_at END,
@@ -183,13 +203,18 @@ export async function recordVehicleFixes(
        stops_remaining = excluded.stops_remaining,
        seen_at = excluded.seen_at,
        board_at = excluded.board_at
-     WHERE excluded.board_at > vehicle_fixes.board_at`,
+     WHERE excluded.board_at > vehicle_fixes.board_at
+       AND (${moved}
+         OR excluded.line IS NOT vehicle_fixes.line
+         OR excluded.direction_route_id IS NOT vehicle_fixes.direction_route_id
+         OR excluded.seen_at - vehicle_fixes.seen_at >= ${FIX_HEARTBEAT_MS})`,
   );
 
   const batch = [];
   const seen = new Set<string>();
   for (const a of arrivals) {
     if (a.source === "scheduled" || !a.gps || !a.garage_no) continue;
+    if (a.vehicle_type !== "tram") continue; // jams are tram-only (see above)
     if (seen.has(a.garage_no)) continue; // one row per garage per board
     seen.add(a.garage_no);
     batch.push(
@@ -208,13 +233,6 @@ export async function recordVehicleFixes(
   }
   if (batch.length === 0) return;
   await db.batch(batch);
-}
-
-/** Best-effort prune of stale rows (called opportunistically from /jams). */
-export async function pruneVehicleFixes(env: Env, now: number): Promise<void> {
-  await env.STIGLA_ANALYTICS_DB.prepare(`DELETE FROM vehicle_fixes WHERE seen_at < ?1`)
-    .bind(now - PRUNE_AGE_MS)
-    .run();
 }
 
 export interface JamVehicleDto {
@@ -290,7 +308,8 @@ export async function computeJams(
   ).results;
 
   // ── Feed-health gate (global suppression) ──
-  // Over recently-seen vehicles of ALL types, the fraction that moved within the
+  // Over recently-seen vehicles (tram lines only — that is all recordVehicleFixes
+  // keeps since the 2026-10-05 write-budget fix), the fraction that moved within the
   // last window. During feed starvation the board re-stamps but no fix moves, so
   // this collapses toward 0 and we suppress everything (better silent than wrong).
   let sample = 0;

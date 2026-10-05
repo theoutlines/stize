@@ -6,7 +6,6 @@ import { belgradeNow } from "./schedule";
 import {
   degradationMetrics,
   evaluateDegradation,
-  pruneUpstreamEvents,
   resolveBreakerConfig,
   resolveBudgetConfig,
   resolveJitterSeconds,
@@ -184,6 +183,18 @@ export async function runSweepTick(
   }
   if (!enabled) return noop("disabled");
 
+  // The sweep exists only to feed raw_observations. With collection off (e.g. the
+  // D1 budget governor switched `analytics_collect` OFF until 00:00 UTC) every
+  // sweep fetch would be pure load on the source with nothing recorded — stand down.
+  let collecting: boolean;
+  try {
+    collecting = await getFlag(env, "analytics_collect");
+  } catch (e) {
+    console.error("sweep: analytics_collect read failed; standing down", e);
+    return noop("flag-read-failed");
+  }
+  if (!collecting) return noop("collect-off");
+
   // Request-budget meter + degradation breaker (gated by `upstream_budget`). When
   // the meter is off the sweep still runs, but only the tempo limits it — no budget
   // gate, no latency/non-JSON breaker. Reading the flag is best-effort: treat a read
@@ -292,7 +303,7 @@ export async function runSweepTick(
 
   // Adaptive skip: drop a sentinel that organic (user) traffic already refreshed
   // within the current cycle — re-fetching it adds nothing and the SWR layer
-  // would only serve a cache hit anyway. Derived purely from `raw_observations`:
+  // would only serve a cache hit anyway. Derived from `stop_last_observed`:
   // our own sweep touches each sentinel once per `cycleSeconds`, so any
   // observation fresher than (cycle − SKIP_MARGIN_SECONDS) must be organic. The
   // margin means the sweep never mistakes its own last visit for organic traffic,
@@ -301,9 +312,9 @@ export async function runSweepTick(
   const toFetch = [...batch];
   let skipped = 0;
   try {
-    const lastObs = await latestObservationPerStop(env, batch);
     const skipOlderThan = cycleSeconds - SKIP_MARGIN_SECONDS;
     if (skipOlderThan > 0) {
+      const lastObs = await latestObservationPerStop(env, batch, nowSec - skipOlderThan);
       const kept: string[] = [];
       for (const stopId of batch) {
         const obs = lastObs.get(stopId);
@@ -359,20 +370,13 @@ export async function runSweepTick(
   const nextCursor = (cursor + perTick) % sentinels.length;
 
   // Persist the cursor (D1) and update the breaker. Failure to WRITE here is
-  // non-fatal (we already did one honest batch); log and move on. Opportunistically
-  // prune old meter rows too (best-effort, keeps upstream_events bounded).
+  // non-fatal (we already did one honest batch); log and move on. (The upstream
+  // meter is a fixed-size ring since migration 0009 — nothing to prune.)
   ctx.waitUntil(
     persistState(env, nextCursor, failures, toFetch.length).catch((e) =>
       console.error("sweep: state persist failed", e),
     ),
   );
-  if (meterOn) {
-    ctx.waitUntil(
-      pruneUpstreamEvents(env, nowSec).catch((e) =>
-        console.warn("sweep: upstream_events prune failed", e),
-      ),
-    );
-  }
 
   return {
     ran: swept.length > 0 || toFetch.length > 0,
@@ -520,16 +524,24 @@ export async function sweepStatus(
   };
 }
 
-// Latest observation time per stop, for the adaptive-skip check. One small
-// indexed query over the batch (a handful of stops).
-async function latestObservationPerStop(env: Env, stopIds: string[]): Promise<Map<string, number>> {
+// Latest observation time per stop, for the adaptive-skip check, bounded to the
+// skip horizon (`since`): anything older can't make a sentinel skippable anyway.
+// Reads the one-row-per-stop `stop_last_observed` table (migration 0009) by
+// primary key — exactly one row per sentinel, instead of the old
+// `raw_observations WHERE stop_id IN (...)` that no index could serve (a full scan
+// of all retained raw, ~540k rows_read, on every minute tick).
+export async function latestObservationPerStop(
+  env: Env,
+  stopIds: string[],
+  since: number,
+): Promise<Map<string, number>> {
   if (stopIds.length === 0) return new Map();
   const placeholders = stopIds.map(() => "?").join(",");
   const { results } = await env.STIGLA_ANALYTICS_DB.prepare(
-    `SELECT stop_id, MAX(observed_at) AS last FROM raw_observations
-     WHERE stop_id IN (${placeholders}) GROUP BY stop_id`,
+    `SELECT stop_id, observed_at AS last FROM stop_last_observed
+     WHERE stop_id IN (${placeholders}) AND observed_at > ?`,
   )
-    .bind(...stopIds)
+    .bind(...stopIds, since)
     .all<{ stop_id: string; last: number }>();
   return new Map(results.map((r) => [r.stop_id, r.last]));
 }

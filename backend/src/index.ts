@@ -30,7 +30,7 @@ import {
 } from "./lib/gtfsData";
 import { geocodeSearch } from "./lib/geocode";
 import { listAlerts, refreshAlerts } from "./lib/alerts";
-import { computeJams, pruneVehicleFixes, type JamsResponse } from "./lib/jamDetector";
+import { computeJams, type JamsResponse } from "./lib/jamDetector";
 import {
   RateLimitedError,
   ValidationError,
@@ -43,6 +43,14 @@ import {
   toggleVote,
 } from "./lib/ideas";
 import { createFeedback, createFeedbackIssue } from "./lib/feedback";
+import {
+  fetchRowsWrittenToday,
+  forgetGovernedFlag,
+  governorDue,
+  readGovernorState,
+  resolveGovernorConfig,
+  runD1Governor,
+} from "./lib/d1Governor";
 
 // KV key for the drawer's optional Donate link. Empty/unset ⇒ the client hides
 // the Donate item; set it (dashboard/wrangler) to reveal it. See feature-flags.md.
@@ -55,6 +63,25 @@ const app = new Hono<{ Bindings: Env }>();
 // during dev, ...).
 // Nothing here is per-user or cookie-authenticated, so a permissive origin is fine.
 app.use("*", cors({ origin: "*", allowHeaders: ["Content-Type", "X-Admin-Token", "X-Device-Id"] }));
+
+// D1-backed community/analytics routes. An unexpected throw there is almost always
+// the store being unavailable — e.g. the account's D1 free-tier daily write limit
+// (100k rows_written, account-wide) exhausted, which makes EVERY D1 query error
+// until 00:00 UTC (2026-10-05 incident). That is a temporary outage, not a bug in
+// the request: answer 503 with a clean JSON error the client can show, never a
+// bare 500. Expected errors (validation, rate limit) are still mapped in-route.
+const D1_BACKED_PATH = /^\/api\/v1\/(ideas|feedback|admin\/ideas|analytics\/lines)(\/|$)/;
+
+app.onError((err, c) => {
+  if (D1_BACKED_PATH.test(c.req.path)) {
+    console.error(`store unavailable on ${c.req.method} ${c.req.path}`, err);
+    c.header("cache-control", "no-store");
+    c.header("retry-after", "300");
+    return c.json({ error: "temporarily_unavailable" }, 503);
+  }
+  console.error(`unhandled error on ${c.req.method} ${c.req.path}`, err);
+  return c.text("Internal Server Error", 500);
+});
 
 app.get("/api/v1/health", async (c) => {
   const killed = await isServiceKilled(c.env);
@@ -396,7 +423,6 @@ app.get("/api/v1/jams", async (c) => {
       simLine = c.req.query("sim") ?? (await c.env.STIGLA_KV.get("jam:sim"));
     }
     const body = await computeJams(c.env, now, { simLine });
-    c.executionCtx.waitUntil(pruneVehicleFixes(c.env, now).catch(() => {}));
     return c.json(body);
   } catch (err) {
     console.error("jams compute failed", err);
@@ -444,6 +470,9 @@ app.post("/api/v1/admin/flags", async (c) => {
     );
   }
   await setFlag(c.env, body.flag, body.value);
+  // A human decision on a flag the D1 budget governor is holding OFF overrides it:
+  // the governor won't restore (or re-trip) that flag for the current day.
+  await forgetGovernedFlag(c.env, body.flag);
   return c.json({ flags: await getAllFlags(c.env) });
 });
 
@@ -585,6 +614,46 @@ app.get("/api/v1/admin/sweep/status", async (c) => {
   return c.json(await sweepStatus(c.env));
 });
 
+// D1 write-budget governor read-out (see lib/d1Governor.ts): config, today's
+// account-wide rows_written, and which flags the governor is holding OFF.
+// Admin-token gated; no secrets in the response.
+app.get("/api/v1/admin/d1-budget", async (c) => {
+  const token = c.req.header("X-Admin-Token");
+  if (!token || token !== c.env.ADMIN_TOKEN) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  c.header("cache-control", "no-store");
+  const now = new Date();
+  const [config, state] = await Promise.all([resolveGovernorConfig(c.env), readGovernorState(c.env)]);
+  let rowsWritten: number | null = null;
+  let usageError: string | null = null;
+  try {
+    rowsWritten = await fetchRowsWrittenToday(c.env, now);
+  } catch (e) {
+    usageError = String(e);
+  }
+  return c.json({
+    now: now.toISOString(),
+    config,
+    threshold_rows: (config.dailyLimit * config.thresholdPct) / 100,
+    rows_written_today: rowsWritten,
+    used_pct: rowsWritten === null ? null : Math.round((rowsWritten / config.dailyLimit) * 1000) / 10,
+    usage_error: usageError,
+    governor_state: state,
+  });
+});
+
+// Run one governor pass on demand (the cron does this every interval). Staging has
+// no cron, so this is how the governor is exercised there. NOTE: the reading is
+// account-wide; on staging it flips only staging's own KV flags.
+app.post("/api/v1/admin/d1-budget/tick", async (c) => {
+  const token = c.req.header("X-Admin-Token");
+  if (!token || token !== c.env.ADMIN_TOKEN) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  return c.json(await runD1Governor(c.env, new Date()));
+});
+
 export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
@@ -593,6 +662,19 @@ export default {
     // analytics. Branch on which cron fired so a minute tick never runs the
     // heavy daily job (and vice-versa).
     if (event.cron === "* * * * *") {
+      // D1 write-budget governor: every `config:d1_governor_interval_min` minutes
+      // (default every 15 min, incl. 00:00 UTC for the day-rollover restore). KV + one
+      // GraphQL read; never touches D1 itself.
+      const tickAt = new Date(event.scheduledTime);
+      ctx.waitUntil(
+        resolveGovernorConfig(env)
+          .then((cfg) => (governorDue(tickAt, cfg.intervalMin) ? runD1Governor(env, tickAt) : null))
+          .then(
+            (r) => r && console.log(`d1 governor: ${r.action} ${r.detail}`),
+            (err) => console.error("d1 governor failed", err),
+          ),
+      );
+
       // Cron path applies jitter (randomized 0..2×jitter-s pre-fetch delay) so the
       // upstream hit doesn't land on a fixed phase every minute.
       ctx.waitUntil(
@@ -623,7 +705,7 @@ export default {
         (err) => console.error("alerts refresh failed", err),
       ),
     );
-    // Roll raw observations into per-line metrics and prune old raw.
+    // Roll raw observations into per-line metrics (raw is kept; no prune).
     ctx.waitUntil(
       aggregate(env).then(
         (r) =>

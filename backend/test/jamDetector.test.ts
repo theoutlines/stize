@@ -5,6 +5,7 @@ import {
   downstreamStopCount,
   garageVehicleType,
   recordVehicleFixes,
+  FIX_HEARTBEAT_MS,
   JAM_CONFIG_DEFAULTS,
 } from "../src/lib/jamDetector";
 
@@ -131,6 +132,51 @@ describe("recordVehicleFixes", () => {
         "SELECT moved_at FROM vehicle_fixes WHERE garage_no='P80200'",
       ).first<{ moved_at: number }>())!.moved_at,
     ).toBe(NOW);
+  });
+
+  const fix = () =>
+    env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT line, stops_remaining, moved_at, seen_at, board_at FROM vehicle_fixes WHERE garage_no='P80200'",
+    ).first<{ line: string; stops_remaining: number; moved_at: number; seen_at: number; board_at: number }>();
+
+  it("does not record non-tram lines (jams/substitutions are tram-only)", async () => {
+    await recordVehicleFixes(env, NOW, [arr({ vehicle_type: "bus", garage_no: "P20001" })], NOW);
+    await recordVehicleFixes(env, NOW, [arr({ vehicle_type: "trolleybus", garage_no: "P82050" })], NOW);
+    const count = await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT count(*) c FROM vehicle_fixes",
+    ).first<{ c: number }>();
+    expect(count!.c).toBe(0);
+  });
+
+  it("records a substitute bus on a tram line (vehicle_type is the LINE's type)", async () => {
+    await recordVehicleFixes(env, NOW, [arr({ garage_no: "P20001" })], NOW);
+    const count = await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT count(*) c FROM vehicle_fixes",
+    ).first<{ c: number }>();
+    expect(count!.c).toBe(1);
+  });
+
+  it("skips the write on a newer board with no real change inside the heartbeat", async () => {
+    await recordVehicleFixes(env, NOW, [arr({})], NOW);
+    // Another stop's board 20s later: same spot, different relative stops_remaining.
+    await recordVehicleFixes(env, NOW + 20_000, [arr({ stops_remaining: 9 })], NOW + 20_000);
+    const f = await fix();
+    expect(f).toMatchObject({ seen_at: NOW, board_at: NOW, stops_remaining: 4, moved_at: NOW });
+  });
+
+  it("heartbeat: an unmoved vehicle is rewritten once FIX_HEARTBEAT_MS has passed (seen_at fresh, freeze kept)", async () => {
+    await recordVehicleFixes(env, NOW, [arr({})], NOW);
+    const t = NOW + FIX_HEARTBEAT_MS;
+    await recordVehicleFixes(env, t, [arr({})], t);
+    expect(await fix()).toMatchObject({ seen_at: t, board_at: t, moved_at: NOW });
+  });
+
+  it("a real change (moved, or a different line) is written immediately", async () => {
+    await recordVehicleFixes(env, NOW, [arr({})], NOW);
+    await recordVehicleFixes(env, NOW + 5_000, [arr({ gps: { lat: 44.801, lon: 20.46 } })], NOW + 5_000);
+    expect(await fix()).toMatchObject({ seen_at: NOW + 5_000, moved_at: NOW + 5_000 });
+    await recordVehicleFixes(env, NOW + 10_000, [arr({ line: "2", gps: { lat: 44.801, lon: 20.46 } })], NOW + 10_000);
+    expect(await fix()).toMatchObject({ line: "2", seen_at: NOW + 10_000 });
   });
 
   it("skips scheduled rows and rows without gps/garage", async () => {

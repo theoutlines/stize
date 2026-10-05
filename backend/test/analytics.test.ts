@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
 import {
   aggregate,
@@ -41,6 +41,7 @@ beforeEach(async () => {
     "agg_vehicle_line",
     "agg_vehicle_line_dow",
     "agg_state",
+    "stop_last_observed",
   ]) {
     await env.STIGLA_ANALYTICS_DB.prepare(`DELETE FROM ${t}`).run();
   }
@@ -312,6 +313,14 @@ describe("analytics.aggregate + getLineAnalytics", () => {
 
 describe("aggregate — windowed backfill convergence", () => {
   const DAY = 86400;
+  // These tests exercise the bounded-window path itself, so switch the drift
+  // guard's one-shot catch-up off (a tiny test backlog would otherwise fit it).
+  beforeEach(async () => {
+    await env.STIGLA_KV.put("config:agg_catchup_max_rows", "0");
+  });
+  afterEach(async () => {
+    await env.STIGLA_KV.delete("config:agg_catchup_max_rows");
+  });
 
   it("converges to SUM(samples)==COUNT(raw) over several bounded runs; last run is a light no-op", async () => {
     // 5 days of raw, several rows/day — more than one default (1-day) window.
@@ -384,6 +393,99 @@ describe("aggregate — windowed backfill convergence", () => {
       expect(r1.to - r1.from).toBeLessThanOrEqual(3600);
     } finally {
       await env.STIGLA_KV.delete("config:agg_backfill_window_s");
+    }
+  });
+});
+
+describe("aggregate — watermark drift guard (2026-10-05)", () => {
+  const DAY = 86400;
+
+  async function setWatermark(at: number) {
+    await env.STIGLA_ANALYTICS_DB.prepare(
+      "INSERT OR REPLACE INTO agg_state (key, value) VALUES ('last_run', ?)",
+    )
+      .bind(String(at))
+      .run();
+  }
+
+  it("a run >1 window behind with a small backlog catches up in one go", async () => {
+    // The prod shape: the watermark sits ~35h behind at the daily run, so a plain
+    // 1-day window lands 11h short of now — forever. A small backlog is taken whole.
+    const now = BASE + 3 * DAY;
+    const wm = now - 35 * 3600;
+    await setWatermark(wm);
+    await seed([
+      ["V1", "S1", 2, wm + 600],
+      ["V1", "S1", 0, now - 3600], // inside the last 11h a 1-day window would miss
+    ]);
+    const r = await aggregate(env, now);
+    expect(r.caughtUp).toBe(true);
+    expect(r.to).toBe(now);
+    const s = await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT SUM(samples) AS s FROM agg_line_dir_time",
+    ).first<{ s: number }>();
+    expect(s!.s).toBe(2);
+  });
+
+  it("without the guard (catch-up 0) the same state stays behind — the old drift", async () => {
+    await env.STIGLA_KV.put("config:agg_catchup_max_rows", "0");
+    try {
+      const now = BASE + 3 * DAY;
+      await setWatermark(now - 35 * 3600);
+      await seed([["V1", "S1", 0, now - 3600]]);
+      const r = await aggregate(env, now);
+      expect(r.caughtUp).toBe(false);
+      expect(now - r.to).toBe(11 * 3600);
+    } finally {
+      await env.STIGLA_KV.delete("config:agg_catchup_max_rows");
+    }
+  });
+
+  it("never deletes raw, however old (retention prune disabled)", async () => {
+    const now = BASE + 90 * DAY;
+    await seed([
+      ["V1", "S1", 0, BASE + 60], // 90 days old
+      ["V1", "S1", 0, now - 600],
+    ]);
+    const r = await aggregate(env, now);
+    expect(r.caughtUp).toBe(true);
+    const n = await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT COUNT(*) AS n FROM raw_observations",
+    ).first<{ n: number }>();
+    expect(n!.n).toBe(2);
+  });
+});
+
+describe("analytics.logObservations — stop_last_observed", () => {
+  const ctx = () => ({ waitUntil() {} });
+  const one: RawArrival[] = [
+    { lineNumber: "79", etaSeconds: 60, stopsRemaining: 1, garageNo: "P93001", gps: null, heading: null, trajectory: null, routeStations: [] },
+  ];
+
+  it("records the stop's latest board time (one row per stop, moves forward only)", async () => {
+    await setFlag(env, "analytics_collect", true);
+    try {
+      await logObservations(env, ctx(), "S9", one);
+      await logObservations(env, ctx(), "S9", one);
+      const rows = await env.STIGLA_ANALYTICS_DB.prepare(
+        "SELECT stop_id, observed_at FROM stop_last_observed",
+      ).all<{ stop_id: string; observed_at: number }>();
+      expect(rows.results).toHaveLength(1);
+      expect(rows.results[0].stop_id).toBe("S9");
+      expect(Math.abs(rows.results[0].observed_at - Date.now() / 1000)).toBeLessThan(60);
+
+      // An older timestamp never moves it back.
+      await env.STIGLA_ANALYTICS_DB.prepare(
+        `INSERT INTO stop_last_observed (stop_id, observed_at) VALUES ('S9', 1)
+         ON CONFLICT(stop_id) DO UPDATE SET observed_at = excluded.observed_at
+         WHERE excluded.observed_at > stop_last_observed.observed_at`,
+      ).run();
+      const after = await env.STIGLA_ANALYTICS_DB.prepare(
+        "SELECT observed_at FROM stop_last_observed WHERE stop_id='S9'",
+      ).first<{ observed_at: number }>();
+      expect(after!.observed_at).toBe(rows.results[0].observed_at);
+    } finally {
+      await setFlag(env, "analytics_collect", false);
     }
   });
 });

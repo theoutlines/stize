@@ -9,7 +9,8 @@ import {
   DEFAULT_LIVE_RESERVE_HOURLY,
   degradationMetrics,
   evaluateDegradation,
-  pruneUpstreamEvents,
+  latencyBucket,
+  METER_RING_MINUTES,
   recordUpstreamEvent,
   resolveBudgetConfig,
   rollingCounts,
@@ -37,7 +38,7 @@ const breakerCfg: BreakerConfig = {
 };
 
 beforeEach(async () => {
-  await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM upstream_events").run();
+  await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM upstream_meter").run();
   for (const k of ["config:upstream_budget_hourly", "config:upstream_live_reserve_hourly"]) {
     await env.STIGLA_KV.delete(k);
   }
@@ -114,14 +115,44 @@ describe("rollingCounts (D1)", () => {
   });
 });
 
+describe("latencyBucket", () => {
+  it("puts a latency in the bucket whose upper edge is the first >= it", () => {
+    expect(latencyBucket(0)).toBe(0);
+    expect(latencyBucket(250)).toBe(0);
+    expect(latencyBucket(251)).toBe(1);
+    expect(latencyBucket(3000)).toBe(7); // the default breaker threshold is an edge
+    expect(latencyBucket(3001)).toBe(8);
+    expect(latencyBucket(10_000)).toBe(11);
+    expect(latencyBucket(60_000)).toBe(12); // open-ended last bucket
+  });
+});
+
 describe("degradationMetrics (D1)", () => {
-  it("computes nearest-rank p95 and the non-JSON share over the window", async () => {
-    // 20 samples with latencies 1..20; nearest-rank p95 index = ceil(0.95*20)-1 = 18 → 19.
-    for (let i = 1; i <= 20; i++) await seed(NOW - i, "live", i, i <= 5 ? "non_json" : "json");
+  it("computes nearest-rank p95 (bucket upper edge) and the non-JSON share over the window", async () => {
+    // 20 samples: 18 fast (200ms), 2 slow (3500ms). Nearest-rank p95 = 19th sample
+    // → falls in the (3000,4000] bucket → reported as its upper edge, 4000.
+    for (let i = 1; i <= 18; i++) await seed(NOW - i, "live", 200, i <= 5 ? "non_json" : "json");
+    await seed(NOW - 30, "live", 3500, "json");
+    await seed(NOW - 40, "sweep", 3500, "json");
     const m = await degradationMetrics(env, 300, NOW);
     expect(m.samples).toBe(20);
-    expect(m.p95LatencyMs).toBe(19);
+    expect(m.p95LatencyMs).toBe(4000);
     expect(m.nonJsonFraction).toBeCloseTo(5 / 20, 5);
+    expect(evaluateDegradation(m, breakerCfg).tripped).toBe(true);
+  });
+
+  it("is exact at an edge: p95 == threshold does not trip", async () => {
+    for (let i = 1; i <= 20; i++) await seed(NOW - i, "live", 3000, "json");
+    const m = await degradationMetrics(env, 300, NOW);
+    expect(m.p95LatencyMs).toBe(3000);
+    expect(evaluateDegradation(m, breakerCfg).tripped).toBe(false);
+  });
+
+  it("ignores buckets outside the window", async () => {
+    await seed(NOW - 10, "live", 200, "json");
+    await seed(NOW - 900, "live", 9000, "non_json"); // 15 min ago — outside 5 min
+    const m = await degradationMetrics(env, 300, NOW);
+    expect(m).toEqual({ samples: 1, p95LatencyMs: 250, nonJsonFraction: 0 });
   });
 
   it("returns null p95 and zero share when there are no samples in the window", async () => {
@@ -130,13 +161,25 @@ describe("degradationMetrics (D1)", () => {
   });
 });
 
-describe("pruneUpstreamEvents (D1)", () => {
-  it("drops rows older than the retention window, keeps recent ones", async () => {
-    await seed(NOW - 10, "live", 100, "json");
-    await seed(NOW - 8000, "live", 100, "json"); // > 2h old
-    await pruneUpstreamEvents(env, NOW);
-    const counts = await rollingCounts(env, 24 * 3600, NOW);
-    expect(counts.total).toBe(1);
+describe("upstream meter ring (D1)", () => {
+  it("stays bounded: a wrapped slot is reset, never accumulated, and no DELETE is needed", async () => {
+    const ringAgo = NOW - METER_RING_MINUTES * 60; // same slot, one full ring earlier
+    await seed(ringAgo, "live", 100, "non_json");
+    await seed(ringAgo, "live", 100, "non_json");
+    await seed(NOW, "live", 100, "json"); // overwrites the stale slot
+    const rows = await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT minute, n, non_json FROM upstream_meter WHERE kind = 'live'",
+    ).all<{ minute: number; n: number; non_json: number }>();
+    expect(rows.results).toEqual([{ minute: Math.floor(NOW / 60), n: 1, non_json: 0 }]);
+  });
+
+  it("accumulates within the same minute and kind", async () => {
+    await seed(NOW, "sweep", 100, "json");
+    await seed(NOW + 30, "sweep", 100, "empty");
+    const row = await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT n, non_json FROM upstream_meter WHERE kind = 'sweep'",
+    ).first<{ n: number; non_json: number }>();
+    expect(row).toEqual({ n: 2, non_json: 1 });
   });
 });
 
