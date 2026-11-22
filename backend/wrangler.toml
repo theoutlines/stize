@@ -47,6 +47,13 @@ name = "WRITE_LIMITER"
 namespace_id = "1001"
 simple = { limit = 10, period = 60 }
 
+# Geocode misses go to Nominatim (policy ~1 req/s): 30 per minute per key, used
+# both per IP and for one global key.
+[[ratelimits]]
+name = "GEOCODE_LIMITER"
+namespace_id = "1003"
+simple = { limit = 30, period = 60 }
+
 # Workers Logs: free tier 200k events/day; sampled so a busy day stays under it.
 [observability]
 enabled = true
@@ -87,6 +94,11 @@ routes = [
 name = "WRITE_LIMITER"
 namespace_id = "1002"
 simple = { limit = 10, period = 60 }
+
+[[env.staging.ratelimits]]
+name = "GEOCODE_LIMITER"
+namespace_id = "1004"
+simple = { limit = 30, period = 60 }
 
 [env.staging.observability]
 enabled = true

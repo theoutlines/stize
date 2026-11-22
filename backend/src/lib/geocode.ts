@@ -10,13 +10,28 @@ export interface GeocodeResult {
   lon: number;
 }
 
-export async function geocodeSearch(env: Env, query: string): Promise<GeocodeResult[]> {
+export class GeocodeRateLimited extends Error {}
+
+// Results are cached in the edge Cache API, not KV: KV allows only 1,000 writes a
+// day on the free plan, account-wide, and every new search term was a write. A
+// burst of searches could have used them up and with them the flag writes the
+// D1 governor relies on (technical audit 2026-11-22).
+//
+// `allowUpstream` is asked only on a cache miss, right before calling Nominatim,
+// so the per-IP / global rate limit spends nothing on cached answers.
+export async function geocodeSearch(
+  env: Env,
+  query: string,
+  allowUpstream: () => Promise<boolean> = async () => true,
+): Promise<GeocodeResult[]> {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return [];
 
-  const cacheKey = `geocode:${normalized}`;
-  const cached = await env.STIGLA_KV.get(cacheKey);
-  if (cached) return JSON.parse(cached) as GeocodeResult[];
+  const cache = caches.default;
+  const cacheKey = new Request(`https://cache.stigla.internal/geocode/${encodeURIComponent(normalized)}`);
+  const cached = await cache.match(cacheKey);
+  if (cached) return (await cached.json()) as GeocodeResult[];
+  if (!(await allowUpstream())) throw new GeocodeRateLimited(normalized);
 
   const url = new URL(NOMINATIM_BASE_URL);
   url.searchParams.set("q", query);
@@ -39,6 +54,11 @@ export async function geocodeSearch(env: Env, query: string): Promise<GeocodeRes
     lon: parseFloat(r.lon),
   }));
 
-  await env.STIGLA_KV.put(cacheKey, JSON.stringify(results), { expirationTtl: CACHE_TTL_SECONDS });
+  await cache.put(
+    cacheKey,
+    new Response(JSON.stringify(results), {
+      headers: { "content-type": "application/json", "cache-control": `max-age=${CACHE_TTL_SECONDS}` },
+    }),
+  );
   return results;
 }
