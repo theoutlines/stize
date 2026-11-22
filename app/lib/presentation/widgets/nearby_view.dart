@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart' as ll;
 
 import '../../core/api_config.dart';
 import '../../core/design/stize_tokens.dart';
+import '../../core/foreground.dart';
 import '../../core/map_support.dart';
 import '../../core/nearby_focus.dart';
 import '../../core/search.dart';
@@ -98,6 +99,10 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   bool _liveUnavailable = false;
   String _query = '';
   Timer? _timer;
+  late final ForegroundResumeListener _resume =
+      ForegroundResumeListener(() {
+    if (mounted && widget.active) _fetch();
+  });
   ll.LatLng? _lastFetchLoc;
   int _seq = 0;
 
@@ -115,6 +120,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     super.initState();
     if (widget.userLocation != null) _fetch();
     _startTimer();
+    _resume; // start listening for foreground returns
   }
 
   @override
@@ -140,6 +146,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   @override
   void dispose() {
     _timer?.cancel();
+    _resume.dispose();
     _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -174,7 +181,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(kLiveRefreshInterval, (_) {
-      if (widget.active) _fetch();
+      if (widget.active && appInForeground) _fetch();
     });
   }
 

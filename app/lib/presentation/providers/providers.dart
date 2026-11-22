@@ -251,7 +251,10 @@ final gtfsOfflineCacheProvider = Provider<GtfsOfflineCache>(
 );
 
 final arrivalsRepositoryProvider = Provider<ArrivalsRepository>(
-  (ref) => ArrivalsRepositoryImpl(ref.watch(apiClientProvider)),
+  (ref) => ArrivalsRepositoryImpl(
+    ref.watch(apiClientProvider),
+    ref.watch(gtfsOfflineCacheProvider),
+  ),
 );
 
 final stopsRepositoryProvider = Provider<StopsRepository>(
