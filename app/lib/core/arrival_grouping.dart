@@ -220,3 +220,22 @@ List<ArrivalListEntry> foldLiveByDirection(List<ArrivalListEntry> entries) {
   });
   return out;
 }
+
+
+/// The destination shown on an arrival card. A line whose headsign IS this
+/// stop ends here, so an arrow to this very stop would read as nonsense: show
+/// [terminusLabel] ("Konačna") instead. Comparison ignores case, spacing and
+/// Serbian diacritics, since headsigns and stop names are typed separately.
+String? displayDestination(
+    String? destination, String stopName, String terminusLabel) {
+  if (destination == null || destination.trim().isEmpty) return destination;
+  String norm(String s) => s
+      .toLowerCase()
+      .replaceAll(RegExp(r'[čć]'), 'c')
+      .replaceAll('š', 's')
+      .replaceAll('ž', 'z')
+      .replaceAll('đ', 'dj')
+      .replaceAll(RegExp(r'[^a-z0-9а-я]'), '');
+  final d = norm(destination), s = norm(stopName);
+  return d.isNotEmpty && d == s ? terminusLabel : destination;
+}

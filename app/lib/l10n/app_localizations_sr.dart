@@ -600,4 +600,7 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get jamFollowAhead => 'Moguće kašnjenje ispred na trasi';
+
+  @override
+  String get arrivalTerminus => 'Konačna';
 }

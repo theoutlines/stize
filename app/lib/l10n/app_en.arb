@@ -396,5 +396,9 @@
     }
   },
   "jamAffectedStopsTitle": "Affected stops",
-  "jamFollowAhead": "Possible delay ahead on the route"
+  "jamFollowAhead": "Possible delay ahead on the route",
+  "arrivalTerminus": "Terminus",
+  "@arrivalTerminus": {
+    "description": "Destination label when the line ends at the stop being viewed."
+  }
 }

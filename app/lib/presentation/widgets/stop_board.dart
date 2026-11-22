@@ -558,7 +558,10 @@ class _StopBoardState extends ConsumerState<StopBoard> {
       etaDeltaMinutes: _etaDelta[arrival.garageNo],
       fleet: fleet,
       emphasis: emphasis,
-      destination: destinations[arrival.directionRouteId ?? arrival.routeId],
+      destination: displayDestination(
+          destinations[arrival.directionRouteId ?? arrival.routeId],
+          board.stopName,
+          AppLocalizations.of(context).arrivalTerminus),
       // Folded card (one per direction): later trips sit under the big ETA,
       // so no "next in" in the caption.
       nextEtaMinutes: later != null ? null : stizeNextEtaForLine(allArrivals, arrival),

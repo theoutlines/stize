@@ -1129,6 +1129,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Possible delay ahead on the route'**
   String get jamFollowAhead;
+
+  /// Destination label when the line ends at the stop being viewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminus'**
+  String get arrivalTerminus;
 }
 
 class _AppLocalizationsDelegate

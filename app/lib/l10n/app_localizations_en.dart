@@ -599,4 +599,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get jamFollowAhead => 'Possible delay ahead on the route';
+
+  @override
+  String get arrivalTerminus => 'Terminus';
 }

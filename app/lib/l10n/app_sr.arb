@@ -233,5 +233,6 @@
   "jamModeTooltip": "Prikaži zastoje",
   "jamNearbyDelay": "Moguće kašnjenje na liniji {line}",
   "jamAffectedStopsTitle": "Pogođene stanice",
-  "jamFollowAhead": "Moguće kašnjenje ispred na trasi"
+  "jamFollowAhead": "Moguće kašnjenje ispred na trasi",
+  "arrivalTerminus": "Konačna"
 }
