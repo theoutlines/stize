@@ -98,6 +98,29 @@
         function Patched(opts) {
           var m = new Orig(opts);
           window.__stizeMap = m;
+          // Basemap labels in Serbian LATIN script (owner, 2026-11-22): the app
+          // UI is EN/SR-Latin and the MapTiler style labels Belgrade in
+          // Cyrillic. On every style (re)load, point each basemap symbol layer's
+          // text at name:sr-Latn, then name:latin, then the original name. Only
+          // layers fed by the style's own VECTOR sources are touched; the app's
+          // GeoJSON layers (stops, vehicles, routes) keep their own fields.
+          var LATIN = ['coalesce', ['get', 'name:sr-Latn'], ['get', 'name:latin'], ['get', 'name']];
+          var latinize = function () {
+            try {
+              var st = m.getStyle();
+              if (!st || !st.layers) return;
+              st.layers.forEach(function (l) {
+                if (l.type !== 'symbol' || !l.source) return;
+                var src = st.sources && st.sources[l.source];
+                if (!src || src.type !== 'vector') return;
+                var tf = l.layout && l.layout['text-field'];
+                if (!tf || JSON.stringify(tf).indexOf('name') < 0) return;
+                if (JSON.stringify(tf) === JSON.stringify(LATIN)) return;
+                m.setLayoutProperty(l.id, 'text-field', LATIN);
+              });
+            } catch (e) {}
+          };
+          m.on('style.load', latinize);
           // Kill double-tap / double-click zoom on EVERY map (home, coverage,
           // live-vehicles) at the source. We never use it — pinch is the only
           // zoom gesture — and it is the one map gesture that survives a
