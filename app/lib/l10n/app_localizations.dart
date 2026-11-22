@@ -374,6 +374,12 @@ abstract class AppLocalizations {
   /// **'{minutes} min'**
   String arrivalEtaMinutes(int minutes);
 
+  /// The 'min' unit under the big ETA number on an arrival card
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get arrivalEtaMinutesUnit;
+
   /// No description provided for @arrivalEtaNow.
   ///
   /// In en, this message translates to:
@@ -391,6 +397,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =0{At the stop} =1{1 stop away} other{{count} stops away}}'**
   String arrivalStopsAway(int count);
+
+  /// Caption on an arrival card: when the same line comes again, in minutes
+  ///
+  /// In en, this message translates to:
+  /// **'next in {minutes} min'**
+  String arrivalNextIn(int minutes);
+
+  /// Caption on an arrival card: when the same line comes again, as a 24h clock time
+  ///
+  /// In en, this message translates to:
+  /// **'next at {time}'**
+  String arrivalNextAt(String time);
 
   /// No description provided for @vehicleMoving.
   ///

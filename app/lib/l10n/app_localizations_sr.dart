@@ -175,6 +175,9 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
+  String get arrivalEtaMinutesUnit => 'min';
+
+  @override
   String get arrivalEtaNow => 'Sada';
 
   @override
@@ -191,6 +194,16 @@ class AppLocalizationsSr extends AppLocalizations {
       zero: 'Na stajalištu',
     );
     return '$_temp0';
+  }
+
+  @override
+  String arrivalNextIn(int minutes) {
+    return 'sledeći za $minutes min';
+  }
+
+  @override
+  String arrivalNextAt(String time) {
+    return 'sledeći u $time';
   }
 
   @override

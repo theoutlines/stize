@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart' as ll;
 
 import '../../core/api_config.dart';
 import '../../core/arrival_grouping.dart';
+import '../../core/design/stize_tokens.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/live_position.dart';
 import '../../data/analytics/event_logger.dart';
@@ -25,6 +26,7 @@ import '../widgets/live_unavailable_banner.dart';
 import '../widgets/live_vehicles_map.dart';
 import '../widgets/route_alerts_strip.dart';
 import '../widgets/scheduled_group_tile.dart';
+import '../widgets/stize_filter_chips.dart';
 
 class StopScreen extends ConsumerStatefulWidget {
   const StopScreen({super.key, required this.stopId, this.initialStopName});
@@ -227,6 +229,44 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     final ageSeconds = DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
     final isStale = ageSeconds > 90; // well past the ~30s refresh cadence — likely a stuck cache
 
+    // Destination (headsign) per direction route_id, from the GTFS line
+    // directory. Empty until it loads / offline without a mirror.
+    final destinations =
+        ref.watch(lineDestinationsProvider).valueOrNull ?? const <String, String>{};
+    // The Stiže card look is live only when the design-system theme is on; OFF
+    // keeps the flat ListTile rows with no inter-card gaps (killswitch).
+    final stize = Theme.of(context).extension<StizeColors>();
+
+    // Build the arrival rows, flagging the first live/expected card as emphasis.
+    final tiles = <Widget>[];
+    var firstCard = true;
+    void addTile(Arrival arrival, FleetVehicle? fleet) {
+      tiles.add(_arrivalTile(
+        context,
+        arrival,
+        fleet,
+        destinations: destinations,
+        allArrivals: visibleArrivals,
+        emphasis: stize != null && firstCard,
+      ));
+      firstCard = false;
+    }
+
+    if (sortByComfort) {
+      for (final i in order) {
+        addTile(visibleArrivals[i], fleetByIndex[i]);
+      }
+    } else {
+      for (final entry in groupedEntries) {
+        switch (entry) {
+          case ArrivalRow(:final arrival, :final index):
+            addTile(arrival, fleetByIndex[index]);
+          case ScheduledGroupCell():
+            tiles.add(ScheduledGroupTile(cell: entry));
+        }
+      }
+    }
+
     return Column(
       children: [
         if (board.serviceStatus == ServiceStatus.unavailable)
@@ -251,45 +291,8 @@ class _StopScreenState extends ConsumerState<StopScreen> {
           ),
         ),
         if (allLines.length > 1)
-          // One horizontally-scrolling row instead of a Wrap: a stop with many
-          // lines — e.g. Baćevac's ~22 after the suburban merge — used to wrap
-          // into a tall multi-row block that shoved the arrivals list off
-          // screen. Mirrors the favourites-carousel pattern (F7): horizontal
-          // scroll + edge insets so the first/last chip aren't clipped flush.
-          // Few-line stops keep their old look — the row just doesn't scroll.
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Row(
-              spacing: 8,
-              children: [
-                ChoiceChip(
-                  label: Text(l10n.lineFilterAll),
-                  selected: effectiveFilter == null,
-                  onSelected: (_) => setState(() => _lineFilter = null),
-                ),
-                for (final line in allLines)
-                  if (arrivingLines.contains(line))
-                    ChoiceChip(
-                      label: Text(line),
-                      selected: effectiveFilter == line,
-                      onSelected: (_) {
-                        ref.read(eventLoggerProvider).log(Ev.lineFilter);
-                        setState(() => _lineFilter = line);
-                      },
-                    )
-                  else
-                    Opacity(
-                      opacity: 0.4,
-                      child: ChoiceChip(
-                        label: Text(line),
-                        selected: false,
-                        onSelected: null,
-                      ),
-                    ),
-              ],
-            ),
-          ),
+          _lineFilterChips(
+            context, stize, allLines, arrivingLines, effectiveFilter, board),
         if (canSortByComfort)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -317,26 +320,128 @@ class _StopScreenState extends ConsumerState<StopScreen> {
               ],
             ),
           ),
-        // Comfort sort keeps its flat, per-vehicle list; the default view uses
-        // the grouped/deduped/collapsed entries.
-        if (sortByComfort)
-          for (final i in order) _arrivalTile(context, visibleArrivals[i], fleetByIndex[i])
+        if (stize != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                StizeSpace.space4, StizeSpace.space1, StizeSpace.space4, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < tiles.length; i++) ...[
+                  if (i > 0) const SizedBox(height: StizeSpace.space1),
+                  tiles[i],
+                ],
+              ],
+            ),
+          )
         else
-          for (final entry in groupedEntries)
-            switch (entry) {
-              ArrivalRow(:final arrival, :final index) =>
-                _arrivalTile(context, arrival, fleetByIndex[index]),
-              ScheduledGroupCell() => ScheduledGroupTile(cell: entry),
-            },
+          ...tiles,
       ],
     );
   }
 
+  /// The line filter — a horizontal scroller (a stop can serve ~22 lines after
+  /// the suburban merge). Stiže (flag ON): neutral "All lines" text chip + a
+  /// colour-filled chip per line. OFF: the Material ChoiceChips as before.
+  Widget _lineFilterChips(
+    BuildContext context,
+    StizeColors? stize,
+    List<String> allLines,
+    Set<String> arrivingLines,
+    String? effectiveFilter,
+    ArrivalsBoard board,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    if (stize == null) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Row(
+          spacing: 8,
+          children: [
+            ChoiceChip(
+              label: Text(l10n.lineFilterAll),
+              selected: effectiveFilter == null,
+              onSelected: (_) => setState(() => _lineFilter = null),
+            ),
+            for (final line in allLines)
+              if (arrivingLines.contains(line))
+                ChoiceChip(
+                  label: Text(line),
+                  selected: effectiveFilter == line,
+                  onSelected: (_) {
+                    ref.read(eventLoggerProvider).log(Ev.lineFilter);
+                    setState(() => _lineFilter = line);
+                  },
+                )
+              else
+                Opacity(
+                  opacity: 0.4,
+                  child: ChoiceChip(
+                    label: Text(line),
+                    selected: false,
+                    onSelected: null,
+                  ),
+                ),
+          ],
+        ),
+      );
+    }
+
+    final typeByLine = stizeTypeByLine(board.arrivals);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(
+          horizontal: StizeSpace.space4, vertical: StizeSpace.space1),
+      child: Row(
+        spacing: StizeSpace.space2,
+        children: [
+          StizeTextChip(
+            label: l10n.lineFilterAll,
+            selected: effectiveFilter == null,
+            onTap: () => setState(() => _lineFilter = null),
+          ),
+          for (final line in allLines)
+            if (arrivingLines.contains(line))
+              StizeLineChip(
+                line: line,
+                color: stizeChipColor(stize, typeByLine[line]),
+                selected: effectiveFilter == line,
+                onTap: () {
+                  ref.read(eventLoggerProvider).log(Ev.lineFilter);
+                  setState(() => _lineFilter = line);
+                },
+              )
+            else
+              Opacity(
+                opacity: 0.4,
+                child: StizeLineChip(
+                  line: line,
+                  color: stizeChipColor(stize, typeByLine[line]),
+                  selected: false,
+                  onTap: null,
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+
   /// One live/expected vehicle row, wired to open its fleet card when known.
-  Widget _arrivalTile(BuildContext context, Arrival arrival, FleetVehicle? fleet) {
+  Widget _arrivalTile(
+    BuildContext context,
+    Arrival arrival,
+    FleetVehicle? fleet, {
+    Map<String, String> destinations = const {},
+    List<Arrival> allArrivals = const [],
+    bool emphasis = false,
+  }) {
     return ArrivalTile(
       arrival: arrival,
       fleet: fleet,
+      emphasis: emphasis,
+      destination: destinations[arrival.directionRouteId ?? arrival.routeId],
+      nextEtaMinutes: stizeNextEtaForLine(allArrivals, arrival),
       onOpenFleetCard: fleet != null && fleet.hasInfo
           ? () => showFleetModelCard(
                 context,

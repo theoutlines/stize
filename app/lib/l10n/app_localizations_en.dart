@@ -174,6 +174,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get arrivalEtaMinutesUnit => 'min';
+
+  @override
   String get arrivalEtaNow => 'Now';
 
   @override
@@ -189,6 +192,16 @@ class AppLocalizationsEn extends AppLocalizations {
       zero: 'At the stop',
     );
     return '$_temp0';
+  }
+
+  @override
+  String arrivalNextIn(int minutes) {
+    return 'next in $minutes min';
+  }
+
+  @override
+  String arrivalNextAt(String time) {
+    return 'next at $time';
   }
 
   @override

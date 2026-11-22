@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_config.dart';
 import '../../core/arrival_grouping.dart';
+import '../../core/design/stize_tokens.dart';
 import '../../core/eta_delta.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/live_position.dart';
@@ -23,6 +24,7 @@ import 'jam_stop_banner.dart';
 import 'live_unavailable_banner.dart';
 import 'route_alerts_strip.dart';
 import 'scheduled_group_tile.dart';
+import 'stize_filter_chips.dart';
 
 /// The reusable "stop" view — a stop's live arrivals board, with no assumption
 /// about its container. It is hosted BY three shells that only add chrome:
@@ -335,6 +337,48 @@ class _StopBoardState extends ConsumerState<StopBoard> {
         DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
     final isStale = ageSeconds > 90;
 
+    // Destination (headsign) per direction route_id, from the GTFS line
+    // directory — labels each Stiže card "→ <destination>". Empty until it
+    // loads / when offline without a mirror (the card just hides the row).
+    final destinations =
+        ref.watch(lineDestinationsProvider).valueOrNull ?? const <String, String>{};
+
+    // The Stiže card look is live only when the design-system theme is on; OFF
+    // keeps the flat ListTile rows with no inter-card gaps (killswitch).
+    final stize = Theme.of(context).extension<StizeColors>();
+
+    // Build the arrival rows, flagging the first live/expected card for the
+    // larger "emphasis" treatment (owner: the nearest arrival reads biggest).
+    final tiles = <Widget>[];
+    var firstCard = true;
+    void addTile(Arrival arrival, FleetVehicle? fleet) {
+      tiles.add(_arrivalTile(
+        context,
+        board,
+        arrival,
+        fleet,
+        destinations: destinations,
+        allArrivals: visibleArrivals,
+        emphasis: stize != null && firstCard,
+      ));
+      firstCard = false;
+    }
+
+    if (sortByComfort) {
+      for (final i in order) {
+        addTile(visibleArrivals[i], fleetByIndex[i]);
+      }
+    } else {
+      for (final entry in groupedEntries) {
+        switch (entry) {
+          case ArrivalRow(:final arrival, :final index):
+            addTile(arrival, fleetByIndex[index]);
+          case ScheduledGroupCell():
+            tiles.add(ScheduledGroupTile(cell: entry));
+        }
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -352,39 +396,8 @@ class _StopBoardState extends ConsumerState<StopBoard> {
           ),
         ),
         if (allLines.length > 1)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Wrap(
-              spacing: 8,
-              children: [
-                ChoiceChip(
-                  label: Text(l10n.lineFilterAll),
-                  selected: effectiveFilter == null,
-                  onSelected: (_) => setState(() => _lineFilter = null),
-                ),
-                for (final line in allLines)
-                  if (arrivingLines.contains(line))
-                    ChoiceChip(
-                      label: Text(line),
-                      selected: effectiveFilter == line,
-                      onSelected: (_) {
-                        ref.read(eventLoggerProvider).log(Ev.lineFilter);
-                        setState(() => _lineFilter = line);
-                      },
-                    )
-                  else
-                    // Inactive: no arrivals right now — muted and non-clickable.
-                    Opacity(
-                      opacity: 0.4,
-                      child: ChoiceChip(
-                        label: Text(line),
-                        selected: false,
-                        onSelected: null,
-                      ),
-                    ),
-              ],
-            ),
-          ),
+          _lineFilterChips(
+            context, stize, allLines, arrivingLines, effectiveFilter),
         if (canSortByComfort)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -412,20 +425,115 @@ class _StopBoardState extends ConsumerState<StopBoard> {
               ],
             ),
           ),
-        // Comfort sort keeps its flat, per-vehicle list; the default view uses
-        // the grouped/deduped/collapsed entries.
-        if (sortByComfort)
-          for (final i in order)
-            _arrivalTile(context, board, visibleArrivals[i], fleetByIndex[i])
+        if (stize != null)
+          // 4px between the colour cards, with a side gutter (owner spec).
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                StizeSpace.space4, StizeSpace.space1, StizeSpace.space4, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < tiles.length; i++) ...[
+                  if (i > 0) const SizedBox(height: StizeSpace.space1),
+                  tiles[i],
+                ],
+              ],
+            ),
+          )
         else
-          for (final entry in groupedEntries)
-            switch (entry) {
-              ArrivalRow(:final arrival, :final index) =>
-                _arrivalTile(context, board, arrival, fleetByIndex[index]),
-              ScheduledGroupCell() => ScheduledGroupTile(cell: entry),
-            },
+          ...tiles,
         const SizedBox(height: 12),
       ],
+    );
+  }
+
+  /// The line filter. Stiže (flag ON): the "All lines" chip is a neutral text
+  /// chip and each line chip is filled with that line's transit colour, white
+  /// number, 36 high, 20 radius. OFF: the Material ChoiceChips as before.
+  Widget _lineFilterChips(
+    BuildContext context,
+    StizeColors? stize,
+    List<String> allLines,
+    Set<String> arrivingLines,
+    String? effectiveFilter,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    if (stize == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Wrap(
+          spacing: 8,
+          children: [
+            ChoiceChip(
+              label: Text(l10n.lineFilterAll),
+              selected: effectiveFilter == null,
+              onSelected: (_) => setState(() => _lineFilter = null),
+            ),
+            for (final line in allLines)
+              if (arrivingLines.contains(line))
+                ChoiceChip(
+                  label: Text(line),
+                  selected: effectiveFilter == line,
+                  onSelected: (_) {
+                    ref.read(eventLoggerProvider).log(Ev.lineFilter);
+                    setState(() => _lineFilter = line);
+                  },
+                )
+              else
+                Opacity(
+                  opacity: 0.4,
+                  child: ChoiceChip(
+                    label: Text(line),
+                    selected: false,
+                    onSelected: null,
+                  ),
+                ),
+          ],
+        ),
+      );
+    }
+
+    // The transit colour for a line chip comes from the stop's own arrivals, so
+    // chip colour == card colour. A line with no live arrival right now keeps a
+    // neutral muted chip (we don't know its type reliably).
+    final board = ref.read(arrivalsProvider(widget.stopId)).valueOrNull;
+    final typeByLine = stizeTypeByLine(board?.arrivals ?? const <Arrival>[]);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: StizeSpace.space4, vertical: StizeSpace.space1),
+      child: Wrap(
+        spacing: StizeSpace.space2,
+        runSpacing: StizeSpace.space2,
+        children: [
+          StizeTextChip(
+            label: l10n.lineFilterAll,
+            selected: effectiveFilter == null,
+            onTap: () => setState(() => _lineFilter = null),
+          ),
+          for (final line in allLines)
+            if (arrivingLines.contains(line))
+              StizeLineChip(
+                line: line,
+                color: stizeChipColor(stize, typeByLine[line]),
+                selected: effectiveFilter == line,
+                onTap: () {
+                  ref.read(eventLoggerProvider).log(Ev.lineFilter);
+                  setState(() => _lineFilter = line);
+                },
+              )
+            else
+              Opacity(
+                opacity: 0.4,
+                child: StizeLineChip(
+                  line: line,
+                  color: stizeChipColor(stize, typeByLine[line]),
+                  selected: false,
+                  onTap: null,
+                ),
+              ),
+        ],
+      ),
     );
   }
 
@@ -436,12 +544,18 @@ class _StopBoardState extends ConsumerState<StopBoard> {
     BuildContext context,
     ArrivalsBoard board,
     Arrival arrival,
-    FleetVehicle? fleet,
-  ) {
+    FleetVehicle? fleet, {
+    Map<String, String> destinations = const {},
+    List<Arrival> allArrivals = const [],
+    bool emphasis = false,
+  }) {
     return ArrivalTile(
       arrival: arrival,
       etaDeltaMinutes: _etaDelta[arrival.garageNo],
       fleet: fleet,
+      emphasis: emphasis,
+      destination: destinations[arrival.directionRouteId ?? arrival.routeId],
+      nextEtaMinutes: stizeNextEtaForLine(allArrivals, arrival),
       onOpenFleetCard: fleet != null && fleet.hasInfo
           ? () => widget.onOpenFleetCard != null
               ? widget.onOpenFleetCard!(
