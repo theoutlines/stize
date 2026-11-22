@@ -1,3 +1,4 @@
+import { toLatin } from "./latin";
 import type { Env } from "../env";
 
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/search";
@@ -28,7 +29,7 @@ export async function geocodeSearch(
   if (!normalized) return [];
 
   const cache = caches.default;
-  const cacheKey = new Request(`https://cache.stigla.internal/geocode/${encodeURIComponent(normalized)}`);
+  const cacheKey = new Request(`https://cache.stigla.internal/geocode/v2/${encodeURIComponent(normalized)}`);
   const cached = await cache.match(cacheKey);
   if (cached) return (await cached.json()) as GeocodeResult[];
   if (!(await allowUpstream())) throw new GeocodeRateLimited(normalized);
@@ -39,6 +40,10 @@ export async function geocodeSearch(
   url.searchParams.set("limit", "10");
   url.searchParams.set("viewbox", BELGRADE_VIEWBOX);
   url.searchParams.set("bounded", "0");
+  // Latin-script names and the address parts, so the result reads short:
+  // "Knez Mihailova 5, Stari grad" instead of the full nine-part OSM line.
+  url.searchParams.set("accept-language", "sr-Latn");
+  url.searchParams.set("addressdetails", "1");
 
   const res = await fetch(url, {
     headers: {
@@ -47,9 +52,15 @@ export async function geocodeSearch(
   });
   if (!res.ok) throw new Error(`Nominatim responded ${res.status}`);
 
-  const body = (await res.json()) as Array<{ display_name: string; lat: string; lon: string }>;
+  const body = (await res.json()) as Array<{
+    display_name: string;
+    name?: string;
+    lat: string;
+    lon: string;
+    address?: Record<string, string>;
+  }>;
   const results = body.map((r) => ({
-    display_name: r.display_name,
+    display_name: shortAddress(r),
     lat: parseFloat(r.lat),
     lon: parseFloat(r.lon),
   }));
@@ -61,4 +72,15 @@ export async function geocodeSearch(
     }),
   );
   return results;
+}
+
+/** "Place or street + number, district" in Latin script; falls back to the first two parts of the full line. */
+export function shortAddress(r: { display_name: string; name?: string; address?: Record<string, string> }): string {
+  const a = r.address ?? {};
+  const street = a.road ? [a.road, a.house_number].filter(Boolean).join(" ") : undefined;
+  const head = r.name && r.name !== a.road ? r.name : street ?? r.name;
+  const area = a.suburb ?? a.neighbourhood ?? a.quarter ?? a.city_district ?? a.city ?? a.town ?? a.village;
+  const parts = [head, area].filter((p, i, all): p is string => !!p && all.indexOf(p) === i);
+  const text = parts.length > 0 ? parts.join(", ") : r.display_name.split(",").slice(0, 2).join(",").trim();
+  return toLatin(text);
 }
