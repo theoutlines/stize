@@ -104,7 +104,11 @@ function clampContact(value: string | null | undefined): string | null {
  * it under `waitUntil` and swallows failures — D1 already holds the durable
  * copy, so a GitHub outage never fails or loses the submission.
  */
-export async function createFeedbackIssue(env: Env, input: FeedbackInput): Promise<void> {
+export async function createFeedbackIssue(
+  env: Env,
+  input: FeedbackInput,
+  opts: { title?: string; labels?: string[] } = {},
+): Promise<void> {
   const token = env.GITHUB_FEEDBACK_TOKEN;
   const repo = env.GITHUB_FEEDBACK_REPO;
   if (!token || !repo) return; // store-only mode
@@ -113,7 +117,7 @@ export async function createFeedbackIssue(env: Env, input: FeedbackInput): Promi
   if (!message) return;
 
   const firstLine = message.split("\n", 1)[0]!.trim();
-  const title = (firstLine || "Feedback").slice(0, 80);
+  const title = (opts.title ?? (firstLine || "Feedback")).slice(0, 120);
   const contact = clampContact(input.contact);
   const body = [
     message,
@@ -134,9 +138,80 @@ export async function createFeedbackIssue(env: Env, input: FeedbackInput): Promi
       "user-agent": "stigla-feedback-bot",
       "content-type": "application/json",
     },
-    body: JSON.stringify({ title, body, labels: ["feedback"] }),
+    body: JSON.stringify({ title, body, labels: opts.labels ?? ["feedback"] }),
   });
   if (!res.ok) {
     throw new Error(`github issue create failed: ${res.status}`);
   }
+}
+
+// ---- Stop data reports -------------------------------------------------------
+// A rider flags wrong data at one stop. Same receiver as feedback (one D1 row,
+// one best-effort GitHub issue labelled `stop-report`), no schema change: the
+// structured part is written into the message. The category list is closed;
+// free text is accepted only with "other" (and is required there).
+
+export const STOP_REPORT_CATEGORIES = [
+  "not_here",
+  "wrong_type",
+  "wrong_lines",
+  "arrivals_wrong",
+  "wrong_name",
+  "other",
+] as const;
+export type StopReportCategory = (typeof STOP_REPORT_CATEGORIES)[number];
+
+const MAX_REPORT_COMMENT = 500;
+
+export interface StopReportInput {
+  stopId: string;
+  category: string;
+  comment?: string | null;
+  honeypot?: string | null;
+  appVersion?: string | null;
+  platform?: string | null;
+  locale?: string | null;
+}
+
+export interface StopForReport {
+  stop_id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  lines?: string[];
+}
+
+/** Validates a report and turns it into the feedback input it is stored as. */
+export function stopReportToFeedback(
+  stop: StopForReport,
+  input: StopReportInput,
+): { feedback: FeedbackInput; title: string } {
+  if (!(STOP_REPORT_CATEGORIES as readonly string[]).includes(input.category)) {
+    throw new ValidationError("unknown category");
+  }
+  const comment = (input.comment ?? "").trim();
+  if (input.category === "other" && !comment) {
+    throw new ValidationError("comment required for other");
+  }
+  if (comment.length > MAX_REPORT_COMMENT) {
+    throw new ValidationError(`comment must be at most ${MAX_REPORT_COMMENT} chars`);
+  }
+  const lines = (stop.lines ?? []).join(", ") || "-";
+  const message = [
+    `[stop ${stop.stop_id}] ${input.category}${comment ? `: ${comment}` : ""}`,
+    "",
+    `stop: ${stop.name} (${stop.stop_id})`,
+    `position: ${stop.lat.toFixed(5)}, ${stop.lon.toFixed(5)}`,
+    `lines: ${lines}`,
+  ].join("\n");
+  return {
+    feedback: {
+      message,
+      honeypot: input.honeypot,
+      appVersion: input.appVersion,
+      platform: input.platform,
+      locale: input.locale,
+    },
+    title: `[stop ${stop.stop_id}] ${input.category} · ${stop.name}`,
+  };
 }

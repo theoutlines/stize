@@ -1141,6 +1141,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Terminus'**
   String get arrivalTerminus;
+
+  /// No description provided for @stopReportEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Something wrong with this stop?'**
+  String get stopReportEntry;
+
+  /// No description provided for @stopReportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What’s wrong?'**
+  String get stopReportTitle;
+
+  /// No description provided for @stopReportNotHere.
+  ///
+  /// In en, this message translates to:
+  /// **'The stop isn’t here or it’s elsewhere'**
+  String get stopReportNotHere;
+
+  /// No description provided for @stopReportWrongType.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong type (bus, tram, trolleybus)'**
+  String get stopReportWrongType;
+
+  /// No description provided for @stopReportWrongLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong lines'**
+  String get stopReportWrongLines;
+
+  /// No description provided for @stopReportArrivalsWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrivals don’t match reality'**
+  String get stopReportArrivalsWrong;
+
+  /// No description provided for @stopReportWrongName.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong name'**
+  String get stopReportWrongName;
+
+  /// No description provided for @stopReportOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Something else'**
+  String get stopReportOther;
+
+  /// No description provided for @stopReportOtherLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us what’s wrong'**
+  String get stopReportOtherLabel;
+
+  /// No description provided for @stopReportOtherHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Needed for “Something else”'**
+  String get stopReportOtherHint;
+
+  /// No description provided for @stopReportPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'We get the stop and its lines. Not your location.'**
+  String get stopReportPrivacy;
+
+  /// No description provided for @stopReportSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get stopReportSend;
+
+  /// No description provided for @stopReportSentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks, got it'**
+  String get stopReportSentTitle;
+
+  /// No description provided for @stopReportSentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We’ll check “{what}” at {stop} and fix the data. You don’t need to do anything else.'**
+  String stopReportSentBody(String what, String stop);
+
+  /// No description provided for @stopReportAlreadyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Already sent today'**
+  String get stopReportAlreadyTitle;
+
+  /// No description provided for @stopReportAlreadyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You told us about “{what}” at this stop today. One report is enough: we’ll check it.'**
+  String stopReportAlreadyBody(String what);
+
+  /// No description provided for @stopReportBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the stop'**
+  String get stopReportBack;
+
+  /// No description provided for @stopReportTooFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait a minute before sending another report.'**
+  String get stopReportTooFast;
+
+  /// No description provided for @stopReportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t send. Check the connection and try again.'**
+  String get stopReportFailed;
 }
 
 class _AppLocalizationsDelegate

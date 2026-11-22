@@ -412,5 +412,41 @@
   "arrivalTerminus": "Terminus",
   "@arrivalTerminus": {
     "description": "Destination label when the line ends at the stop being viewed."
+  },
+  "stopReportEntry": "Something wrong with this stop?",
+  "stopReportTitle": "What’s wrong?",
+  "stopReportNotHere": "The stop isn’t here or it’s elsewhere",
+  "stopReportWrongType": "Wrong type (bus, tram, trolleybus)",
+  "stopReportWrongLines": "Wrong lines",
+  "stopReportArrivalsWrong": "Arrivals don’t match reality",
+  "stopReportWrongName": "Wrong name",
+  "stopReportOther": "Something else",
+  "stopReportOtherLabel": "Tell us what’s wrong",
+  "stopReportOtherHint": "Needed for “Something else”",
+  "stopReportPrivacy": "We get the stop and its lines. Not your location.",
+  "stopReportSend": "Send",
+  "stopReportSentTitle": "Thanks, got it",
+  "stopReportSentBody": "We’ll check “{what}” at {stop} and fix the data. You don’t need to do anything else.",
+  "stopReportAlreadyTitle": "Already sent today",
+  "stopReportAlreadyBody": "You told us about “{what}” at this stop today. One report is enough: we’ll check it.",
+  "stopReportBack": "Back to the stop",
+  "stopReportTooFast": "Please wait a minute before sending another report.",
+  "stopReportFailed": "Couldn’t send. Check the connection and try again.",
+  "@stopReportSentBody": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      },
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "@stopReportAlreadyBody": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
   }
 }

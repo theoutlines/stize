@@ -18,6 +18,7 @@ import 'fleet_model_card.dart';
 import 'live_unavailable_banner.dart';
 import 'scheduled_group_tile.dart';
 import 'stize_filter_chips.dart';
+import 'stop_report_sheet.dart';
 
 /// THE arrivals list of a stop, shared by both shutters: the in-app sheet
 /// ([StopBoard]) and the `/stop/:id` deep-link screen ([StopScreen]). Owns the
@@ -293,6 +294,9 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
                 if (i > 0) const SizedBox(height: StizeSpace.space1),
                 tiles[i],
               ],
+              const SizedBox(height: StizeSpace.space2),
+              // The quiet way to flag wrong data: last, never next to arrivals.
+              StopReportEntry(stopId: widget.stopId, stopName: board.stopName),
             ],
           ),
         ),

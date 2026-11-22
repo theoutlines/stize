@@ -608,4 +608,68 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get arrivalTerminus => 'Konačna';
+
+  @override
+  String get stopReportEntry => 'Nešto nije u redu sa ovom stanicom?';
+
+  @override
+  String get stopReportTitle => 'Šta nije u redu?';
+
+  @override
+  String get stopReportNotHere => 'Stanica nije ovde ili je na drugom mestu';
+
+  @override
+  String get stopReportWrongType =>
+      'Pogrešan tip (autobus, tramvaj, trolejbus)';
+
+  @override
+  String get stopReportWrongLines => 'Pogrešne linije';
+
+  @override
+  String get stopReportArrivalsWrong => 'Dolasci se ne poklapaju sa stvarnošću';
+
+  @override
+  String get stopReportWrongName => 'Pogrešan naziv';
+
+  @override
+  String get stopReportOther => 'Nešto drugo';
+
+  @override
+  String get stopReportOtherLabel => 'Napišite šta nije u redu';
+
+  @override
+  String get stopReportOtherHint => 'Potrebno za „Nešto drugo“';
+
+  @override
+  String get stopReportPrivacy =>
+      'Dobijamo stanicu i njene linije. Ne vašu lokaciju.';
+
+  @override
+  String get stopReportSend => 'Pošalji';
+
+  @override
+  String get stopReportSentTitle => 'Hvala, primili smo';
+
+  @override
+  String stopReportSentBody(String what, String stop) {
+    return 'Proverićemo „$what“ na stanici $stop i ispraviti podatke. Ne treba ništa više da radite.';
+  }
+
+  @override
+  String get stopReportAlreadyTitle => 'Već poslato danas';
+
+  @override
+  String stopReportAlreadyBody(String what) {
+    return 'Danas ste nam već javili „$what“ za ovu stanicu. Jedna prijava je dovoljna: proverićemo.';
+  }
+
+  @override
+  String get stopReportBack => 'Nazad na stanicu';
+
+  @override
+  String get stopReportTooFast => 'Sačekajte minut pre sledeće prijave.';
+
+  @override
+  String get stopReportFailed =>
+      'Slanje nije uspelo. Proverite vezu i pokušajte ponovo.';
 }
