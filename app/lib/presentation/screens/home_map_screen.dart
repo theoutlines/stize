@@ -3482,12 +3482,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           vehicleGlyph(type, size: 16, color: StizeColors.of(context).onTransit),
           const SizedBox(width: 6),
           Builder(builder: (context) {
-            final stize = Theme.of(context).extension<StizeColors>();
+            final stize = StizeColors.of(context);
             return Text(line,
-                style: stize != null
-                    ? StizeType.lineNumber.copyWith(color: stize.onTransit)
-                    : const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.w700));
+                style: StizeType.lineNumber.copyWith(color: stize.onTransit));
           }),
         ],
       ),
@@ -3993,15 +3990,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               borderRadius: BorderRadius.circular(16),
               // Stiže: the floating map-control shadow; OFF keeps the prior soft
               // drop shadow (killswitch).
-              boxShadow: theme.extension<StizeColors>() != null
-                  ? StizeShadow.shadowMapControl
-                  : const [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
+              boxShadow: StizeShadow.shadowMapControl,
             ),
             child: Row(
               children: [
@@ -4022,16 +4011,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                       const SizedBox(width: 6),
                       Builder(builder: (context) {
                         final stize =
-                            Theme.of(context).extension<StizeColors>();
+                            StizeColors.of(context);
                         return Text(
                           line,
-                          style: stize != null
-                              ? StizeType.lineNumber
-                                  .copyWith(color: stize.onTransit)
-                              : const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                          style: StizeType.lineNumber
+                                  .copyWith(color: stize.onTransit),
                         );
                       }),
                     ],

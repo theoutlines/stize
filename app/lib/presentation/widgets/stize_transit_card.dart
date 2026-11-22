@@ -5,7 +5,7 @@ import '../../core/eta_format.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 
-/// The one Stiže transit card (ds_stize ON): a card filled with the line's
+/// The one Stiže transit card: a card filled with the line's
 /// transit colour, white content. Every list that shows "a line arriving"
 /// draws THIS widget (stop board, Nearby, scheduled groups), so the cards can't
 /// drift apart: same paddings, type, ETA block and dimming rule.

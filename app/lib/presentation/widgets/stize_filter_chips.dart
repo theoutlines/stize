@@ -127,7 +127,7 @@ class StizeTextChip extends StatelessWidget {
 }
 
 
-/// The one line-filter row (ds_stize ON) for both stop render paths (in-app
+/// The one line-filter row for both stop render paths (in-app
 /// panel + /stop/:id): "All lines" + a transit-colour chip per line, one
 /// horizontally scrolling row starting at the cards' 16px edge. Lines with no
 /// arrival right now are shown faded and inert.

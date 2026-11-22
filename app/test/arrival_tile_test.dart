@@ -4,6 +4,7 @@ import 'package:stize/domain/models/arrival.dart';
 import 'package:stize/domain/models/vehicle_type.dart';
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/widgets/arrival_tile.dart';
+import 'package:stize/presentation/widgets/stize_transit_card.dart';
 
 Arrival _arrival({
   required String garageNo,
@@ -30,51 +31,43 @@ Widget _wrap(Widget child) => MaterialApp(
       home: Scaffold(body: child),
     );
 
-/// The opacity applied to the leading line avatar — the dimming that signals
-/// clickability at a glance.
-double _leadingOpacity(WidgetTester tester) {
-  final opacity = tester.widget<Opacity>(
-    find
-        .ancestor(of: find.byType(CircleAvatar), matching: find.byType(Opacity))
-        .first,
-  );
-  return opacity.opacity;
-}
+StizeTransitCard _card(WidgetTester tester) =>
+    tester.widget<StizeTransitCard>(find.byType(StizeTransitCard));
 
 void main() {
   group('ArrivalTile — brightness == clickability', () {
-    testWidgets('a live vehicle is full brightness + shows a chevron', (tester) async {
+    testWidgets('a live vehicle is a live, tappable card', (tester) async {
       await tester.pumpWidget(_wrap(ArrivalTile(
         arrival: _arrival(garageNo: 'BG123', gps: const LatLon(44.8, 20.46)),
         onTap: () {},
       )));
 
-      expect(_leadingOpacity(tester), 1.0);
-      expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+      expect(_card(tester).live, isTrue);
+      expect(_card(tester).onTap, isNotNull);
     });
 
-    testWidgets('a placeholder (Expected) row is dimmed, no chevron, labelled Expected',
+    testWidgets('a placeholder (Expected) card is held back, not tappable, labelled Expected',
         (tester) async {
       // P2 = the schedule-derived placeholder class: valid ETA, no live position.
       await tester.pumpWidget(_wrap(ArrivalTile(
         arrival: _arrival(garageNo: 'P2', gps: const LatLon(44.8, 20.46), stops: 0),
-        onTap: null,
+        onTap: () {},
       )));
 
-      expect(_leadingOpacity(tester), lessThan(1.0));
-      expect(find.byIcon(Icons.chevron_right), findsNothing);
+      expect(_card(tester).live, isFalse);
+      expect(_card(tester).onTap, isNull);
       expect(find.text('Expected'), findsOneWidget);
     });
 
-    testWidgets('a scheduled row is dimmed, no chevron, labelled By schedule',
+    testWidgets('a scheduled card is held back, not tappable, labelled Scheduled',
         (tester) async {
       await tester.pumpWidget(_wrap(ArrivalTile(
         arrival: _arrival(garageNo: 'BG9', scheduled: true, gps: null),
-        onTap: null,
+        onTap: () {},
       )));
 
-      expect(_leadingOpacity(tester), lessThan(1.0));
-      expect(find.byIcon(Icons.chevron_right), findsNothing);
+      expect(_card(tester).live, isFalse);
+      expect(_card(tester).onTap, isNull);
       expect(find.text('Scheduled'), findsOneWidget);
     });
   });

@@ -244,11 +244,11 @@ class NearbyViewState extends ConsumerState<NearbyView> {
 
   Widget _localSearch(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
-    final stize = theme.extension<StizeColors>();
+    final stize = StizeColors.of(context);
     final clearButton = _query.isEmpty
         ? null
         : IconButton(
-            icon: Icon(Icons.close, size: stize != null ? 20 : null),
+            icon: Icon(Icons.close, size: 20),
             onPressed: () {
               _searchController.clear();
               _onQueryChanged('');
@@ -263,9 +263,8 @@ class NearbyViewState extends ConsumerState<NearbyView> {
         controller: _searchController,
         onChanged: _onQueryChanged,
         textInputAction: TextInputAction.search,
-        style: stize != null ? StizeType.body.copyWith(color: stize.ink) : null,
-        decoration: stize != null
-            ? InputDecoration(
+        style: StizeType.body.copyWith(color: stize.ink),
+        decoration: InputDecoration(
                 isDense: true,
                 prefixIcon: Icon(Icons.search, size: 20, color: stize.ink60),
                 prefixIconConstraints:
@@ -280,22 +279,6 @@ class NearbyViewState extends ConsumerState<NearbyView> {
                 ),
                 contentPadding:
                     const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                suffixIcon: clearButton,
-              )
-            : InputDecoration(
-                isDense: true,
-                prefixIcon: const Icon(Icons.search),
-                // Unified global search now, same scope as desktop.
-                hintText: l10n.searchHint,
-                filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding:
-                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 suffixIcon: clearButton,
               ),
       ),
@@ -472,14 +455,9 @@ class NearbyViewState extends ConsumerState<NearbyView> {
             Builder(builder: (context) {
               // Stiže: line number = the one semibold, white on every type.
               // OFF keeps the prior bold 15 (killswitch).
-              final stize = Theme.of(context).extension<StizeColors>();
+              final stize = StizeColors.of(context);
               return Text(line.line,
-                  style: stize != null
-                      ? StizeType.lineNumber.copyWith(color: stize.onTransit)
-                      : const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15));
+                  style: StizeType.lineNumber.copyWith(color: stize.onTransit));
             }),
           ],
         ),

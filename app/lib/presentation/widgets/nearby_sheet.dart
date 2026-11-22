@@ -82,14 +82,7 @@ class NearbySheet extends StatelessWidget {
               color: theme.colorScheme.surface,
               borderRadius: kSheetRadius,
               // Stiže: the system sheet shadow; OFF keeps the prior soft one.
-              boxShadow: theme.extension<StizeColors>() != null
-                  ? StizeShadow.shadowSheet
-                  : const [
-                      BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 12,
-                          offset: Offset(0, -2)),
-                    ],
+              boxShadow: StizeShadow.shadowSheet,
             ),
             child: Column(
               children: [

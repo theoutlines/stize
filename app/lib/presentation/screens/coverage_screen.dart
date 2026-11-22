@@ -162,8 +162,7 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
           else
             Positioned.fill(
               child: ColoredBox(
-                color: Theme.of(context).extension<StizeColors>()?.bg ??
-                    const Color(0xFF11151A),
+                color: StizeColors.of(context).bg,
               ),
             ),
           SafeArea(
@@ -252,15 +251,7 @@ class _DensityLegend extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: theme.extension<StizeColors>() != null
-            ? StizeShadow.shadowMapControl
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        boxShadow: StizeShadow.shadowMapControl,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
