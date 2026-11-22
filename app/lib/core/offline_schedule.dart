@@ -133,13 +133,13 @@ List<PlannedDeparture> upcomingScheduled(
 /// Planned interval per direction (`route_id`) at a stop around [now]: the
 /// median gap between this direction's timetabled departures from 30 min ago to
 /// 90 min ahead. Only directions with at least two gaps in that window and a
-/// median of at most [maxMinutes] are returned: a sparse line is better told by
+/// median of at most [maxMinutes] (an hour) are returned: a sparse line is better told by
 /// its next departure time than by an "every N min" that is barely true.
 Map<String, int> plannedHeadways(
   Map<String, dynamic> schedule,
   Map<String, dynamic> meta,
   BelgradeNow now, {
-  int maxMinutes = 30,
+  int maxMinutes = 60,
 }) {
   final today = activeServices(now.dateISO, meta);
   final yest = activeServices(now.yesterdayISO, meta);

@@ -62,7 +62,7 @@ void main() {
     final schedule = <String, dynamic>{
       'deps': [
         {'line': '26', 'route_id': 'r26', 'dir': '1', 'svc': {'RD': [590, 598, 606, 614, 622, 630]}},
-        {'line': '9', 'route_id': 'r9', 'dir': '1', 'svc': {'RD': [560, 620, 680]}}, // hourly
+        {'line': '9', 'route_id': 'r9', 'dir': '1', 'svc': {'RD': [540, 615, 690]}}, // every 75 min
         {'line': '7', 'route_id': 'r7', 'dir': '1', 'svc': {'RD': [600, 612]}}, // too few
       ],
     };
