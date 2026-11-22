@@ -599,4 +599,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get jamFollowAhead => 'Possible delay ahead on the route';
+
+  @override
+  String fleetPhotoCredit(String author, String license) {
+    return 'Photo: $author, $license, Wikimedia Commons';
+  }
 }

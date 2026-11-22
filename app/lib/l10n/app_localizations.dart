@@ -1129,6 +1129,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Possible delay ahead on the route'**
   String get jamFollowAhead;
+
+  /// Credit line under a fleet model photo (licence requires author + licence + source).
+  ///
+  /// In en, this message translates to:
+  /// **'Photo: {author}, {license}, Wikimedia Commons'**
+  String fleetPhotoCredit(String author, String license);
 }
 
 class _AppLocalizationsDelegate

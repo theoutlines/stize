@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/design/stize_tokens.dart';
 import '../../core/fleet_matcher.dart';
+import '../../core/fleet_photos.dart';
 import '../../core/map_support.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
+import '../providers/providers.dart';
 import 'fleet_badges.dart';
 import 'vehicle_icon.dart';
 
@@ -42,7 +46,7 @@ Future<void> showFleetModelCard(
 /// max-height clamp — used when the card is a subview inside a mobile bottom
 /// sheet (owner B#2, so the sheet's chrome/detents own the frame). Null keeps the
 /// standalone layout (the legacy modal + the desktop panel leaf).
-class FleetModelView extends StatelessWidget {
+class FleetModelView extends ConsumerWidget {
   const FleetModelView({
     super.key,
     required this.fleet,
@@ -60,9 +64,12 @@ class FleetModelView extends StatelessWidget {
   final ScrollController? scrollController;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final photo = fleet.id == null
+        ? null
+        : ref.watch(fleetPhotosProvider).valueOrNull?[fleet.id];
     final lang = Localizations.localeOf(context).languageCode;
     final note = fleet.humanNoteFor(lang);
 
@@ -72,7 +79,7 @@ class FleetModelView extends StatelessWidget {
       children: [
         _header(context, theme, l10n, lang),
         const SizedBox(height: 12),
-        _heroSlot(context, theme),
+        _heroSlot(context, theme, l10n, photo),
         if (note != null) ...[
           const SizedBox(height: 14),
           Text(note, style: theme.textTheme.bodyMedium),
@@ -153,12 +160,15 @@ class FleetModelView extends StatelessWidget {
     );
   }
 
-  /// Reserved slot for the §8 interior schematic. Until that track ships, it's
-  /// a quiet placeholder so the card's layout already accounts for the hero.
-  Widget _heroSlot(BuildContext context, ThemeData theme) {
-    return Container(
-      height: 96,
+  /// The hero: an openly licensed photo of this model with its credit line
+  /// (author, licence, Wikimedia Commons; tap opens the file page). Without a
+  /// photo, or while/if it fails to load, a quiet glyph placeholder keeps the
+  /// layout stable.
+  Widget _heroSlot(BuildContext context, ThemeData theme,
+      AppLocalizations l10n, FleetPhoto? photo) {
+    final placeholder = Container(
       width: double.infinity,
+      height: photo == null ? 96 : null,
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(12),
@@ -169,6 +179,42 @@ class FleetModelView extends StatelessWidget {
         size: 40,
         color: theme.colorScheme.outlineVariant,
       ),
+    );
+    if (photo == null) return placeholder;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AspectRatio(
+          aspectRatio: 3 / 2,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              photo.url,
+              fit: BoxFit.cover,
+              semanticLabel: fleet.modelName,
+              loadingBuilder: (context, child, progress) =>
+                  progress == null ? child : placeholder,
+              errorBuilder: (context, error, stack) => placeholder,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        InkWell(
+          borderRadius: BorderRadius.circular(4),
+          onTap: () => launchUrl(Uri.parse(photo.page),
+              mode: LaunchMode.externalApplication),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Text(
+              l10n.fleetPhotoCredit(photo.author, photo.license),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.outline),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
