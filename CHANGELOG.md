@@ -5,6 +5,16 @@ history (what changed for riders and developers), not a commit log.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
+## 2026-11-22
+
+### Removed
+- **Legacy `theoutlines.xyz` addresses retired** — Stiže now lives entirely on
+  its own domain (web `stize.app`, API `api.stize.app`, staging API
+  `api-staging.stize.app`). The old `stigla.theoutlines.xyz` redirect host and
+  the legacy `stigla-api.theoutlines.xyz` API host no longer resolve. There are
+  no external clients, so nothing migrates. (Infrastructure names stay
+  `stigla-*`; only the public `theoutlines.xyz` hostnames were removed.)
+
 ## 2026-07-21
 
 ### Added

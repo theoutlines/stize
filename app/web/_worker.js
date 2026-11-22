@@ -21,9 +21,10 @@ async function sha256Hex(input) {
 // and any hit to these 301-redirects there with path + query preserved (so deep
 // links like /stop/:id and ?params survive). They stay Pages custom domains but
 // never serve the app:
-//   - stigla.theoutlines.xyz — the legacy production host;
-//   - www.stize.app          — the www subdomain (apex is canonical).
-const REDIRECT_HOSTS = new Set(["stigla.theoutlines.xyz", "www.stize.app"]);
+//   - www.stize.app — the www subdomain (apex is canonical).
+// (The legacy stigla.theoutlines.xyz host was retired on 2026-11-22; Stiže no
+// longer uses any theoutlines.xyz address.)
+const REDIRECT_HOSTS = new Set(["www.stize.app"]);
 
 export default {
   async fetch(request, env) {

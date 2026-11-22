@@ -3,12 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 
-# api.stize.app is the new canonical prod API host; the legacy
-# stigla-api.theoutlines.xyz stays bound so already-shipped clients keep working.
-# Both custom domains are created/attached on the next full `wrangler deploy`.
+# api.stize.app is the canonical prod API host. The legacy
+# stigla-api.theoutlines.xyz custom domain was retired on 2026-11-22 (no external
+# clients; owner is sole user) — Stiže no longer binds any theoutlines.xyz host.
 routes = [
-  { pattern = "api.stize.app", custom_domain = true },
-  { pattern = "stigla-api.theoutlines.xyz", custom_domain = true }
+  { pattern = "api.stize.app", custom_domain = true }
 ]
 
 [assets]
@@ -62,6 +61,11 @@ name = "stigla-backend-staging"
 # 404 the branch preview (this bit us on feature/coverage-on-main-map). Live
 # staging is served via the custom domain route below.
 preview_urls = true
+# api-staging.stize.app is the canonical staging API host. The legacy
+# stigla-api-staging.theoutlines.xyz is PENDING RETIREMENT (2026-11-22): it is
+# removed last, only after every preview build has moved to api-staging.stize.app
+# (a baked API_BASE_URL can't be changed after the fact), so a live preview
+# stand isn't orphaned. Until then it stays bound.
 routes = [
   { pattern = "api-staging.stize.app", custom_domain = true },
   { pattern = "stigla-api-staging.theoutlines.xyz", custom_domain = true }
