@@ -188,6 +188,7 @@ class ArrivalTile extends StatelessWidget {
             fleet: fleet!,
             garageNo: arrival.garageNo,
             onTap: fleet!.hasInfo ? onOpenFleetCard : null,
+            onColor: on,
           );
 
     final parts = <Widget>[

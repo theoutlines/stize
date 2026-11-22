@@ -33,11 +33,17 @@ class FleetBadgeStrip extends StatelessWidget {
     required this.fleet,
     this.garageNo,
     this.onTap,
+    this.onColor,
   });
 
   final FleetVehicle fleet;
   final String? garageNo;
   final VoidCallback? onTap;
+
+  /// Set when the strip sits on a filled (transit-colour) card: every icon and
+  /// the age are drawn in this one colour, since the eco/AC tints and the muted
+  /// outline vanish on a saturated fill.
+  final Color? onColor;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +58,8 @@ class FleetBadgeStrip extends StatelessWidget {
       if (n == null || n.trim().isEmpty) return const SizedBox.shrink();
       return Text(
         l10n.fleetVehicleNumber(n),
-        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+        style: theme.textTheme.bodySmall
+            ?.copyWith(color: onColor ?? theme.colorScheme.outline),
       );
     }
 
@@ -61,19 +68,19 @@ class FleetBadgeStrip extends StatelessWidget {
 
     // Eco / powertrain.
     if (fleet.powertrain.isElectric) {
-      badges.add(_icon(Icons.eco, _ecoColor, assumed: false));
+      badges.add(_icon(Icons.eco, onColor ?? _ecoColor, assumed: false));
     } else if (fleet.powertrain == Powertrain.hybrid) {
-      badges.add(_icon(Icons.eco, _hybridColor, assumed: approx));
+      badges.add(_icon(Icons.eco, onColor ?? _hybridColor, assumed: approx));
     }
 
     // Air conditioning (positive only — "no AC" is left for the card).
     if (fleet.ac == true) {
-      badges.add(_icon(Icons.ac_unit, _acColor, assumed: approx || fleet.isAssumed('ac')));
+      badges.add(_icon(Icons.ac_unit, onColor ?? _acColor, assumed: approx || fleet.isAssumed('ac')));
     }
 
     // Low floor / accessibility.
     if (fleet.lowFloor == true) {
-      badges.add(_icon(Icons.accessible, theme.colorScheme.onSurfaceVariant,
+      badges.add(_icon(Icons.accessible, onColor ?? theme.colorScheme.onSurfaceVariant,
           assumed: approx || fleet.isAssumed('low_floor')));
     }
 
@@ -91,7 +98,8 @@ class FleetBadgeStrip extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(right: 2),
             child: Text('~',
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: onColor ?? theme.colorScheme.outline)),
           ),
         for (var i = 0; i < badges.length; i++) ...[
           if (i > 0) const SizedBox(width: 6),
@@ -118,7 +126,7 @@ class FleetBadgeStrip extends StatelessWidget {
   Widget _ageChip(BuildContext context, int age, {required bool assumed}) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final color = theme.colorScheme.outline;
+    final color = onColor ?? theme.colorScheme.outline;
     return Text(
       l10n.fleetAgeYears(age),
       style: theme.textTheme.bodySmall?.copyWith(

@@ -268,6 +268,9 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     }
 
     return Column(
+      // Stretch, so the freshness line and the line-chip row start at the same
+      // 16px edge as the cards instead of centring on wide screens.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (board.serviceStatus == ServiceStatus.unavailable)
           const LiveUnavailableBanner(),
@@ -293,7 +296,31 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         if (allLines.length > 1)
           _lineFilterChips(
             context, stize, allLines, arrivingLines, effectiveFilter, board),
-        if (canSortByComfort)
+        if (canSortByComfort && stize != null)
+          // Stiže: the same text chips as "All lines", on the cards' 16px edge.
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: StizeSpace.space4, vertical: StizeSpace.space1),
+            child: Row(
+              spacing: StizeSpace.space2,
+              children: [
+                StizeTextChip(
+                  label: l10n.fleetSortByTime,
+                  selected: !_sortByComfort,
+                  onTap: () => setState(() => _sortByComfort = false),
+                ),
+                StizeTextChip(
+                  label: l10n.fleetSortByComfort,
+                  selected: _sortByComfort,
+                  onTap: () {
+                    ref.read(eventLoggerProvider).log(Ev.sortComfort);
+                    setState(() => _sortByComfort = true);
+                  },
+                ),
+              ],
+            ),
+          )
+        else if (canSortByComfort)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Row(

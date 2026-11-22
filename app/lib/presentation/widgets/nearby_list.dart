@@ -40,6 +40,8 @@ class NearbyList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final leading = header == null ? 0 : 1;
+    // Stiže: colour cards 4px apart (owner spec, same as the stop board).
+    final stize = Theme.of(context).extension<StizeColors>() != null;
     final list = ListView.separated(
       controller: scrollController,
       // Top padding matches the horizontal (side) padding so the first card is
@@ -47,7 +49,8 @@ class NearbyList extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: groups.length + leading,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) =>
+          SizedBox(height: stize ? StizeSpace.space1 : 8),
       itemBuilder: (context, i) {
         if (i < leading) return header!;
         final g = groups[i - leading];
@@ -73,6 +76,151 @@ class NearbyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Stiže (flag ON): the filled transit-colour card, same language as the
+    // stop board's ArrivalTile. OFF: the previous card exactly (killswitch).
+    final stize = Theme.of(context).extension<StizeColors>();
+    if (stize != null) return _card(context, stize);
+    return _legacy(context);
+  }
+
+  Widget _card(BuildContext context, StizeColors c) {
+    final l10n = AppLocalizations.of(context);
+    final localeName = Localizations.localeOf(context).toString();
+    final type = group.vehicleType;
+    final fill = switch (type) {
+      VehicleType.bus => c.transitBus,
+      VehicleType.tram => c.transitTram,
+      VehicleType.trolleybus => c.transitTrolleybus,
+    };
+    final on = c.onTransit;
+    final hasLive = nearbyGroupHasLive(group);
+    final etas = visibleNearbyEtas(group);
+    final destination = group.destination;
+    final caption = StizeType.caption.copyWith(color: on.withValues(alpha: 0.8));
+
+    // Big ETA: "now" / N + "min" / a clock time when far off. A non-live first
+    // time is a timetable time: shown as a quieter clock.
+    Widget etaBlock() {
+      if (etas.isEmpty) {
+        return Text('—', style: StizeType.bigNumber.copyWith(color: on));
+      }
+      final e = etas.first;
+      if (!nearbyEtaIsLive(e)) {
+        return Text(
+          clockAt(localeName, e.etaMinutes),
+          style: StizeType.date.copyWith(
+              fontWeight: FontWeight.w400, color: on.withValues(alpha: 0.7)),
+        );
+      }
+      final String value;
+      String? unit;
+      if (e.etaMinutes <= 0) {
+        value = l10n.arrivalEtaNow.toLowerCase();
+      } else if (e.etaMinutes >= kFarEtaMinutes) {
+        value = clockAt(localeName, e.etaMinutes);
+      } else {
+        value = '${e.etaMinutes}';
+        unit = l10n.arrivalEtaMinutesUnit;
+      }
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(value, style: StizeType.bigNumber.copyWith(color: on)),
+          if (unit != null) Text(unit, style: caption),
+        ],
+      );
+    }
+
+    // Caption: stop · distance, then the next time of this line with its unit.
+    String? next;
+    if (etas.length > 1) {
+      final m = etas[1].etaMinutes;
+      next = m >= kFarEtaMinutes
+          ? l10n.arrivalNextAt(clockAt(localeName, m))
+          : l10n.arrivalNextIn(m <= 0 ? 0 : m);
+    }
+
+    final card = Material(
+      color: fill,
+      borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: StizeSpace.space4, vertical: StizeSpace.space3),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        vehicleGlyph(type, size: 18, color: on),
+                        const SizedBox(width: StizeSpace.space1),
+                        Text(group.line,
+                            style: StizeType.section
+                                .copyWith(fontWeight: FontWeight.w600, color: on)),
+                      ],
+                    ),
+                    if (destination != null && destination.isNotEmpty) ...[
+                      const SizedBox(height: StizeSpace.space1),
+                      Row(
+                        children: [
+                          Icon(Icons.arrow_forward_rounded, size: 16, color: on),
+                          const SizedBox(width: StizeSpace.space1),
+                          Flexible(
+                            child: Text(
+                              destination,
+                              style: StizeType.label.copyWith(color: on),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: StizeSpace.space1),
+                    Wrap(
+                      spacing: StizeSpace.space2,
+                      runSpacing: StizeSpace.space1,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (hasLive)
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration:
+                                BoxDecoration(color: on, shape: BoxShape.circle),
+                          ),
+                        Text(
+                          '${group.stopName} · ${l10n.nearbyDistanceMeters(group.distanceMeters)}',
+                          style: caption,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (next != null) Text(next, style: caption),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: StizeSpace.space3),
+              etaBlock(),
+            ],
+          ),
+        ),
+      ),
+    );
+    // Brightness == "leads to a live vehicle you can follow" (same as the board).
+    return hasLive ? card : Opacity(opacity: 0.82, child: card);
+  }
+
+  Widget _legacy(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     // The feed's authoritative per-line type (resolved backend-side), the same
