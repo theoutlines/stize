@@ -95,4 +95,19 @@ describe("gtfsData (against the real built GTFS bundle)", () => {
     expect(meta?.counts.stops).toBeGreaterThan(0);
     expect(meta?.counts.lines).toBeGreaterThan(0);
   });
+
+  it("stops.compact.json matches stops.json (regenerate with scripts/compact-stops.mjs)", async () => {
+    const full = (await (await env.ASSETS.fetch("https://assets.local/gtfs/stops.json")).json()) as {
+      stops: { stop_id: string; name: string; lat: number; lon: number; lines: string[]; types?: string[] }[];
+    };
+    for (const s of full.stops.filter((_, i) => i % 97 === 0)) {
+      const got = await getStopById(env, s.stop_id);
+      expect(got).toMatchObject({ stop_id: s.stop_id, name: s.name, lat: s.lat, lon: s.lon, lines: s.lines });
+      expect(got?.types ?? []).toEqual(s.types ?? []);
+    }
+    const compact = (await (await env.ASSETS.fetch("https://assets.local/gtfs/stops.compact.json")).json()) as {
+      stop_id: string[];
+    };
+    expect(compact.stop_id.length).toBe(full.stops.length);
+  });
 });
