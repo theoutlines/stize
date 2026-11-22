@@ -291,6 +291,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         context,
         arrival,
         fleet,
+        stopName: board.stopName,
         destinations: destinations,
         allArrivals: visibleArrivals,
         emphasis: firstCard,
@@ -465,6 +466,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     BuildContext context,
     Arrival arrival,
     FleetVehicle? fleet, {
+    String stopName = '',
     Map<String, String> destinations = const {},
     List<Arrival> allArrivals = const [],
     bool emphasis = false,
@@ -474,7 +476,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
       arrival: arrival,
       fleet: fleet,
       emphasis: emphasis,
-      destination: destinations[arrival.directionRouteId ?? arrival.routeId],
+      destination: displayDestination(
+          destinations[arrival.directionRouteId ?? arrival.routeId],
+          stopName,
+          AppLocalizations.of(context).arrivalTerminus),
       // Folded card (one per direction): later trips sit under the big ETA,
       // so no "next in" in the caption.
       nextEtaMinutes: later != null ? null : stizeNextEtaForLine(allArrivals, arrival),

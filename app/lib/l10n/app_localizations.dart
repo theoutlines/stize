@@ -1135,6 +1135,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Photo: {author}, {license}, Wikimedia Commons'**
   String fleetPhotoCredit(String author, String license);
+
+  /// Destination label when the line ends at the stop being viewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminus'**
+  String get arrivalTerminus;
 }
 
 class _AppLocalizationsDelegate

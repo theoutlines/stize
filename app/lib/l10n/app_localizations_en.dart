@@ -604,4 +604,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String fleetPhotoCredit(String author, String license) {
     return 'Photo: $author, $license, Wikimedia Commons';
   }
+
+  @override
+  String get arrivalTerminus => 'Terminus';
 }

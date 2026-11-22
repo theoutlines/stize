@@ -234,5 +234,6 @@
   "jamNearbyDelay": "Moguće kašnjenje na liniji {line}",
   "jamAffectedStopsTitle": "Pogođene stanice",
   "jamFollowAhead": "Moguće kašnjenje ispred na trasi",
-  "fleetPhotoCredit": "Foto: {author}, {license}, Wikimedia Commons"
+  "fleetPhotoCredit": "Foto: {author}, {license}, Wikimedia Commons",
+  "arrivalTerminus": "Konačna"
 }
