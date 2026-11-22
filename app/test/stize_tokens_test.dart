@@ -97,7 +97,7 @@ void main() {
   });
 
   test('type scale stays on the system: sizes and weights', () {
-    const allowedSizes = {10.0, 12.0, 16.0, 20.0, 24.0, 28.0, 32.0, 40.0, 44.0, 104.0};
+    final allowedSizes = {10.0, 12.0, 16.0, 20.0, 24.0, 28.0, 32.0, 40.0, 44.0, 104.0};
     for (final s in [
       StizeType.landingHero, StizeType.etaHero, StizeType.bigNumber,
       StizeType.heroTitle, StizeType.h1, StizeType.date, StizeType.section,

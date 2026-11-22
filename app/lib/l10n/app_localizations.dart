@@ -389,7 +389,7 @@ abstract class AppLocalizations {
   /// No description provided for @arrivalStopsAway.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =0{here} =1{1 stop away} other{{count} stops away}}'**
+  /// **'{count, plural, =0{At the stop} =1{1 stop away} other{{count} stops away}}'**
   String arrivalStopsAway(int count);
 
   /// No description provided for @vehicleMoving.
