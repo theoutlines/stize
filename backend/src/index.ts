@@ -28,7 +28,7 @@ import {
   searchLines,
   searchStops,
 } from "./lib/gtfsData";
-import { geocodeSearch } from "./lib/geocode";
+import { GeocodeRateLimited, geocodeSearch } from "./lib/geocode";
 import { listAlerts, refreshAlerts } from "./lib/alerts";
 import { computeJams, type JamsResponse } from "./lib/jamDetector";
 import { RateLimitedError, ValidationError, adminTokenOk } from "./lib/errors";
@@ -307,9 +307,21 @@ app.get("/api/v1/geocode", async (c) => {
   const query = c.req.query("query") ?? "";
   if (!query.trim()) return c.json({ results: [] });
   try {
-    const results = await geocodeSearch(c.env, query);
+    // Nominatim's usage policy is about 1 request/second in total; guard it per
+    // IP and globally, but only when the answer isn't cached already.
+    const results = await geocodeSearch(c.env, query, async () => {
+      const lim = c.env.GEOCODE_LIMITER;
+      if (!lim) return true;
+      const ip = c.req.header("CF-Connecting-IP") ?? "unknown";
+      const [mine, all] = await Promise.all([
+        lim.limit({ key: `ip:${ip}` }),
+        lim.limit({ key: "all" }),
+      ]);
+      return mine.success && all.success;
+    });
     return c.json({ results });
   } catch (err) {
+    if (err instanceof GeocodeRateLimited) return c.json({ results: [] }, 429);
     console.error("geocode failed", err);
     return c.json({ results: [] }, 502);
   }

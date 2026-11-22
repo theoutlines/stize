@@ -34,6 +34,7 @@ export interface Env {
   // /ideas, comments). Optional so tests and older configs without the
   // binding still run: absent = no per-IP limit (the D1 governor still guards).
   WRITE_LIMITER?: RateLimit;
+  GEOCODE_LIMITER?: RateLimit;
 }
 
 // Workers Rate Limiting API (binding type is not in our workers-types pin).
