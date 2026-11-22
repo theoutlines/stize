@@ -10,7 +10,7 @@ import '../../l10n/app_localizations.dart';
 /// Green for zero-emission (electric / trolley / tram), amber for hybrids.
 const _ecoColor = Color(0xFF1E7A46);
 const _hybridColor = Color(0xFFB25A00);
-const _acColor = Color(0xFF1B67C4);
+const _acColor = Color(0xFF2278E6);
 
 /// Vehicle age in whole years from the middle of the build range, or null when
 /// build years are unknown. Anchored to the current calendar year.

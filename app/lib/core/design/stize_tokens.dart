@@ -104,11 +104,11 @@ class StizeColors extends ThemeExtension<StizeColors> {
   final Color onAccent;
   /// `accent-14`: Ground of an accent note or a live badge.
   final Color accent14;
-  /// `transit-bus`: Data layer, not UI accent. Bus: line badge, stop pin, vehicle coin, route line. From map_support.dart. Label on it: on-transit (white, 5.6:1).
+  /// `transit-bus`: Data layer, not UI accent. Bus: line badge, stop pin, vehicle coin, route line. Aligned 2026-11-23 with tram and trolleybus (same chroma, closer lightness; real Belgrade colours kept). Label on it: on-transit (white, 4.3:1).
   final Color transitBus;
-  /// `transit-trolleybus`: Data layer. Trolleybus. Darkened from #EF7B22 (2026-11-22) so the white line number reaches 3.1:1; darker would merge with tram red. Change map_support.dart to match.
+  /// `transit-trolleybus`: Data layer. Trolleybus. Aligned 2026-11-23: clean orange without the yellow cast; the white line number is 3.1:1 (large text). Change map_support.dart and moving_object_layer.dart to match.
   final Color transitTrolleybus;
-  /// `transit-tram`: Data layer. Tram (Belgrade livery red). Label on it: on-transit (white, 4.9:1).
+  /// `transit-tram`: Data layer. Tram (Belgrade livery red), aligned 2026-11-23 (no brick cast). Label on it: on-transit (white, 4.4:1).
   final Color transitTram;
   /// `transit-tram-rail`: Tram rails on the map.
   final Color transitTramRail;
@@ -158,10 +158,10 @@ class StizeColors extends ThemeExtension<StizeColors> {
     accent: Color(0xFF2BD47D),
     onAccent: Color(0xFF151515),
     accent14: Color(0x242BD47D),
-    transitBus: Color(0xFF1B67C4),
-    transitTrolleybus: Color(0xFFE8701A),
-    transitTram: Color(0xFFD3342B),
-    transitTramRail: Color(0x99D3342B),
+    transitBus: Color(0xFF2278E6),
+    transitTrolleybus: Color(0xFFEA7000),
+    transitTram: Color(0xFFE4312F),
+    transitTramRail: Color(0x99E4312F),
     transitMixed: Color(0xFF5B6B7A),
     transitStuck: Color(0xFFB00842),
     onTransit: Color(0xFFFFFFFF),
@@ -200,10 +200,10 @@ class StizeColors extends ThemeExtension<StizeColors> {
     accent: Color(0xFF0A7F45),
     onAccent: Color(0xFFFFFFFF),
     accent14: Color(0x1F0A7F45),
-    transitBus: Color(0xFF1B67C4),
-    transitTrolleybus: Color(0xFFE8701A),
-    transitTram: Color(0xFFD3342B),
-    transitTramRail: Color(0x99D3342B),
+    transitBus: Color(0xFF2278E6),
+    transitTrolleybus: Color(0xFFEA7000),
+    transitTram: Color(0xFFE4312F),
+    transitTramRail: Color(0x99E4312F),
     transitMixed: Color(0xFF5B6B7A),
     transitStuck: Color(0xFFB00842),
     onTransit: Color(0xFFFFFFFF),

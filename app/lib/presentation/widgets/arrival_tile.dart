@@ -82,7 +82,14 @@ class ArrivalTile extends StatelessWidget {
       type: arrival.vehicleType,
       line: arrival.line,
       destination: destination,
-      caption: _caption(context, c, c.onTransit, status, live, l10n, localeName),
+      caption: _caption(
+          context,
+          c,
+          StizeTransitCard.onFor(c, status == ArrivalRowStatus.scheduled),
+          status,
+          live,
+          l10n,
+          localeName),
       etaMinutes: arrival.etaMinutes,
       scheduled: status == ArrivalRowStatus.scheduled,
       etaFooter: _cardFooter(c, status, l10n, localeName),
@@ -104,7 +111,8 @@ class ArrivalTile extends StatelessWidget {
     AppLocalizations l10n,
     String localeName,
   ) {
-    final style = StizeTransitCard.captionStyle(c);
+    final style = StizeTransitCard.captionStyle(c,
+        scheduled: status == ArrivalRowStatus.scheduled);
 
     // Primary descriptor: stops-away for a live row, the honest status word for
     // the rest. `arrivalProximity` guards the junk `stops_remaining = 0`.

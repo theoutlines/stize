@@ -83,7 +83,8 @@ class NearbyCard extends StatelessWidget {
     final localeName = Localizations.localeOf(context).toString();
     final hasLive = nearbyGroupHasLive(group);
     final etas = visibleNearbyEtas(group);
-    final caption = StizeTransitCard.captionStyle(c);
+    final scheduled = etas.isNotEmpty && !nearbyEtaIsLive(etas.first);
+    final caption = StizeTransitCard.captionStyle(c, scheduled: scheduled);
 
     // The next time of this line, with its unit attached (same as the board).
     String? next;
@@ -109,7 +110,7 @@ class NearbyCard extends StatelessWidget {
         if (next != null) Text(next, style: caption),
       ],
       etaMinutes: etas.isEmpty ? null : etas.first.etaMinutes,
-      scheduled: etas.isNotEmpty && !nearbyEtaIsLive(etas.first),
+      scheduled: scheduled,
       live: hasLive,
       onTap: onTap,
     );

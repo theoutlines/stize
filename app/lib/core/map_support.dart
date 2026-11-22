@@ -72,7 +72,7 @@ List<String> get tramLineNumbers => _lineTypeIndex.tramLineNumbers;
 
 /// Thin rail line colour: the tram red, semi-transparent, so the tracks read as
 /// tram infrastructure without competing with the markers on top.
-const tramRailColor = Color(0x99D3342B);
+const tramRailColor = Color(0x99E4312F);
 
 /// The distinct vehicle types a stop is served by. Prefers the authoritative
 /// per-stop `types` emitted by the GTFS build (feed route_type); on a bundle
@@ -450,9 +450,9 @@ String vehicleImageFor(VehicleType type) => MapImages.vehicle;
 /// resolving the vehicle model from its garage number — see the killer-feature
 /// plan. When that lands, pass [tramOverride] to recolour an individual tram;
 /// the rest of the marker pipeline already flows the colour through unchanged.
-const _busColor = Color(0xFF1B67C4); // transit blue
-const _trolleyColor = Color(0xFFE8701A); // orange (design-system transit-trolleybus)
-const _tramColor = Color(0xFFD3342B); // tram red (Belgrade livery)
+const _busColor = Color(0xFF2278E6); // transit blue
+const _trolleyColor = Color(0xFFEA7000); // orange (design-system transit-trolleybus)
+const _tramColor = Color(0xFFE4312F); // tram red (Belgrade livery)
 const _mixedStopColor = Color(0xFF5B6B7A); // multi-type stop, neutral slate
 const _stuckColor = Color(0xFFB00842); // "looks stuck": deep crimson, ≠ tram red
 
