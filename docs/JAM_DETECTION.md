@@ -138,7 +138,7 @@ always stays in the softer observation tone.
   street — so there we show **only the stop glow**, which is a first-class visual,
   not a downgrade.
 - **A delay banner** on the affected stops (those under the segment and the ones
-  downstream within ~10 minutes of travel), in the app's language (EN/RU/SR).
+  downstream within ~10 minutes of travel), in the app's language (EN/SR).
 - **A jam-mode button** that appears on the map only while there are active jams. It
   toggles the map between "fit to all jams" and the normal view (no navigation, no
   back button). It shows a **red count badge only when a jam is actually relevant to

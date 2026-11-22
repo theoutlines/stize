@@ -48,3 +48,6 @@ dart_defines.json
 
 # Local handoff snapshots for the product chat (not part of the repo)
 handoff/
+
+# Task reports are private, local-only (see CLAUDE.md docs policy).
+docs/reports/

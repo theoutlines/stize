@@ -44,7 +44,7 @@ monotonically ↑).
   **regardless** of the `timed_trajectory` flag (for a scheduled one the plan is
   its motion).
 - A tap on scheduled → the same line shutter + an honest note "by schedule — not a
-  live position" (`vehicleScheduled`, EN/RU/SR).
+  live position" (`vehicleScheduled`, EN/SR).
 
 ## Deduplication live vs scheduled (one trip)
 
