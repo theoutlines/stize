@@ -10,9 +10,10 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 ### Removed
 - **Legacy `theoutlines.xyz` addresses retired** — Stiže now lives entirely on
   its own domain (web `stize.app`, API `api.stize.app`, staging API
-  `api-staging.stize.app`). The old `stigla.theoutlines.xyz` redirect host and
-  the legacy `stigla-api.theoutlines.xyz` API host no longer resolve. There are
-  no external clients, so nothing migrates. (Infrastructure names stay
+  `api-staging.stize.app`). All three old `theoutlines.xyz` hosts —
+  `stigla.theoutlines.xyz` (redirect), `stigla-api.theoutlines.xyz` (prod API)
+  and `stigla-api-staging.theoutlines.xyz` (staging API) — no longer resolve.
+  There are no external clients, so nothing migrates. (Infrastructure names stay
   `stigla-*`; only the public `theoutlines.xyz` hostnames were removed.)
 
 ## 2026-07-21
