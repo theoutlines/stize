@@ -9,6 +9,7 @@ import '../../core/api_config.dart';
 import '../../core/arrival_grouping.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../core/fleet_matcher.dart';
+import '../../core/foreground.dart';
 import '../../core/live_position.dart';
 import '../../data/analytics/event_logger.dart';
 import '../../data/api/api_exceptions.dart';
@@ -40,6 +41,10 @@ class StopScreen extends ConsumerStatefulWidget {
 
 class _StopScreenState extends ConsumerState<StopScreen> {
   Timer? _refreshTimer;
+  late final ForegroundResumeListener _resume =
+      ForegroundResumeListener(() {
+    if (mounted) _refreshNow();
+  });
   String? _lineFilter;
 
   /// B4: optional "sort by comfort" instead of the default time order. Only
@@ -61,15 +66,21 @@ class _StopScreenState extends ConsumerState<StopScreen> {
 
   void _scheduleRefresh() {
     _refreshTimer?.cancel();
+    _resume; // start listening for foreground returns
     _refreshTimer = Timer.periodic(kLiveRefreshInterval, (_) {
-      ref.invalidate(arrivalsProvider(widget.stopId));
-      if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);
+      if (appInForeground) _refreshNow();
     });
+  }
+
+  void _refreshNow() {
+    ref.invalidate(arrivalsProvider(widget.stopId));
+    if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _resume.dispose();
     super.dispose();
   }
 

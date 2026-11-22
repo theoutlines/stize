@@ -1,0 +1,5 @@
+# Static GTFS assets are served without invoking the worker, so the cors()
+# middleware never sees them. The app reads per-stop timetables from here when
+# the API worker cannot answer (offline timetable fallback), so allow it.
+/gtfs/*
+  Access-Control-Allow-Origin: *

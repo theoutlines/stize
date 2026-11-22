@@ -8,6 +8,7 @@ import '../../core/arrival_grouping.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../core/eta_delta.dart';
 import '../../core/fleet_matcher.dart';
+import '../../core/foreground.dart';
 import '../../core/live_position.dart';
 import '../../data/analytics/event_logger.dart';
 import '../../data/api/api_exceptions.dart';
@@ -87,6 +88,10 @@ class StopBoard extends ConsumerStatefulWidget {
 
 class _StopBoardState extends ConsumerState<StopBoard> {
   Timer? _refreshTimer;
+  late final ForegroundResumeListener _resume =
+      ForegroundResumeListener(() {
+    if (mounted) _refreshNow();
+  });
   String? _lineFilter;
 
   /// B4: optional "sort by comfort" instead of the default time order. Only
@@ -108,17 +113,23 @@ class _StopBoardState extends ConsumerState<StopBoard> {
 
   void _scheduleRefresh() {
     _refreshTimer?.cancel();
+    _resume; // start listening for foreground returns
     _refreshTimer = Timer.periodic(kLiveRefreshInterval, (_) {
-      ref.invalidate(arrivalsProvider(widget.stopId));
-      // Keep the jam banner fresh on the same 30s cadence (no-op when the flag
-      // is off — the provider short-circuits to an empty board with no request).
-      if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);
+      if (appInForeground) _refreshNow();
     });
+  }
+
+  void _refreshNow() {
+    ref.invalidate(arrivalsProvider(widget.stopId));
+    // Keep the jam banner fresh on the same 30s cadence (no-op when the flag
+    // is off — the provider short-circuits to an empty board with no request).
+    if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _resume.dispose();
     super.dispose();
   }
 
