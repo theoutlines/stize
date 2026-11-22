@@ -332,8 +332,12 @@ export function meterUpstreamFetch(
   event: UpstreamEvent,
 ): void {
   ctx.waitUntil(
-    getFlagMemoized(env, ctx, "upstream_budget")
-      .then((on) => (on ? recordUpstreamEvent(env, event) : undefined))
-      .catch((e) => console.error("upstream meter failed", e)),
+    (async () => {
+      try {
+        if (await getFlagMemoized(env, ctx, "upstream_budget")) await recordUpstreamEvent(env, event);
+      } catch (e) {
+        console.error("upstream meter failed", e);
+      }
+    })(),
   );
 }
