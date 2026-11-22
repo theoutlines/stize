@@ -28,10 +28,26 @@ export async function getFeedMeta(env: Env): Promise<FeedMeta | null> {
 
 async function loadStops(env: Env): Promise<StopDto[]> {
   if (stopsCache) return stopsCache;
-  const res = await fetchAsset(env, "/gtfs/stops.json");
-  if (!res.ok) throw new Error(`Failed to load stops.json: ${res.status}`);
-  const body = (await res.json()) as { stops: StopDto[] };
-  stopsCache = body.stops;
+  // Column-wise copy of stops.json (scripts/compact-stops.mjs): ~6x cheaper to
+  // parse on a cold isolate, which keeps /arrivals under the 10 ms CPU limit.
+  const res = await fetchAsset(env, "/gtfs/stops.compact.json");
+  if (!res.ok) throw new Error(`Failed to load stops.compact.json: ${res.status}`);
+  const c = (await res.json()) as {
+    stop_id: string[]; name: string[]; lat: number[]; lon: number[]; lines: string[]; types: string[];
+  };
+  const out: StopDto[] = new Array(c.stop_id.length);
+  for (let i = 0; i < c.stop_id.length; i++) {
+    out[i] = {
+      stop_id: c.stop_id[i],
+      name: c.name[i],
+      lat: c.lat[i],
+      lon: c.lon[i],
+      lines: c.lines[i] ? c.lines[i].split(",") : [],
+      // Absent in the source stays absent (the client falls back to its index).
+      types: c.types[i] ? (c.types[i].split(",") as StopDto["types"]) : undefined,
+    } as StopDto;
+  }
+  stopsCache = out;
   return stopsCache;
 }
 
