@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/context_slot.dart';
+import '../../core/design/stize_tokens.dart';
 import '../../core/vehicle_route.dart';
 import '../../domain/models/route_shape.dart';
 import '../../domain/models/stop.dart';
@@ -86,7 +87,7 @@ class _VehicleDetailSheet extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                         child: Row(
                           children: [
-                            _pill(),
+                            _pill(context),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
@@ -151,7 +152,8 @@ class _VehicleDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _pill() {
+  Widget _pill(BuildContext context) {
+    final stize = Theme.of(context).extension<StizeColors>();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -161,15 +163,19 @@ class _VehicleDetailSheet extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          vehicleGlyph(type, size: 16, color: Colors.white),
+          vehicleGlyph(type, size: 16, color: StizeColors.of(context).onTransit),
           const SizedBox(width: 4),
+          // Stiže: line number = the one semibold, white on every type.
+          // OFF keeps the prior bold 14 (killswitch).
           Text(
             line,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
+            style: stize != null
+                ? StizeType.lineNumber.copyWith(color: stize.onTransit)
+                : const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
           ),
         ],
       ),

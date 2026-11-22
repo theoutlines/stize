@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/arrival_grouping.dart';
+import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
 import '../../core/map_support.dart';
 import '../../l10n/app_localizations.dart';
@@ -36,7 +37,8 @@ class ScheduledGroupTile extends StatelessWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: vehicleColor(cell.vehicleType),
-          child: vehicleGlyph(cell.vehicleType, size: 22, color: Colors.white),
+          child: vehicleGlyph(cell.vehicleType,
+              size: 22, color: StizeColors.of(context).onTransit),
         ),
         title: Text(cell.line, style: theme.textTheme.titleMedium),
         subtitle: Row(

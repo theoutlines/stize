@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/design/stize_tokens.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/map_support.dart';
 import '../../domain/models/vehicle_type.dart';
@@ -126,7 +127,8 @@ class FleetModelView extends StatelessWidget {
         CircleAvatar(
           radius: 22,
           backgroundColor: vehicleColor(fallbackType),
-          child: vehicleGlyph(fallbackType, size: 24, color: Colors.white),
+          child: vehicleGlyph(fallbackType,
+              size: 24, color: StizeColors.of(context).onTransit),
         ),
         const SizedBox(width: 14),
         Expanded(

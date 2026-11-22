@@ -207,7 +207,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
           ),
           IconButton(
             icon: Icon(isFavorite ? Icons.star : Icons.star_outline),
-            color: isFavorite ? const Color(0xFFF6A609) : null,
+            color: isFavorite ? StizeColors.of(context).favorite : null,
             tooltip: isFavorite
                 ? AppLocalizations.of(context).removeFromFavorites
                 : AppLocalizations.of(context).addToFavorites,

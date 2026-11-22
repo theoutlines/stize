@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
 import '../../core/map_support.dart';
 import '../../core/nearby_focus.dart';
@@ -175,16 +176,24 @@ class _LineBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          vehicleGlyph(type, size: 16, color: Colors.white),
+          vehicleGlyph(type, size: 16, color: StizeColors.of(context).onTransit),
           const SizedBox(width: 6),
-          Text(
-            line,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-            ),
-          ),
+          Builder(builder: (context) {
+            // Stiže: the line number in a vertical list is the one semibold
+            // (StizeType.lineNumber), white on every type. OFF keeps the prior
+            // bold 15 (killswitch).
+            final stize = Theme.of(context).extension<StizeColors>();
+            return Text(
+              line,
+              style: stize != null
+                  ? StizeType.lineNumber.copyWith(color: stize.onTransit)
+                  : const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+            );
+          }),
         ],
       ),
     );

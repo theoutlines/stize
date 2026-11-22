@@ -15,6 +15,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 import '../../core/api_config.dart';
 import '../../core/context_slot.dart';
 import '../../core/coverage_heatmap.dart';
+import '../../core/design/stize_tokens.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/follow_camera.dart';
 import '../../core/fps_overlay.dart';
@@ -3376,7 +3377,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         );
     return IconButton(
       icon: Icon(isFav ? Icons.star : Icons.star_outline),
-      color: isFav ? const Color(0xFFF6A609) : null,
+      color: isFav ? StizeColors.of(context).favorite : null,
       tooltip: isFav
           ? AppLocalizations.of(context).removeFromFavorites
           : AppLocalizations.of(context).addToFavorites,
@@ -3448,11 +3449,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          vehicleGlyph(type, size: 16, color: Colors.white),
+          vehicleGlyph(type, size: 16, color: StizeColors.of(context).onTransit),
           const SizedBox(width: 6),
-          Text(line,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w700)),
+          Builder(builder: (context) {
+            final stize = Theme.of(context).extension<StizeColors>();
+            return Text(line,
+                style: stize != null
+                    ? StizeType.lineNumber.copyWith(color: stize.onTransit)
+                    : const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w700));
+          }),
         ],
       ),
     );
@@ -3953,13 +3959,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
+              // Stiže: the floating map-control shadow; OFF keeps the prior soft
+              // drop shadow (killswitch).
+              boxShadow: theme.extension<StizeColors>() != null
+                  ? StizeShadow.shadowMapControl
+                  : const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
             ),
             child: Row(
               children: [
@@ -3975,15 +3985,23 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      vehicleGlyph(type, size: 16, color: Colors.white),
+                      vehicleGlyph(type,
+                          size: 16, color: StizeColors.of(context).onTransit),
                       const SizedBox(width: 6),
-                      Text(
-                        line,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      Builder(builder: (context) {
+                        final stize =
+                            Theme.of(context).extension<StizeColors>();
+                        return Text(
+                          line,
+                          style: stize != null
+                              ? StizeType.lineNumber
+                                  .copyWith(color: stize.onTransit)
+                              : const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                        );
+                      }),
                     ],
                   ),
                 ),
@@ -4666,10 +4684,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.place,
                           size: 18,
-                          color: Color(0xFFE5484D),
+                          color: StizeColors.of(context).place,
                         ),
                         const SizedBox(width: 8),
                         Flexible(
