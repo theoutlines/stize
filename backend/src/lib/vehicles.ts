@@ -25,6 +25,11 @@ import type { WaitUntilCtx } from "./swrCache";
 // ~50% worst-case, not per-user; the 30s-per-key cap is untouched. Watch the
 // source for pushback at this fan-out.
 const MAX_STOPS_FANOUT = 18;
+// Only the nearest stops may trigger a real refresh (upstream fetch + cache write,
+// 2 subrequests each); the outer ring reads the cache only. 18 refreshing stops
+// plus their cache reads exceeded the free plan's 50 subrequests per invocation on
+// a cold cache, failing the cache writes (audit 2026-11-22, A4; seen in logs).
+const MAX_REFRESHING_STOPS = 12;
 const MAX_RADIUS_METERS = 1500;
 // Cap how many routes we pull the timetable for in one viewport, so a pathological
 // zoomed-out request can't fetch hundreds of trip files. In practice far fewer:
@@ -45,8 +50,11 @@ export async function getNearbyVehicles(
     // Map path: skip the schedule fallback *list* so an 18-stop fan-out doesn't
     // blow Cloudflare's per-invocation subrequest / CPU limits (→ 503). The map's
     // own scheduled objects are added once below, not per stop.
-    stops.map((s) =>
-      getArrivals(env, ctx, s.stop_id, { includeSchedule: false }).catch(() => null),
+    stops.map((s, i) =>
+      getArrivals(env, ctx, s.stop_id, {
+        includeSchedule: false,
+        cacheOnly: i >= MAX_REFRESHING_STOPS,
+      }).catch(() => null),
     ),
   );
 

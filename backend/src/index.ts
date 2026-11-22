@@ -31,7 +31,7 @@ import {
 import { geocodeSearch } from "./lib/geocode";
 import { listAlerts, refreshAlerts } from "./lib/alerts";
 import { computeJams, type JamsResponse } from "./lib/jamDetector";
-import { RateLimitedError, ValidationError } from "./lib/errors";
+import { RateLimitedError, ValidationError, adminTokenOk } from "./lib/errors";
 import { createFeedback, createFeedbackIssue } from "./lib/feedback";
 import {
   fetchUsageToday,
@@ -53,6 +53,16 @@ const app = new Hono<{ Bindings: Env }>();
 // on an arbitrary origin (stize.app, localhost during dev, ...).
 // Nothing here is per-user or cookie-authenticated, so a permissive origin is fine.
 app.use("*", cors({ origin: "*", allowHeaders: ["Content-Type", "X-Admin-Token", "X-Device-Id"] }));
+
+// Every /admin route: one shared check, compared in constant time (audit
+// 2026-11-22, S10). Both sides are hashed first so the comparison runs on equal
+// lengths and leaks neither the token nor its length through timing.
+app.use("/api/v1/admin/*", async (c, next) => {
+  if (!(await adminTokenOk(c.req.header("X-Admin-Token"), c.env.ADMIN_TOKEN))) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  await next();
+});
 
 // D1-backed community/analytics routes. An unexpected throw there is almost always
 // the store being unavailable — e.g. the account's D1 free-tier daily write limit
@@ -356,19 +366,11 @@ app.get("/api/v1/jams", async (c) => {
 });
 
 app.post("/api/v1/admin/alerts/refresh", async (c) => {
-  const token = c.req.header("X-Admin-Token");
-  if (!token || token !== c.env.ADMIN_TOKEN) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
   const result = await refreshAlerts(c.env);
   return c.json(result);
 });
 
 app.post("/api/v1/admin/killswitch", async (c) => {
-  const token = c.req.header("X-Admin-Token");
-  if (!token || token !== c.env.ADMIN_TOKEN) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
   const body = await c.req.json<{ killed?: boolean }>().catch(() => ({ killed: undefined }));
   if (typeof body.killed !== "boolean") {
     return c.json({ error: "body must be { \"killed\": boolean }" }, 400);
@@ -381,10 +383,6 @@ app.post("/api/v1/admin/killswitch", async (c) => {
 //   curl -X POST .../api/v1/admin/flags -H "X-Admin-Token: $T" \
 //        -d '{"flag":"analytics_collect","value":true}'
 app.post("/api/v1/admin/flags", async (c) => {
-  const token = c.req.header("X-Admin-Token");
-  if (!token || token !== c.env.ADMIN_TOKEN) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
   const body = await c.req
     .json<{ flag?: string; value?: boolean }>()
     .catch(() => ({ flag: undefined, value: undefined }));
@@ -505,10 +503,6 @@ app.get("/api/v1/analytics/lines/:line", async (c) => {
 
 // Run the aggregation on demand (same as the daily cron) — for testing.
 app.post("/api/v1/admin/analytics/aggregate", async (c) => {
-  const token = c.req.header("X-Admin-Token");
-  if (!token || token !== c.env.ADMIN_TOKEN) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
   if (await readsConstrained(c.env)) {
     return c.json({ error: "deferred: D1 read budget governor tripped; retry after 00:00 UTC" }, 503);
   }
@@ -521,10 +515,6 @@ app.post("/api/v1/admin/analytics/aggregate", async (c) => {
 // remember staging ALSO reaches the source, so enable `analytics_sweep` on
 // staging only for the duration of a check.
 app.post("/api/v1/admin/sweep/tick", async (c) => {
-  const token = c.req.header("X-Admin-Token");
-  if (!token || token !== c.env.ADMIN_TOKEN) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
   // No jitter on the manual path — a staging check should return promptly, not
   // sleep up to ~2×jitter seconds like the cron tick does.
   const result = await runSweepTick(c.env, c.executionCtx, new Date(), { applyJitter: false });
@@ -536,10 +526,6 @@ app.post("/api/v1/admin/sweep/tick", async (c) => {
 // WITHOUT `wrangler tail`. Admin-token gated (metrics are operational, not public).
 // Contains NO secrets/tokens — only counts, config values, and derived metrics.
 app.get("/api/v1/admin/sweep/status", async (c) => {
-  const token = c.req.header("X-Admin-Token");
-  if (!token || token !== c.env.ADMIN_TOKEN) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
   c.header("cache-control", "no-store");
   // Non-essential read: stood down while the D1 read-budget governor is tripped
   // (answers from KV only — use /admin/d1-budget for the budget read-out).
@@ -553,10 +539,6 @@ app.get("/api/v1/admin/sweep/status", async (c) => {
 // rows_written + rows_read (GraphQL — costs no D1 rows), and the governor state.
 // Admin-token gated; no secrets in the response.
 app.get("/api/v1/admin/d1-budget", async (c) => {
-  const token = c.req.header("X-Admin-Token");
-  if (!token || token !== c.env.ADMIN_TOKEN) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
   c.header("cache-control", "no-store");
   const now = new Date();
   const [config, state] = await Promise.all([resolveGovernorConfig(c.env), readGovernorState(c.env)]);
@@ -586,10 +568,6 @@ app.get("/api/v1/admin/d1-budget", async (c) => {
 // no cron, so this is how the governor is exercised there. NOTE: the reading is
 // account-wide; on staging it flips only staging's own KV flags.
 app.post("/api/v1/admin/d1-budget/tick", async (c) => {
-  const token = c.req.header("X-Admin-Token");
-  if (!token || token !== c.env.ADMIN_TOKEN) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
   return c.json(await runD1Governor(c.env, new Date()));
 });
 

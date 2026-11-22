@@ -1,6 +1,6 @@
 import type { Env } from "../env";
 import type { ArrivalDto, ArrivalsResponse } from "../types";
-import { getWithStaleWhileRevalidate, type WaitUntilCtx } from "./swrCache";
+import { getWithStaleWhileRevalidate, type WaitUntilCtx, ColdCacheError } from "./swrCache";
 import { BgnaplataTransitProvider, UpstreamError, type RawArrival } from "./transitProvider";
 import { meterUpstreamFetch, type UpstreamKind, type UpstreamOutcome } from "./upstreamBudget";
 import {
@@ -32,7 +32,13 @@ export async function getArrivals(
   // `kind` tags which path issued any ACTUAL upstream fetch this call triggers, so
   // the request meter (upstreamBudget) can count live vs sweep separately. Default
   // "live": every caller except the sentinel sweep is live traffic.
-  { includeSchedule = true, kind = "live" }: { includeSchedule?: boolean; kind?: UpstreamKind } = {},
+  // `cacheOnly`: read the SWR cache only, never fetch (see swrCache); a cold key
+  // yields an empty, non-live board without logging an error.
+  {
+    includeSchedule = true,
+    kind = "live",
+    cacheOnly = false,
+  }: { includeSchedule?: boolean; kind?: UpstreamKind; cacheOnly?: boolean } = {},
 ): Promise<ArrivalsResponse | null> {
   const stop = await getStopById(env, stopId);
   if (!stop) return null;
@@ -85,11 +91,12 @@ export async function getArrivals(
           throw e;
         }
       },
+      { cacheOnly },
     );
     rawArrivals = live.data;
     updatedAt = live.updatedAt;
   } catch (e) {
-    console.error("live board unavailable; serving schedule only", e);
+    if (!(e instanceof ColdCacheError)) console.error("live board unavailable; serving schedule only", e);
     liveOk = false;
   }
 

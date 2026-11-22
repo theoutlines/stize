@@ -555,6 +555,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'If you send feedback, your message — and the optional contact you provide — are stored so we can read it and reply to you. Nothing else is collected with it.';
 
   @override
+  String get privacyServicesTitle =>
+      'Services the app loads from';
+
+  @override
+  String get privacyServicesBody =>
+      'Like any website, the app loads some parts from other services, which see your IP address as part of the request: map tiles for the area you view come from MapTiler, fonts and parts of the app engine from Google (gstatic.com), and the app and its API are served by Cloudflare. None of them receive your location from us or any account details.';
+
+  @override
   String get privacyOpenSourceTitle => 'Open source';
 
   @override

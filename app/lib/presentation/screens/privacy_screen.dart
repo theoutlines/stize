@@ -37,6 +37,7 @@ class PrivacyScreen extends StatelessWidget {
             section(l10n.privacyAnalyticsTitle, l10n.privacyAnalyticsBody),
             section(l10n.privacyTrackersTitle, l10n.privacyTrackersBody),
             section(l10n.privacyFeedbackTitle, l10n.privacyFeedbackBody),
+            section(l10n.privacyServicesTitle, l10n.privacyServicesBody),
             section(l10n.privacyOpenSourceTitle, l10n.privacyOpenSourceBody),
           ],
         ),

@@ -66,16 +66,29 @@ export interface WaitUntilCtx {
   waitUntil(promise: Promise<unknown>): void;
 }
 
+/** Thrown in cache-only mode when the key has never been cached. */
+export class ColdCacheError extends Error {}
+
 export async function getWithStaleWhileRevalidate<T>(
   cacheKeyUrl: string,
   ttlSeconds: number,
   ctx: WaitUntilCtx,
   fetchFresh: () => Promise<T>,
+  // Cache-only: answer from whatever is cached (stale or not) and never fetch or
+  // write. Used for the outer ring of a map fan-out, so one invocation stays under
+  // the free plan's subrequest cap (each fetch + cache write is 2 subrequests).
+  { cacheOnly = false }: { cacheOnly?: boolean } = {},
 ): Promise<SwrResult<T>> {
   const cache = caches.default;
   const cacheKey = new Request(cacheKeyUrl);
 
   const cached = await cache.match(cacheKey);
+  if (!cached && cacheOnly) throw new ColdCacheError(cacheKeyUrl);
+  if (cached && cacheOnly) {
+    const payload = (await cached.json()) as CachedPayload<T>;
+    const stale = Date.now() - Date.parse(payload.updatedAt) >= ttlSeconds * 1000;
+    return { data: payload.data, updatedAt: payload.updatedAt, stale };
+  }
   if (cached) {
     const payload = (await cached.json()) as CachedPayload<T>;
     const now = Date.now();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getWithStaleWhileRevalidate, type WaitUntilCtx } from "../src/lib/swrCache";
+import { ColdCacheError, getWithStaleWhileRevalidate, type WaitUntilCtx } from "../src/lib/swrCache";
 
 function fakeCtx(): WaitUntilCtx & { drain(): Promise<void> } {
   const pending: Promise<unknown>[] = [];
@@ -174,6 +174,24 @@ describe("getWithStaleWhileRevalidate", () => {
     // the client marker parks honestly).
     expect(res.stale).toBe(true);
     expect(res.data).toEqual({ n: 0 });
+    expect(calls).toBe(0);
+  });
+
+  it("cache-only mode never fetches: cold throws, stale is served as-is", async () => {
+    const ctx = fakeCtx();
+    const key = `https://cache.test/cacheonly-${Math.random()}`;
+    let calls = 0;
+    const fetchFresh = async () => {
+      calls++;
+      return { n: calls };
+    };
+    await expect(
+      getWithStaleWhileRevalidate(key, 5, ctx, fetchFresh, { cacheOnly: true }),
+    ).rejects.toBeInstanceOf(ColdCacheError);
+    await seedCache(key, { n: 0 }, 60); // even hard-stale: no blocking fetch
+    const r = await getWithStaleWhileRevalidate(key, 5, ctx, fetchFresh, { cacheOnly: true });
+    await ctx.drain();
+    expect(r).toMatchObject({ data: { n: 0 }, stale: true });
     expect(calls).toBe(0);
   });
 });
