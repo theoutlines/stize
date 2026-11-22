@@ -66,7 +66,6 @@ class StizeLineChip extends StatelessWidget {
         child: Container(
           height: StizeSize.chipH,
           constraints: const BoxConstraints(minWidth: 48),
-          alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: StizeSpace.space3),
           decoration: selected
               ? BoxDecoration(
@@ -74,9 +73,13 @@ class StizeLineChip extends StatelessWidget {
                   border: Border.all(color: c.ink, width: 2),
                 )
               : null,
-          child: Text(
-            line,
-            style: StizeType.control.copyWith(fontSize: 16, color: c.onTransit),
+          // widthFactor 1: the chip is as wide as its number, never the row.
+          child: Center(
+            widthFactor: 1,
+            child: Text(
+              line,
+              style: StizeType.control.copyWith(fontSize: 16, color: c.onTransit),
+            ),
           ),
         ),
       ),
@@ -108,14 +111,80 @@ class StizeTextChip extends StatelessWidget {
         onTap: onTap,
         child: Container(
           height: StizeSize.chipH,
-          alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: StizeSpace.space4),
-          child: Text(
-            label,
-            style: StizeType.control
-                .copyWith(fontSize: 16, color: selected ? c.onInk : c.ink75),
+          child: Center(
+            widthFactor: 1,
+            child: Text(
+              label,
+              style: StizeType.control
+                  .copyWith(fontSize: 16, color: selected ? c.onInk : c.ink75),
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// The one line-filter row (ds_stize ON) for both stop render paths (in-app
+/// panel + /stop/:id): "All lines" + a transit-colour chip per line, one
+/// horizontally scrolling row starting at the cards' 16px edge. Lines with no
+/// arrival right now are shown faded and inert.
+class StizeLineFilterRow extends StatelessWidget {
+  const StizeLineFilterRow({
+    super.key,
+    required this.allLabel,
+    required this.allLines,
+    required this.arrivingLines,
+    required this.typeByLine,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final String allLabel;
+  final List<String> allLines;
+  final Set<String> arrivingLines;
+  final Map<String, VehicleType> typeByLine;
+
+  /// The picked line, or null for "All lines".
+  final String? selected;
+  final ValueChanged<String?> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StizeColors.of(context);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(
+          horizontal: StizeSpace.space4, vertical: StizeSpace.space1),
+      child: Row(
+        spacing: StizeSpace.space2,
+        children: [
+          StizeTextChip(
+            label: allLabel,
+            selected: selected == null,
+            onTap: () => onSelect(null),
+          ),
+          for (final line in allLines)
+            if (arrivingLines.contains(line))
+              StizeLineChip(
+                line: line,
+                color: stizeChipColor(c, typeByLine[line]),
+                selected: selected == line,
+                onTap: () => onSelect(line),
+              )
+            else
+              Opacity(
+                opacity: 0.4,
+                child: StizeLineChip(
+                  line: line,
+                  color: stizeChipColor(c, typeByLine[line]),
+                  selected: false,
+                  onTap: null,
+                ),
+              ),
+        ],
       ),
     );
   }
