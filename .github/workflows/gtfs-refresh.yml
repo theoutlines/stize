@@ -49,6 +49,9 @@ jobs:
       # The build refuses to write if stops or lines would shrink by >2%.
       - name: Build bundle
         run: npm run gtfs:build
+      # Pushes made with GITHUB_TOKEN do not start the CI workflow, so test here.
+      - name: Test against the new bundle
+        run: npm test
       - name: Publish a data branch if anything changed
         run: |
           cd ..
