@@ -13,7 +13,7 @@
     "coverage:build": "node scripts/build-coverage-points.mjs && node scripts/build-coverage.mjs"
   },
   "dependencies": {
-    "hono": "^4.6.14"
+    "hono": "^4.13.20"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.6.4",
