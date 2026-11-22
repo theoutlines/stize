@@ -7,6 +7,7 @@ import '../../core/nearby_focus.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
+import 'stize_transit_card.dart';
 import 'vehicle_icon.dart';
 
 /// The "Nearby" list itself — a pure, scrollable list of line+direction rows.
@@ -86,53 +87,11 @@ class NearbyCard extends StatelessWidget {
   Widget _card(BuildContext context, StizeColors c) {
     final l10n = AppLocalizations.of(context);
     final localeName = Localizations.localeOf(context).toString();
-    final type = group.vehicleType;
-    final fill = switch (type) {
-      VehicleType.bus => c.transitBus,
-      VehicleType.tram => c.transitTram,
-      VehicleType.trolleybus => c.transitTrolleybus,
-    };
-    final on = c.onTransit;
     final hasLive = nearbyGroupHasLive(group);
     final etas = visibleNearbyEtas(group);
-    final destination = group.destination;
-    final caption = StizeType.caption.copyWith(color: on.withValues(alpha: 0.8));
+    final caption = StizeTransitCard.captionStyle(c);
 
-    // Big ETA: "now" / N + "min" / a clock time when far off. A non-live first
-    // time is a timetable time: shown as a quieter clock.
-    Widget etaBlock() {
-      if (etas.isEmpty) {
-        return Text('—', style: StizeType.bigNumber.copyWith(color: on));
-      }
-      final e = etas.first;
-      if (!nearbyEtaIsLive(e)) {
-        return Text(
-          clockAt(localeName, e.etaMinutes),
-          style: StizeType.date.copyWith(
-              fontWeight: FontWeight.w400, color: on.withValues(alpha: 0.7)),
-        );
-      }
-      final String value;
-      String? unit;
-      if (e.etaMinutes <= 0) {
-        value = l10n.arrivalEtaNow.toLowerCase();
-      } else if (e.etaMinutes >= kFarEtaMinutes) {
-        value = clockAt(localeName, e.etaMinutes);
-      } else {
-        value = '${e.etaMinutes}';
-        unit = l10n.arrivalEtaMinutesUnit;
-      }
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(value, style: StizeType.bigNumber.copyWith(color: on)),
-          if (unit != null) Text(unit, style: caption),
-        ],
-      );
-    }
-
-    // Caption: stop · distance, then the next time of this line with its unit.
+    // The next time of this line, with its unit attached (same as the board).
     String? next;
     if (etas.length > 1) {
       final m = etas[1].etaMinutes;
@@ -141,83 +100,25 @@ class NearbyCard extends StatelessWidget {
           : l10n.arrivalNextIn(m <= 0 ? 0 : m);
     }
 
-    final card = Material(
-      color: fill,
-      borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: StizeSpace.space4, vertical: StizeSpace.space3),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        vehicleGlyph(type, size: 18, color: on),
-                        const SizedBox(width: StizeSpace.space1),
-                        Text(group.line,
-                            style: StizeType.section
-                                .copyWith(fontWeight: FontWeight.w600, color: on)),
-                      ],
-                    ),
-                    if (destination != null && destination.isNotEmpty) ...[
-                      const SizedBox(height: StizeSpace.space1),
-                      Row(
-                        children: [
-                          Icon(Icons.arrow_forward_rounded, size: 16, color: on),
-                          const SizedBox(width: StizeSpace.space1),
-                          Flexible(
-                            child: Text(
-                              destination,
-                              style: StizeType.label.copyWith(color: on),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: StizeSpace.space1),
-                    Wrap(
-                      spacing: StizeSpace.space2,
-                      runSpacing: StizeSpace.space1,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        if (hasLive)
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration:
-                                BoxDecoration(color: on, shape: BoxShape.circle),
-                          ),
-                        Text(
-                          '${group.stopName} · ${l10n.nearbyDistanceMeters(group.distanceMeters)}',
-                          style: caption,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (next != null) Text(next, style: caption),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: StizeSpace.space3),
-              etaBlock(),
-            ],
-          ),
+    return StizeTransitCard(
+      type: group.vehicleType,
+      line: group.line,
+      destination: group.destination,
+      caption: [
+        if (hasLive) StizeTransitCard.liveDot(c),
+        Text(
+          '${group.stopName} · ${l10n.nearbyDistanceMeters(group.distanceMeters)}',
+          style: caption,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
-      ),
+        if (next != null) Text(next, style: caption),
+      ],
+      etaMinutes: etas.isEmpty ? null : etas.first.etaMinutes,
+      scheduled: etas.isNotEmpty && !nearbyEtaIsLive(etas.first),
+      live: hasLive,
+      onTap: onTap,
     );
-    // Brightness == "leads to a live vehicle you can follow" (same as the board).
-    return hasLive ? card : Opacity(opacity: 0.82, child: card);
   }
 
   Widget _legacy(BuildContext context) {

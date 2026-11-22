@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'stize_transit_card.dart';
+
 import '../../core/arrival_grouping.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
 import '../../core/map_support.dart';
-import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import 'vehicle_icon.dart';
 
@@ -39,72 +40,29 @@ class ScheduledGroupTile extends StatelessWidget {
   Widget _card(BuildContext context, StizeColors c) {
     final l10n = AppLocalizations.of(context);
     final localeName = Localizations.localeOf(context).toString();
-    final on = c.onTransit;
-    final fill = switch (cell.vehicleType) {
-      VehicleType.bus => c.transitBus,
-      VehicleType.tram => c.transitTram,
-      VehicleType.trolleybus => c.transitTrolleybus,
-    };
-    final nearest = cell.etaMinutes.first;
+    final caption = StizeTransitCard.captionStyle(c);
     final followUps = cell.etaMinutes.skip(1).toList();
-    final caption = StizeType.caption.copyWith(color: on.withValues(alpha: 0.8));
-
-    return Opacity(
-      opacity: 0.82,
-      child: Material(
-        color: fill,
-        borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: StizeSpace.space4, vertical: StizeSpace.space3),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(cell.line,
-                        style: StizeType.section
-                            .copyWith(fontWeight: FontWeight.w600, color: on)),
-                    const SizedBox(height: StizeSpace.space1),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.schedule,
-                            size: 14, color: on.withValues(alpha: 0.8)),
-                        const SizedBox(width: StizeSpace.space1),
-                        Text(l10n.arrivalScheduled, style: caption),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: StizeSpace.space3),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // Scheduled: a clock time, quieter (white 70%), never a count.
-                  Text(
-                    clockAt(localeName, nearest),
-                    style: StizeType.date.copyWith(
-                        fontWeight: FontWeight.w400,
-                        color: on.withValues(alpha: 0.7)),
-                  ),
-                  if (followUps.isNotEmpty)
-                    Text(
-                      followUps.map((e) => clockAt(localeName, e)).join(' · '),
-                      style: caption,
-                    ),
-                ],
-              ),
-            ],
-          ),
+    return StizeTransitCard(
+      type: cell.vehicleType,
+      line: cell.line,
+      caption: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.schedule,
+                size: 14, color: c.onTransit.withValues(alpha: 0.8)),
+            const SizedBox(width: StizeSpace.space1),
+            Text(l10n.arrivalScheduled, style: caption),
+          ],
         ),
-      ),
+      ],
+      etaMinutes: cell.etaMinutes.first,
+      scheduled: true,
+      etaFooter: followUps.isEmpty
+          ? null
+          : Text(followUps.map((e) => clockAt(localeName, e)).join(' · '),
+              style: caption),
+      live: false,
     );
   }
 
