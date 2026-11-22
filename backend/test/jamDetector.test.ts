@@ -300,3 +300,13 @@ describe("computeJams", () => {
     expect(res.jams[0].has_substitute).toBe(true);
   });
 });
+
+describe("journalJams", () => {
+  it("writes nothing when no jam is shown", async () => {
+    const { journalJams } = await import("../src/lib/jamDetector");
+    await env.STIGLA_ANALYTICS_DB.prepare("DELETE FROM jam_journal").run();
+    expect(await journalJams(env, Date.now())).toBe(0);
+    const n = await env.STIGLA_ANALYTICS_DB.prepare("SELECT COUNT(*) AS n FROM jam_journal").first<{ n: number }>();
+    expect(n!.n).toBe(0);
+  });
+});
