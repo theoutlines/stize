@@ -441,6 +441,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   @override
   void dispose() {
+    _stopPushTimer?.cancel();
+    _railsTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _positionSub?.cancel();
     _meAnim.dispose();
@@ -659,7 +661,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     if (_focus != null) _syncFocusLayers();
     _loadStopsForVisibleArea();
     _loadVehiclesForVisibleArea(force: true);
-    _loadTramRails();
+    // Rails + the line-type index are decoration, not the first answer: load
+    // them once, a moment after the map and the nearby list are up, so their
+    // 12 fetches and the layer rebuilds don't stutter the opening animation
+    // (owner, mobile, 2026-11-22). A style reload reuses what's already in hand.
+    if (_tramRails.isEmpty) {
+      _railsTimer?.cancel();
+      _railsTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted) _loadTramRails();
+      });
+    }
     _reconcileCoverageLayer();
   }
 
@@ -1388,7 +1399,21 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// sources. Only source *data* changes — no layers are added or removed — so
   /// the reconcile bug can never drop a layer. Every source is (re)pushed on
   /// each call so a source can never get stuck on stale/empty data.
+  /// Coalesces stop-layer pushes: several triggers in a burst (style load,
+  /// line-type index, rails, area stops, favourites) rebuild and re-upload the
+  /// GeoJSON once, on the next tick, instead of once per trigger. Each push
+  /// serialises every stop and makes MapLibre re-parse it on the main thread.
   void _pushStopSources() {
+    if (_stopPushTimer?.isActive ?? false) return;
+    _stopPushTimer = Timer(const Duration(milliseconds: 32), () {
+      if (mounted) _pushStopSourcesNow();
+    });
+  }
+
+  Timer? _stopPushTimer;
+  Timer? _railsTimer;
+
+  void _pushStopSourcesNow() {
     final style = _style;
     if (style == null || !_stopLayersAdded) return;
     // While a line is focused, only its own route shows (via the declarative
