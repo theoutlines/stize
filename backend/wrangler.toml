@@ -39,7 +39,7 @@ migrations_dir = "migrations-analytics"
 [triggers]
 crons = ["0 6 * * *", "* * * * *"]
 
-# Per-IP limit for the public write endpoints (/events, /ideas, comments):
+# Per-IP limit for the public write endpoints (/events):
 # 10 requests per 60 s per (endpoint, IP). Free, in-memory at the edge, no KV
 # writes. Guards the account-wide D1 write budget (audit 2026-11-22, S1).
 [[ratelimits]]

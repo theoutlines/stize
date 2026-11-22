@@ -104,7 +104,7 @@ class HomeMapScreen extends ConsumerStatefulWidget {
   /// Whether this screen is the one currently visible in the root
   /// [IndexedStack]. Both section pages stay mounted, so the map needs this to
   /// know when to pause the live location stream (don't drain the battery while
-  /// the user is on Ideas).
+  /// the user is on another section).
   final bool active;
 
   @override
@@ -429,7 +429,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   @override
   void didUpdateWidget(covariant HomeMapScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // The user switched between the map and Ideas in the root IndexedStack:
+    // The user switched between the map and another section in the root IndexedStack:
     // pause the stream when the map is hidden, resume when it's shown again.
     if (widget.active != _tabActive) {
       _tabActive = widget.active;

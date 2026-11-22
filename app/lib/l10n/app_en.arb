@@ -1,37 +1,28 @@
 {
   "@@locale": "en",
-
   "appTitle": "Stiže",
-  "@appTitle": {"description": "App name, shown in title bars and the OS app switcher"},
-
+  "@appTitle": {
+    "description": "App name, shown in title bars and the OS app switcher"
+  },
   "navHome": "Map",
   "navMyStops": "My Stops",
-  "navIdeas": "Ideas",
   "navAbout": "About",
-
-  "ideasEmptyTitle": "No ideas yet",
-  "ideasEmptySubtitle": "Be the first to suggest something.",
-  "ideaInputHint": "What should Stiže do better?",
-  "ideaSubmit": "Suggest",
-  "ideaRateLimited": "One new idea at a time — try again in a few minutes.",
-  "ideaVotesCount": "{count, plural, =0{No votes yet} =1{1 vote} other{{count} votes}}",
-  "@ideaVotesCount": {"placeholders": {"count": {"type": "int"}}},
-  "ideaCommentsTitle": "Comments",
-  "ideaCommentInputHint": "Add a comment…",
-  "ideaCommentSubmit": "Post",
-  "ideaCommentsEmpty": "No comments yet.",
-
   "myStopsEmptyTitle": "No favorite stops yet",
   "myStopsEmptySubtitle": "Search for a stop, street, or line and add it here.",
-
   "searchHint": "Search stops, streets, or lines…",
   "searchNoResults": "Nothing found. Try a different spelling?",
   "searchMoreResults": "More results",
-  "@searchMoreResults": {"description": "Section label between nearby matches and global stop/line results in the unified mobile search"},
+  "@searchMoreResults": {
+    "description": "Section label between nearby matches and global stop/line results in the unified mobile search"
+  },
   "panelCollapse": "Collapse panel",
-  "@panelCollapse": {"description": "Tooltip on the desktop context-panel collapse tab (hides the panel)"},
+  "@panelCollapse": {
+    "description": "Tooltip on the desktop context-panel collapse tab (hides the panel)"
+  },
   "panelExpand": "Expand panel",
-  "@panelExpand": {"description": "Tooltip on the collapse tab once the panel is collapsed (restores it)"},
+  "@panelExpand": {
+    "description": "Tooltip on the collapse tab once the panel is collapsed (restores it)"
+  },
   "locationDenied": "Location access is denied. Allow it in your browser or settings to see where you are.",
   "locationServicesOff": "Location services are off. Turn them on in your device settings.",
   "locationTimeout": "Couldn't get your location in time. Check your connection and try again.",
@@ -41,44 +32,90 @@
   "mapZoomInForVehicles": "Zoom in to see live transport",
   "vehicleScheduled": "By schedule — not a live position",
   "arrivalExpected": "Expected",
-  "@arrivalExpected": {"description": "Row with a valid ETA but no live GPS position yet (placeholder vehicle)"},
+  "@arrivalExpected": {
+    "description": "Row with a valid ETA but no live GPS position yet (placeholder vehicle)"
+  },
   "vehicleLost": "Vehicle no longer tracked",
   "followingVehicle": "Following",
   "@followingVehicle": {
     "description": "Follow-bar label shown while following a vehicle before its route terminals have loaded."
   },
-  "@vehicleLost": {"description": "Shown when a followed vehicle drops out of the live feed"},
+  "@vehicleLost": {
+    "description": "Shown when a followed vehicle drops out of the live feed"
+  },
   "noLiveVehiclesOnMap": "No live-tracked vehicles to map right now — see the arrivals below.",
-
   "nearbySearchHint": "Filter lines nearby…",
   "nearbyDistanceMeters": "{meters} m",
-  "@nearbyDistanceMeters": {"placeholders": {"meters": {"type": "int"}}},
+  "@nearbyDistanceMeters": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
   "nearbyNeedsLocationTitle": "See what's nearby",
   "nearbyNeedsLocationSubtitle": "Turn on location to list the lines you can catch around you.",
   "nearbyEnableLocation": "Use my location",
   "nearbyLoading": "Finding lines around you…",
   "nearbyEmptyTitle": "No stops nearby",
   "nearbyEmptySubtitle": "There are no stops within walking distance of you right now.",
-
   "stopUpdatedJustNow": "Updated just now",
   "stopUpdatedSecondsAgo": "Updated {seconds}s ago",
-  "@stopUpdatedSecondsAgo": {"placeholders": {"seconds": {"type": "int"}}},
+  "@stopUpdatedSecondsAgo": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "stopUpdatedMinutesAgo": "Updated {minutes} min ago",
-  "@stopUpdatedMinutesAgo": {"placeholders": {"minutes": {"type": "int"}}},
-
+  "@stopUpdatedMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "arrivalEtaMinutes": "{minutes} min",
-  "@arrivalEtaMinutes": {"placeholders": {"minutes": {"type": "int"}}},
+  "@arrivalEtaMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "arrivalEtaMinutesUnit": "min",
-  "@arrivalEtaMinutesUnit": {"description": "The 'min' unit under the big ETA number on an arrival card"},
+  "@arrivalEtaMinutesUnit": {
+    "description": "The 'min' unit under the big ETA number on an arrival card"
+  },
   "arrivalEtaNow": "Now",
   "arrivalScheduled": "Scheduled",
   "arrivalStopsAway": "{count, plural, =0{At the stop} =1{1 stop away} other{{count} stops away}}",
-  "@arrivalStopsAway": {"placeholders": {"count": {"type": "int"}}},
+  "@arrivalStopsAway": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "arrivalNextIn": "next in {minutes} min",
-  "@arrivalNextIn": {"description": "Caption on an arrival card: when the same line comes again, in minutes", "placeholders": {"minutes": {"type": "int"}}},
+  "@arrivalNextIn": {
+    "description": "Caption on an arrival card: when the same line comes again, in minutes",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "arrivalNextAt": "next at {time}",
-  "@arrivalNextAt": {"description": "Caption on an arrival card: when the same line comes again, as a 24h clock time", "placeholders": {"time": {"type": "String"}}},
-
+  "@arrivalNextAt": {
+    "description": "Caption on an arrival card: when the same line comes again, as a 24h clock time",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "vehicleMoving": "On the move",
   "vehicleStuck": "Looks stopped",
   "vehicleNextStop": "Next stop",
@@ -87,40 +124,55 @@
   "vehicleEtaApprox": "Arrival times are approximate",
   "vehicleShowRoute": "Show route on map",
   "vehicleEtaMinutesApprox": "≈ {minutes} min",
-  "@vehicleEtaMinutesApprox": {"placeholders": {"minutes": {"type": "int"}}},
-
+  "@vehicleEtaMinutesApprox": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "contextNearbyTitle": "Nearby",
-  "@contextNearbyTitle": {"description": "Title/back-chip label for the nearby view of the adaptive context slot"},
+  "@contextNearbyTitle": {
+    "description": "Title/back-chip label for the nearby view of the adaptive context slot"
+  },
   "aboutVehicle": "About the vehicle",
-  "@aboutVehicle": {"description": "Header of the Fleet-ID card in the followed-vehicle view"},
+  "@aboutVehicle": {
+    "description": "Header of the Fleet-ID card in the followed-vehicle view"
+  },
   "viewModelDetails": "View model details",
-  "@viewModelDetails": {"description": "CTA on the About-the-vehicle card, opens the vehicle model view"},
+  "@viewModelDetails": {
+    "description": "CTA on the About-the-vehicle card, opens the vehicle model view"
+  },
   "backToVehicle": "Back to vehicle",
-  "@backToVehicle": {"description": "Pill shown when following is interrupted (manual pan or the vehicle left the screen); recenters and resumes follow"},
+  "@backToVehicle": {
+    "description": "Pill shown when following is interrupted (manual pan or the vehicle left the screen); recenters and resumes follow"
+  },
   "vehicleOffScreen": "{line} is off-screen",
-  "@vehicleOffScreen": {"description": "Hint next to the Back-to-vehicle pill when the followed vehicle is off-screen", "placeholders": {"line": {"type": "String"}}},
+  "@vehicleOffScreen": {
+    "description": "Hint next to the Back-to-vehicle pill when the followed vehicle is off-screen",
+    "placeholders": {
+      "line": {
+        "type": "String"
+      }
+    }
+  },
   "routeUnavailable": "Route unavailable for this line",
-  "@routeUnavailable": {"description": "Shown in the followed-vehicle view for a line with no route geometry in our data (e.g. a suburban carrier)"},
-
+  "@routeUnavailable": {
+    "description": "Shown in the followed-vehicle view for a line with no route geometry in our data (e.g. a suburban carrier)"
+  },
   "emptyArrivalsTitle": "It's quiet here right now",
   "emptyArrivalsSubtitle": "Something should be along shortly.",
-
   "noNetworkTitle": "Looks like the connection dropped",
   "noNetworkSubtitle": "Check your connection and pull down to try again.",
-
   "loadingArrivals": "Checking what's on the way…",
-
   "serviceKilledTitle": "We're taking a short break",
   "serviceKilledSubtitle": "Back soon.",
-
   "liveUnavailableBanner": "Live data temporarily unavailable — timetable",
   "@liveUnavailableBanner": {
     "description": "Thin banner above the arrivals list when the live board is down but the GTFS timetable still answers."
   },
-
   "unknownStopTitle": "Can't find that stop",
   "unknownStopSubtitle": "It may have been renamed or removed from the schedule.",
-
   "retry": "Try again",
   "addToFavorites": "Add to My Stops",
   "removeFromFavorites": "Remove from My Stops",
@@ -128,43 +180,67 @@
   "pinnedCustomNameHint": "e.g. Home, Work",
   "pinnedUseDefaultName": "Default name",
   "pinLineTooltip": "Pin line",
-
   "settingsTitle": "Settings",
   "settingsLanguage": "Language",
   "settingsTheme": "Theme",
   "settingsThemeSystem": "Match system",
   "settingsThemeLight": "Light",
   "settingsThemeDark": "Dark",
-
   "vehicleModeOnDemand": "On demand",
-  "@vehicleModeOnDemand": {"description": "Map vehicle mode: vehicles shown only for a picked stop/vehicle. The map's quick toggle labels this mode."},
+  "@vehicleModeOnDemand": {
+    "description": "Map vehicle mode: vehicles shown only for a picked stop/vehicle. The map's quick toggle labels this mode."
+  },
   "vehicleModeAll": "All transport",
-  "@vehicleModeAll": {"description": "Map vehicle mode: every vehicle in the viewport (the background \"aquarium\")"},
+  "@vehicleModeAll": {
+    "description": "Map vehicle mode: every vehicle in the viewport (the background \"aquarium\")"
+  },
   "vehicleModeTooltip": "Transport on the map",
-  "@vehicleModeTooltip": {"description": "Tooltip of the map's vehicle-mode toggle button"},
+  "@vehicleModeTooltip": {
+    "description": "Tooltip of the map's vehicle-mode toggle button"
+  },
   "vehicleModeSwitched": "Transport on the map: {mode}",
-  "@vehicleModeSwitched": {"description": "Toast shown right after the map's toggle flips the mode; {mode} is vehicleModeOnDemand or vehicleModeAll", "placeholders": {"mode": {"type": "String"}}},
-
+  "@vehicleModeSwitched": {
+    "description": "Toast shown right after the map's toggle flips the mode; {mode} is vehicleModeOnDemand or vehicleModeAll",
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
   "aboutTitle": "About Stiže",
   "aboutRouteData": "Route data: {date}",
-  "@aboutRouteData": {"placeholders": {"date": {"type": "String"}}},
+  "@aboutRouteData": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "aboutDisclaimer": "Unofficial app. Not affiliated with JKP Upravljanje javnim prevozom Beograd.",
-
   "lineFilterAll": "All lines",
-
   "alertUpcomingLabel": "Upcoming change",
   "alertActiveLabel": "Route change",
   "alertReadMore": "Read more",
   "alertsBannerTitle": "Transport changes",
-
   "vehicleTypeBus": "Bus",
   "vehicleTypeTram": "Tram",
   "vehicleTypeTrolleybus": "Trolleybus",
-
   "fleetAgeYears": "{years} yr",
-  "@fleetAgeYears": {"placeholders": {"years": {"type": "int"}}},
+  "@fleetAgeYears": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
   "fleetVehicleNumber": "#{number}",
-  "@fleetVehicleNumber": {"placeholders": {"number": {"type": "String"}}},
+  "@fleetVehicleNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
   "fleetSortByTime": "By time",
   "fleetSortByComfort": "By comfort",
   "fleetUnknownModel": "Model unknown",
@@ -185,15 +261,51 @@
   "fleetDiesel": "Diesel",
   "fleetAge": "Age",
   "fleetAgeApprox": "~{years} yr (built {from}–{to})",
-  "@fleetAgeApprox": {"placeholders": {"years": {"type": "int"}, "from": {"type": "int"}, "to": {"type": "int"}}},
+  "@fleetAgeApprox": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      },
+      "from": {
+        "type": "int"
+      },
+      "to": {
+        "type": "int"
+      }
+    }
+  },
   "fleetCapacity": "Holds ~{count}",
-  "@fleetCapacity": {"placeholders": {"count": {"type": "int"}}},
+  "@fleetCapacity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fleetLength": "{meters} m long",
-  "@fleetLength": {"placeholders": {"meters": {"type": "String"}}},
+  "@fleetLength": {
+    "placeholders": {
+      "meters": {
+        "type": "String"
+      }
+    }
+  },
   "fleetOperator": "Operator: {name}",
-  "@fleetOperator": {"placeholders": {"name": {"type": "String"}}},
+  "@fleetOperator": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "fleetManufacturer": "Manufacturer: {value}",
-  "@fleetManufacturer": {"placeholders": {"value": {"type": "String"}}},
+  "@fleetManufacturer": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "fleetComfortRetro": "retro",
   "fleetComfortOk": "ok",
   "fleetComfortComfy": "comfort",
@@ -204,13 +316,18 @@
   "coverageLegendLow": "rarer",
   "coverageLegendHigh": "busier",
   "coverageUnavailable": "Coverage map is unavailable right now.",
-
   "drawerDonateBannerTitle": "Support Stiže ♥",
-  "@drawerDonateBannerTitle": {"description": "Drawer support banner headline; tapping the banner opens config:donate_url"},
+  "@drawerDonateBannerTitle": {
+    "description": "Drawer support banner headline; tapping the banner opens config:donate_url"
+  },
   "drawerDonateBannerSubtitle": "Free and ad-free, built solo in Belgrade.",
-  "@drawerDonateBannerSubtitle": {"description": "Drawer support banner secondary line (dimmed)"},
+  "@drawerDonateBannerSubtitle": {
+    "description": "Drawer support banner secondary line (dimmed)"
+  },
   "drawerShareFeedback": "Share feedback",
-  "@drawerShareFeedback": {"description": "Drawer footer list item that opens the feedback actions sheet"},
+  "@drawerShareFeedback": {
+    "description": "Drawer footer list item that opens the feedback actions sheet"
+  },
   "drawerFeedbackSheetTitle": "Feedback",
   "feedbackWriteToMe": "Write to me",
   "feedbackWriteToMeSubtitle": "Send a message — bugs, ideas, anything.",
@@ -242,12 +359,31 @@
   "privacyOpenSourceTitle": "Open source",
   "privacyOpenSourceBody": "Stiže's code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.",
   "jamStopBannerTitle": "Trams {line} have been stopped longer than usual — possible delay",
-  "@jamStopBannerTitle": {"placeholders": {"line": {"type": "String"}}},
+  "@jamStopBannerTitle": {
+    "placeholders": {
+      "line": {
+        "type": "String"
+      }
+    }
+  },
   "jamSubstitutionNotice": "Buses are running instead of trams on line {line}",
-  "@jamSubstitutionNotice": {"placeholders": {"line": {"type": "String"}}},
+  "@jamSubstitutionNotice": {
+    "placeholders": {
+      "line": {
+        "type": "String"
+      }
+    }
+  },
   "jamStalledLabel": "Possibly stopped",
   "jamModeTooltip": "Show stalled segments",
   "jamNearbyDelay": "Possible delay on line {line}",
-  "@jamNearbyDelay": {"placeholders": {"line": {"type": "String"}}},
+  "@jamNearbyDelay": {
+    "placeholders": {
+      "line": {
+        "type": "String"
+      }
+    }
+  },
   "jamAffectedStopsTitle": "Affected stops",
-  "jamFollowAhead": "Possible delay ahead on the route"}
+  "jamFollowAhead": "Possible delay ahead on the route"
+}

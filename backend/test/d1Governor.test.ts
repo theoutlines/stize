@@ -266,11 +266,6 @@ describe("D1-backed routes answer 503, never 500, when D1 is down", () => {
   }
 
   it.each([
-    ["GET", "/api/v1/ideas"],
-    ["POST", "/api/v1/ideas"],
-    ["POST", "/api/v1/ideas/1/vote"],
-    ["GET", "/api/v1/ideas/1/comments"],
-    ["POST", "/api/v1/ideas/1/comments"],
     ["GET", "/api/v1/analytics/lines/79"],
   ])("%s %s → 503 JSON with CORS", async (method, path) => {
     const res = await call(path, { method, body: method === "POST" ? JSON.stringify({ text: "hello there" }) : undefined });

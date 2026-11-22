@@ -229,16 +229,3 @@ export interface LineAnalyticsResponse {
   punctuality: null;
 }
 
-export interface IdeaDto {
-  id: number;
-  text: string;
-  votes: number;
-  created_at: string;
-  has_voted: boolean;
-}
-
-export interface IdeaCommentDto {
-  id: number;
-  text: string;
-  created_at: string;
-}

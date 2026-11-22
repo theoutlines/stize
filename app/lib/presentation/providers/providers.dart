@@ -18,7 +18,6 @@ import '../../data/repositories/arrivals_repository_impl.dart';
 import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/geocode_repository_impl.dart';
 import '../../data/repositories/feedback_repository_impl.dart';
-import '../../data/repositories/ideas_repository_impl.dart';
 import '../../data/repositories/jams_repository_impl.dart';
 import '../../data/repositories/lines_repository_impl.dart';
 import '../../data/repositories/nearby_arrivals_repository_impl.dart';
@@ -30,7 +29,6 @@ import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/feed_meta.dart';
 import '../../domain/models/line_analytics.dart';
-import '../../domain/models/idea.dart';
 import '../../domain/models/jam.dart';
 import '../../domain/models/pinned_line.dart';
 import '../../domain/models/route_alert.dart';
@@ -41,7 +39,6 @@ import '../../domain/repositories/favorites_repository.dart';
 import '../../domain/repositories/pinned_favorites_repository.dart';
 import '../../domain/repositories/geocode_repository.dart';
 import '../../domain/repositories/feedback_repository.dart';
-import '../../domain/repositories/ideas_repository.dart';
 import '../../domain/repositories/jams_repository.dart';
 import '../../domain/repositories/lines_repository.dart';
 import '../../domain/repositories/nearby_arrivals_repository.dart';
@@ -235,10 +232,6 @@ final alertsRepositoryProvider = Provider<AlertsRepository>(
 final alertsProvider = FutureProvider.autoDispose<List<RouteAlert>>((ref) {
   return ref.watch(alertsRepositoryProvider).list();
 });
-
-final ideasRepositoryProvider = Provider<IdeasRepository>(
-  (ref) => IdeasRepositoryImpl(ref.watch(apiClientProvider), ref.watch(deviceIdServiceProvider)),
-);
 
 final feedbackRepositoryProvider = Provider<FeedbackRepository>(
   (ref) =>
@@ -448,31 +441,3 @@ final customNamesControllerProvider =
       CustomNamesController.new,
     );
 
-class IdeasController extends AsyncNotifier<List<Idea>> {
-  @override
-  Future<List<Idea>> build() {
-    return ref.watch(ideasRepositoryProvider).list();
-  }
-
-  Future<void> submit(String text) async {
-    await ref.read(ideasRepositoryProvider).submit(text);
-    ref.invalidateSelf();
-  }
-
-  Future<void> toggleVote(int ideaId) async {
-    final repo = ref.read(ideasRepositoryProvider);
-    final result = await repo.toggleVote(ideaId);
-    final current = state.valueOrNull;
-    if (current == null) return;
-    state = AsyncData([
-      for (final idea in current)
-        if (idea.id == ideaId) idea.copyWith(votes: result.votes, hasVoted: result.hasVoted) else idea,
-    ]);
-  }
-}
-
-final ideasControllerProvider = AsyncNotifierProvider<IdeasController, List<Idea>>(IdeasController.new);
-
-final ideaCommentsProvider = FutureProvider.family.autoDispose<List<IdeaComment>, int>((ref, ideaId) {
-  return ref.watch(ideasRepositoryProvider).listComments(ideaId);
-});

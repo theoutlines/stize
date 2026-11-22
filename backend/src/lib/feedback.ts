@@ -1,7 +1,7 @@
 import type { Env } from "../env";
 // Reuse the shared error vocabulary so the `/api/v1/feedback` handler maps them
-// to the same status codes as the ideas endpoint (400 / 429).
-import { RateLimitedError, ValidationError } from "./ideas";
+// to 400 / 429 (lib/errors.ts).
+import { RateLimitedError, ValidationError } from "./errors";
 
 // A feedback message is a free-form paragraph, so a much larger cap than an
 // idea's 280-char headline — but still bounded so a single POST can't dump

@@ -14,11 +14,10 @@ Widget _wrap() => ProviderScope(
 );
 
 void main() {
-  testWidgets('Ideas is hidden from the drawer (kIdeasNavVisible)', (tester) async {
+  testWidgets('Ideas is gone from the drawer (section removed 2026-11-22)', (tester) async {
     await tester.pumpWidget(_wrap());
     await tester.pumpAndSettle();
 
-    expect(kIdeasNavVisible, isFalse, reason: 'owner decision: Ideas is hidden');
     expect(find.text('Ideas'), findsNothing);
     // The rest of the navigation is untouched.
     expect(find.text('Map'), findsOneWidget);

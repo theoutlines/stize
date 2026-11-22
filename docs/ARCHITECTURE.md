@@ -46,7 +46,7 @@ source into a stable versioned API under `/api/v1`. Key pieces:
   grouped by line + direction and deduped to the closest stop.
 - **Kill switch** (`src/lib/killswitch.ts`, KV flag): when set, `/arrivals`
   returns `service_status: "unavailable"` without touching the upstream.
-- **Ideas** (D1) and **experimental route alerts** (`src/lib/alerts.ts`, scrapes
+- **Feedback** (D1 `stigla-ideas`, the in-app "Write to me" form) and **experimental route alerts** (`src/lib/alerts.ts`, scrapes
   the public transit news site and uses an LLM to extract structured JSON,
   refreshed by a daily Cron trigger).
 - **Feature flags** live in KV and flip without a redeploy — see
@@ -63,7 +63,7 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
   (`data/local/gtfs_offline_cache.dart`) **only on `NetworkException`**.
 - **Wiring**: providers in `presentation/providers/providers.dart`, routes in
   `presentation/router.dart`. The root is a single Scaffold with a left drawer
-  (`widgets/app_drawer.dart`) over an `IndexedStack` of the map and Ideas.
+  (`widgets/app_drawer.dart`) over an `IndexedStack` of the map (and Coverage when its flag is on).
 - **Map stack** (MapLibre + MapTiler vector tiles): `core/map_style.dart`
   (theme-synced style URLs); `core/map_support.dart` (per-type classification,
   the `VehicleMarker` pill, `kMapRenderingEnabled` flag). Moving vehicles on the

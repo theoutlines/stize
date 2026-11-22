@@ -1,27 +1,11 @@
 {
   "@@locale": "sr",
-
   "appTitle": "Stiže",
-
   "navHome": "Mapa",
   "navMyStops": "Moja stajališta",
-  "navIdeas": "Ideje",
   "navAbout": "O aplikaciji",
-
-  "ideasEmptyTitle": "Još nema ideja",
-  "ideasEmptySubtitle": "Budi prvi koji će nešto predložiti.",
-  "ideaInputHint": "Šta bi Stiže trebalo da radi bolje?",
-  "ideaSubmit": "Predloži",
-  "ideaRateLimited": "Jedna ideja odjednom — probaj ponovo za nekoliko minuta.",
-  "ideaVotesCount": "{count, plural, =0{Još nema glasova} one{{count} glas} few{{count} glasa} other{{count} glasova}}",
-  "ideaCommentsTitle": "Komentari",
-  "ideaCommentInputHint": "Dodaj komentar…",
-  "ideaCommentSubmit": "Pošalji",
-  "ideaCommentsEmpty": "Još nema komentara.",
-
   "myStopsEmptyTitle": "Još nemaš omiljena stajališta",
   "myStopsEmptySubtitle": "Pronađi stajalište, ulicu ili liniju i dodaj je ovde.",
-
   "searchHint": "Stajalište, ulica ili linija…",
   "searchMoreResults": "Više rezultata",
   "panelCollapse": "Skupi panel",
@@ -39,21 +23,24 @@
   "vehicleLost": "Vozilo se više ne prati",
   "followingVehicle": "Praćenje",
   "noLiveVehiclesOnMap": "Trenutno nema vozila uživo na mapi — pogledaj dolaske ispod.",
-
   "nearbySearchHint": "Filtriraj linije u blizini…",
   "nearbyDistanceMeters": "{meters} m",
-  "@nearbyDistanceMeters": {"placeholders": {"meters": {"type": "int"}}},
+  "@nearbyDistanceMeters": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
   "nearbyNeedsLocationTitle": "Šta ide u blizini",
   "nearbyNeedsLocationSubtitle": "Uključi lokaciju da vidiš linije koje možeš uhvatiti u blizini.",
   "nearbyEnableLocation": "Moja lokacija",
   "nearbyLoading": "Tražimo linije oko tebe…",
   "nearbyEmptyTitle": "Nema stajališta u blizini",
   "nearbyEmptySubtitle": "Trenutno nema stajališta na pešačkoj udaljenosti od tebe.",
-
   "stopUpdatedJustNow": "Ažurirano upravo sada",
   "stopUpdatedSecondsAgo": "Ažurirano pre {seconds} sek",
   "stopUpdatedMinutesAgo": "Ažurirano pre {minutes} min",
-
   "arrivalEtaMinutes": "{minutes} min",
   "arrivalEtaMinutesUnit": "min",
   "arrivalEtaNow": "Sada",
@@ -61,7 +48,6 @@
   "arrivalStopsAway": "{count, plural, =0{Na stajalištu} one{{count} stanica} few{{count} stanice} other{{count} stanica}}",
   "arrivalNextIn": "sledeći za {minutes} min",
   "arrivalNextAt": "sledeći u {time}",
-
   "vehicleMoving": "U pokretu",
   "vehicleStuck": "Izgleda da stoji",
   "vehicleNextStop": "Sledeća stanica",
@@ -70,30 +56,22 @@
   "vehicleEtaApprox": "Vremena dolaska su okvirna",
   "vehicleShowRoute": "Prikaži rutu na mapi",
   "vehicleEtaMinutesApprox": "≈ {minutes} min",
-
   "contextNearbyTitle": "U blizini",
   "aboutVehicle": "O ovom vozilu",
   "viewModelDetails": "Detalji o modelu",
   "backToVehicle": "Nazad na vozilo",
   "vehicleOffScreen": "{line} je van ekrana",
   "routeUnavailable": "Ruta nije dostupna za ovu liniju",
-
   "emptyArrivalsTitle": "Trenutno je tiho na ovom stajalištu",
   "emptyArrivalsSubtitle": "Prevoz bi trebalo uskoro da stigne.",
-
   "noNetworkTitle": "Izgleda da je internet nestao",
   "noNetworkSubtitle": "Proveri vezu i povuci na dole da pokušaš ponovo.",
-
   "loadingArrivals": "Gledamo šta dolazi…",
-
   "serviceKilledTitle": "Pravimo kratku pauzu",
   "serviceKilledSubtitle": "Vraćamo se uskoro.",
-
   "liveUnavailableBanner": "Podaci uživo trenutno nisu dostupni — red vožnje",
-
   "unknownStopTitle": "Ne mogu da pronađem to stajalište",
   "unknownStopSubtitle": "Možda je preimenovano ili uklonjeno iz reda vožnje.",
-
   "retry": "Pokušaj ponovo",
   "addToFavorites": "Dodaj u Moja stajališta",
   "removeFromFavorites": "Ukloni iz Mojih stajališta",
@@ -101,38 +79,43 @@
   "pinnedCustomNameHint": "npr. Kuća, Posao",
   "pinnedUseDefaultName": "Podrazumevano ime",
   "pinLineTooltip": "Zakači liniju",
-
   "settingsTitle": "Podešavanja",
   "settingsLanguage": "Jezik",
   "settingsTheme": "Tema",
   "settingsThemeSystem": "Prati sistem",
   "settingsThemeLight": "Svetla",
   "settingsThemeDark": "Tamna",
-
   "vehicleModeOnDemand": "Na zahtev",
   "vehicleModeAll": "Sav prevoz",
   "vehicleModeTooltip": "Prevoz na mapi",
   "vehicleModeSwitched": "Prevoz na mapi: {mode}",
-
   "aboutTitle": "O aplikaciji Stiže",
   "aboutRouteData": "Podaci o linijama: {date}",
   "aboutDisclaimer": "Nezvanična aplikacija. Nije povezana sa JKP Upravljanje javnim prevozom Beograd.",
-
   "lineFilterAll": "Sve linije",
-
   "alertUpcomingLabel": "Uskoro promena",
   "alertActiveLabel": "Promena linije",
   "alertReadMore": "Više detalja",
   "alertsBannerTitle": "Izmene u prevozu",
-
   "vehicleTypeBus": "Autobus",
   "vehicleTypeTram": "Tramvaj",
   "vehicleTypeTrolleybus": "Trolejbus",
-
   "fleetAgeYears": "{years} god.",
-  "@fleetAgeYears": {"placeholders": {"years": {"type": "int"}}},
+  "@fleetAgeYears": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
   "fleetVehicleNumber": "#{number}",
-  "@fleetVehicleNumber": {"placeholders": {"number": {"type": "String"}}},
+  "@fleetVehicleNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
   "fleetSortByTime": "Po vremenu",
   "fleetSortByComfort": "Po komforu",
   "fleetUnknownModel": "Model nepoznat",
@@ -153,15 +136,51 @@
   "fleetDiesel": "Dizel",
   "fleetAge": "Starost",
   "fleetAgeApprox": "~{years} god. (proizvedeno {from}–{to})",
-  "@fleetAgeApprox": {"placeholders": {"years": {"type": "int"}, "from": {"type": "int"}, "to": {"type": "int"}}},
+  "@fleetAgeApprox": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      },
+      "from": {
+        "type": "int"
+      },
+      "to": {
+        "type": "int"
+      }
+    }
+  },
   "fleetCapacity": "Prima ~{count}",
-  "@fleetCapacity": {"placeholders": {"count": {"type": "int"}}},
+  "@fleetCapacity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fleetLength": "Dužina {meters} m",
-  "@fleetLength": {"placeholders": {"meters": {"type": "String"}}},
+  "@fleetLength": {
+    "placeholders": {
+      "meters": {
+        "type": "String"
+      }
+    }
+  },
   "fleetOperator": "Prevoznik: {name}",
-  "@fleetOperator": {"placeholders": {"name": {"type": "String"}}},
+  "@fleetOperator": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "fleetManufacturer": "Proizvođač: {value}",
-  "@fleetManufacturer": {"placeholders": {"value": {"type": "String"}}},
+  "@fleetManufacturer": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "fleetComfortRetro": "retro",
   "fleetComfortOk": "ok",
   "fleetComfortComfy": "komfor",
@@ -172,7 +191,6 @@
   "coverageLegendLow": "ređe",
   "coverageLegendHigh": "češće",
   "coverageUnavailable": "Mapa pokrivenosti trenutno nije dostupna.",
-
   "drawerDonateBannerTitle": "Podrži Stiže ♥",
   "drawerDonateBannerSubtitle": "Besplatno i bez reklama, pravim sam u Beogradu.",
   "drawerShareFeedback": "Pošaljite utisak",
@@ -212,4 +230,5 @@
   "jamModeTooltip": "Prikaži zastoje",
   "jamNearbyDelay": "Moguće kašnjenje na liniji {line}",
   "jamAffectedStopsTitle": "Pogođene stanice",
-  "jamFollowAhead": "Moguće kašnjenje ispred na trasi"}
+  "jamFollowAhead": "Moguće kašnjenje ispred na trasi"
+}
