@@ -229,32 +229,32 @@
    {
     "name": "transit-bus",
     "value": {
-     "dark": "#1B67C4",
-     "light": "#1B67C4"
+     "dark": "#2278E6",
+     "light": "#2278E6"
     },
-    "usage": "Data layer, not UI accent. Bus: line badge, stop pin, vehicle coin, route line. From map_support.dart. Label on it: on-transit (white, 5.6:1)."
+    "usage": "Data layer, not UI accent. Bus: line badge, stop pin, vehicle coin, route line. Aligned 2026-11-23 with tram and trolleybus (same chroma, closer lightness; real Belgrade colours kept). Label on it: on-transit (white, 4.3:1)."
    },
    {
     "name": "transit-trolleybus",
     "value": {
-     "dark": "#E8701A",
-     "light": "#E8701A"
+     "dark": "#EA7000",
+     "light": "#EA7000"
     },
-    "usage": "Data layer. Trolleybus. Darkened from #EF7B22 (2026-11-22) so the white line number reaches 3.1:1; darker would merge with tram red. Change map_support.dart to match."
+    "usage": "Data layer. Trolleybus. Aligned 2026-11-23: clean orange without the yellow cast; the white line number is 3.1:1 (large text). Change map_support.dart and moving_object_layer.dart to match."
    },
    {
     "name": "transit-tram",
     "value": {
-     "dark": "#D3342B",
-     "light": "#D3342B"
+     "dark": "#E4312F",
+     "light": "#E4312F"
     },
-    "usage": "Data layer. Tram (Belgrade livery red). Label on it: on-transit (white, 4.9:1)."
+    "usage": "Data layer. Tram (Belgrade livery red), aligned 2026-11-23 (no brick cast). Label on it: on-transit (white, 4.4:1)."
    },
    {
     "name": "transit-tram-rail",
     "value": {
-     "dark": "rgba(211,52,43,0.6)",
-     "light": "rgba(211,52,43,0.6)"
+     "dark": "rgba(228,49,47,0.6)",
+     "light": "rgba(228,49,47,0.6)"
     },
     "usage": "Tram rails on the map."
    },

@@ -161,9 +161,9 @@ class MovingObjectImages {
 // mirror map_support.dart's vehicle colours so a symbol and its line's stops
 // read as the same type; the reserved kinds get distinct hues for later.
 
-const String _busHex = '#1B67C4'; // transit blue
-const String _trolleyHex = '#E8701A'; // orange (design-system transit-trolleybus)
-const String _tramHex = '#D3342B'; // tram red
+const String _busHex = '#2278E6'; // transit blue
+const String _trolleyHex = '#EA7000'; // orange (design-system transit-trolleybus)
+const String _tramHex = '#E4312F'; // tram red
 const String _metroHex = '#7A3FB0'; // reserved: metro purple
 const String _trainHex = '#2E7D32'; // reserved: train green
 const String _microHex = '#0E9AA7'; // reserved: scooter/bike teal

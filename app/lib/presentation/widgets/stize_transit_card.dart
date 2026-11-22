@@ -63,8 +63,14 @@ class StizeTransitCard extends StatelessWidget {
         VehicleType.trolleybus => c.transitTrolleybus,
       };
 
-  static TextStyle captionStyle(StizeColors c) =>
-      StizeType.caption.copyWith(color: c.onTransit.withValues(alpha: 0.8));
+  /// Text/icon colour on the card: white on a live colour fill, the theme ink on
+  /// a scheduled card (neutral surface, only the line number carries colour).
+  static Color onFor(StizeColors c, bool scheduled) =>
+      scheduled ? c.ink : c.onTransit;
+
+  static TextStyle captionStyle(StizeColors c, {bool scheduled = false}) =>
+      StizeType.caption
+          .copyWith(color: onFor(c, scheduled).withValues(alpha: 0.8));
 
   /// The small white dot marking a genuinely live vehicle in the caption.
   static Widget liveDot(StizeColors c) => Container(
@@ -76,7 +82,7 @@ class StizeTransitCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = StizeColors.of(context);
-    final on = c.onTransit;
+    final on = onFor(c, scheduled);
     final pad = emphasis
         ? const EdgeInsets.all(StizeSpace.space4)
         : const EdgeInsets.symmetric(
@@ -86,7 +92,9 @@ class StizeTransitCard extends StatelessWidget {
     final dest = destination?.trim();
 
     final card = Material(
-      color: fillFor(c, type),
+      // A timetable time is a neutral card with a coloured line badge: a dimmed
+      // colour fill read as muddy navy / brown next to the live cards.
+      color: scheduled ? c.fill08 : fillFor(c, type),
       borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -101,7 +109,19 @@ class StizeTransitCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(line, style: lineStyle),
+                    if (scheduled)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: StizeSpace.space2, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: fillFor(c, type),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(line,
+                            style: lineStyle.copyWith(color: c.onTransit)),
+                      )
+                    else
+                      Text(line, style: lineStyle),
                     if (dest != null && dest.isNotEmpty) ...[
                       const SizedBox(height: StizeSpace.space1),
                       Row(
@@ -133,7 +153,9 @@ class StizeTransitCard extends StatelessWidget {
         ),
       ),
     );
-    return live ? card : Opacity(opacity: heldBackOpacity, child: card);
+    return live || scheduled
+        ? card
+        : Opacity(opacity: heldBackOpacity, child: card);
   }
 
   /// One caption line, never wrapped: on a narrow card the texts shorten with an
@@ -164,7 +186,7 @@ class StizeTransitCard extends StatelessWidget {
   /// vehicle, a clock time for a far-off one; a quieter clock for a timetable
   /// time.
   Widget _etaBlock(BuildContext context, StizeColors c) {
-    final on = c.onTransit;
+    final on = onFor(c, scheduled);
     final l10n = AppLocalizations.of(context);
     final localeName = Localizations.localeOf(context).toString();
     final m = etaMinutes;
@@ -197,7 +219,7 @@ class StizeTransitCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         value,
-        if (unit != null) Text(unit, style: captionStyle(c)),
+        if (unit != null) Text(unit, style: captionStyle(c, scheduled: scheduled)),
         ?etaFooter,
       ],
     );

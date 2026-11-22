@@ -27,13 +27,13 @@ class ScheduledGroupTile extends StatelessWidget {
     return _card(context, StizeColors.of(context));
   }
 
-  /// Stiže: a scheduled line as a filled transit-colour card, quieter than a
-  /// live one — a clock time on the right, "Scheduled" in the caption, no live
+  /// Stiže: a scheduled line as a neutral card with a transit-colour line
+  /// badge, quieter than a live one — a clock time on the right, "Scheduled" in the caption, no live
   /// dot and no "min" unit.
   Widget _card(BuildContext context, StizeColors c) {
     final l10n = AppLocalizations.of(context);
     final localeName = Localizations.localeOf(context).toString();
-    final caption = StizeTransitCard.captionStyle(c);
+    final caption = StizeTransitCard.captionStyle(c, scheduled: true);
     final followUps = cell.etaMinutes.skip(1).toList();
     return StizeTransitCard(
       type: cell.vehicleType,
@@ -43,7 +43,7 @@ class ScheduledGroupTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.schedule,
-                size: 14, color: c.onTransit.withValues(alpha: 0.8)),
+                size: 14, color: caption.color),
             const SizedBox(width: StizeSpace.space1),
             Text(l10n.arrivalScheduled, style: caption),
           ],
