@@ -99,7 +99,7 @@ const tram = (garage: string, lat: number): ArrivalDto =>
   }) as ArrivalDto;
 
 beforeEach(async () => {
-  for (const t of ["raw_observations", "stop_last_observed", "vehicle_fixes", "upstream_meter", "agg_state"]) {
+  for (const t of ["raw_observations", "arrival_events", "stop_last_observed", "vehicle_fixes", "upstream_meter", "agg_state"]) {
     await env.STIGLA_ANALYTICS_DB.prepare(`DELETE FROM ${t}`).run();
   }
 });
@@ -112,16 +112,30 @@ describe("D1 write cost per upstream fetch (rows_written)", () => {
     expect(results.map((r) => r.name)).toEqual(["idx_raw_time"]);
   });
 
-  it("logObservations: 2 rows per arrival + 1 per statement + 1 stop lookup (was 5/arrival + 1)", async () => {
+  it("logObservations v3: 1 row per arrival event, 0 for the rest of the board and for a re-sighting (was ~40 per board)", async () => {
     await setFlag(env, "analytics_collect", true);
+    await setFlag(env, "analytics_sweep", false);
     try {
       const m = meteredEnv();
-      await logObservations(m.env, ctx(), "S1", arrivals(12)); // one 12-row chunk
-      // 12 × (row + idx_raw_time) + 1 sqlite_sequence + 1 stop_last_observed upsert
-      expect(m.tally.written).toBe(12 * 2 + 1 + 1);
+      // A 12-vehicle board where exactly one vehicle is at the stop (index 0).
+      await logObservations(m.env, ctx(), "S1", arrivals(12));
+      expect(m.tally.written).toBe(1);
+      // The next refresh sees the same vehicle still at the stop: ignored, 0 rows.
+      await logObservations(m.env, ctx(), "S1", arrivals(12));
+      expect(m.tally.written).toBe(1);
+      // A board with nobody at the stop writes nothing.
+      await logObservations(m.env, ctx(), "S2", arrivals(12).slice(1));
+      expect(m.tally.written).toBe(1);
     } finally {
       await setFlag(env, "analytics_collect", false);
     }
+  });
+
+  it("arrival_events has no secondary index", async () => {
+    const { results } = await env.STIGLA_ANALYTICS_DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='arrival_events' AND sql IS NOT NULL",
+    ).all<{ name: string }>();
+    expect(results).toEqual([]);
   });
 
   it("upstream meter: exactly 1 row per fetch (was 3)", async () => {
@@ -155,14 +169,14 @@ describe("D1 write cost per upstream fetch (rows_written)", () => {
 });
 
 describe("read paths use an index (EXPLAIN QUERY PLAN)", () => {
-  it("no read on a growing table (raw_observations, stop_last_observed, vehicle_fixes) is a full scan", async () => {
+  it("no read on a growing table (arrival_events, stop_last_observed, vehicle_fixes) is a full scan", async () => {
     const m = meteredEnv();
     const now = Math.floor(Date.UTC(2026, 9, 5, 12, 0, 0) / 1000);
     await env.STIGLA_ANALYTICS_DB.prepare(
-      `INSERT INTO raw_observations (line, stop_id, garage_no, vehicle_id, eta_minutes, stops_remaining, observed_at)
-       VALUES ('79','S1','P90001','P90001',1,0,?)`,
+      `INSERT INTO arrival_events (slot, stop_id, garage_no, vehicle_id, line, direction_route_id, observed_at)
+       VALUES (?,'S1','P90001','P90001','79','',?)`,
     )
-      .bind(now - 600)
+      .bind(Math.floor((now - 600) / 300), now - 600)
       .run();
     await env.STIGLA_ANALYTICS_DB.prepare(
       "INSERT OR REPLACE INTO agg_state (key, value) VALUES ('last_run', ?)",
@@ -187,7 +201,7 @@ describe("read paths use an index (EXPLAIN QUERY PLAN)", () => {
     await rollingCounts(m.env, 3600, now);
     await degradationMetrics(m.env, 300, now);
 
-    const tables = ["raw_observations", "stop_last_observed", "upstream_meter", "vehicle_fixes"];
+    const tables = ["arrival_events", "stop_last_observed", "upstream_meter", "vehicle_fixes"];
     // Keep the bound form of each read (the unbound prepare() entry has no args).
     const bySql = new Map<string, unknown[]>();
     for (const c of m.tally.calls) {

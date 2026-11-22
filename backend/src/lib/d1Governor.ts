@@ -56,6 +56,11 @@ const KV_DAILY_LIMIT = "config:d1_daily_rows_written_limit";
 const KV_READ_THRESHOLD_PCT = "config:d1_governor_read_threshold_pct";
 const KV_DAILY_READ_LIMIT = "config:d1_daily_rows_read_limit";
 const KV_INTERVAL_MIN = "config:d1_governor_interval_min";
+// Transport analytics' share of the daily write limit (docs/TRANSPORT_ANALYTICS.md,
+// owner 2026-11-22: 40%). Past it, only `analytics_collect` stands down, well
+// before the general threshold stops every governed writer.
+const KV_ANALYTICS_PCT = "config:d1_analytics_share_pct";
+export const DEFAULT_ANALYTICS_SHARE_PCT = 40;
 
 export const DEFAULT_THRESHOLD_PCT = 70;
 export const DEFAULT_DAILY_LIMIT = 100_000;
@@ -73,6 +78,7 @@ export interface GovernorConfig {
   readThresholdPct: number;
   dailyReadLimit: number;
   intervalMin: number;
+  analyticsSharePct: number;
 }
 
 export type GovernorMetric = "writes" | "reads";
@@ -92,6 +98,8 @@ export interface GovernorState {
   // neither field and means a writes trip.
   writes_tripped?: boolean;
   reads_tripped?: boolean;
+  // `analytics_collect` alone was stood down at its own share (no general trip).
+  analytics_capped?: boolean;
 }
 
 export interface GovernorResult {
@@ -111,12 +119,13 @@ function parsePositive(raw: string | null, fallback: number, max = Number.MAX_SA
 }
 
 export async function resolveGovernorConfig(env: Env): Promise<GovernorConfig> {
-  const [pct, limit, rpct, rlimit, interval] = await Promise.all([
+  const [pct, limit, rpct, rlimit, interval, apct] = await Promise.all([
     env.STIGLA_KV.get(KV_THRESHOLD_PCT),
     env.STIGLA_KV.get(KV_DAILY_LIMIT),
     env.STIGLA_KV.get(KV_READ_THRESHOLD_PCT),
     env.STIGLA_KV.get(KV_DAILY_READ_LIMIT),
     env.STIGLA_KV.get(KV_INTERVAL_MIN),
+    env.STIGLA_KV.get(KV_ANALYTICS_PCT),
   ]);
   return {
     thresholdPct: parsePositive(pct, DEFAULT_THRESHOLD_PCT, 100),
@@ -124,6 +133,7 @@ export async function resolveGovernorConfig(env: Env): Promise<GovernorConfig> {
     readThresholdPct: parsePositive(rpct, DEFAULT_READ_THRESHOLD_PCT, 100),
     dailyReadLimit: parsePositive(rlimit, DEFAULT_DAILY_READ_LIMIT),
     intervalMin: Math.round(parsePositive(interval, DEFAULT_INTERVAL_MIN, 1440)),
+    analyticsSharePct: parsePositive(apct, DEFAULT_ANALYTICS_SHARE_PCT, 100),
   };
 }
 
@@ -289,6 +299,40 @@ async function checkThreshold(
     `rows_written ${usage.rowsWritten}/${writeThreshold} (${cfg.thresholdPct}% of ${cfg.dailyLimit}), ` +
     `rows_read ${usage.rowsRead}/${readThreshold} (${cfg.readThresholdPct}% of ${cfg.dailyReadLimit})`;
   if (tripped.length === 0) {
+    const analyticsCap = (cfg.dailyLimit * cfg.analyticsSharePct) / 100;
+    if (
+      // Once per day, and never after a general trip: a human re-enable the
+      // same day is not overridden.
+      !todays?.analytics_capped &&
+      !todays?.writes_tripped &&
+      usage.rowsWritten >= analyticsCap &&
+      (await getFlag(env, "analytics_collect"))
+    ) {
+      await setFlag(env, "analytics_collect", false);
+      const next: GovernorState = {
+        day: today,
+        disabled: [...new Set([...(todays?.disabled ?? []), "analytics_collect" as FeatureFlag])],
+        tripped_at: todays?.tripped_at ?? now.toISOString(),
+        rows_written: usage.rowsWritten,
+        rows_read: usage.rowsRead,
+        writes_tripped: !!todays?.writes_tripped,
+        reads_tripped: !!todays?.reads_tripped,
+        analytics_capped: true,
+      };
+      await env.STIGLA_KV.put(KV_STATE, JSON.stringify(next));
+      console.warn(
+        `D1_BUDGET_GOVERNOR: analytics share reached (${cfg.analyticsSharePct}% of ${cfg.dailyLimit}, ` +
+          `rows_written ${usage.rowsWritten}); analytics_collect OFF until 00:00 UTC`,
+      );
+      return {
+        action: "tripped",
+        detail: reading,
+        rowsWritten: usage.rowsWritten,
+        rowsRead: usage.rowsRead,
+        disabled: ["analytics_collect"],
+        tripped: [],
+      };
+    }
     return { action: todays ? "skipped" : "ok", detail: reading, rowsWritten: usage.rowsWritten, rowsRead: usage.rowsRead };
   }
 
@@ -310,6 +354,7 @@ async function checkThreshold(
     rows_read: usage.rowsRead,
     writes_tripped: !!todays?.writes_tripped || tripped.includes("writes"),
     reads_tripped: !!todays?.reads_tripped || tripped.includes("reads"),
+    analytics_capped: !!todays?.analytics_capped,
   };
   await env.STIGLA_KV.put(KV_STATE, JSON.stringify(next));
   console.error(
