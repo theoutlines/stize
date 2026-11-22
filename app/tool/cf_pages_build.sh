@@ -7,8 +7,13 @@
 #
 # - `main` is production: same bundle as the old manual release
 #   (default API https://api.stize.app, no ENVIRONMENT define).
-# - Every other branch is a preview pointed at the staging API, with the
-#   STAGING badge on, so in-development flags (ON on staging) are exercised.
+# - Every other branch is a staging preview (STAGING badge, in-development flags
+#   ON). It talks to *its own* backend version: Workers Builds uploads each
+#   branch push of stigla-backend-staging as a version with a branch preview
+#   alias, https://<branch-slug>-stigla-backend-staging.theoutlines.workers.dev,
+#   so web + API of one branch form an isolated pair (docs/staging.md). If that
+#   alias doesn't answer in time, the build falls back to the shared staging API
+#   https://api-staging.stize.app and says so in the log.
 # - The MapTiler client key comes from the Pages project variable MAPTILER_KEY
 #   (never from the repo); dart_defines.json is written only for the build and
 #   removed afterwards.
@@ -35,12 +40,30 @@ flutter --version
 
 BRANCH="${CF_PAGES_BRANCH:-}"
 EXTRA_DEFINES=()
+API_URL="https://api.stize.app"
 if [ "${BRANCH}" != "main" ]; then
+  # Same slug rule as the worker preview alias: lowercase, non-alnum -> '-'.
+  SLUG="$(printf '%s' "${BRANCH}" | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+  ALIAS_URL="https://${SLUG}-stigla-backend-staging.theoutlines.workers.dev"
+  API_URL="https://api-staging.stize.app"
+  # The backend build for this push usually finishes first; wait up to ~4 min.
+  for _ in $(seq 1 24); do
+    if curl -fsS --max-time 10 "${ALIAS_URL}/api/v1/config" 2>/dev/null \
+        | grep -q '"staging"'; then
+      API_URL="${ALIAS_URL}"
+      break
+    fi
+    sleep 10
+  done
+  [ "${API_URL}" = "${ALIAS_URL}" ] \
+    || echo "WARN: branch backend ${ALIAS_URL} not reachable; using shared staging API"
   EXTRA_DEFINES+=(
-    "--dart-define=API_BASE_URL=https://api-staging.stize.app"
+    "--dart-define=API_BASE_URL=${API_URL}"
     "--dart-define=ENVIRONMENT=staging"
   )
 fi
+echo "API for this build: ${API_URL}"
 echo "Building branch '${BRANCH:-unknown}' ($([ "${BRANCH}" = "main" ] && echo production || echo staging preview))"
 
 cd "${ROOT}/app"
@@ -55,6 +78,6 @@ if [ "${BRANCH}" = "main" ]; then
   grep -q "api.stize.app" build/web/main.dart.js
   ! grep -q "api-staging.stize.app" build/web/main.dart.js
 else
-  grep -q "api-staging.stize.app" build/web/main.dart.js
+  grep -qF "${API_URL#https://}" build/web/main.dart.js
 fi
 echo "OK: build/web ready"
