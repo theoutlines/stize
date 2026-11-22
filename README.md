@@ -26,7 +26,7 @@ vehicles themselves, and how reliable the picture is.
 - **Coverage heatmap** of route density on the main map when zoomed out.
 - **Search** by stop name, street/place, or line number.
 - **In-app feedback board** — no accounts required.
-- Localized **EN / RU / SR**.
+- Localized **EN / SR** (Serbian Latin).
 
 ## Stack
 

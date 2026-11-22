@@ -13,7 +13,7 @@ class AppSettings {
   });
 
   final ThemeMode themeMode;
-  final String? localeCode; // 'en' | 'ru' | 'sr' | null (system)
+  final String? localeCode; // 'en' | 'sr' | null (system)
   // null = never chosen → the mode falls back to the flag-driven default
   // (see resolveVehicleMapMode).
   final VehicleMapMode? vehicleMapMode;
@@ -41,6 +41,7 @@ class AppSettings {
 class SettingsStore {
   static const _themeKey = 'settings_theme_mode';
   static const _localeKey = 'settings_locale_code';
+  static const _supportedLocaleCodes = {'en', 'sr'};
   static const _vehicleMapModeKey = 'settings_vehicle_map_mode';
   // Removed setting (F9): the poll interval is now a fixed 30s constant. Kept
   // only to clean any previously-stored value out on load.
@@ -58,9 +59,17 @@ class SettingsStore {
       orElse: () => ThemeMode.system,
     );
     final modeString = prefs.getString(_vehicleMapModeKey);
+    // A stored language the app no longer ships (Russian, removed 2026-11-22)
+    // falls back to "follow the system" and is cleared, so the picker shows a
+    // valid selection.
+    var localeCode = prefs.getString(_localeKey);
+    if (localeCode != null && !_supportedLocaleCodes.contains(localeCode)) {
+      await prefs.remove(_localeKey);
+      localeCode = null;
+    }
     return AppSettings(
       themeMode: theme,
-      localeCode: prefs.getString(_localeKey),
+      localeCode: localeCode,
       // An unknown/absent value reads as "never chosen", not as a mode.
       vehicleMapMode: VehicleMapMode.values
           .where((m) => m.name == modeString)

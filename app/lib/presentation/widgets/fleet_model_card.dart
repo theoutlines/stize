@@ -118,7 +118,7 @@ class FleetModelView extends StatelessWidget {
       BuildContext context, ThemeData theme, AppLocalizations l10n, String lang) {
     final model = fleet.modelName ?? l10n.fleetUnknownModel;
     // Model name is the headline; the local nickname sits small beneath it, and
-    // only for locales that understand it (ru/sr) — see [nicknameFor].
+    // in the reader's script (Latin for sr, ASCII otherwise) — see [nicknameFor].
     final nickname = fleet.nicknameFor(lang);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,15 +388,15 @@ class FleetModelView extends StatelessWidget {
 /// small in-code table rather than 30+ arb keys; the UI label around it is
 /// localized via l10n.
 const Map<String, Map<String, String>> _countryNames = {
-  'BG': {'en': 'Bulgaria', 'ru': 'Болгария', 'sr': 'Bugarska'},
-  'BY': {'en': 'Belarus', 'ru': 'Беларусь', 'sr': 'Belorusija'},
-  'CH': {'en': 'Switzerland', 'ru': 'Швейцария', 'sr': 'Švajcarska'},
-  'CN': {'en': 'China', 'ru': 'Китай', 'sr': 'Kina'},
-  'CS': {'en': 'Czechoslovakia', 'ru': 'Чехословакия', 'sr': 'Čehoslovačka'},
-  'DE': {'en': 'Germany', 'ru': 'Германия', 'sr': 'Nemačka'},
-  'ES': {'en': 'Spain', 'ru': 'Испания', 'sr': 'Španija'},
-  'PL': {'en': 'Poland', 'ru': 'Польша', 'sr': 'Poljska'},
-  'RS': {'en': 'Serbia', 'ru': 'Сербия', 'sr': 'Srbija'},
-  'TR': {'en': 'Turkey', 'ru': 'Турция', 'sr': 'Turska'},
-  'YU': {'en': 'Yugoslavia', 'ru': 'Югославия', 'sr': 'Jugoslavija'},
+  'BG': {'en': 'Bulgaria', 'sr': 'Bugarska'},
+  'BY': {'en': 'Belarus', 'sr': 'Belorusija'},
+  'CH': {'en': 'Switzerland', 'sr': 'Švajcarska'},
+  'CN': {'en': 'China', 'sr': 'Kina'},
+  'CS': {'en': 'Czechoslovakia', 'sr': 'Čehoslovačka'},
+  'DE': {'en': 'Germany', 'sr': 'Nemačka'},
+  'ES': {'en': 'Spain', 'sr': 'Španija'},
+  'PL': {'en': 'Poland', 'sr': 'Poljska'},
+  'RS': {'en': 'Serbia', 'sr': 'Srbija'},
+  'TR': {'en': 'Turkey', 'sr': 'Turska'},
+  'YU': {'en': 'Yugoslavia', 'sr': 'Jugoslavija'},
 };

@@ -85,6 +85,25 @@ flutter:
     - assets/icons/
     - assets/data/
     - assets/images/
+    - assets/fonts/UncutSans-OFL.txt
+    - assets/fonts/GeistMono-OFL.txt
+
+  # Stiže design system fonts (SIL OFL 1.1, licences registered in main.dart).
+  # Uncut Sans: Latin incl. Serbian Latin, no Cyrillic. Weights 400/500 everywhere,
+  # 600 only for line numbers in vertical lists. Geist Mono: chart axis ticks only.
+  fonts:
+    - family: UncutSans
+      fonts:
+        - asset: assets/fonts/UncutSans-Regular.otf
+          weight: 400
+        - asset: assets/fonts/UncutSans-Medium.otf
+          weight: 500
+        - asset: assets/fonts/UncutSans-Semibold.otf
+          weight: 600
+    - family: GeistMono
+      fonts:
+        - asset: assets/fonts/GeistMono-Regular.ttf
+          weight: 400
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

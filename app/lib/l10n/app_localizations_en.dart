@@ -186,7 +186,7 @@ class AppLocalizationsEn extends AppLocalizations {
       locale: localeName,
       other: '$count stops away',
       one: '1 stop away',
-      zero: 'here',
+      zero: 'At the stop',
     );
     return '$_temp0';
   }

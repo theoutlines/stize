@@ -131,7 +131,8 @@ class FleetVehicle {
   final String? country;
 
   /// Local colloquial name in Serbian Cyrillic ("Ката", "Шпанац", "трола") —
-  /// classes only. Shown for the `ru` locale and as the ultimate fallback.
+  /// classes only. Kept in the data, no longer shown in the UI (the app ships EN
+  /// and SR Latin only; the UI font has no Cyrillic).
   final String? nicknameSr;
 
   /// Serbian-Latin form of [nicknameSr], with diacritics ("Španac", "Turčin")
@@ -149,27 +150,23 @@ class FleetVehicle {
   /// Empty when there's no note. Read via [humanNoteFor].
   final Map<String, String> noteI18n;
 
-  /// The card note for the given UI language code, falling back to Russian
-  /// (the always-present source), then any available translation.
+  /// The card note for the given UI language code, falling back to English,
+  /// then Serbian. Never the Russian source: the UI ships EN and SR Latin only
+  /// and its font has no Cyrillic.
   String? humanNoteFor(String languageCode) {
-    return noteI18n[languageCode] ??
-        noteI18n['ru'] ??
-        noteI18n['en'] ??
-        (noteI18n.isEmpty ? null : noteI18n.values.first);
+    return noteI18n[languageCode] ?? noteI18n['en'] ?? noteI18n['sr'];
   }
 
   /// The nickname for the given UI language code, or null when there's none.
-  /// Local colour in the reader's script: `ru` → Cyrillic ("Турчин"), `sr` →
-  /// Serbian Latin ("Turčin"), `en` → plain ASCII ("Turcin"). Other locales
-  /// fall back to the ASCII form.
+  /// Local colour in the reader's script: `sr` → Serbian Latin ("Turčin"),
+  /// `en` and anything else → plain ASCII ("Turcin"). The Cyrillic form is never
+  /// shown (no Cyrillic in the UI font).
   String? nicknameFor(String languageCode) {
     switch (languageCode) {
-      case 'ru':
-        return nicknameSr ?? nicknameLatin ?? nicknameEn;
       case 'sr':
-        return nicknameLatin ?? nicknameEn ?? nicknameSr;
+        return nicknameLatin ?? nicknameEn;
       default:
-        return nicknameEn ?? nicknameLatin ?? nicknameSr;
+        return nicknameEn ?? nicknameLatin;
     }
   }
 

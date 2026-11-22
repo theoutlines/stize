@@ -32,8 +32,6 @@ class RouteAlert {
   /// Serbian itself, use [summary].
   String localizedSummary(String languageCode) {
     switch (languageCode) {
-      case 'ru':
-        return summaryRu ?? summary;
       case 'en':
         return summaryEn ?? summary;
       default:

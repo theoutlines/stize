@@ -10,9 +10,11 @@ import 'package:flutter/material.dart';
 /// neutral — it has no imposed platform language — so we gate on `!kIsWeb`,
 /// meaning even iOS Safari renders the neutral Material look, not Cupertino.
 ///
-/// Fonts are intentionally left to the framework: with no `fontFamily` set on
-/// the theme, each platform uses its system sans-serif (San Francisco on iOS,
-/// Roboto on Android, the browser default on web) — exactly what we want.
+/// Fonts: with the Stiže design system (`ds_stize` flag) every platform uses
+/// the bundled Uncut Sans, so the app reads as one product on iOS, Android and
+/// web; this replaced the earlier "system font per platform" choice on
+/// 2026-11-22. Only the font changed: transitions, the iOS back gesture and the
+/// adaptive controls here stay platform-native.
 bool get isCupertino => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
 /// A go_router [Page] that transitions like the native platform: a

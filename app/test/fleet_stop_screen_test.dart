@@ -30,7 +30,7 @@ const _catalogJson = '''
    "nickname_sr":"Турчин","nickname_latin":"Turčin","nickname_en":"Turcin",
    "ac":true,"low_floor":true,"usb":true,
    "articulated":true,"length_m":30.5,"capacity":218,"powertrain":"tram",
-   "comfort_score":5,"years_built":[2024,2026],"human_note_ru":"Novi tramvaj.",
+   "comfort_score":5,"years_built":[2024,2026],"human_note_ru":"Новый трамвай.","human_note_sr":"Novi tramvaj.",
    "confidence":{"ranges":"verified"}}
  ],
  "models_catalog": {},
@@ -172,10 +172,10 @@ void main() {
     expect(bozaY1, lessThan(kataY1));
   });
 
-  testWidgets('B3: card shows model on top, nickname below (ru locale)',
+  testWidgets('B3: card shows model on top, Latin nickname below (sr locale)',
       (tester) async {
     final catalog = FleetCatalog.tryParse(_catalogJson)!;
-    await tester.pumpWidget(_wrap(catalog: catalog, locale: const Locale('ru')));
+    await tester.pumpWidget(_wrap(catalog: catalog, locale: const Locale('sr')));
     await tester.pumpAndSettle();
 
     // Tap the AC badge (only the Bozankaya has one).
@@ -183,13 +183,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Bozankaya'), findsOneWidget); // model name, headline
-    expect(find.text('Турчин'), findsOneWidget); // nickname beneath
-    expect(find.text('Novi tramvaj.'), findsOneWidget); // human_note_ru
-    expect(find.text('Производитель: Bozankaya, Турция'), findsOneWidget);
+    expect(find.text('Turčin'), findsOneWidget); // Latin nickname beneath
+    expect(find.text('Турчин'), findsNothing); // never Cyrillic
+    expect(find.text('Novi tramvaj.'), findsOneWidget); // human_note_sr
+    expect(find.text('Новый трамвай.'), findsNothing); // never the ru source
 
     // Model sits above the nickname.
     final modelY = tester.getTopLeft(find.text('Bozankaya')).dy;
-    final nickY = tester.getTopLeft(find.text('Турчин')).dy;
+    final nickY = tester.getTopLeft(find.text('Turčin')).dy;
     expect(modelY, lessThan(nickY));
   });
 

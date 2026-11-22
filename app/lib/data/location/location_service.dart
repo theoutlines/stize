@@ -45,6 +45,18 @@ class LocationService {
     }
   }
 
+  /// Whether the user has not decided yet (the browser/OS would show its
+  /// prompt). On web this is the Permissions API's `prompt` state, which
+  /// geolocator reports as [LocationPermission.denied]; a real refusal is
+  /// [LocationPermission.deniedForever] and is never re-asked.
+  Future<bool> isPermissionUndecided() async {
+    try {
+      return await Geolocator.checkPermission() == LocationPermission.denied;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// A cached fix the OS already has — returns immediately (no GPS wait), so we
   /// can recenter the map instantly on launch when access is granted. Null on
   /// web (unsupported) or when there is no cached fix.

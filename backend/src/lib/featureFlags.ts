@@ -96,6 +96,14 @@ import type { Env } from "../env";
 //                       killswitch; with it off the client never calls /jams and
 //                       /jams returns empty (recording, gated separately by
 //                       jam_detection_collect, is unaffected).
+//   ds_stize          — the app renders with the Stiže design system (tokens,
+//                       Uncut Sans, light + dark from design/tokens). Purely a
+//                       client-render flag: the worker only serves it via
+//                       /config. OFF on prod / ON on staging; OFF is the
+//                       killswitch (the previous Material theme, untouched).
+//   location_autoprompt — the map asks for location on entry when the user
+//                       hasn't decided yet (client only). OFF on prod / ON on
+//                       staging; OFF = only the locate button asks.
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
@@ -111,6 +119,8 @@ export const FEATURE_FLAGS = [
   "analytics_sweep",
   "jam_detection_collect",
   "jam_detection_show",
+  "ds_stize",
+  "location_autoprompt",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

@@ -188,7 +188,7 @@ class AppLocalizationsSr extends AppLocalizations {
       other: '$count stanica',
       few: '$count stanice',
       one: '$count stanica',
-      zero: 'ovde',
+      zero: 'Na stajalištu',
     );
     return '$_temp0';
   }

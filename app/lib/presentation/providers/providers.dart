@@ -104,6 +104,19 @@ final contextPanelEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.contextPanel ?? false,
 );
 
+/// Whether the Stiže design-system theme is on (remote `ds_stize` flag).
+/// Defaults to false until config resolves, so the new theme never flashes in
+/// before the flag is known.
+final dsStizeEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.dsStize ?? false,
+);
+
+/// Whether the map asks for location on entry (remote `location_autoprompt`
+/// flag). Defaults to false until config resolves.
+final locationAutopromptEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.locationAutoprompt ?? false,
+);
+
 /// Whether the in-app feedback form is available (remote `feedback_form` flag).
 /// Defaults to false until config resolves, so the "Write to me" form stays
 /// hidden if config is unreachable (matches the endpoint's killswitch).
