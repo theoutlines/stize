@@ -73,17 +73,19 @@ describe("getWithStaleWhileRevalidate", () => {
       return { n: calls };
     };
 
-    await getWithStaleWhileRevalidate(key, 0.05, ctx, fetchFresh); // ttl ~50ms
-    await sleep(100);
+    // Seed a 10s-old entry under a 5s TTL: past TTL, short of hard-stale (40s).
+    // Seeding instead of sleeping keeps the test independent of runner speed.
+    await seedCache(key, { n: 1 }, 10);
+    calls = 1;
 
-    const staleRead = await getWithStaleWhileRevalidate(key, 0.05, ctx, fetchFresh);
+    const staleRead = await getWithStaleWhileRevalidate(key, 5, ctx, fetchFresh);
     expect(staleRead.stale).toBe(true);
     expect(staleRead.data).toEqual({ n: 1 }); // old value returned immediately
 
     await ctx.drain(); // let the background refresh finish
     expect(calls).toBe(2);
 
-    const freshRead = await getWithStaleWhileRevalidate(key, 0.05, ctx, fetchFresh);
+    const freshRead = await getWithStaleWhileRevalidate(key, 5, ctx, fetchFresh);
     expect(freshRead.data).toEqual({ n: 2 });
   });
 
@@ -97,16 +99,16 @@ describe("getWithStaleWhileRevalidate", () => {
       throw new Error("upstream down");
     };
 
-    await getWithStaleWhileRevalidate(key, 0.05, ctx, fetchFresh);
-    await sleep(100);
+    await seedCache(key, { ok: true }, 10); // stale under a 5s TTL, not hard-stale
+    calls = 1;
 
     // First stale read triggers a refresh attempt, which fails.
-    await getWithStaleWhileRevalidate(key, 0.05, ctx, fetchFresh);
+    await getWithStaleWhileRevalidate(key, 5, ctx, fetchFresh);
     await ctx.drain();
     expect(calls).toBe(2);
 
     // Immediately stale again, but backoff should suppress another attempt right away.
-    const again = await getWithStaleWhileRevalidate(key, 0.05, ctx, fetchFresh);
+    const again = await getWithStaleWhileRevalidate(key, 5, ctx, fetchFresh);
     await ctx.drain();
     expect(again.data).toEqual({ ok: true }); // still serving last-known-good data
     expect(calls).toBe(2); // no new attempt yet
