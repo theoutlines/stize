@@ -17,8 +17,9 @@
 # - The MapTiler client key comes from the Pages project variable MAPTILER_KEY
 #   (never from the repo); dart_defines.json is written only for the build and
 #   removed afterwards.
-# - app/web/_worker.js (preview password gate + www redirect) is copied into the
-#   output by `flutter build web`, so Pages keeps running it as before.
+# - No Pages worker: previews are gated by Cloudflare Access (Pages > Settings >
+#   Preview access) and www.stize.app -> stize.app is a zone Redirect Rule, so
+#   static requests never run a worker. Headers come from app/web/_headers.
 set -euo pipefail
 
 # Keep in sync with app/.metadata (revision f94f4fc76b4d = tag 3.44.5).
