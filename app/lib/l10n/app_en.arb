@@ -396,5 +396,17 @@
     }
   },
   "jamAffectedStopsTitle": "Affected stops",
-  "jamFollowAhead": "Possible delay ahead on the route"
+  "jamFollowAhead": "Possible delay ahead on the route",
+  "fleetPhotoCredit": "Photo: {author}, {license}, Wikimedia Commons",
+  "@fleetPhotoCredit": {
+    "description": "Credit line under a fleet model photo (licence requires author + licence + source).",
+    "placeholders": {
+      "author": {
+        "type": "String"
+      },
+      "license": {
+        "type": "String"
+      }
+    }
+  }
 }

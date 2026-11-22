@@ -600,4 +600,9 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get jamFollowAhead => 'Moguće kašnjenje ispred na trasi';
+
+  @override
+  String fleetPhotoCredit(String author, String license) {
+    return 'Foto: $author, $license, Wikimedia Commons';
+  }
 }

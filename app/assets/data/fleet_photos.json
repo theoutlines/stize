@@ -1,0 +1,150 @@
+{
+ "schema": "stize-fleet-photos-v1",
+ "source": "Wikimedia Commons",
+ "photos": {
+  "kt4": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Tatra_KT4_YUB%28elgrade%29.jpg/500px-Tatra_KT4_YUB%28elgrade%29.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Tatra_KT4_YUB%28elgrade%29.jpg",
+   "author": "IIAleksandarII",
+   "license": "CC BY-SA 3.0"
+  },
+  "kt4m_yub": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Tatra_KT4M-YUB_%28Belgrade%2C_Serbia%29.jpg/500px-Tatra_KT4M-YUB_%28Belgrade%2C_Serbia%29.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Tatra_KT4M-YUB_%28Belgrade%2C_Serbia%29.jpg",
+   "author": "Petar Milošević",
+   "license": "CC BY-SA 4.0"
+  },
+  "gt6": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/BG_tram_658.jpg/500px-BG_tram_658.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:BG_tram_658.jpg",
+   "author": "Lotom",
+   "license": "CC BY-SA 4.0"
+  },
+  "caf": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/GSP_Beograd_CAF_Urbos_3_Garage_Number_1517.jpg/500px-GSP_Beograd_CAF_Urbos_3_Garage_Number_1517.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:GSP_Beograd_CAF_Urbos_3_Garage_Number_1517.jpg",
+   "author": "Jelancha",
+   "license": "CC BY 4.0"
+  },
+  "bozankaya": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Bozankaya_Belgrade_1532.jpg/500px-Bozankaya_Belgrade_1532.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Bozankaya_Belgrade_1532.jpg",
+   "author": "Ljutikecap2021",
+   "license": "CC BY 4.0"
+  },
+  "bkm333": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/GSP_Beograd_Belkommunmash_BKM-333_Garage_number_2167.jpg/500px-GSP_Beograd_Belkommunmash_BKM-333_Garage_number_2167.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:GSP_Beograd_Belkommunmash_BKM-333_Garage_number_2167.jpg",
+   "author": "Jelancha",
+   "license": "CC BY 4.0"
+  },
+  "bkm32104": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/AKSM-321_GSP_Beograd_2181.jpg/500px-AKSM-321_GSP_Beograd_2181.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:AKSM-321_GSP_Beograd_2181.jpg",
+   "author": "Srđan Popović",
+   "license": "CC BY-SA 4.0"
+  },
+  "bkm321_2010": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/AKSM-321_GSP_Beograd_2181.jpg/500px-AKSM-321_GSP_Beograd_2181.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:AKSM-321_GSP_Beograd_2181.jpg",
+   "author": "Srđan Popović",
+   "license": "CC BY-SA 4.0"
+  },
+  "higer_eko": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Higer_GSP_2101.jpg/500px-Higer_GSP_2101.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Higer_GSP_2101.jpg",
+   "author": "Srđan Popović",
+   "license": "CC BY-SA 4.0"
+  },
+  "solaris18": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Solaris_Urbino_18_GSP_Beograd_3090_77.jpg/500px-Solaris_Urbino_18_GSP_Beograd_3090_77.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Solaris_Urbino_18_GSP_Beograd_3090_77.jpg",
+   "author": "Ljutikecap2021",
+   "license": "CC BY 4.0"
+  },
+  "ik112le": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Ikarbus_IK-112LE_GSP_Beograd-3208.jpg/500px-Ikarbus_IK-112LE_GSP_Beograd-3208.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Ikarbus_IK-112LE_GSP_Beograd-3208.jpg",
+   "author": "Srđan Popović",
+   "license": "CC BY-SA 4.0"
+  },
+  "ik112m": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Ikarbus_IK-112M_GSP_Beograd_3235.jpg/500px-Ikarbus_IK-112M_GSP_Beograd_3235.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Ikarbus_IK-112M_GSP_Beograd_3235.jpg",
+   "author": "Srđan Popović",
+   "license": "CC BY-SA 4.0"
+  },
+  "ik218m": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Ikarbus_IK-218M_%282017%29_3275_15.jpg/500px-Ikarbus_IK-218M_%282017%29_3275_15.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Ikarbus_IK-218M_%282017%29_3275_15.jpg",
+   "author": "Ljutikecap2021",
+   "license": "CC BY-SA 4.0"
+  },
+  "bmc12": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/BMC_Protocity_GSP-3347.jpg/500px-BMC_Protocity_GSP-3347.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:BMC_Protocity_GSP-3347.jpg",
+   "author": "Srđan Popović",
+   "license": "CC BY-SA 4.0"
+  },
+  "higer_diesel": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Higer_KLQ6129GQ2_GSP_Beograd-3381_linija_22A.jpg/500px-Higer_KLQ6129GQ2_GSP_Beograd-3381_linija_22A.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Higer_KLQ6129GQ2_GSP_Beograd-3381_linija_22A.jpg",
+   "author": "Srđan Popović",
+   "license": "CC BY-SA 4.0"
+  },
+  "bmc18cng": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/GSP_Beograd_BMC_Procity_18_CNG_LF_Garage_number_3548.jpg/500px-GSP_Beograd_BMC_Procity_18_CNG_LF_Garage_number_3548.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:GSP_Beograd_BMC_Procity_18_CNG_LF_Garage_number_3548.jpg",
+   "author": "Jelancha",
+   "license": "CC BY 4.0"
+  },
+  "bmc18": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/GSP_Beograd_BMC_Procity_18_CNG_LF_Garage_number_3548.jpg/500px-GSP_Beograd_BMC_Procity_18_CNG_LF_Garage_number_3548.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:GSP_Beograd_BMC_Procity_18_CNG_LF_Garage_number_3548.jpg",
+   "author": "Jelancha",
+   "license": "CC BY 4.0"
+  },
+  "otokar_cng": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Otokar_Kent_C_CNG_3737.jpg/500px-Otokar_Kent_C_CNG_3737.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Otokar_Kent_C_CNG_3737.jpg",
+   "author": "Ljutikecap2021",
+   "license": "CC BY 4.0"
+  },
+  "otokar_kent12cng": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Otokar_Kent_C_CNG_3737.jpg/500px-Otokar_Kent_C_CNG_3737.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Otokar_Kent_C_CNG_3737.jpg",
+   "author": "Ljutikecap2021",
+   "license": "CC BY 4.0"
+  },
+  "otokar_kent12": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Otokar_kent_c_12.jpg/500px-Otokar_kent_c_12.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Otokar_kent_c_12.jpg",
+   "author": "Николићии",
+   "license": "CC BY-SA 4.0"
+  },
+  "maz203": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Maz_203.088_%282021%29_LDM_Group_Belgrade_ex_P42714_-_P23505_01.jpg/500px-Maz_203.088_%282021%29_LDM_Group_Belgrade_ex_P42714_-_P23505_01.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Maz_203.088_%282021%29_LDM_Group_Belgrade_ex_P42714_-_P23505_01.jpg",
+   "author": "Lazar144000",
+   "license": "CC0"
+  },
+  "maz215": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/MAZ_215_C%26LC.jpg/500px-MAZ_215_C%26LC.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:MAZ_215_C%26LC.jpg",
+   "author": "Srđan Popović",
+   "license": "CC BY-SA 4.0"
+  },
+  "conecto1": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/MB_Conecto_GSP_Beograd_152.jpg/500px-MB_Conecto_GSP_Beograd_152.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:MB_Conecto_GSP_Beograd_152.jpg",
+   "author": "Srđan Popović",
+   "license": "CC BY-SA 4.0"
+  },
+  "citaro2": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Mercedes_Benz_Citaro_C2_na_liniji_602_u_Beogradu.jpg/500px-Mercedes_Benz_Citaro_C2_na_liniji_602_u_Beogradu.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Mercedes_Benz_Citaro_C2_na_liniji_602_u_Beogradu.jpg",
+   "author": "Lazar144000",
+   "license": "CC0"
+  }
+ }
+}

@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/api_config.dart';
 import '../../core/fleet_matcher.dart';
+import '../../core/fleet_photos.dart';
 import '../../core/search.dart';
 import '../../core/vehicle_map_mode.dart';
 import '../../data/analytics/event_logger.dart';
@@ -195,6 +196,17 @@ final fleetCatalogProvider = FutureProvider<FleetCatalog?>((ref) async {
     return FleetCatalog.tryParse(source);
   } catch (_) {
     return null;
+  }
+});
+
+/// Openly licensed model photos for the fleet card (bundled asset, no network
+/// until a card is opened). Empty map when the asset is missing or invalid.
+final fleetPhotosProvider = FutureProvider<Map<String, FleetPhoto>>((ref) async {
+  try {
+    final source = await rootBundle.loadString('assets/data/fleet_photos.json');
+    return FleetPhoto.parseAll(source);
+  } catch (_) {
+    return const {};
   }
 });
 
