@@ -22,6 +22,7 @@ class ArrivalTile extends StatelessWidget {
     this.emphasis = false,
     this.destination,
     this.nextEtaMinutes,
+    this.headwayMinutes,
   });
 
   final Arrival arrival;
@@ -54,6 +55,12 @@ class ArrivalTile extends StatelessWidget {
   /// Stiže card only: when the same line comes again, that next ETA in minutes —
   /// rendered in the caption as "next in N min" / "next at HH:MM". Null hides it.
   final int? nextEtaMinutes;
+
+  /// Stiže card only: the line's planned interval at this hour (timetable),
+  /// shown as "every ~N min" when the board has no second trip of this line to
+  /// name. Null hides it. (Adaptive: measured intervals and "often late" will
+  /// take this slot once analytics has enough samples.)
+  final int? headwayMinutes;
 
   /// Opacity for a non-clickable row (Expected / Scheduled). Brightness is the
   /// single, at-a-glance signal for "can I tap this?" — dim == not tappable.
@@ -134,7 +141,13 @@ class ArrivalTile extends StatelessWidget {
           : l10n.arrivalNextIn(nextEtaMinutes! <= 0 ? 0 : nextEtaMinutes!);
     }
 
-    final hasText = primary != null || next != null;
+    // Planned interval: only when no next trip is on the board, so a card
+    // carries one "how often" fact, never two.
+    final every = (next == null && headwayMinutes != null)
+        ? l10n.arrivalEvery(headwayMinutes!)
+        : null;
+
+    final hasText = primary != null || next != null || every != null;
     final strip = (fleet == null || status == ArrivalRowStatus.scheduled)
         ? null
         : FleetBadgeStrip(
@@ -150,6 +163,7 @@ class ArrivalTile extends StatelessWidget {
       if (live && hasText) StizeTransitCard.liveDot(c),
       if (primary != null) Text(primary, style: style),
       if (next != null) Text(next, style: style),
+      if (every != null) Text(every, style: style),
       ?strip,
     ];
     return parts;

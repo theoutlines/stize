@@ -465,6 +465,9 @@ class _StopScreenState extends ConsumerState<StopScreen> {
       emphasis: emphasis,
       destination: destinations[arrival.directionRouteId ?? arrival.routeId],
       nextEtaMinutes: stizeNextEtaForLine(allArrivals, arrival),
+      headwayMinutes: ref
+          .watch(stopPlannedHeadwaysProvider(widget.stopId))
+          .valueOrNull?[arrival.directionRouteId ?? arrival.routeId],
       onOpenFleetCard: fleet != null && fleet.hasInfo
           ? () => showFleetModelCard(
                 context,

@@ -129,3 +129,44 @@ List<PlannedDeparture> upcomingScheduled(
   out.sort((a, b) => a.etaMinutes.compareTo(b.etaMinutes));
   return out;
 }
+
+/// Planned interval per direction (`route_id`) at a stop around [now]: the
+/// median gap between this direction's timetabled departures from 30 min ago to
+/// 90 min ahead. Only directions with at least two gaps in that window and a
+/// median of at most [maxMinutes] are returned: a sparse line is better told by
+/// its next departure time than by an "every N min" that is barely true.
+Map<String, int> plannedHeadways(
+  Map<String, dynamic> schedule,
+  Map<String, dynamic> meta,
+  BelgradeNow now, {
+  int maxMinutes = 30,
+}) {
+  final today = activeServices(now.dateISO, meta);
+  final yest = activeServices(now.yesterdayISO, meta);
+  final lo = now.minutes - 30;
+  final hi = now.minutes + 90;
+  final out = <String, int>{};
+  for (final raw in (schedule['deps'] as List? ?? const [])) {
+    final dep = raw as Map<String, dynamic>;
+    final times = <int>{};
+    (dep['svc'] as Map).forEach((svc, mins) {
+      for (final t in (mins as List).cast<num>()) {
+        final v = t.toInt();
+        if (today.contains(svc) && v >= lo && v <= hi) times.add(v);
+        if (yest.contains(svc) && v >= _overnight) {
+          final local = v - _overnight;
+          if (local >= lo && local <= hi) times.add(local);
+        }
+      }
+    });
+    if (times.length < 3) continue;
+    final sorted = times.toList()..sort();
+    final gaps = <int>[
+      for (var i = 1; i < sorted.length; i++) sorted[i] - sorted[i - 1],
+    ]..sort();
+    final median = gaps[gaps.length ~/ 2];
+    if (median <= 0 || median > maxMinutes) continue;
+    out[dep['route_id'] as String] = median;
+  }
+  return out;
+}

@@ -338,6 +338,12 @@ abstract class AppLocalizations {
   /// **'next in {minutes} min'**
   String arrivalNextIn(int minutes);
 
+  /// Caption on an arrival card: the line's planned interval at this hour, from the timetable
+  ///
+  /// In en, this message translates to:
+  /// **'every ~{minutes} min'**
+  String arrivalEvery(int minutes);
+
   /// Caption on an arrival card: when the same line comes again, as a 24h clock time
   ///
   /// In en, this message translates to:

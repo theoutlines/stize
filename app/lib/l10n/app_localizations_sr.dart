@@ -158,6 +158,11 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
+  String arrivalEvery(int minutes) {
+    return 'svakih ~$minutes min';
+  }
+
+  @override
   String arrivalNextAt(String time) {
     return 'sledeći u $time';
   }

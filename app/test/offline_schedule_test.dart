@@ -57,4 +57,16 @@ void main() {
     expect(night.first.etaMinutes, 5);
     expect(night.first.line, '5');
   });
+
+  test('plannedHeadways: median gap around now, sparse lines left out', () {
+    final schedule = <String, dynamic>{
+      'deps': [
+        {'line': '26', 'route_id': 'r26', 'dir': '1', 'svc': {'RD': [590, 598, 606, 614, 622, 630]}},
+        {'line': '9', 'route_id': 'r9', 'dir': '1', 'svc': {'RD': [560, 620, 680]}}, // hourly
+        {'line': '7', 'route_id': 'r7', 'dir': '1', 'svc': {'RD': [600, 612]}}, // too few
+      ],
+    };
+    final h = plannedHeadways(schedule, meta, const BelgradeNow('2026-11-23', '2026-11-22', 600));
+    expect(h, {'r26': 8});
+  });
 }
