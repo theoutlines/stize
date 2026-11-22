@@ -51,3 +51,5 @@ handoff/
 
 # Task reports are private, local-only (see CLAUDE.md docs policy).
 docs/reports/
+
+backend/scripts/out/
