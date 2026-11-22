@@ -31,17 +31,7 @@ import {
 import { geocodeSearch } from "./lib/geocode";
 import { listAlerts, refreshAlerts } from "./lib/alerts";
 import { computeJams, type JamsResponse } from "./lib/jamDetector";
-import {
-  RateLimitedError,
-  ValidationError,
-  addComment,
-  createIdea,
-  hideIdea,
-  ideaExists,
-  listComments,
-  listIdeas,
-  toggleVote,
-} from "./lib/ideas";
+import { RateLimitedError, ValidationError } from "./lib/errors";
 import { createFeedback, createFeedbackIssue } from "./lib/feedback";
 import {
   fetchUsageToday,
@@ -70,7 +60,7 @@ app.use("*", cors({ origin: "*", allowHeaders: ["Content-Type", "X-Admin-Token",
 // until 00:00 UTC (2026-10-05 incident). That is a temporary outage, not a bug in
 // the request: answer 503 with a clean JSON error the client can show, never a
 // bare 500. Expected errors (validation, rate limit) are still mapped in-route.
-const D1_BACKED_PATH = /^\/api\/v1\/(ideas|feedback|admin\/ideas|analytics\/lines)(\/|$)/;
+const D1_BACKED_PATH = /^\/api\/v1\/(feedback|analytics\/lines)(\/|$)/;
 
 app.onError((err, c) => {
   if (D1_BACKED_PATH.test(c.req.path)) {
@@ -315,14 +305,7 @@ app.get("/api/v1/geocode", async (c) => {
   }
 });
 
-app.get("/api/v1/ideas", async (c) => {
-  const deviceId = c.req.header("X-Device-Id");
-  if (!deviceId) return c.json({ error: "missing X-Device-Id header" }, 400);
-  const ideas = await listIdeas(c.env, deviceId);
-  return c.json({ ideas });
-});
-
-// Per-IP limit on the public write endpoints (WRITE_LIMITER binding). Returns a
+// Per-IP limit on public write endpoints (WRITE_LIMITER binding). Returns a
 // 429 response when over, null otherwise. No binding (tests) = no limit.
 async function overWriteLimit(c: Context<{ Bindings: Env }>, scope: string) {
   const limiter = c.env.WRITE_LIMITER;
@@ -331,78 +314,6 @@ async function overWriteLimit(c: Context<{ Bindings: Env }>, scope: string) {
   const { success } = await limiter.limit({ key: `${scope}:${ip}` });
   return success ? null : c.json({ error: "too many requests" }, 429);
 }
-
-app.post("/api/v1/ideas", async (c) => {
-  const limited = await overWriteLimit(c, "ideas");
-  if (limited) return limited;
-  const deviceId = c.req.header("X-Device-Id");
-  if (!deviceId) return c.json({ error: "missing X-Device-Id header" }, 400);
-  const body = await c.req.json<{ text?: string }>().catch(() => ({ text: undefined }));
-  if (typeof body.text !== "string") return c.json({ error: "body must be { \"text\": string }" }, 400);
-
-  try {
-    const idea = await createIdea(c.env, deviceId, body.text);
-    return c.json(idea, 201);
-  } catch (err) {
-    if (err instanceof RateLimitedError) return c.json({ error: err.message }, 429);
-    if (err instanceof ValidationError) return c.json({ error: err.message }, 400);
-    throw err;
-  }
-});
-
-app.post("/api/v1/ideas/:id/vote", async (c) => {
-  const deviceId = c.req.header("X-Device-Id");
-  if (!deviceId) return c.json({ error: "missing X-Device-Id header" }, 400);
-  const ideaId = Number(c.req.param("id"));
-  if (!Number.isInteger(ideaId)) return c.json({ error: "invalid idea id" }, 400);
-  if (!(await ideaExists(c.env, ideaId))) return c.json({ error: "unknown idea" }, 404);
-
-  const result = await toggleVote(c.env, ideaId, deviceId);
-  return c.json(result);
-});
-
-app.get("/api/v1/ideas/:id/comments", async (c) => {
-  const ideaId = Number(c.req.param("id"));
-  if (!Number.isInteger(ideaId)) return c.json({ error: "invalid idea id" }, 400);
-  if (!(await ideaExists(c.env, ideaId))) return c.json({ error: "unknown idea" }, 404);
-
-  const comments = await listComments(c.env, ideaId);
-  return c.json({ comments });
-});
-
-app.post("/api/v1/ideas/:id/comments", async (c) => {
-  const limited = await overWriteLimit(c, "comments");
-  if (limited) return limited;
-  const deviceId = c.req.header("X-Device-Id");
-  if (!deviceId) return c.json({ error: "missing X-Device-Id header" }, 400);
-  const ideaId = Number(c.req.param("id"));
-  if (!Number.isInteger(ideaId)) return c.json({ error: "invalid idea id" }, 400);
-  if (!(await ideaExists(c.env, ideaId))) return c.json({ error: "unknown idea" }, 404);
-
-  const body = await c.req.json<{ text?: string }>().catch(() => ({ text: undefined }));
-  if (typeof body.text !== "string") return c.json({ error: "body must be { \"text\": string }" }, 400);
-
-  try {
-    const comment = await addComment(c.env, ideaId, deviceId, body.text);
-    return c.json(comment, 201);
-  } catch (err) {
-    if (err instanceof ValidationError) return c.json({ error: err.message }, 400);
-    throw err;
-  }
-});
-
-app.post("/api/v1/admin/ideas/:id/hide", async (c) => {
-  const token = c.req.header("X-Admin-Token");
-  if (!token || token !== c.env.ADMIN_TOKEN) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
-  const ideaId = Number(c.req.param("id"));
-  if (!Number.isInteger(ideaId)) return c.json({ error: "invalid idea id" }, 400);
-  if (!(await ideaExists(c.env, ideaId))) return c.json({ error: "unknown idea" }, 404);
-
-  await hideIdea(c.env, ideaId);
-  return c.json({ status: "hidden" });
-});
 
 // Contextual route-change alerts (experimental). Refreshed by a cron trigger
 // (see `scheduled` handler below), not on the request path — this endpoint

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { env, SELF } from "cloudflare:test";
 import { createFeedback, createFeedbackIssue } from "../src/lib/feedback";
-import { RateLimitedError, ValidationError } from "../src/lib/ideas";
+import { RateLimitedError, ValidationError } from "../src/lib/errors";
 import { setFlag } from "../src/lib/featureFlags";
 
 // Each case uses a distinct IP: the per-IP rate limit is a real miniflare KV

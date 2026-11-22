@@ -9,7 +9,6 @@ import '../providers/providers.dart';
 import '../widgets/app_drawer.dart';
 import 'coverage_screen.dart';
 import 'home_map_screen.dart';
-import 'ideas_screen.dart';
 
 class RootScreen extends ConsumerStatefulWidget {
   const RootScreen({super.key});
@@ -64,7 +63,7 @@ class _RootScreenState extends ConsumerState<RootScreen> {
     // known to be on. With the flag off this stays a pure no-op — zero requests.
     final analyticsEnabled = ref.watch(eventLoggerGateProvider);
     _maybeLogAppOpen(analyticsEnabled);
-    final sectionCount = coverageEnabled ? 3 : 2;
+    final sectionCount = coverageEnabled ? 2 : 1;
     // If the flag flips off while coverage is showing, fall back to the map.
     final index = _index.clamp(0, sectionCount - 1);
 
@@ -77,7 +76,6 @@ class _RootScreenState extends ConsumerState<RootScreen> {
       // `active` lets the map stop its continuous rendering when it's not the
       // visible section (iOS-web thermal fix).
       HomeMapScreen(onOpenDrawer: _openDrawer, active: index == 0),
-      IdeasScreen(onOpenDrawer: _openDrawer),
       if (coverageEnabled) CoverageScreen(onOpenDrawer: _openDrawer),
     ];
 
