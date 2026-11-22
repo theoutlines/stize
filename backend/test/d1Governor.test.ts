@@ -3,10 +3,11 @@ import { createExecutionContext, env, waitOnExecutionContext } from "cloudflare:
 import type { Env } from "../src/env";
 import worker from "../src/index";
 import {
-  fetchRowsWrittenToday,
+  fetchUsageToday,
   forgetGovernedFlag,
   governorDue,
   readGovernorState,
+  readsConstrained,
   runD1Governor,
 } from "../src/lib/d1Governor";
 import { getFlag, setFlag } from "../src/lib/featureFlags";
@@ -17,14 +18,17 @@ const DAY2_MIDNIGHT = new Date(Date.UTC(2026, 9, 6, 0, 0, 0));
 
 const govEnv = { ...env, CF_ANALYTICS_API_TOKEN: "test-token", CF_ACCOUNT_ID: "test-account" } as Env;
 
-// A GraphQL answer reporting `rows` written today (split over two "databases").
-function gql(rows: number | null, init: { status?: number; errors?: string } = {}): typeof fetch {
+// A GraphQL answer reporting `rows` written (and `init.read` rows read) today,
+// split over two "databases".
+function gql(rows: number | null, init: { status?: number; errors?: string; read?: number } = {}): typeof fetch {
   return (async (_url: RequestInfo | URL, req?: RequestInit) => {
     const body = JSON.parse(String(req?.body));
     expect(body.variables.a).toBe("test-account");
     expect(String((req?.headers as Record<string, string>).Authorization)).toBe("Bearer test-token");
     if (init.errors) return Response.json({ data: null, errors: [{ message: init.errors }] });
     const half = rows === null ? 0 : Math.floor(rows / 2);
+    const read = init.read ?? 0;
+    const rhalf = Math.floor(read / 2);
     return Response.json(
       {
         data: {
@@ -32,7 +36,12 @@ function gql(rows: number | null, init: { status?: number; errors?: string } = {
             accounts: [
               {
                 d1AnalyticsAdaptiveGroups:
-                  rows === null ? [] : [{ sum: { rowsWritten: half } }, { sum: { rowsWritten: rows - half } }],
+                  rows === null
+                    ? []
+                    : [
+                        { sum: { rowsWritten: half, rowsRead: rhalf } },
+                        { sum: { rowsWritten: rows - half, rowsRead: read - rhalf } },
+                      ],
               },
             ],
           },
@@ -50,6 +59,8 @@ beforeEach(async () => {
     "config:d1_governor_threshold_pct",
     "config:d1_daily_rows_written_limit",
     "config:d1_governor_interval_min",
+    "config:d1_governor_read_threshold_pct",
+    "config:d1_daily_rows_read_limit",
   ]) {
     await env.STIGLA_KV.delete(k);
   }
@@ -66,15 +77,18 @@ describe("governorDue", () => {
   });
 });
 
-describe("fetchRowsWrittenToday", () => {
-  it("sums every database's rowsWritten for today", async () => {
-    expect(await fetchRowsWrittenToday(govEnv, DAY1, gql(71_000))).toBe(71_000);
+describe("fetchUsageToday", () => {
+  it("sums every database's rowsWritten and rowsRead for today", async () => {
+    expect(await fetchUsageToday(govEnv, DAY1, gql(71_000, { read: 1_234_567 }))).toEqual({
+      rowsWritten: 71_000,
+      rowsRead: 1_234_567,
+    });
   });
 
   it("throws (fail-safe) without secrets, on HTTP errors and GraphQL errors", async () => {
-    await expect(fetchRowsWrittenToday(env as Env, DAY1, gql(1))).rejects.toThrow(/not configured/);
-    await expect(fetchRowsWrittenToday(govEnv, DAY1, gql(1, { status: 500 }))).rejects.toThrow(/HTTP 500/);
-    await expect(fetchRowsWrittenToday(govEnv, DAY1, gql(1, { errors: "quota" }))).rejects.toThrow(/quota/);
+    await expect(fetchUsageToday(env as Env, DAY1, gql(1))).rejects.toThrow(/not configured/);
+    await expect(fetchUsageToday(govEnv, DAY1, gql(1, { status: 500 }))).rejects.toThrow(/HTTP 500/);
+    await expect(fetchUsageToday(govEnv, DAY1, gql(1, { errors: "quota" }))).rejects.toThrow(/quota/);
   });
 });
 
@@ -143,6 +157,88 @@ describe("runD1Governor", () => {
     expect(r.action).toBe("error");
     expect(await getFlag(env, "analytics_collect")).toBe(true);
   });
+});
+
+describe("runD1Governor — rows_read (2026-10-05: diagnostics hit 93% of 5M)", () => {
+  it("reads >= 70% of 5M trips the same flags and constrains non-essential reads", async () => {
+    expect((await runD1Governor(govEnv, DAY1, { fetchImpl: gql(1_000, { read: 3_499_999 }) })).action).toBe("ok");
+    expect(await readsConstrained(env, DAY1)).toBe(false);
+
+    const r = await runD1Governor(govEnv, DAY1, { fetchImpl: gql(1_000, { read: 3_500_000 }) });
+    expect(r.action).toBe("tripped");
+    expect(r.tripped).toEqual(["reads"]);
+    expect(await getFlag(env, "analytics_collect")).toBe(false);
+    expect(await getFlag(env, "jam_detection_collect")).toBe(false);
+    expect(await readsConstrained(env, DAY1)).toBe(true);
+    expect(await readsConstrained(env, DAY2_MIDNIGHT)).toBe(false); // only for that day
+  });
+
+  it("read thresholds come from their own KV keys", async () => {
+    await env.STIGLA_KV.put("config:d1_governor_read_threshold_pct", "50");
+    await env.STIGLA_KV.put("config:d1_daily_rows_read_limit", "1000000");
+    expect((await runD1Governor(govEnv, DAY1, { fetchImpl: gql(0, { read: 499_999 }) })).action).toBe("ok");
+    expect((await runD1Governor(govEnv, DAY1, { fetchImpl: gql(0, { read: 500_000 }) })).action).toBe("tripped");
+  });
+
+  it("a writes trip does not constrain reads; a later reads trip the same day still fires", async () => {
+    await runD1Governor(govEnv, DAY1, { fetchImpl: gql(80_000, { read: 10 }) });
+    expect(await readsConstrained(env, DAY1)).toBe(false);
+    await setFlag(env, "analytics_collect", true); // human re-enabled after the writes trip
+    await forgetGovernedFlag(env, "analytics_collect");
+    const later = new Date(DAY1.getTime() + 900_000);
+    const r = await runD1Governor(govEnv, later, { fetchImpl: gql(81_000, { read: 4_000_000 }) });
+    expect(r.tripped).toEqual(["reads"]);
+    expect(await getFlag(env, "analytics_collect")).toBe(false); // new emergency → OFF again
+    const st = await readGovernorState(env);
+    expect(st).toMatchObject({ writes_tripped: true, reads_tripped: true });
+    expect(st?.disabled.sort()).toEqual(["analytics_collect", "jam_detection_collect"]);
+    // Both tripped → further passes skip without even calling the API.
+    expect((await runD1Governor(govEnv, later, { fetchImpl: gql(0, { status: 500 }) })).action).toBe("skipped");
+    // Midnight restores both.
+    await runD1Governor(govEnv, DAY2_MIDNIGHT, { fetchImpl: gql(1) });
+    expect(await getFlag(env, "analytics_collect")).toBe(true);
+    expect(await getFlag(env, "jam_detection_collect")).toBe(true);
+  });
+
+  it("a state written by the writes-only governor is read as a writes trip", async () => {
+    await env.STIGLA_KV.put(
+      "d1_governor:state",
+      JSON.stringify({ day: "2026-10-05", disabled: ["analytics_collect"], tripped_at: DAY1.toISOString(), rows_written: 70_001 }),
+    );
+    expect((await readGovernorState(env))?.writes_tripped).toBe(true);
+    expect(await readsConstrained(env, DAY1)).toBe(false);
+  });
+
+  it("admin status and the manual aggregate stand down (503, no D1) while reads are constrained", async () => {
+    await runD1Governor(govEnv, DAY1, { fetchImpl: gql(0, { read: 4_900_000 }) });
+    // Pin "today" to the trip day for the route's own readsConstrained(new Date()).
+    vi.useFakeTimers({ now: DAY1, toFake: ["Date"] });
+    try {
+      for (const [method, path] of [
+        ["GET", "/api/v1/admin/sweep/status"],
+        ["POST", "/api/v1/admin/analytics/aggregate"],
+      ] as const) {
+        const ctx = createExecutionContext();
+        const res = await worker.fetch(
+          new Request(`https://stigla-api.test${path}`, { method, headers: { "X-Admin-Token": "adm" } }),
+          { ...env, ADMIN_TOKEN: "adm", STIGLA_ANALYTICS_DB: deadDb } as Env, // proves no D1 call is made
+          ctx,
+        );
+        await waitOnExecutionContext(ctx);
+        expect(res.status).toBe(503);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+const deadDb = new Proxy({} as D1Database, {
+  get() {
+    return () => {
+      throw new Error("D1 must not be touched");
+    };
+  },
 });
 
 describe("D1-backed routes answer 503, never 500, when D1 is down", () => {

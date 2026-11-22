@@ -112,8 +112,9 @@ class FleetBadgeStrip extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
+      // No horizontal padding: the strip lines up with the caption text.
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+        padding: const EdgeInsets.symmetric(vertical: 2),
         child: row,
       ),
     );
