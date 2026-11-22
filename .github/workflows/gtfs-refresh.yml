@@ -1,0 +1,65 @@
+# Rebuild the GTFS bundle from the official Belgrade feeds (city + suburban) on
+# data.gov.rs. Owner-approved (2026-11-22): runs weekly and on demand, without
+# the owner. The cloud sessions and the dev shell cannot reach data.gov.rs; a
+# GitHub runner can. A changed bundle goes to a new branch data/gtfs-<date>
+# (its own preview pair + CI); the session reviews and merges it.
+name: GTFS refresh
+
+on:
+  schedule:
+    - cron: "17 4 * * 1" # Mondays 04:17 UTC
+  workflow_dispatch:
+    inputs:
+      city_url:
+        description: City GTFS zip (data.gov.rs permalink)
+        default: https://data.gov.rs/sr/datasets/r/729be9a1-7ed9-453d-9a3d-68fa30f07529
+      suburban_url:
+        description: Suburban GTFS zip (data.gov.rs permalink)
+        default: https://data.gov.rs/sr/datasets/r/60f82229-16c7-4939-961b-2c24873d3e06
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      CITY_URL: ${{ inputs.city_url || 'https://data.gov.rs/sr/datasets/r/729be9a1-7ed9-453d-9a3d-68fa30f07529' }}
+      SUB_URL: ${{ inputs.suburban_url || 'https://data.gov.rs/sr/datasets/r/60f82229-16c7-4939-961b-2c24873d3e06' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Download feeds
+        run: |
+          mkdir -p gtfs_raw/extracted gtfs_raw/suburban
+          curl -fsSL -o gtfs_raw/city.zip "$CITY_URL"
+          curl -fsSL -o gtfs_raw/suburban.zip "$SUB_URL"
+          unzip -oq gtfs_raw/city.zip -d gtfs_raw/extracted
+          unzip -oq gtfs_raw/suburban.zip -d gtfs_raw/suburban
+          echo "city:";     cat gtfs_raw/extracted/feed_info.txt || true
+          echo "suburban:"; cat gtfs_raw/suburban/feed_info.txt || true
+      # The build refuses to write if stops or lines would shrink by >2%.
+      - name: Build bundle
+        run: npm run gtfs:build
+      - name: Publish a data branch if anything changed
+        run: |
+          cd ..
+          if git diff --quiet -- backend/public; then
+            echo "Bundle unchanged: nothing to publish."; exit 0
+          fi
+          BR="data/gtfs-$(date -u +%Y%m%d-%H%M)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BR"
+          git add backend/public
+          git commit -m "data(gtfs): rebuild from the official city + suburban feeds"
+          git push origin "$BR"
+          echo "Pushed $BR"
