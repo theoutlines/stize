@@ -153,7 +153,7 @@ class _VehicleDetailSheet extends StatelessWidget {
   }
 
   Widget _pill(BuildContext context) {
-    final stize = Theme.of(context).extension<StizeColors>();
+    final stize = StizeColors.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -169,13 +169,7 @@ class _VehicleDetailSheet extends StatelessWidget {
           // OFF keeps the prior bold 14 (killswitch).
           Text(
             line,
-            style: stize != null
-                ? StizeType.lineNumber.copyWith(color: stize.onTransit)
-                : const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
+            style: StizeType.lineNumber.copyWith(color: stize.onTransit),
           ),
         ],
       ),

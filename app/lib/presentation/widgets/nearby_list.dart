@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
-import '../../core/map_support.dart';
 import '../../core/nearby_focus.dart';
 import '../../domain/models/nearby_arrival.dart';
-import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import 'stize_transit_card.dart';
-import 'vehicle_icon.dart';
 
 /// The "Nearby" list itself — a pure, scrollable list of line+direction rows.
 /// Deliberately independent of the draggable sheet that hosts it (it only takes
@@ -42,7 +39,6 @@ class NearbyList extends StatelessWidget {
   Widget build(BuildContext context) {
     final leading = header == null ? 0 : 1;
     // Stiže: colour cards 4px apart (owner spec, same as the stop board).
-    final stize = Theme.of(context).extension<StizeColors>() != null;
     final list = ListView.separated(
       controller: scrollController,
       // Top padding matches the horizontal (side) padding so the first card is
@@ -51,7 +47,7 @@ class NearbyList extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: groups.length + leading,
       separatorBuilder: (_, _) =>
-          SizedBox(height: stize ? StizeSpace.space1 : 8),
+          const SizedBox(height: StizeSpace.space1),
       itemBuilder: (context, i) {
         if (i < leading) return header!;
         final g = groups[i - leading];
@@ -79,9 +75,7 @@ class NearbyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Stiže (flag ON): the filled transit-colour card, same language as the
     // stop board's ArrivalTile. OFF: the previous card exactly (killswitch).
-    final stize = Theme.of(context).extension<StizeColors>();
-    if (stize != null) return _card(context, stize);
-    return _legacy(context);
+    return _card(context, StizeColors.of(context));
   }
 
   Widget _card(BuildContext context, StizeColors c) {
@@ -121,188 +115,5 @@ class NearbyCard extends StatelessWidget {
     );
   }
 
-  Widget _legacy(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    // The feed's authoritative per-line type (resolved backend-side), the same
-    // source the map markers use — so a line's colour matches everywhere.
-    final type = group.vehicleType;
-    final color = vehicleColor(type);
-    final destination = group.destination;
-    // Same rule as the arrivals list: brightness == "leads to a live vehicle you
-    // can follow". A schedule-/placeholder-only group reads dimmed and shows no
-    // chevron — its tap opens the stop, not a phantom follow.
-    final hasLive = nearbyGroupHasLive(group);
-    final dim = hasLive ? 1.0 : _dimOpacity;
-
-    return Material(
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Opacity(
-                opacity: dim,
-                child: _LineBadge(line: group.line, type: type, color: color),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Opacity(
-                      opacity: dim,
-                      child: Text(
-                        // "→ Destination" reads as the travel direction; when the
-                        // upstream gave us no terminus, fall back to the line name.
-                        destination != null && destination.isNotEmpty
-                            ? '→ $destination'
-                            : group.line,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${group.stopName} · ${l10n.nearbyDistanceMeters(group.distanceMeters)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // The eta column is NOT dimmed at the group level — each time
-              // carries its own status (live bright, scheduled dimmed + clock)
-              // so a mixed "live / scheduled" card is legible, and scheduled
-              // times earlier than a live one are dropped (visibleNearbyEtas).
-              _EtaColumn(etas: visibleNearbyEtas(group)),
-              // Drill-in affordance: only a live, followable group gets a chevron.
-              if (hasLive)
-                Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Opacity for a non-live Nearby row — matches [ArrivalTile] so both lists
-  /// speak the same "dim == not a followable vehicle" language.
-  static const double _dimOpacity = 0.58;
 }
 
-/// The coloured route badge: type glyph + line number, matching the map pill.
-class _LineBadge extends StatelessWidget {
-  const _LineBadge({required this.line, required this.type, required this.color});
-
-  final String line;
-  final VehicleType type;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      constraints: const BoxConstraints(minWidth: 56),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          vehicleGlyph(type, size: 16, color: StizeColors.of(context).onTransit),
-          const SizedBox(width: 6),
-          Builder(builder: (context) {
-            // Stiže: the line number in a vertical list is the one semibold
-            // (StizeType.lineNumber), white on every type. OFF keeps the prior
-            // bold 15 (killswitch).
-            final stize = Theme.of(context).extension<StizeColors>();
-            return Text(
-              line,
-              style: stize != null
-                  ? StizeType.lineNumber.copyWith(color: stize.onTransit)
-                  : const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-/// Up to two soonest departures, the first emphasised. Each time carries its
-/// own status: a live vehicle reads bright; a scheduled/placeholder time reads
-/// dimmed with a small clock, so a mixed card doesn't leave "which time is the
-/// bus?" ambiguous.
-class _EtaColumn extends StatelessWidget {
-  const _EtaColumn({required this.etas});
-
-  final List<NearbyEta> etas;
-
-  static const double _dimOpacity = 0.58;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    if (etas.isEmpty) {
-      return Text('—', style: theme.textTheme.titleMedium);
-    }
-    final localeName = Localizations.localeOf(context).toString();
-    String label(NearbyEta e) => etaLabel(l10n, localeName, e.etaMinutes);
-
-    Widget etaRow(NearbyEta e, TextStyle? style) {
-      final live = nearbyEtaIsLive(e);
-      return Opacity(
-        opacity: live ? 1.0 : _dimOpacity,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // A clock marks a non-live time so it isn't read as a tracked bus.
-            if (!live) ...[
-              Icon(Icons.schedule, size: 13, color: theme.colorScheme.onSurfaceVariant),
-              const SizedBox(width: 3),
-            ],
-            Text(label(e), style: style),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        etaRow(
-          etas.first,
-          theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        if (etas.length > 1)
-          etaRow(
-            etas[1],
-            theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-      ],
-    );
-  }
-}

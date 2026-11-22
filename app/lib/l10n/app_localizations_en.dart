@@ -560,8 +560,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'If you send feedback, your message — and the optional contact you provide — are stored so we can read it and reply to you. Nothing else is collected with it.';
 
   @override
-  String get privacyServicesTitle =>
-      'Services the app loads from';
+  String get privacyServicesTitle => 'Services the app loads from';
 
   @override
   String get privacyServicesBody =>

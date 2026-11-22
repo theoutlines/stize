@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stize/presentation/widgets/stize_transit_card.dart';
 import 'package:stize/domain/models/arrival.dart' show ServiceStatus;
 import 'package:latlong2/latlong.dart' as ll;
 
@@ -101,11 +102,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('79'), findsOneWidget);
-      expect(find.text('→ Zeleni venac'), findsOneWidget);
+      expect(find.text('Zeleni venac'), findsOneWidget);
       expect(find.textContaining('Batutova'), findsOneWidget);
       expect(find.textContaining('120 m'), findsOneWidget);
-      expect(find.text('3 min'), findsOneWidget); // soonest, emphasised
-      expect(find.text('9 min'), findsOneWidget); // second departure
+      expect(find.text('3'), findsOneWidget); // soonest, the big number
+      expect(find.text('next in 9 min'), findsOneWidget); // second departure
     });
 
     testWidgets('brightness == clickability: a live group has a chevron, a '
@@ -134,20 +135,10 @@ void main() {
       ])));
       await tester.pumpAndSettle();
 
-      // Exactly one row (the live one) carries the drill-in chevron.
-      expect(find.byIcon(Icons.chevron_right), findsOneWidget);
-
-      // The schedule-only row's line badge is dimmed; the live one is not.
-      Opacity badgeOpacity(String line) => tester.widget<Opacity>(
-            find
-                .ancestor(
-                  of: find.text(line),
-                  matching: find.byType(Opacity),
-                )
-                .first,
-          );
-      expect(badgeOpacity('79').opacity, 1.0);
-      expect(badgeOpacity('26').opacity, lessThan(1.0));
+      // The live group's card is live; the schedule-only one is held back.
+      final cards = tester.widgetList<StizeTransitCard>(find.byType(StizeTransitCard)).toList();
+      expect(cards.firstWhere((c) => c.line == '79').live, isTrue);
+      expect(cards.firstWhere((c) => c.line == '26').live, isFalse);
     });
   });
 
@@ -196,8 +187,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 20));
 
       expect(find.text('26'), findsOneWidget);
-      expect(find.text('→ Dorćol'), findsOneWidget);
-      expect(find.text('2 min'), findsOneWidget);
+      expect(find.text('Dorćol'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
     });

@@ -561,8 +561,7 @@ class AppLocalizationsSr extends AppLocalizations {
       'Ako pošalješ utiske, tvoja poruka — i opcioni kontakt koji navedeš — čuvaju se da bismo je pročitali i odgovorili ti. Ništa drugo se uz nju ne prikuplja.';
 
   @override
-  String get privacyServicesTitle =>
-      'Servisi sa kojih se aplikacija učitava';
+  String get privacyServicesTitle => 'Servisi sa kojih se aplikacija učitava';
 
   @override
   String get privacyServicesBody =>

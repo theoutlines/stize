@@ -41,8 +41,7 @@ class StopScreen extends ConsumerStatefulWidget {
 
 class _StopScreenState extends ConsumerState<StopScreen> {
   Timer? _refreshTimer;
-  late final ForegroundResumeListener _resume =
-      ForegroundResumeListener(() {
+  late final ForegroundResumeListener _resume = ForegroundResumeListener(() {
     if (mounted) _refreshNow();
   });
   String? _lineFilter;
@@ -58,10 +57,9 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     // This full screen is reached only via the /stop/:id route — the "My Stops"
     // (favorites) list and external deep links — so the open is tagged as such.
     // (The in-app tap path uses the bottom sheet, which tags its own source.)
-    ref.read(eventLoggerProvider).log(
-      Ev.stopOpen,
-      props: {'source': Ev.srcFavorites},
-    );
+    ref
+        .read(eventLoggerProvider)
+        .log(Ev.stopOpen, props: {'source': Ev.srcFavorites});
   }
 
   void _scheduleRefresh() {
@@ -88,14 +86,20 @@ class _StopScreenState extends ConsumerState<StopScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final board = ref.watch(arrivalsProvider(widget.stopId));
-    final stopLocation = ref.watch(stopLocationProvider(widget.stopId)).valueOrNull;
-    final isFavoriteAsync = ref.watch(favoritesControllerProvider).maybeWhen(
+    final stopLocation = ref
+        .watch(stopLocationProvider(widget.stopId))
+        .valueOrNull;
+    final isFavoriteAsync = ref
+        .watch(favoritesControllerProvider)
+        .maybeWhen(
           data: (favs) => favs.any((f) => f.stopId == widget.stopId),
           orElse: () => false,
         );
 
-    final allAlerts = ref.watch(alertsProvider).valueOrNull ?? const <RouteAlert>[];
-    final stopName = board.valueOrNull?.stopName ?? widget.initialStopName ?? '';
+    final allAlerts =
+        ref.watch(alertsProvider).valueOrNull ?? const <RouteAlert>[];
+    final stopName =
+        board.valueOrNull?.stopName ?? widget.initialStopName ?? '';
     final relevantAlerts = allAlerts.where((a) {
       if (a.isExpired) return false;
       final matchesLine = stopLocation?.lines.any(a.matchesLine) ?? false;
@@ -105,7 +109,9 @@ class _StopScreenState extends ConsumerState<StopScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(board.valueOrNull?.stopName ?? widget.initialStopName ?? ''),
+        title: Text(
+          board.valueOrNull?.stopName ?? widget.initialStopName ?? '',
+        ),
         actions: [
           IconButton(
             icon: Icon(isFavoriteAsync ? Icons.star : Icons.star_outline),
@@ -114,7 +120,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
               if (isFavoriteAsync) {
                 notifier.remove(widget.stopId);
               } else {
-                final name = board.valueOrNull?.stopName ?? widget.initialStopName ?? widget.stopId;
+                final name =
+                    board.valueOrNull?.stopName ??
+                    widget.initialStopName ??
+                    widget.stopId;
                 notifier.add(FavoriteStop(stopId: widget.stopId, name: name));
               }
             },
@@ -131,7 +140,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
               lines: stopLocation?.lines ?? const [],
             ),
             board.when(
-              loading: () => EmptyState(icon: Icons.directions_transit_outlined, title: l10n.loadingArrivals),
+              loading: () => EmptyState(
+                icon: Icons.directions_transit_outlined,
+                title: l10n.loadingArrivals,
+              ),
               error: (err, st) => _errorState(l10n, err),
               data: (b) => _boardBody(context, l10n, b, stopLocation),
             ),
@@ -167,7 +179,12 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     );
   }
 
-  Widget _boardBody(BuildContext context, AppLocalizations l10n, ArrivalsBoard board, Stop? stopLocation) {
+  Widget _boardBody(
+    BuildContext context,
+    AppLocalizations l10n,
+    ArrivalsBoard board,
+    Stop? stopLocation,
+  ) {
     // See stop_sheet.dart: an outage still has the timetable to show, so the
     // wall is only for a board with genuinely nothing on it. (Both shutters
     // carry their own copy of this build — keep them in step.)
@@ -194,10 +211,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     // arrival are shown as muted, disabled chips ("inactive"). See stop_sheet.
     final arrivingLines = board.arrivals.map((a) => a.line).toSet();
     // Only chip non-empty lines — a blank value would render an empty chip (F6).
-    final allLines = {...?stopLocation?.lines, ...arrivingLines}
-        .where((l) => l.trim().isNotEmpty)
-        .toList()
-      ..sort(_compareLines);
+    final allLines = {
+      ...?stopLocation?.lines,
+      ...arrivingLines,
+    }.where((l) => l.trim().isNotEmpty).toList()..sort(_compareLines);
     final effectiveFilter =
         (_lineFilter != null && arrivingLines.contains(_lineFilter))
         ? _lineFilter
@@ -229,8 +246,9 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         final ca = fleetByIndex[a]?.comfortScore ?? -1;
         final cb = fleetByIndex[b]?.comfortScore ?? -1;
         if (ca != cb) return cb.compareTo(ca); // higher comfort first
-        return visibleArrivals[a].etaMinutes
-            .compareTo(visibleArrivals[b].etaMinutes); // tie-break by time
+        return visibleArrivals[a].etaMinutes.compareTo(
+          visibleArrivals[b].etaMinutes,
+        ); // tie-break by time
       });
     }
 
@@ -238,11 +256,8 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     // live vehicles already cover, and fold each group's surviving Scheduled
     // into one cell (arrivals-dedup — see SCHEDULE_FALLBACK_CONTRACT). The
     // comfort sort is a deliberately flat, live-only reorder and stays untouched.
-    // Stiže: one card per line×direction, later vehicles folded into it.
-    final foldCards = Theme.of(context).extension<StizeColors>() != null;
-    final groupedEntries = foldCards
-        ? foldLiveByDirection(groupArrivals(visibleArrivals))
-        : groupArrivals(visibleArrivals);
+    // One card per line×direction, later vehicles folded into it.
+    final groupedEntries = foldLiveByDirection(groupArrivals(visibleArrivals));
 
     // Keep the schedule-derived placeholder rows (junk garage, GPS pinned to
     // this stop) off the map — otherwise they render as a motionless stack on
@@ -251,16 +266,22 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     // Nothing live left to draw but arrivals *are* coming: explain the empty map
     // instead of a blank slot (which reads as broken).
     final showNoLiveHint = stopLocation != null && mapVehicles.isEmpty;
-    final ageSeconds = DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
-    final isStale = ageSeconds > 90; // well past the ~30s refresh cadence — likely a stuck cache
+    final ageSeconds = DateTime.now()
+        .toUtc()
+        .difference(board.updatedAt.toUtc())
+        .inSeconds;
+    final isStale =
+        ageSeconds >
+        90; // well past the ~30s refresh cadence — likely a stuck cache
 
     // Destination (headsign) per direction route_id, from the GTFS line
     // directory. Empty until it loads / offline without a mirror.
     final destinations =
-        ref.watch(lineDestinationsProvider).valueOrNull ?? const <String, String>{};
+        ref.watch(lineDestinationsProvider).valueOrNull ??
+        const <String, String>{};
     // The Stiže card look is live only when the design-system theme is on; OFF
     // keeps the flat ListTile rows with no inter-card gaps (killswitch).
-    final stize = Theme.of(context).extension<StizeColors>();
+    final stize = StizeColors.of(context);
 
     // Build the arrival rows, flagging the first live/expected card as emphasis.
     final tiles = <Widget>[];
@@ -272,8 +293,8 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         fleet,
         destinations: destinations,
         allArrivals: visibleArrivals,
-        emphasis: stize != null && firstCard,
-        later: (foldCards && !sortByComfort) ? later : null,
+        emphasis: firstCard,
+        later: sortByComfort ? null : later,
       ));
       firstCard = false;
     }
@@ -315,18 +336,28 @@ class _StopScreenState extends ConsumerState<StopScreen> {
           child: Text(
             _freshnessLabel(l10n, board.updatedAt),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: isStale ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.outline,
-                ),
+              color: isStale
+                  ? Theme.of(context).colorScheme.error
+                  : Theme.of(context).colorScheme.outline,
+            ),
           ),
         ),
         if (allLines.length > 1)
           _lineFilterChips(
-            context, stize, allLines, arrivingLines, effectiveFilter, board),
-        if (canSortByComfort && stize != null)
+            context,
+            stize,
+            allLines,
+            arrivingLines,
+            effectiveFilter,
+            board,
+          ),
+        if (canSortByComfort)
           // Stiže: the same text chips as "All lines", on the cards' 16px edge.
           Padding(
             padding: const EdgeInsets.symmetric(
-                horizontal: StizeSpace.space4, vertical: StizeSpace.space1),
+              horizontal: StizeSpace.space4,
+              vertical: StizeSpace.space1,
+            ),
             child: Row(
               spacing: StizeSpace.space2,
               children: [
@@ -345,50 +376,24 @@ class _StopScreenState extends ConsumerState<StopScreen> {
                 ),
               ],
             ),
-          )
-        else if (canSortByComfort)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Row(
-              children: [
-                ChoiceChip(
-                  label: Text(l10n.fleetSortByTime),
-                  selected: !_sortByComfort,
-                  onSelected: (_) => setState(() => _sortByComfort = false),
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  avatar: Icon(Icons.chair_outlined,
-                      size: 18,
-                      color: _sortByComfort
-                          ? Theme.of(context).colorScheme.onSecondaryContainer
-                          : Theme.of(context).colorScheme.outline),
-                  label: Text(l10n.fleetSortByComfort),
-                  selected: _sortByComfort,
-                  onSelected: (_) {
-                    ref.read(eventLoggerProvider).log(Ev.sortComfort);
-                    setState(() => _sortByComfort = true);
-                  },
-                ),
-              ],
-            ),
           ),
-        if (stize != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                StizeSpace.space4, StizeSpace.space1, StizeSpace.space4, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < tiles.length; i++) ...[
-                  if (i > 0) const SizedBox(height: StizeSpace.space1),
-                  tiles[i],
-                ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            StizeSpace.space4,
+            StizeSpace.space1,
+            StizeSpace.space4,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < tiles.length; i++) ...[
+                if (i > 0) const SizedBox(height: StizeSpace.space1),
+                tiles[i],
               ],
-            ),
-          )
-        else
-          ...tiles,
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -479,11 +484,11 @@ class _StopScreenState extends ConsumerState<StopScreen> {
           .valueOrNull?[arrival.directionRouteId ?? arrival.routeId],
       onOpenFleetCard: fleet != null && fleet.hasInfo
           ? () => showFleetModelCard(
-                context,
-                fleet: fleet,
-                fallbackType: arrival.vehicleType,
-                garageNo: arrival.garageNo,
-              )
+              context,
+              fleet: fleet,
+              fallbackType: arrival.vehicleType,
+              garageNo: arrival.garageNo,
+            )
           : null,
     );
   }
@@ -500,7 +505,9 @@ class _StopScreenState extends ConsumerState<StopScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.5,
+          ),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -514,8 +521,9 @@ class _StopScreenState extends ConsumerState<StopScreen> {
             Expanded(
               child: Text(
                 l10n.noLiveVehiclesOnMap,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ],
@@ -535,7 +543,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
   }
 
   String _freshnessLabel(AppLocalizations l10n, DateTime updatedAt) {
-    final seconds = DateTime.now().toUtc().difference(updatedAt.toUtc()).inSeconds;
+    final seconds = DateTime.now()
+        .toUtc()
+        .difference(updatedAt.toUtc())
+        .inSeconds;
     if (seconds < 5) return l10n.stopUpdatedJustNow;
     if (seconds < 60) return l10n.stopUpdatedSecondsAgo(seconds);
     return l10n.stopUpdatedMinutesAgo((seconds / 60).round());

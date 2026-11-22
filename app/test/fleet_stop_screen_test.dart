@@ -126,7 +126,7 @@ void main() {
 
     // Arrivals render normally.
     expect(find.text('12'), findsWidgets);
-    expect(find.text('3 min'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
     // No fleet badges, no comfort sort, no crash.
     expect(find.byIcon(Icons.ac_unit), findsNothing);
     expect(find.text('By comfort'), findsNothing);
@@ -159,16 +159,16 @@ void main() {
     await tester.pumpAndSettle();
 
     // Default (time) order: Kata (3 min) is above Bozankaya (9 min).
-    final kataY0 = tester.getTopLeft(find.text('3 min')).dy;
-    final bozaY0 = tester.getTopLeft(find.text('9 min')).dy;
+    final kataY0 = tester.getTopLeft(find.text('3')).dy;
+    final bozaY0 = tester.getTopLeft(find.text('9')).dy;
     expect(kataY0, lessThan(bozaY0));
 
     await tester.tap(find.text('By comfort'));
     await tester.pumpAndSettle();
 
     // Now the comfy Bozankaya (9 min) sits above the old Kata (3 min).
-    final kataY1 = tester.getTopLeft(find.text('3 min')).dy;
-    final bozaY1 = tester.getTopLeft(find.text('9 min')).dy;
+    final kataY1 = tester.getTopLeft(find.text('3')).dy;
+    final bozaY1 = tester.getTopLeft(find.text('9')).dy;
     expect(bozaY1, lessThan(kataY1));
   });
 

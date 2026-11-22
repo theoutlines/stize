@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 /// neutral — it has no imposed platform language — so we gate on `!kIsWeb`,
 /// meaning even iOS Safari renders the neutral Material look, not Cupertino.
 ///
-/// Fonts: with the Stiže design system (`ds_stize` flag) every platform uses
+/// Fonts: with the Stiže design system every platform uses
 /// the bundled Uncut Sans, so the app reads as one product on iOS, Android and
 /// web; this replaced the earlier "system font per platform" choice on
 /// 2026-11-22. Only the font changed: transitions, the iOS back gesture and the

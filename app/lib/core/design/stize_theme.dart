@@ -32,7 +32,7 @@ abstract final class StizeMotion {
 ///   of a screen (the first live ETA) and is applied explicitly by that widget.
 /// - Only weights 400 and 500 in the text theme; 600 exists solely as
 ///   [StizeType.lineNumber] for line numbers in vertical lists.
-/// - Behind the remote `ds_stize` flag; OFF keeps the previous `AppTheme`.
+/// - The only theme since 2026-11-22 (the `ds_stize` flag and the old Material theme were removed).
 abstract final class StizeTheme {
   static ThemeData dark() => _build(StizeColors.dark, Brightness.dark);
   static ThemeData light() => _build(StizeColors.light, Brightness.light);

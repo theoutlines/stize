@@ -33,7 +33,6 @@ describe("featureFlags", () => {
       "context_panel",
       "coverage_map_show",
       "coverage_on_main_map",
-      "ds_stize",
       "feedback_form",
       "jam_detection_collect",
       "jam_detection_show",

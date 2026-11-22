@@ -12,8 +12,14 @@ Widget _wrap(ScheduledGroupCell cell) => MaterialApp(
       home: Scaffold(body: ScheduledGroupTile(cell: cell)),
     );
 
+final _clock = RegExp(r'^\d{2}:\d{2}$');
+final _twoClocks = RegExp(r'^\d{2}:\d{2} · \d{2}:\d{2}$');
+
+Finder _textMatching(RegExp re) =>
+    find.byWidgetPredicate((w) => w is Text && re.hasMatch(w.data ?? ''));
+
 void main() {
-  testWidgets('renders line, Scheduled label, nearest + next two times', (tester) async {
+  testWidgets('renders line, Scheduled label, nearest time + next two as clocks', (tester) async {
     await tester.pumpWidget(_wrap(const ScheduledGroupCell(
       line: '79',
       vehicleType: VehicleType.bus,
@@ -22,12 +28,10 @@ void main() {
 
     expect(find.text('79'), findsOneWidget);
     expect(find.text('Scheduled'), findsOneWidget);
-    // Nearest, large.
-    expect(find.text('18 min'), findsOneWidget);
-    // The two follow-ups on one muted line.
-    expect(find.text('26 min · 30 min'), findsOneWidget);
-    // Not clickable → no drill-in chevron.
-    expect(find.byIcon(Icons.chevron_right), findsNothing);
+    // A planned time reads as a clock: nearest large, the two follow-ups on
+    // one quiet line under it.
+    expect(_textMatching(_clock), findsOneWidget);
+    expect(_textMatching(_twoClocks), findsOneWidget);
   });
 
   testWidgets('a single surviving time shows no follow-up line', (tester) async {
@@ -37,25 +41,18 @@ void main() {
       etaMinutes: [12],
     )));
 
-    expect(find.text('12 min'), findsOneWidget);
+    expect(_textMatching(_clock), findsOneWidget);
     expect(find.textContaining('·'), findsNothing);
   });
 
-  testWidgets('a far ETA (>= 60 min) renders as a clock time, not "N min" — '
-      'including the cell\'s secondary times', (tester) async {
+  testWidgets('a far ETA never renders as an unreadable "146 min"', (tester) async {
     await tester.pumpWidget(_wrap(const ScheduledGroupCell(
       line: '29N',
       vehicleType: VehicleType.bus,
-      etaMinutes: [26, 146], // 26 stays minutes; 146 becomes a clock time
+      etaMinutes: [26, 146],
     )));
 
-    expect(find.text('26 min'), findsOneWidget); // near time unchanged
-    expect(find.textContaining('146 min'), findsNothing); // not an unreadable count
-    // The follow-up line reads "HH:mm" (24h clock arrival time).
-    expect(
-      find.byWidgetPredicate((w) =>
-          w is Text && (w.data ?? '').contains(RegExp(r'\d{2}:\d{2}'))),
-      findsOneWidget,
-    );
+    expect(find.textContaining('146'), findsNothing);
+    expect(_textMatching(_clock), findsNWidgets(2)); // nearest + the follow-up
   });
 }

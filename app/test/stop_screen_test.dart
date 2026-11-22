@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stize/presentation/widgets/stize_filter_chips.dart';
 
 import 'package:stize/core/map_support.dart';
 import 'package:stize/data/api/api_exceptions.dart';
@@ -110,7 +111,7 @@ void main() {
 
     expect(find.text('Batutova'), findsOneWidget);
     expect(find.text('79'), findsOneWidget);
-    expect(find.text('11 min'), findsOneWidget);
+    expect(find.text('11'), findsOneWidget); // big ETA (unit drawn separately)
     expect(find.text('6 stops away'), findsOneWidget);
   });
 
@@ -186,7 +187,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('79'), findsOneWidget);
-    expect(find.text('12 min'), findsOneWidget);
+    expect(
+        find.byWidgetPredicate(
+            (w) => w is Text && RegExp(r'^\d{2}:\d{2}$').hasMatch(w.data ?? '')),
+        findsOneWidget); // a planned time reads as a clock
     expect(find.text('Scheduled'), findsOneWidget); // planned marker
   });
 
@@ -353,16 +357,16 @@ void main() {
 
     // Every chip is built — including the last one, off-screen to the right —
     // so nothing is clipped away. (A SingleChildScrollView builds all children.)
-    expect(find.widgetWithText(ChoiceChip, 'All lines'), findsOneWidget);
-    expect(find.widgetWithText(ChoiceChip, '401'), findsOneWidget);
-    expect(find.widgetWithText(ChoiceChip, '863'), findsOneWidget);
+    expect(find.widgetWithText(StizeTextChip, 'All lines'), findsOneWidget);
+    expect(find.widgetWithText(StizeLineChip, '401'), findsOneWidget);
+    expect(find.widgetWithText(StizeLineChip, '863'), findsOneWidget);
 
     // Both arrivals show before filtering.
     expect(find.text('3 stops away'), findsOneWidget); // line 401
     expect(find.text('7 stops away'), findsOneWidget); // line 405
 
     // Tapping the 401 chip filters the list down to just line 401.
-    await tester.tap(find.widgetWithText(ChoiceChip, '401'));
+    await tester.tap(find.widgetWithText(StizeLineChip, '401'));
     await tester.pumpAndSettle();
 
     expect(find.text('3 stops away'), findsOneWidget); // 401 stays
