@@ -29,7 +29,7 @@ export async function geocodeSearch(
   if (!normalized) return [];
 
   const cache = caches.default;
-  const cacheKey = new Request(`https://cache.stigla.internal/geocode/v2/${encodeURIComponent(normalized)}`);
+  const cacheKey = new Request(`https://cache.stigla.internal/geocode/v3/${encodeURIComponent(normalized)}`);
   const cached = await cache.match(cacheKey);
   if (cached) return (await cached.json()) as GeocodeResult[];
   if (!(await allowUpstream())) throw new GeocodeRateLimited(normalized);
@@ -59,11 +59,12 @@ export async function geocodeSearch(
     lon: string;
     address?: Record<string, string>;
   }>;
-  const results = body.map((r) => ({
-    display_name: shortAddress(r),
-    lat: parseFloat(r.lat),
-    lon: parseFloat(r.lon),
-  }));
+  // The short form collapses several OSM objects of one street to the same text
+  // ("Kneza Mihaila, Stari grad" twice): keep the first of each.
+  const seen = new Set<string>();
+  const results = body
+    .map((r) => ({ display_name: shortAddress(r), lat: parseFloat(r.lat), lon: parseFloat(r.lon) }))
+    .filter((r) => !seen.has(r.display_name) && seen.add(r.display_name));
 
   await cache.put(
     cacheKey,
