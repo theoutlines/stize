@@ -233,4 +233,32 @@ void main() {
       expect((entries[2] as ScheduledGroupCell).line, '7L'); // @20
     });
   });
+
+  group('foldLiveByDirection: one card per line x direction', () {
+    test('later live vehicles of the same direction fold into the first card', () {
+      final entries = foldLiveByDirection(groupArrivals([
+        _live('42', 1, garage: 'a'),
+        _live('78', 3, garage: 'b'),
+        _live('42', 7, garage: 'c'),
+        _live('42', 16, garage: 'd'),
+        _live('42', 25, garage: 'e'),
+        _live('42', 9, route: 'r2', garage: 'f'), // other direction keeps its card
+      ]));
+      final rows = entries.whereType<ArrivalRow>().toList();
+      expect(rows.map((r) => '${r.arrival.line}/${r.arrival.directionRouteId}').toList(),
+          ['42/r1', '78/r1', '42/r2']);
+      expect(rows.first.laterEtaMinutes, [7, 16]); // capped at two
+      expect(rows[1].laterEtaMinutes, isEmpty);
+    });
+
+    test('expected and scheduled entries pass through untouched', () {
+      final entries = foldLiveByDirection(groupArrivals([
+        _expected('5', 2),
+        _expected('5', 6),
+        _scheduled('9', 40),
+      ]));
+      expect(entries.whereType<ArrivalRow>().length, 2);
+      expect(entries.whereType<ScheduledGroupCell>().length, 1);
+    });
+  });
 }

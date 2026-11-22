@@ -107,6 +107,15 @@
       }
     }
   },
+  "arrivalEvery": "every ~{minutes} min",
+  "@arrivalEvery": {
+    "description": "Caption on an arrival card: the line's planned interval at this hour, from the timetable",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "arrivalNextAt": "next at {time}",
   "@arrivalNextAt": {
     "description": "Caption on an arrival card: when the same line comes again, as a 24h clock time",

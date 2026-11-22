@@ -22,6 +22,8 @@ class ArrivalTile extends StatelessWidget {
     this.emphasis = false,
     this.destination,
     this.nextEtaMinutes,
+    this.headwayMinutes,
+    this.laterEtaMinutes = const [],
   });
 
   final Arrival arrival;
@@ -55,6 +57,16 @@ class ArrivalTile extends StatelessWidget {
   /// rendered in the caption as "next in N min" / "next at HH:MM". Null hides it.
   final int? nextEtaMinutes;
 
+  /// Stiže card only: the line's planned interval at this hour (timetable),
+  /// shown as "every ~N min" when the board has no second trip of this line to
+  /// name. Null hides it. (Adaptive: measured intervals and "often late" will
+  /// take this slot once analytics has enough samples.)
+  final int? headwayMinutes;
+
+  /// Stiže card only: ETAs of the later vehicles of this line×direction folded
+  /// into this card (one card per direction), shown small under the big ETA.
+  final List<int> laterEtaMinutes;
+
   /// Opacity for a non-clickable row (Expected / Scheduled). Brightness is the
   /// single, at-a-glance signal for "can I tap this?" — dim == not tappable.
   static const double _dimOpacity = 0.58;
@@ -83,11 +95,7 @@ class ArrivalTile extends StatelessWidget {
       caption: _caption(context, c, c.onTransit, status, live, l10n, localeName),
       etaMinutes: arrival.etaMinutes,
       scheduled: status == ArrivalRowStatus.scheduled,
-      etaFooter: (status != ArrivalRowStatus.scheduled &&
-              etaDeltaMinutes != null &&
-              etaDeltaMinutes != 0)
-          ? _cardEtaDelta(c.onTransit)
-          : null,
+      etaFooter: _cardFooter(c, status, l10n, localeName),
       live: live,
       emphasis: emphasis,
       onTap: live ? onTap : null,
@@ -134,7 +142,13 @@ class ArrivalTile extends StatelessWidget {
           : l10n.arrivalNextIn(nextEtaMinutes! <= 0 ? 0 : nextEtaMinutes!);
     }
 
-    final hasText = primary != null || next != null;
+    // Planned interval: only when no next trip is on the board, so a card
+    // carries one "how often" fact, never two.
+    final every = (next == null && headwayMinutes != null)
+        ? l10n.arrivalEvery(headwayMinutes!)
+        : null;
+
+    final hasText = primary != null || next != null || every != null;
     final strip = (fleet == null || status == ArrivalRowStatus.scheduled)
         ? null
         : FleetBadgeStrip(
@@ -150,9 +164,42 @@ class ArrivalTile extends StatelessWidget {
       if (live && hasText) StizeTransitCard.liveDot(c),
       if (primary != null) Text(primary, style: style),
       if (next != null) Text(next, style: style),
+      if (every != null) Text(every, style: style),
       ?strip,
     ];
     return parts;
+  }
+
+  /// Under the big ETA: the ETA-change hint (G1) and the later trips of this
+  /// direction folded into the card ("7 · 22").
+  Widget? _cardFooter(
+    StizeColors c,
+    ArrivalRowStatus status,
+    AppLocalizations l10n,
+    String localeName,
+  ) {
+    final delta = status != ArrivalRowStatus.scheduled &&
+            etaDeltaMinutes != null &&
+            etaDeltaMinutes != 0
+        ? _cardEtaDelta(c.onTransit)
+        : null;
+    Widget? later;
+    if (laterEtaMinutes.isNotEmpty) {
+      final far = laterEtaMinutes.any((m) => m >= kFarEtaMinutes);
+      final text = far
+          ? laterEtaMinutes.map((m) => clockAt(localeName, m)).join(' · ')
+          // No unit: it sits right under the big ETA's "min", and a narrow
+          // ETA column leaves the caption room (no "every ~20 …").
+          : laterEtaMinutes.map((m) => m <= 0 ? 0 : m).join(' · ');
+      later = Text(text, style: StizeTransitCard.captionStyle(c));
+    }
+    if (delta == null) return later;
+    if (later == null) return delta;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [delta, later],
+    );
   }
 
   /// ETA-change hint on a colour card: a white arrow + "N min" (the card's fill

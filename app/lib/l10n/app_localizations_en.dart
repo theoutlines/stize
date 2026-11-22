@@ -157,6 +157,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String arrivalEvery(int minutes) {
+    return 'every ~$minutes min';
+  }
+
+  @override
   String arrivalNextAt(String time) {
     return 'next at $time';
   }
