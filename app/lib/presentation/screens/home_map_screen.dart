@@ -1076,7 +1076,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // both ask.
     _autoprompted = true;
     final service = ref.read(locationServiceProvider);
-    if (!await service.isPermissionUndecided()) return;
+    // On the web the browser owns the decision: asking when it's already
+    // granted just returns a fix, asking when it's denied fails quietly (no
+    // prompt). Safari's permission query can't be trusted to say "undecided"
+    // (owner, iOS 2026-11-22: Chrome asked on entry, Safari didn't), so the web
+    // always asks once and lets the browser decide.
+    if (!kIsWeb && !await service.isPermissionUndecided()) return;
     try {
       final fresh = await service.getCurrentPosition(); // shows the prompt
       if (!mounted) return;

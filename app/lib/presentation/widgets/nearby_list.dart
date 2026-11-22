@@ -7,6 +7,7 @@ import '../../core/nearby_focus.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
+import 'stize_transit_card.dart';
 import 'vehicle_icon.dart';
 
 /// The "Nearby" list itself — a pure, scrollable list of line+direction rows.
@@ -40,6 +41,8 @@ class NearbyList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final leading = header == null ? 0 : 1;
+    // Stiže: colour cards 4px apart (owner spec, same as the stop board).
+    final stize = Theme.of(context).extension<StizeColors>() != null;
     final list = ListView.separated(
       controller: scrollController,
       // Top padding matches the horizontal (side) padding so the first card is
@@ -47,7 +50,8 @@ class NearbyList extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: groups.length + leading,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) =>
+          SizedBox(height: stize ? StizeSpace.space1 : 8),
       itemBuilder: (context, i) {
         if (i < leading) return header!;
         final g = groups[i - leading];
@@ -73,6 +77,51 @@ class NearbyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Stiže (flag ON): the filled transit-colour card, same language as the
+    // stop board's ArrivalTile. OFF: the previous card exactly (killswitch).
+    final stize = Theme.of(context).extension<StizeColors>();
+    if (stize != null) return _card(context, stize);
+    return _legacy(context);
+  }
+
+  Widget _card(BuildContext context, StizeColors c) {
+    final l10n = AppLocalizations.of(context);
+    final localeName = Localizations.localeOf(context).toString();
+    final hasLive = nearbyGroupHasLive(group);
+    final etas = visibleNearbyEtas(group);
+    final caption = StizeTransitCard.captionStyle(c);
+
+    // The next time of this line, with its unit attached (same as the board).
+    String? next;
+    if (etas.length > 1) {
+      final m = etas[1].etaMinutes;
+      next = m >= kFarEtaMinutes
+          ? l10n.arrivalNextAt(clockAt(localeName, m))
+          : l10n.arrivalNextIn(m <= 0 ? 0 : m);
+    }
+
+    return StizeTransitCard(
+      type: group.vehicleType,
+      line: group.line,
+      destination: group.destination,
+      caption: [
+        if (hasLive) StizeTransitCard.liveDot(c),
+        Text(
+          '${group.stopName} · ${l10n.nearbyDistanceMeters(group.distanceMeters)}',
+          style: caption,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (next != null) Text(next, style: caption),
+      ],
+      etaMinutes: etas.isEmpty ? null : etas.first.etaMinutes,
+      scheduled: etas.isNotEmpty && !nearbyEtaIsLive(etas.first),
+      live: hasLive,
+      onTap: onTap,
+    );
+  }
+
+  Widget _legacy(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     // The feed's authoritative per-line type (resolved backend-side), the same

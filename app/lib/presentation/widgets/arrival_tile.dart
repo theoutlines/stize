@@ -5,10 +5,10 @@ import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/map_support.dart';
-import '../../domain/models/vehicle_type.dart';
 import '../../domain/models/arrival.dart';
 import '../../l10n/app_localizations.dart';
 import 'fleet_badges.dart';
+import 'stize_transit_card.dart';
 import 'vehicle_icon.dart';
 
 class ArrivalTile extends StatelessWidget {
@@ -76,75 +76,28 @@ class ArrivalTile extends StatelessWidget {
     final localeName = Localizations.localeOf(context).toString();
     final status = arrivalRowStatus(arrival);
     final live = status == ArrivalRowStatus.live;
-
-    final fill = _typeColor(c, arrival.vehicleType);
-    final on = c.onTransit; // white on every transit colour
-
-    final pad = emphasis
-        ? const EdgeInsets.all(StizeSpace.space4)
-        : const EdgeInsets.symmetric(
-            horizontal: StizeSpace.space4, vertical: StizeSpace.space3);
-    // Line number uses the one semibold in the system (owner, 2026-11-22), big
-    // on the first card (28/32) and standard elsewhere (20/24).
-    final lineStyle = (emphasis ? StizeType.h1 : StizeType.section)
-        .copyWith(fontWeight: FontWeight.w600, color: on);
-
-    final card = Material(
-      color: fill,
-      borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: live ? onTap : null,
-        child: Padding(
-          padding: pad,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(arrival.line, style: lineStyle),
-                    if (destination != null && destination!.trim().isNotEmpty) ...[
-                      const SizedBox(height: StizeSpace.space1),
-                      Row(
-                        children: [
-                          Icon(Icons.arrow_forward_rounded, size: 16, color: on),
-                          const SizedBox(width: StizeSpace.space1),
-                          Flexible(
-                            child: Text(
-                              destination!,
-                              style: StizeType.label.copyWith(color: on),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: StizeSpace.space1),
-                    _caption(context, c, on, status, live, l10n, localeName),
-                  ],
-                ),
-              ),
-              const SizedBox(width: StizeSpace.space3),
-              _etaBlock(context, c, on, status, l10n, localeName),
-            ],
-          ),
-        ),
-      ),
+    return StizeTransitCard(
+      type: arrival.vehicleType,
+      line: arrival.line,
+      destination: destination,
+      caption: _caption(context, c, c.onTransit, status, live, l10n, localeName),
+      etaMinutes: arrival.etaMinutes,
+      scheduled: status == ArrivalRowStatus.scheduled,
+      etaFooter: (status != ArrivalRowStatus.scheduled &&
+              etaDeltaMinutes != null &&
+              etaDeltaMinutes != 0)
+          ? _cardEtaDelta(c.onTransit)
+          : null,
+      live: live,
+      emphasis: emphasis,
+      onTap: live ? onTap : null,
     );
-
-    // A non-live card (Expected / Scheduled) is slightly held back so the
-    // tappable live cards read first — the brightness == "can I tap this?" rule.
-    return live ? card : Opacity(opacity: 0.82, child: card);
   }
 
   /// Caption line (12/16, white 80%): live dot, stops-away / status, the next
   /// trip of this line, and the Fleet-ID / comfort badges. Wrapped so a long
   /// run never clips a colour card.
-  Widget _caption(
+  List<Widget> _caption(
     BuildContext context,
     StizeColors c,
     Color on,
@@ -153,7 +106,7 @@ class ArrivalTile extends StatelessWidget {
     AppLocalizations l10n,
     String localeName,
   ) {
-    final style = StizeType.caption.copyWith(color: on.withValues(alpha: 0.8));
+    final style = StizeTransitCard.captionStyle(c);
 
     // Primary descriptor: stops-away for a live row, the honest status word for
     // the rest. `arrivalProximity` guards the junk `stops_remaining = 0`.
@@ -188,74 +141,18 @@ class ArrivalTile extends StatelessWidget {
             fleet: fleet!,
             garageNo: arrival.garageNo,
             onTap: fleet!.hasInfo ? onOpenFleetCard : null,
+            onColor: on,
           );
 
     final parts = <Widget>[
       // A small white dot marks a genuinely live vehicle; only shown alongside
       // text, never as a lone dot.
-      if (live && hasText)
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(color: on, shape: BoxShape.circle),
-        ),
+      if (live && hasText) StizeTransitCard.liveDot(c),
       if (primary != null) Text(primary, style: style),
       if (next != null) Text(next, style: style),
       ?strip,
     ];
-    if (parts.isEmpty) return const SizedBox.shrink();
-    return Wrap(
-      spacing: StizeSpace.space2,
-      runSpacing: StizeSpace.space1,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: parts,
-    );
-  }
-
-  /// Right column: the big ETA (40/40) with its `min` unit underneath, `now`
-  /// for a due vehicle, a clock time for a far-off or scheduled arrival.
-  Widget _etaBlock(
-    BuildContext context,
-    StizeColors c,
-    Color on,
-    ArrivalRowStatus status,
-    AppLocalizations l10n,
-    String localeName,
-  ) {
-    if (status == ArrivalRowStatus.scheduled) {
-      // A timetable row shows the clock time it departs, quieter (white 70%).
-      return Text(
-        clockAt(localeName, arrival.etaMinutes),
-        style: StizeType.date
-            .copyWith(fontWeight: FontWeight.w400, color: on.withValues(alpha: 0.7)),
-      );
-    }
-
-    final String value;
-    String? unit;
-    if (arrival.etaMinutes <= 0) {
-      value = l10n.arrivalEtaNow.toLowerCase(); // "now", not "0"
-    } else if (arrival.etaMinutes >= kFarEtaMinutes) {
-      value = clockAt(localeName, arrival.etaMinutes);
-    } else {
-      value = '${arrival.etaMinutes}';
-      unit = l10n.arrivalEtaMinutesUnit;
-    }
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(value, style: StizeType.bigNumber.copyWith(color: on)),
-        if (unit != null)
-          Text(
-            unit,
-            style: StizeType.caption.copyWith(color: on.withValues(alpha: 0.8)),
-          ),
-        if (etaDeltaMinutes != null && etaDeltaMinutes != 0)
-          _cardEtaDelta(on),
-      ],
-    );
+    return parts;
   }
 
   /// ETA-change hint on a colour card: a white arrow + "N min" (the card's fill
@@ -281,12 +178,6 @@ class ArrivalTile extends StatelessWidget {
       ),
     );
   }
-
-  static Color _typeColor(StizeColors c, VehicleType type) => switch (type) {
-        VehicleType.bus => c.transitBus,
-        VehicleType.tram => c.transitTram,
-        VehicleType.trolleybus => c.transitTrolleybus,
-      };
 
   // ───────────────────────── Legacy ListTile (flag OFF) ───────────────────
 

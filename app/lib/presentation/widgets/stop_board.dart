@@ -398,7 +398,31 @@ class _StopBoardState extends ConsumerState<StopBoard> {
         if (allLines.length > 1)
           _lineFilterChips(
             context, stize, allLines, arrivingLines, effectiveFilter),
-        if (canSortByComfort)
+        if (canSortByComfort && stize != null)
+          // Stiže: the same text chips as "All lines", on the cards' 16px edge.
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: StizeSpace.space4, vertical: StizeSpace.space1),
+            child: Row(
+              spacing: StizeSpace.space2,
+              children: [
+                StizeTextChip(
+                  label: l10n.fleetSortByTime,
+                  selected: !_sortByComfort,
+                  onTap: () => setState(() => _sortByComfort = false),
+                ),
+                StizeTextChip(
+                  label: l10n.fleetSortByComfort,
+                  selected: _sortByComfort,
+                  onTap: () {
+                    ref.read(eventLoggerProvider).log(Ev.sortComfort);
+                    setState(() => _sortByComfort = true);
+                  },
+                ),
+              ],
+            ),
+          )
+        else if (canSortByComfort)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Row(
@@ -498,42 +522,16 @@ class _StopBoardState extends ConsumerState<StopBoard> {
     // neutral muted chip (we don't know its type reliably).
     final board = ref.read(arrivalsProvider(widget.stopId)).valueOrNull;
     final typeByLine = stizeTypeByLine(board?.arrivals ?? const <Arrival>[]);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: StizeSpace.space4, vertical: StizeSpace.space1),
-      child: Wrap(
-        spacing: StizeSpace.space2,
-        runSpacing: StizeSpace.space2,
-        children: [
-          StizeTextChip(
-            label: l10n.lineFilterAll,
-            selected: effectiveFilter == null,
-            onTap: () => setState(() => _lineFilter = null),
-          ),
-          for (final line in allLines)
-            if (arrivingLines.contains(line))
-              StizeLineChip(
-                line: line,
-                color: stizeChipColor(stize, typeByLine[line]),
-                selected: effectiveFilter == line,
-                onTap: () {
-                  ref.read(eventLoggerProvider).log(Ev.lineFilter);
-                  setState(() => _lineFilter = line);
-                },
-              )
-            else
-              Opacity(
-                opacity: 0.4,
-                child: StizeLineChip(
-                  line: line,
-                  color: stizeChipColor(stize, typeByLine[line]),
-                  selected: false,
-                  onTap: null,
-                ),
-              ),
-        ],
-      ),
+    return StizeLineFilterRow(
+      allLabel: l10n.lineFilterAll,
+      allLines: allLines,
+      arrivingLines: arrivingLines,
+      typeByLine: typeByLine,
+      selected: effectiveFilter,
+      onSelect: (line) {
+        if (line != null) ref.read(eventLoggerProvider).log(Ev.lineFilter);
+        setState(() => _lineFilter = line);
+      },
     );
   }
 
