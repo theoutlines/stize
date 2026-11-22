@@ -107,9 +107,9 @@
       }
     }
   },
-  "arrivalEvery": "every ~{minutes} min",
+  "arrivalEvery": "~{minutes} min",
   "@arrivalEvery": {
-    "description": "Caption on an arrival card: the line's planned interval at this hour, from the timetable",
+    "description": "Caption on an arrival card, after a repeat icon: the line's planned interval at this hour, from the timetable",
     "placeholders": {
       "minutes": {
         "type": "int"

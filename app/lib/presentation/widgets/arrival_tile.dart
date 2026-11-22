@@ -154,7 +154,17 @@ class ArrivalTile extends StatelessWidget {
       if (live && hasText) StizeTransitCard.liveDot(c),
       if (primary != null) Text(primary, style: style),
       if (next != null) Text(next, style: style),
-      if (every != null) Text(every, style: style),
+      // Interval: a repeat glyph + "~8 min" (short, so the badges never push
+      // it into an ellipsis).
+      if (every != null)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.repeat_rounded, size: 13, color: style.color),
+            const SizedBox(width: 2),
+            Text(every, style: style),
+          ],
+        ),
       ?strip,
     ];
     return parts;

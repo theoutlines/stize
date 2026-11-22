@@ -47,7 +47,7 @@
   "arrivalScheduled": "Po redu vožnje",
   "arrivalStopsAway": "{count, plural, =0{Na stajalištu} one{{count} stanica} few{{count} stanice} other{{count} stanica}}",
   "arrivalNextIn": "sledeći za {minutes} min",
-  "arrivalEvery": "svakih ~{minutes} min",
+  "arrivalEvery": "~{minutes} min",
   "arrivalNextAt": "sledeći u {time}",
   "vehicleMoving": "U pokretu",
   "vehicleStuck": "Izgleda da stoji",
