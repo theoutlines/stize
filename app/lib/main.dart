@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'presentation/app.dart';
 
 void main() {
+  // Plain paths (stize.app/stop/20147), not #/ fragments, so a stop link works
+  // when pasted anywhere. Old #/ links are rewritten in web/index.html.
+  usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   // Warm the custom stop-pin SVGs into the flutter_svg cache before the map
   // rasterizes its stop pins (via addImageFromWidget), so a pin never captures

@@ -51,6 +51,13 @@
   <link rel="manifest" href="manifest.json">
 
   <script>
+    // Links shared before the switch to path URLs look like /#/stop/123: move
+    // the route into the path before Flutter reads the location.
+    if (location.hash.indexOf('#/') === 0) {
+      history.replaceState(null, '', location.hash.slice(1) || '/');
+    }
+  </script>
+  <script>
     // Keep `viewport-fit=cover` alive. Flutter Web's engine rewrites the viewport
     // <meta> on startup with a fixed string that DROPS viewport-fit=cover
     // (flutter/flutter#116508), which silently switches off the iOS safe-area

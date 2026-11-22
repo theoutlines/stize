@@ -94,7 +94,9 @@ class FleetBadgeStrip extends StatelessWidget {
     final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (approx)
+        // On a colour card the dimmed badges already say "approximate"; a lone
+        // "~" there read as a stray character (audit round 2, D7).
+        if (approx && onColor == null)
           Padding(
             padding: const EdgeInsets.only(right: 2),
             child: Text('~',
