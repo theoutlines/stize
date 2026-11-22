@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
 import {
   aggregate,
+  EVENT_SLOT_SECONDS,
   getLineAnalytics,
   logObservations,
   maxRowsPerInsert,
@@ -16,20 +17,27 @@ const BASE = Math.floor(Date.UTC(2026, 0, 6, 10, 0, 0) / 1000); // Tue 10:00 UTC
 const HOUR = 10;
 const DOW = new Date(BASE * 1000).getUTCDay();
 
-// Seed one raw observation, normalising vehicle_id exactly as the collector does.
-// Optional 5th tuple element sets direction_route_id (else NULL → '' bucket).
+// Seed observations the way the v3 collector records them: only a real vehicle
+// AT the stop (stops_remaining 0) becomes an arrival event; approaching vehicles,
+// junk ids and missing garage numbers are dropped. Optional 5th tuple element
+// sets direction_route_id (else '' bucket).
 async function seed(
   rows: [garage: string | null, stop: string, stopsRemaining: number, at: number, dir?: string][],
 ) {
   for (const [garage, stop, sr, at, dir] of rows) {
+    const vid = vehicleIdOf(garage);
+    if (sr !== 0 || !vid || !garage) continue;
     await env.STIGLA_ANALYTICS_DB.prepare(
-      `INSERT INTO raw_observations (line, stop_id, garage_no, vehicle_id, eta_minutes, stops_remaining, observed_at, direction_route_id)
-       VALUES (?,?,?,?,?,?,?,?)`,
+      `INSERT OR IGNORE INTO arrival_events (slot, stop_id, garage_no, vehicle_id, line, direction_route_id, observed_at)
+       VALUES (?,?,?,?,?,?,?)`,
     )
-      .bind("79", stop, garage, vehicleIdOf(garage), sr, sr, at, dir ?? null)
+      .bind(Math.floor(at / EVENT_SLOT_SECONDS), stop, garage, vid, "79", dir ?? "", at)
       .run();
   }
 }
+
+const countEvents = async () =>
+  (await env.STIGLA_ANALYTICS_DB.prepare("SELECT COUNT(*) AS n FROM arrival_events").first<{ n: number }>())!.n;
 
 // Aggregate is now incremental (watermarked by agg_state.last_run) and additive.
 // Every test starts from a clean slate — including last_run, so each aggregate()
@@ -37,6 +45,7 @@ async function seed(
 beforeEach(async () => {
   for (const t of [
     "raw_observations",
+    "arrival_events",
     "agg_line_dir_time",
     "agg_vehicle_line",
     "agg_vehicle_line_dow",
@@ -93,7 +102,8 @@ describe("schedDelaySeconds", () => {
 describe("analytics.logObservations", () => {
   const raw: RawArrival[] = [
     { lineNumber: "79", etaSeconds: 120, stopsRemaining: 2, garageNo: "P93001", gps: null, heading: null, trajectory: null, routeStations: [] },
-    { lineNumber: "79", etaSeconds: 60, stopsRemaining: 1, garageNo: null, gps: null, heading: null, trajectory: null, routeStations: [] },
+    { lineNumber: "79", etaSeconds: 0, stopsRemaining: 0, garageNo: "P93002", gps: null, heading: null, trajectory: null, routeStations: [] },
+    { lineNumber: "79", etaSeconds: 30, stopsRemaining: 0, garageNo: null, gps: null, heading: null, trajectory: null, routeStations: [] },
     { lineNumber: "79", etaSeconds: 30, stopsRemaining: 0, garageNo: "P5", gps: null, heading: null, trajectory: null, routeStations: [] },
   ];
 
@@ -104,59 +114,52 @@ describe("analytics.logObservations", () => {
   it("writes nothing while analytics_collect is off", async () => {
     await setFlag(env, "analytics_collect", false);
     await logObservations(env, ctx(), "S1", raw);
-    const { results } = await env.STIGLA_ANALYTICS_DB.prepare(
-      "SELECT COUNT(*) AS n FROM raw_observations",
-    ).all<{ n: number }>();
-    expect(results[0].n).toBe(0);
+    expect(await countEvents()).toBe(0);
   });
 
-  it("logs every arrival (garage optional) and normalises vehicle_id", async () => {
+  it("records only real vehicles at the stop, once per slot", async () => {
     await setFlag(env, "analytics_collect", true);
-    await logObservations(env, ctx(), "S1", raw);
-    const { results } = await env.STIGLA_ANALYTICS_DB.prepare(
-      "SELECT garage_no, vehicle_id FROM raw_observations",
-    ).all<{ garage_no: string | null; vehicle_id: string | null }>();
-    expect(results).toHaveLength(3); // incl. the one without a garage number
-    expect(results.find((r) => r.garage_no === "P93001")?.vehicle_id).toBe("P93001");
-    expect(results.find((r) => r.garage_no === null)?.vehicle_id).toBeNull();
-    expect(results.find((r) => r.garage_no === "P5")?.vehicle_id).toBeNull(); // junk
-    await setFlag(env, "analytics_collect", false);
+    try {
+      await logObservations(env, ctx(), "S1", raw);
+      await logObservations(env, ctx(), "S1", raw); // next refresh, same arrival
+      const { results } = await env.STIGLA_ANALYTICS_DB.prepare(
+        "SELECT garage_no, vehicle_id, line, stop_id FROM arrival_events",
+      ).all<{ garage_no: string; vehicle_id: string; line: string; stop_id: string }>();
+      // Approaching (P93001), no-garage and junk (P5) rows are not events.
+      expect(results).toEqual([{ garage_no: "P93002", vehicle_id: "P93002", line: "79", stop_id: "S1" }]);
+    } finally {
+      await setFlag(env, "analytics_collect", false);
+    }
   });
 
-  it("chunks a busy stop past the D1 param cap without 'too many SQL variables'", async () => {
+  it("handles a busy board (many vehicles at the stop) in one batch", async () => {
     await setFlag(env, "analytics_collect", true);
-    // 200 rows × 7 params = 1400 bind vars — 14× over D1's 100/statement cap and
-    // well past the 142-row threshold from the 2026-07-13 regression. The single
-    // unchunked statement the old code built here is exactly what threw.
-    const many: RawArrival[] = Array.from({ length: 200 }, (_, i) => ({
-      lineNumber: "79",
-      etaSeconds: 60,
-      stopsRemaining: i % 5,
-      garageNo: `P${1000 + i}`, // all real ids → also 200 rows in the aggregates
-      gps: null,
-      heading: null,
-      trajectory: null,
-      routeStations: [],
-    }));
-    await logObservations(env, ctx(), "S1", many);
-    const { results } = await env.STIGLA_ANALYTICS_DB.prepare(
-      "SELECT COUNT(*) AS n FROM raw_observations",
-    ).all<{ n: number }>();
-    expect(results[0].n).toBe(200);
-
-    // The aggregate write-back (agg_line_dir_time + per-vehicle tables, one row
-    // per vehicle) must survive the same wide result set — the second insert path.
-    await aggregate(env);
-    const agg = await env.STIGLA_ANALYTICS_DB.prepare(
-      "SELECT COUNT(*) AS n FROM agg_vehicle_line",
-    ).all<{ n: number }>();
-    expect(agg.results[0].n).toBe(200);
-    await setFlag(env, "analytics_collect", false);
+    try {
+      const many: RawArrival[] = Array.from({ length: 60 }, (_, i) => ({
+        lineNumber: "79",
+        etaSeconds: 0,
+        stopsRemaining: 0,
+        garageNo: `P${1000 + i}`,
+        gps: null,
+        heading: null,
+        trajectory: null,
+        routeStations: [],
+      }));
+      await logObservations(env, ctx(), "S1", many);
+      expect(await countEvents()).toBe(60);
+      await aggregate(env);
+      const agg = await env.STIGLA_ANALYTICS_DB.prepare(
+        "SELECT COUNT(*) AS n FROM agg_vehicle_line",
+      ).first<{ n: number }>();
+      expect(agg!.n).toBe(60);
+    } finally {
+      await setFlag(env, "analytics_collect", false);
+    }
   });
 });
 
 describe("analytics.aggregate + getLineAnalytics", () => {
-  it("derives activity, real headways and speed; junk & no-garage count for activity only", async () => {
+  it("derives activity and real headways from arrival events; junk & approaching rows are not events", async () => {
     await seed([
       ["V1", "S1", 3, BASE],
       ["V1", "S1", 1, BASE + 120], // 2 stops in 120s → 1.0 stop/min
@@ -170,17 +173,17 @@ describe("analytics.aggregate + getLineAnalytics", () => {
     const a = await getLineAnalytics(env, "79");
 
     const h = a.by_hour[HOUR];
-    expect(h.samples).toBe(6); // every observation, incl. junk + no-garage
-    expect(h.arrivals).toBe(3); // three stops_remaining=0 rows
-    // Headway is between the two REAL vehicles only (V1→V2 = 300s); the junk
-    // arrival at +300 must not inject a spurious 120s/180s gap.
+    expect(h.samples).toBe(2); // the two real arrivals
+    expect(h.arrivals).toBe(2);
+    // Headway between the two real vehicles (V1→V2 = 300s).
     expect(h.mean_headway_secs).toBe(300);
-    expect(h.mean_speed_stops_per_min).toBeCloseTo(1.0, 3);
+    // Speed needs several fixes of one approaching vehicle: not in v3.
+    expect(h.mean_speed_stops_per_min ?? null).toBeNull();
 
     // Bucketed onto the right day-of-week; grid has the single populated cell.
-    expect(a.by_dow[DOW].samples).toBe(6);
+    expect(a.by_dow[DOW].samples).toBe(2);
     expect(a.grid).toHaveLength(1);
-    expect(a.grid[0]).toMatchObject({ dow: DOW, hour: HOUR, samples: 6, arrivals: 3 });
+    expect(a.grid[0]).toMatchObject({ dow: DOW, hour: HOUR, samples: 2, arrivals: 2 });
 
     expect(a.punctuality).toBeNull();
     expect(a.updated_at).not.toBeNull();
@@ -200,12 +203,12 @@ describe("analytics.aggregate + getLineAnalytics", () => {
     ]);
     await aggregate(env, BASE + 200);
     let a = await getLineAnalytics(env, "79");
-    expect(a.by_hour[HOUR].samples).toBe(2);
+    expect(a.by_hour[HOUR].samples).toBe(1);
 
     // Re-running immediately (no new rows) must change nothing — idempotent.
     await aggregate(env, BASE + 210);
     a = await getLineAnalytics(env, "79");
-    expect(a.by_hour[HOUR].samples).toBe(2);
+    expect(a.by_hour[HOUR].samples).toBe(1);
 
     // Batch 2 (new rows after the watermark) is ADDED to the existing bucket.
     await seed([
@@ -214,14 +217,14 @@ describe("analytics.aggregate + getLineAnalytics", () => {
     ]);
     await aggregate(env, BASE + 500);
     a = await getLineAnalytics(env, "79");
-    expect(a.by_hour[HOUR].samples).toBe(4); // 2 + 2, not 6
+    expect(a.by_hour[HOUR].samples).toBe(2); // 1 + 1, not 3
     expect(a.by_hour[HOUR].arrivals).toBe(2);
   });
 
   it("splits raw by direction but the folded response sums across directions", async () => {
     await seed([
       ["V1", "S1", 0, BASE, "00079"],
-      ["V1", "S1", 2, BASE + 60, "00079"],
+      ["V3", "S1", 0, BASE + 600, "00079"],
       ["V2", "S2", 0, BASE, "00079-1"],
     ]);
     await aggregate(env, BASE + 1000);
@@ -247,10 +250,10 @@ describe("analytics.aggregate + getLineAnalytics", () => {
     // CEST) is 3 min = 180s late vs that 05:47 trip.
     const observedAt = Math.floor(Date.UTC(2026, 6, 14, 3, 50, 0) / 1000);
     await env.STIGLA_ANALYTICS_DB.prepare(
-      `INSERT INTO raw_observations (line, stop_id, garage_no, vehicle_id, eta_minutes, stops_remaining, observed_at, direction_route_id)
-       VALUES ('5','20001','P93001','P93001',0,0,?,'00005-1')`,
+      `INSERT INTO arrival_events (slot, stop_id, garage_no, vehicle_id, line, direction_route_id, observed_at)
+       VALUES (?,'20001','P93001','P93001','5','00005-1',?)`,
     )
-      .bind(observedAt)
+      .bind(Math.floor(observedAt / EVENT_SLOT_SECONDS), observedAt)
       .run();
 
     await aggregate(env, observedAt + 100);
@@ -301,13 +304,13 @@ describe("analytics.aggregate + getLineAnalytics", () => {
     // Only the real vehicles — never P7 or the no-garage row.
     expect(pairs.results.map((r) => r.vehicle_id)).toEqual(["V1", "V2"]);
     const v1 = pairs.results[0];
-    expect(v1).toMatchObject({ samples: 3, arrivals: 1, first_seen: BASE, last_seen: BASE + 180 });
+    expect(v1).toMatchObject({ samples: 1, arrivals: 1, first_seen: BASE + 180, last_seen: BASE + 180 });
 
     const dow = await env.STIGLA_ANALYTICS_DB.prepare(
-      "SELECT dow, samples, speed_count FROM agg_vehicle_line_dow WHERE vehicle_id = 'V1'",
-    ).all<{ dow: number; samples: number; speed_count: number }>();
+      "SELECT dow, samples FROM agg_vehicle_line_dow WHERE vehicle_id = 'V1'",
+    ).all<{ dow: number; samples: number }>();
     expect(dow.results).toHaveLength(1);
-    expect(dow.results[0]).toMatchObject({ dow: DOW, samples: 3, speed_count: 2 });
+    expect(dow.results[0]).toMatchObject({ dow: DOW, samples: 1 });
   });
 });
 
@@ -336,11 +339,11 @@ describe("aggregate — windowed backfill convergence", () => {
     }
     const now = BASE + (days - 1) * DAY + 3600; // just past the last day's rows
     const rawCount = (await env.STIGLA_ANALYTICS_DB.prepare(
-      "SELECT COUNT(*) AS n FROM raw_observations WHERE observed_at <= ?",
+      "SELECT COUNT(*) AS n FROM arrival_events WHERE observed_at <= ?",
     )
       .bind(now)
       .first<{ n: number }>())!.n;
-    expect(rawCount).toBe(days * 4);
+    expect(rawCount).toBe(days * 2); // two real arrivals a day
 
     // Drive runs until caught up. Default window = 1 day → this must take several
     // runs, and the watermark must advance strictly forward every run (monotonic).
@@ -424,7 +427,7 @@ describe("aggregate — watermark drift guard (2026-10-05)", () => {
     const s = await env.STIGLA_ANALYTICS_DB.prepare(
       "SELECT SUM(samples) AS s FROM agg_line_dir_time",
     ).first<{ s: number }>();
-    expect(s!.s).toBe(2);
+    expect(s!.s).toBe(1);
   });
 
   it("without the guard (catch-up 0) the same state stays behind — the old drift", async () => {
@@ -449,10 +452,7 @@ describe("aggregate — watermark drift guard (2026-10-05)", () => {
     ]);
     const r = await aggregate(env, now);
     expect(r.caughtUp).toBe(true);
-    const n = await env.STIGLA_ANALYTICS_DB.prepare(
-      "SELECT COUNT(*) AS n FROM raw_observations",
-    ).first<{ n: number }>();
-    expect(n!.n).toBe(2);
+    expect(await countEvents()).toBe(2);
   });
 });
 
@@ -462,8 +462,23 @@ describe("analytics.logObservations — stop_last_observed", () => {
     { lineNumber: "79", etaSeconds: 60, stopsRemaining: 1, garageNo: "P93001", gps: null, heading: null, trajectory: null, routeStations: [] },
   ];
 
-  it("records the stop's latest board time (one row per stop, moves forward only)", async () => {
+  it("writes nothing there while the sweep is off (only the sweep reads it)", async () => {
     await setFlag(env, "analytics_collect", true);
+    await setFlag(env, "analytics_sweep", false);
+    try {
+      await logObservations(env, ctx(), "S9", one);
+      const n = await env.STIGLA_ANALYTICS_DB.prepare(
+        "SELECT COUNT(*) AS n FROM stop_last_observed",
+      ).first<{ n: number }>();
+      expect(n!.n).toBe(0);
+    } finally {
+      await setFlag(env, "analytics_collect", false);
+    }
+  });
+
+  it("records the stop's latest board time while the sweep is on (one row per stop, moves forward only)", async () => {
+    await setFlag(env, "analytics_collect", true);
+    await setFlag(env, "analytics_sweep", true);
     try {
       await logObservations(env, ctx(), "S9", one);
       await logObservations(env, ctx(), "S9", one);
@@ -486,6 +501,7 @@ describe("analytics.logObservations — stop_last_observed", () => {
       expect(after!.observed_at).toBe(rows.results[0].observed_at);
     } finally {
       await setFlag(env, "analytics_collect", false);
+      await setFlag(env, "analytics_sweep", false);
     }
   });
 });

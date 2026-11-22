@@ -61,18 +61,6 @@ async function resolveAggWindowSeconds(env: Env): Promise<number> {
 // the chunk must be derived from the column count, not a magic row constant.
 const D1_MAX_BOUND_PARAMS = 100;
 
-// Raw-observation columns. `direction_route_id` (v2) is the line direction the
-// vehicle was on, resolved on the arrivals path — nullable when it can't be told.
-const RAW_OBSERVATION_COLUMNS = [
-  "line",
-  "stop_id",
-  "garage_no",
-  "vehicle_id",
-  "eta_minutes",
-  "stops_remaining",
-  "observed_at",
-  "direction_route_id",
-] as const;
 
 // agg_line_dir_time columns written by the aggregate (sched_delay_* are left at
 // their defaults here — populated in a follow-up step — so they're not listed).
@@ -237,14 +225,17 @@ async function resolveObservationDirection(env: Env, r: RawArrival): Promise<str
 }
 
 /**
- * Log the arrivals we just fetched from the source into the analytics history.
+ * Record arrival events from the board we just fetched (analytics v3,
+ * docs/TRANSPORT_ANALYTICS.md).
  *
- * Flag-gated (`analytics_collect`) and meant to be called inside `ctx.waitUntil`
- * from the *fresh-fetch* path only — so it records exactly the data we already
- * pulled to serve the user, adding **zero** load on the source. Every arrival is
- * logged (a missing garage number is fine — still valid for line-level metrics).
- * `garage_no` is stored raw; `vehicle_id` is the normalised id (null for
- * missing/junk); `direction_route_id` is the resolved line direction (v2).
+ * Flag-gated (`analytics_collect`) and called inside `ctx.waitUntil` from the
+ * *fresh-fetch* path only, so it adds **zero** load on the source. Only
+ * vehicles that are AT the stop (`stops_remaining = 0`) with a usable vehicle id
+ * are written: one row per (5-min slot, stop, vehicle) via INSERT OR IGNORE on a
+ * WITHOUT ROWID primary key, so the same arrival seen on several refreshes is
+ * written once and an ignored duplicate costs 0 rows. Most refreshes write
+ * nothing. The sweep's `stop_last_observed` bookkeeping (1 row per board) is
+ * written only while the sweep is on, since only the sweep reads it.
  */
 export async function logObservations(
   env: Env,
@@ -256,28 +247,59 @@ export async function logObservations(
   if (raw.length === 0) return;
 
   const now = Math.floor(Date.now() / 1000);
-  const rows: (string | number | null)[][] = [];
+  const slot = Math.floor(now / EVENT_SLOT_SECONDS);
+  const stmts: D1PreparedStatement[] = [];
+  const seen = new Set<string>();
   for (const r of raw) {
-    rows.push([
-      r.lineNumber,
-      stopId,
-      r.garageNo,
-      vehicleIdOf(r.garageNo),
-      r.etaSeconds != null ? Math.round(r.etaSeconds / 60) : null,
-      r.stopsRemaining,
-      now,
-      await resolveObservationDirection(env, r),
-    ]);
+    if (r.stopsRemaining !== 0) continue;
+    const vehicleId = vehicleIdOf(r.garageNo);
+    if (!vehicleId || !r.garageNo || seen.has(vehicleId)) continue;
+    seen.add(vehicleId);
+    stmts.push(
+      env.STIGLA_ANALYTICS_DB.prepare(
+        `INSERT OR IGNORE INTO arrival_events
+           (slot, stop_id, garage_no, vehicle_id, line, direction_route_id, observed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(
+        slot,
+        stopId,
+        r.garageNo,
+        vehicleId,
+        r.lineNumber,
+        (await resolveObservationDirection(env, r)) ?? "",
+        now,
+      ),
+    );
   }
-  await chunkedInsert(env.STIGLA_ANALYTICS_DB, "raw_observations", RAW_OBSERVATION_COLUMNS, rows);
-  // The sweep's adaptive-skip lookup (migration 0009): 1 written row per board.
-  await env.STIGLA_ANALYTICS_DB.prepare(
-    `INSERT INTO stop_last_observed (stop_id, observed_at) VALUES (?, ?)
-     ON CONFLICT(stop_id) DO UPDATE SET observed_at = excluded.observed_at
-     WHERE excluded.observed_at > stop_last_observed.observed_at`,
-  )
-    .bind(stopId, now)
-    .run();
+  if (await getFlagMemoized(env, ctx, "analytics_sweep")) {
+    stmts.push(
+      env.STIGLA_ANALYTICS_DB.prepare(
+        `INSERT INTO stop_last_observed (stop_id, observed_at) VALUES (?, ?)
+         ON CONFLICT(stop_id) DO UPDATE SET observed_at = excluded.observed_at
+         WHERE excluded.observed_at > stop_last_observed.observed_at`,
+      ).bind(stopId, now),
+    );
+  }
+  if (stmts.length > 0) await env.STIGLA_ANALYTICS_DB.batch(stmts);
+}
+
+// --- v3 source: arrival events (docs/TRANSPORT_ANALYTICS.md) ---------------
+// Collection now writes only the moment a vehicle reaches a stop, one row per
+// (5-min slot, stop, vehicle), into `arrival_events` (migration 0010). The
+// aggregate queries below were written against `raw_observations`; this
+// subquery exposes the events under the same column names, pre-filtered by
+// the slot primary key so the scan stays an indexed range. `stops_remaining`
+// is 0 by definition, so the speed passes (which need several fixes of one
+// vehicle approaching one stop) find no pairs: speed is out of v3 until it is
+// derived from events at consecutive stops. The old `raw_observations` table is
+// kept frozen as an archive and no longer read or written.
+export const EVENT_SLOT_SECONDS = 300;
+function eventsIn(lo: number, hi: number): string {
+  const a = Math.floor(Math.max(0, lo) / EVENT_SLOT_SECONDS) - 1;
+  const b = Math.floor(hi / EVENT_SLOT_SECONDS) + 1;
+  return `(SELECT line, stop_id, garage_no, vehicle_id, 0 AS eta_minutes,
+      0 AS stops_remaining, observed_at, direction_route_id
+    FROM arrival_events WHERE slot BETWEEN ${a} AND ${b})`;
 }
 
 // One (line, direction, dow, hour) bucket accumulated during an aggregate run.
@@ -360,7 +382,7 @@ export async function aggregate(
   let cursor: number;
   if (fresh) {
     const oldest = await db
-      .prepare("SELECT MIN(observed_at) AS m FROM raw_observations")
+      .prepare("SELECT MIN(observed_at) AS m FROM arrival_events WHERE slot = (SELECT MIN(slot) FROM arrival_events)")
       .first<{ m: number | null }>();
     if (!oldest || oldest.m == null) {
       // No raw at all — nothing to roll up. Pin the watermark to `now` so the next
@@ -389,7 +411,7 @@ export async function aggregate(
     // Behind by more than one window: if the entire backlog is small enough, take
     // it all now (see AGG_CATCHUP_ROWS_KV_KEY) so the watermark can't drift.
     const backlog = await db
-      .prepare("SELECT COUNT(*) AS n FROM raw_observations WHERE observed_at > ? AND observed_at <= ?")
+      .prepare(`SELECT COUNT(*) AS n FROM ${eventsIn(cursor, now)} WHERE observed_at > ? AND observed_at <= ?`)
       .bind(cursor, now)
       .first<{ n: number }>();
     if ((backlog?.n ?? 0) <= (await resolveAggCatchupRows(env))) windowEnd = now;
@@ -414,7 +436,7 @@ export async function aggregate(
          CAST(strftime('%H', observed_at, 'unixepoch') AS INTEGER) AS hour,
          COUNT(*) AS samples,
          SUM(CASE WHEN stops_remaining = 0 THEN 1 ELSE 0 END) AS arrivals
-       FROM raw_observations
+       FROM ${eventsIn(cursor, windowEnd)}
        WHERE observed_at > ? AND observed_at <= ?
        GROUP BY line, dir, dow, hour`,
     )
@@ -439,7 +461,7 @@ export async function aggregate(
            (observed_at - LAG(observed_at) OVER w) AS dt,
            (LAG(stops_remaining) OVER w - stops_remaining) AS dstops,
            observed_at AS oa
-         FROM raw_observations
+         FROM ${eventsIn(windowStart, windowEnd)}
          WHERE observed_at > ? AND observed_at <= ?
            AND stops_remaining IS NOT NULL AND vehicle_id IS NOT NULL
          WINDOW w AS (PARTITION BY line, vehicle_id, stop_id ORDER BY observed_at)
@@ -466,7 +488,7 @@ export async function aggregate(
            observed_at - LAG(observed_at) OVER w AS gap,
            observed_at AS oa,
            vehicle_id, LAG(vehicle_id) OVER w AS prev_g
-         FROM raw_observations
+         FROM ${eventsIn(windowStart, windowEnd)}
          WHERE observed_at > ? AND observed_at <= ?
            AND stops_remaining = 0 AND vehicle_id IS NOT NULL
          WINDOW w AS (PARTITION BY line, COALESCE(direction_route_id, ''), stop_id ORDER BY observed_at)
@@ -565,7 +587,7 @@ async function aggregateVehicles(
       `SELECT vehicle_id, line, COUNT(*) AS samples,
           SUM(CASE WHEN stops_remaining = 0 THEN 1 ELSE 0 END) AS arrivals,
           MIN(observed_at) AS first_seen, MAX(observed_at) AS last_seen
-       FROM raw_observations
+       FROM ${eventsIn(lo, hi)}
        WHERE observed_at > ? AND observed_at <= ? AND vehicle_id IS NOT NULL
        GROUP BY vehicle_id, line`,
     )
@@ -585,7 +607,7 @@ async function aggregateVehicles(
           CAST(strftime('%w', observed_at, 'unixepoch') AS INTEGER) AS dow,
           COUNT(*) AS samples,
           SUM(CASE WHEN stops_remaining = 0 THEN 1 ELSE 0 END) AS arrivals
-       FROM raw_observations
+       FROM ${eventsIn(lo, hi)}
        WHERE observed_at > ? AND observed_at <= ? AND vehicle_id IS NOT NULL
        GROUP BY vehicle_id, line, dow`,
     )
@@ -602,7 +624,7 @@ async function aggregateVehicles(
            (observed_at - LAG(observed_at) OVER w) AS dt,
            (LAG(stops_remaining) OVER w - stops_remaining) AS dstops,
            observed_at AS oa
-         FROM raw_observations
+         FROM ${eventsIn(windowStart, hi)}
          WHERE observed_at > ? AND observed_at <= ?
            AND stops_remaining IS NOT NULL AND vehicle_id IS NOT NULL
          WINDOW w AS (PARTITION BY line, vehicle_id, stop_id ORDER BY observed_at)
@@ -704,7 +726,7 @@ async function aggregateSchedDelay(
   const arrivals = await db
     .prepare(
       `SELECT stop_id, line, COALESCE(direction_route_id, '') AS dir, observed_at
-       FROM raw_observations
+       FROM ${eventsIn(lo, hi)}
        WHERE observed_at > ? AND observed_at <= ? AND stops_remaining = 0`,
     )
     .bind(lo, hi)

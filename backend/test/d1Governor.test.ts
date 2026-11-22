@@ -60,6 +60,7 @@ beforeEach(async () => {
     "config:d1_daily_rows_written_limit",
     "config:d1_governor_interval_min",
     "config:d1_governor_read_threshold_pct",
+    "config:d1_analytics_share_pct",
     "config:d1_daily_rows_read_limit",
   ]) {
     await env.STIGLA_KV.delete(k);
@@ -93,8 +94,8 @@ describe("fetchUsageToday", () => {
 });
 
 describe("runD1Governor", () => {
-  it("below the threshold: nothing changes", async () => {
-    const r = await runD1Governor(govEnv, DAY1, { fetchImpl: gql(69_999) });
+  it("below the analytics share: nothing changes", async () => {
+    const r = await runD1Governor(govEnv, DAY1, { fetchImpl: gql(39_999) });
     expect(r.action).toBe("ok");
     expect(await getFlag(env, "analytics_collect")).toBe(true);
     expect(await readGovernorState(env)).toBeNull();
@@ -108,7 +109,26 @@ describe("runD1Governor", () => {
     expect((await readGovernorState(env))?.disabled).toEqual(["analytics_collect", "jam_detection_collect"]);
   });
 
+  it("at the analytics share (40%): only analytics_collect goes OFF, once a day", async () => {
+    const r = await runD1Governor(govEnv, DAY1, { fetchImpl: gql(40_000) });
+    expect(r.action).toBe("tripped");
+    expect(r.disabled).toEqual(["analytics_collect"]);
+    expect(await getFlag(env, "analytics_collect")).toBe(false);
+    expect(await getFlag(env, "jam_detection_collect")).toBe(true);
+    expect((await readGovernorState(env))?.analytics_capped).toBe(true);
+    // A human re-enable the same day is not overridden by the share again...
+    await setFlag(env, "analytics_collect", true);
+    const again = await runD1Governor(govEnv, new Date(DAY1.getTime() + 3600_000), { fetchImpl: gql(50_000) });
+    expect(again.action).not.toBe("tripped");
+    expect(await getFlag(env, "analytics_collect")).toBe(true);
+    // ...but the general 70% threshold still applies.
+    const general = await runD1Governor(govEnv, new Date(DAY1.getTime() + 7200_000), { fetchImpl: gql(70_000) });
+    expect(general.action).toBe("tripped");
+    expect(await getFlag(env, "jam_detection_collect")).toBe(false);
+  });
+
   it("thresholds come from KV config", async () => {
+    await env.STIGLA_KV.put("config:d1_analytics_share_pct", "100");
     await env.STIGLA_KV.put("config:d1_governor_threshold_pct", "50");
     await env.STIGLA_KV.put("config:d1_daily_rows_written_limit", "10000");
     expect((await runD1Governor(govEnv, DAY1, { fetchImpl: gql(4_999) })).action).toBe("ok");
