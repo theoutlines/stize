@@ -348,7 +348,11 @@ class _StopBoardState extends ConsumerState<StopBoard> {
     // Default (time) order: group by line×direction, suppress the non-live rows
     // the live vehicles already cover, and fold each group's surviving Scheduled
     // into one cell (arrivals-dedup). StopScreen (deep-link route) mirrors it.
-    final groupedEntries = groupArrivals(visibleArrivals);
+    // Stiže: one card per line×direction, later vehicles folded into it.
+    final foldCards = Theme.of(context).extension<StizeColors>() != null;
+    final groupedEntries = foldCards
+        ? foldLiveByDirection(groupArrivals(visibleArrivals))
+        : groupArrivals(visibleArrivals);
 
     final ageSeconds =
         DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
@@ -368,7 +372,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
     // larger "emphasis" treatment (owner: the nearest arrival reads biggest).
     final tiles = <Widget>[];
     var firstCard = true;
-    void addTile(Arrival arrival, FleetVehicle? fleet) {
+    void addTile(Arrival arrival, FleetVehicle? fleet, [List<int> later = const []]) {
       tiles.add(_arrivalTile(
         context,
         board,
@@ -377,6 +381,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
         destinations: destinations,
         allArrivals: visibleArrivals,
         emphasis: stize != null && firstCard,
+        later: (foldCards && !sortByComfort) ? later : null,
       ));
       firstCard = false;
     }
@@ -388,8 +393,8 @@ class _StopBoardState extends ConsumerState<StopBoard> {
     } else {
       for (final entry in groupedEntries) {
         switch (entry) {
-          case ArrivalRow(:final arrival, :final index):
-            addTile(arrival, fleetByIndex[index]);
+          case ArrivalRow(:final arrival, :final index, :final laterEtaMinutes):
+            addTile(arrival, fleetByIndex[index], laterEtaMinutes);
           case ScheduledGroupCell():
             tiles.add(ScheduledGroupTile(cell: entry));
         }
@@ -563,6 +568,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
     Map<String, String> destinations = const {},
     List<Arrival> allArrivals = const [],
     bool emphasis = false,
+    List<int>? later,
   }) {
     return ArrivalTile(
       arrival: arrival,
@@ -570,7 +576,10 @@ class _StopBoardState extends ConsumerState<StopBoard> {
       fleet: fleet,
       emphasis: emphasis,
       destination: destinations[arrival.directionRouteId ?? arrival.routeId],
-      nextEtaMinutes: stizeNextEtaForLine(allArrivals, arrival),
+      // Folded card (one per direction): later trips sit under the big ETA,
+      // so no "next in" in the caption.
+      nextEtaMinutes: later != null ? null : stizeNextEtaForLine(allArrivals, arrival),
+      laterEtaMinutes: later ?? const [],
       headwayMinutes: ref
           .watch(stopPlannedHeadwaysProvider(widget.stopId))
           .valueOrNull?[arrival.directionRouteId ?? arrival.routeId],
