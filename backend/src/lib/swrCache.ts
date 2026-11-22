@@ -173,7 +173,7 @@ async function storePayload<T>(
       "content-type": "application/json",
       // Generous outer bound so the edge doesn't evict before our own
       // staleness/backoff logic (which operates on `updatedAt`) gets a say.
-      "cache-control": `max-age=${ttlSeconds + EDGE_CACHE_HEADROOM_SECONDS}`,
+      "cache-control": `max-age=${Math.ceil(ttlSeconds + EDGE_CACHE_HEADROOM_SECONDS)}`,
     },
   });
   await cache.put(cacheKey, response);
