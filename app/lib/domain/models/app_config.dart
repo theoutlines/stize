@@ -33,10 +33,6 @@ class AppConfig {
   /// user. Gated remotely so screens can ship dormant and be revealed later.
   bool get analyticsShow => flag('analytics_show');
 
-  /// Whether the experimental "Nearby" list (a draggable sheet over the map) is
-  /// shown. Off on prod, on on staging — an experiment, not a redesign.
-  bool get nearbyList => flag('nearby_list');
-
   /// Whether the coverage-map tab should be shown to the user. Gated remotely so
   /// the (static infographic) screen can ship dormant and be revealed later.
   bool get coverageMapShow => flag('coverage_map_show');
@@ -59,12 +55,6 @@ class AppConfig {
   /// (remote `product_analytics` flag). OFF (the default) means the app sends
   /// zero analytics requests. Independent of the transport `analytics_*` flags.
   bool get productAnalytics => flag('product_analytics');
-
-  /// Whether the adaptive "context slot" is shown (remote `context_panel` flag):
-  /// a persistent left panel on desktop (≥840px) and unified bottom sheets on
-  /// mobile, both driven by one nearby→stop→vehicle state machine. OFF (the
-  /// default) is the killswitch — the app keeps today's independent sheets.
-  bool get contextPanel => flag('context_panel');
 
   /// Whether tram-jam ("stalled segment") detection is shown (remote
   /// `jam_detection_show` flag): the red stalled segment, downstream-stop delay

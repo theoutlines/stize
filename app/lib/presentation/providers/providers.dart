@@ -67,13 +67,6 @@ final analyticsEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.analyticsShow ?? false,
 );
 
-/// Whether the experimental "Nearby" list is enabled for this user (remote
-/// `nearby_list` flag). Defaults to false until config resolves, so the feature
-/// stays hidden if config can't be reached.
-final nearbyEnabledProvider = Provider<bool>(
-  (ref) => ref.watch(appConfigProvider).valueOrNull?.nearbyList ?? false,
-);
-
 /// Whether the coverage-map tab is enabled for this user (remote
 /// `coverage_map_show` flag). Defaults to false until config resolves.
 final coverageEnabledProvider = Provider<bool>(
@@ -94,13 +87,6 @@ final coverageOnMainMapEnabledProvider = Provider<bool>(
 /// behaviour if config is unreachable.
 final vehiclesOnDemandEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.vehiclesOnDemand ?? false,
-);
-
-/// Whether the adaptive context slot is enabled for this user (remote
-/// `context_panel` flag). Defaults to false until config resolves, so the app
-/// keeps today's independent sheets if config can't be reached (killswitch).
-final contextPanelEnabledProvider = Provider<bool>(
-  (ref) => ref.watch(appConfigProvider).valueOrNull?.contextPanel ?? false,
 );
 
 /// Whether the map asks for location on entry (remote `location_autoprompt`

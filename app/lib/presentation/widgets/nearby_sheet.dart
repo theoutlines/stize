@@ -14,7 +14,7 @@ import 'sheet_chrome.dart';
 // [NearbyView].
 export 'nearby_view.dart' show shouldRefetchNearby, kNearbyRefetchDistanceMeters;
 
-/// The experimental "Nearby" surface (legacy `nearby_list` flag path): a
+/// The "Nearby" surface (the mobile default since `nearby_list` retired): a
 /// draggable bottom sheet over the map. The list, fetch, and empty-state logic
 /// now live in the reusable [NearbyView] (shared with the desktop context
 /// panel); this is just the sheet shell around it.
