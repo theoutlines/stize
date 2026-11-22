@@ -47,7 +47,9 @@ export function isProductEvent(name: string): name is ProductEventName {
 // Hard caps so a single request can't blow the worker budget or store junk. A
 // batch over the cap is truncated (excess dropped), not rejected — analytics is
 // fire-and-forget and must never surface an error to the client.
-export const MAX_BATCH = 100;
+// One request = at most this many events (x3 D1 rows each: table + 2 indexes).
+// Was 100 (300 rows per anonymous POST); the client sends chunks of 20.
+export const MAX_BATCH = 20;
 // Ephemeral session id shape: a short random token, nothing that could carry an
 // identity or free text. Anything outside this is dropped to NULL.
 const SESSION_RE = /^[A-Za-z0-9_-]{1,32}$/;

@@ -36,6 +36,9 @@ class EventLogger {
   /// the first buffered event. Both are small — analytics is low-volume and we
   /// favour freshness over batching efficiency.
   static const int flushThreshold = 20;
+
+  /// Server-side cap per request (`MAX_BATCH` in productAnalytics.ts).
+  static const int maxBatch = 20;
   static const Duration flushInterval = Duration(seconds: 15);
 
   /// Hard cap so a runaway caller can never grow the queue without bound; past
@@ -91,13 +94,19 @@ class EventLogger {
     _timer?.cancel();
     _timer = null;
     if (_enabled != true || _queue.isEmpty) return;
-    final batch = List<Map<String, dynamic>>.of(_queue);
+    final all = List<Map<String, dynamic>>.of(_queue);
     _queue.clear();
-    try {
-      await _client.postJson('/api/v1/events', body: {'events': batch});
-    } catch (_) {
-      // Fire-and-forget: drop the batch, do not requeue (avoids a retry storm
-      // when the backend is unreachable).
+    // The server takes at most [maxBatch] events per request (D1 write budget),
+    // so a backlog goes out in chunks, one after another.
+    for (var i = 0; i < all.length; i += maxBatch) {
+      final batch = all.sublist(i, i + maxBatch > all.length ? all.length : i + maxBatch);
+      try {
+        await _client.postJson('/api/v1/events', body: {'events': batch});
+      } catch (_) {
+        // Fire-and-forget: drop the rest, do not requeue (avoids a retry storm
+        // when the backend is unreachable or rate-limits us).
+        return;
+      }
     }
   }
 }

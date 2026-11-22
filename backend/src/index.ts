@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import type { Env } from "./env";
 import type {
@@ -322,7 +322,19 @@ app.get("/api/v1/ideas", async (c) => {
   return c.json({ ideas });
 });
 
+// Per-IP limit on the public write endpoints (WRITE_LIMITER binding). Returns a
+// 429 response when over, null otherwise. No binding (tests) = no limit.
+async function overWriteLimit(c: Context<{ Bindings: Env }>, scope: string) {
+  const limiter = c.env.WRITE_LIMITER;
+  if (!limiter) return null;
+  const ip = c.req.header("CF-Connecting-IP") ?? "unknown";
+  const { success } = await limiter.limit({ key: `${scope}:${ip}` });
+  return success ? null : c.json({ error: "too many requests" }, 429);
+}
+
 app.post("/api/v1/ideas", async (c) => {
+  const limited = await overWriteLimit(c, "ideas");
+  if (limited) return limited;
   const deviceId = c.req.header("X-Device-Id");
   if (!deviceId) return c.json({ error: "missing X-Device-Id header" }, 400);
   const body = await c.req.json<{ text?: string }>().catch(() => ({ text: undefined }));
@@ -359,6 +371,8 @@ app.get("/api/v1/ideas/:id/comments", async (c) => {
 });
 
 app.post("/api/v1/ideas/:id/comments", async (c) => {
+  const limited = await overWriteLimit(c, "comments");
+  if (limited) return limited;
   const deviceId = c.req.header("X-Device-Id");
   if (!deviceId) return c.json({ error: "missing X-Device-Id header" }, 400);
   const ideaId = Number(c.req.param("id"));
@@ -492,6 +506,8 @@ app.post("/api/v1/admin/flags", async (c) => {
 // it — one KV read per request.
 app.post("/api/v1/events", async (c) => {
   c.header("cache-control", "no-store");
+  const limited = await overWriteLimit(c, "events");
+  if (limited) return limited;
   if (!(await getFlagMemoized(c.env, c.executionCtx, "product_analytics"))) {
     return c.body(null, 204);
   }

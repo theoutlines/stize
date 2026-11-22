@@ -42,7 +42,13 @@ import { getFlag, setFlag, type FeatureFlag } from "./featureFlags";
 // CF_ACCOUNT_ID. Thresholds are KV config, not hardcoded.
 // ---------------------------------------------------------------------------
 
-export const GOVERNED_FLAGS: readonly FeatureFlag[] = ["analytics_collect", "jam_detection_collect"];
+export const GOVERNED_FLAGS: readonly FeatureFlag[] = [
+  "analytics_collect",
+  "jam_detection_collect",
+  // Anonymous product events are the one D1 writer the public can drive
+  // (audit 2026-11-22, S1): stand it down with the rest near the limit.
+  "product_analytics",
+];
 
 const KV_STATE = "d1_governor:state";
 const KV_THRESHOLD_PCT = "config:d1_governor_threshold_pct";

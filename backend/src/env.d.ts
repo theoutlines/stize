@@ -33,4 +33,14 @@ export interface Env {
   // Read", and the account id it reads. Absent = the governor logs and does nothing.
   CF_ANALYTICS_API_TOKEN?: string;
   CF_ACCOUNT_ID?: string;
+
+  // Workers Rate Limiting binding for the public write endpoints (/events,
+  // /ideas, comments). Optional so tests and older configs without the
+  // binding still run: absent = no per-IP limit (the D1 governor still guards).
+  WRITE_LIMITER?: RateLimit;
+}
+
+// Workers Rate Limiting API (binding type is not in our workers-types pin).
+interface RateLimit {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
 }
