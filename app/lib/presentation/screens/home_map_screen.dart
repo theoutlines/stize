@@ -3512,6 +3512,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                     decoration: InputDecoration(
                       hintText: l10n.searchHint,
                       border: InputBorder.none,
+                      // The pill around it is the ground; no second fill.
+                      filled: false,
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 12),
                     ),
@@ -4741,6 +4743,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                         decoration: InputDecoration(
                           hintText: l10n.searchHint,
                           border: InputBorder.none,
+                      // The pill around it is the ground; no second fill.
+                      filled: false,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 14,

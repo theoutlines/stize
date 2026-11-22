@@ -317,7 +317,8 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       return _searchResults(controller, rows, l10n);
     }
 
-    // No location yet: invite the user to enable it (we never prompt on our own).
+    // No location yet: invite the user to enable it (with `location_autoprompt`
+    // on, the map screen has already asked once on entry).
     if (widget.userLocation == null) {
       return _scrollable(
         controller,

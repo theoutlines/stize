@@ -58,7 +58,11 @@ abstract final class StizeTheme {
       surfaceContainer: c.card,
       surfaceContainerHigh: c.card,
       surfaceContainerHighest: c.raised,
-      outline: c.line,
+      // `outline` is what legacy widgets use for secondary text and icons
+      // (empty states, captions), so it must stay legible: ink50, not the
+      // hairline. Hairlines/dividers use `outlineVariant` (and set c.line
+      // explicitly in their component themes).
+      outline: c.ink50,
       outlineVariant: c.line,
       shadow: Colors.black,
       scrim: c.scrim,
