@@ -121,12 +121,7 @@ class StizeTransitCard extends StatelessWidget {
                     ],
                     if (caption.isNotEmpty) ...[
                       const SizedBox(height: StizeSpace.space1),
-                      Wrap(
-                        spacing: StizeSpace.space2,
-                        runSpacing: StizeSpace.space1,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: caption,
-                      ),
+                      _captionRow(),
                     ],
                   ],
                 ),
@@ -139,6 +134,30 @@ class StizeTransitCard extends StatelessWidget {
       ),
     );
     return live ? card : Opacity(opacity: heldBackOpacity, child: card);
+  }
+
+  /// One caption line, never wrapped: on a narrow card the texts shorten with an
+  /// ellipsis, while the live dot and the fleet badges keep their size and stay
+  /// on the same line (a wrapped badge row read as a stray, indented line).
+  Widget _captionRow() {
+    final children = <Widget>[];
+    for (final w in caption) {
+      if (children.isNotEmpty) children.add(const SizedBox(width: StizeSpace.space2));
+      if (w is Text && w.data != null) {
+        children.add(Flexible(
+          child: Text(
+            w.data!,
+            style: w.style,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+          ),
+        ));
+      } else {
+        children.add(w);
+      }
+    }
+    return Row(children: children);
   }
 
   /// The big ETA (40/40) with its `min` unit underneath, `now` for a due
