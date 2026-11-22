@@ -249,6 +249,8 @@ class _StopBoardState extends ConsumerState<StopBoard> {
         icon: Icons.wifi_off_rounded,
         title: l10n.noNetworkTitle,
         subtitle: l10n.noNetworkSubtitle,
+        onRetry: _refreshNow,
+        retryLabel: l10n.retry,
       );
     }
     if (err is NotFoundException) {
@@ -262,6 +264,8 @@ class _StopBoardState extends ConsumerState<StopBoard> {
       icon: Icons.error_outline,
       title: l10n.noNetworkTitle,
       subtitle: l10n.noNetworkSubtitle,
+      onRetry: _refreshNow,
+      retryLabel: l10n.retry,
     );
   }
 
@@ -281,6 +285,8 @@ class _StopBoardState extends ConsumerState<StopBoard> {
         icon: Icons.pause_circle_outline,
         title: l10n.serviceKilledTitle,
         subtitle: l10n.serviceKilledSubtitle,
+        onRetry: _refreshNow,
+        retryLabel: l10n.retry,
       );
     }
     if (board.arrivals.isEmpty) {

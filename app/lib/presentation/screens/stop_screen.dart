@@ -147,6 +147,8 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         icon: Icons.wifi_off_rounded,
         title: l10n.noNetworkTitle,
         subtitle: l10n.noNetworkSubtitle,
+        onRetry: _refreshNow,
+        retryLabel: l10n.retry,
       );
     }
     if (err is NotFoundException) {
@@ -156,7 +158,13 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         subtitle: l10n.unknownStopSubtitle,
       );
     }
-    return EmptyState(icon: Icons.error_outline, title: l10n.noNetworkTitle, subtitle: l10n.noNetworkSubtitle);
+    return EmptyState(
+      icon: Icons.error_outline,
+      title: l10n.noNetworkTitle,
+      subtitle: l10n.noNetworkSubtitle,
+      onRetry: _refreshNow,
+      retryLabel: l10n.retry,
+    );
   }
 
   Widget _boardBody(BuildContext context, AppLocalizations l10n, ArrivalsBoard board, Stop? stopLocation) {
@@ -169,6 +177,8 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         icon: Icons.pause_circle_outline,
         title: l10n.serviceKilledTitle,
         subtitle: l10n.serviceKilledSubtitle,
+        onRetry: _refreshNow,
+        retryLabel: l10n.retry,
       );
     }
 
