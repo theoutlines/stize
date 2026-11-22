@@ -171,7 +171,7 @@ class ArrivalTile extends StatelessWidget {
   }
 
   /// Under the big ETA: the ETA-change hint (G1) and the later trips of this
-  /// direction folded into the card ("7 · 22 min").
+  /// direction folded into the card ("7 · 22").
   Widget? _cardFooter(
     StizeColors c,
     ArrivalRowStatus status,
@@ -188,7 +188,9 @@ class ArrivalTile extends StatelessWidget {
       final far = laterEtaMinutes.any((m) => m >= kFarEtaMinutes);
       final text = far
           ? laterEtaMinutes.map((m) => clockAt(localeName, m)).join(' · ')
-          : '${laterEtaMinutes.map((m) => m <= 0 ? 0 : m).join(' · ')} ${l10n.arrivalEtaMinutesUnit}';
+          // No unit: it sits right under the big ETA's "min", and a narrow
+          // ETA column leaves the caption room (no "every ~20 …").
+          : laterEtaMinutes.map((m) => m <= 0 ? 0 : m).join(' · ');
       later = Text(text, style: StizeTransitCard.captionStyle(c));
     }
     if (delta == null) return later;
