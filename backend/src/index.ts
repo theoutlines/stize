@@ -11,7 +11,7 @@ import type {
   VehiclesResponse,
 } from "./types";
 import { isServiceKilled, setServiceKilled } from "./lib/killswitch";
-import { FEATURE_FLAGS, getAllFlags, getFlagMemoized, isFeatureFlag, setFlag } from "./lib/featureFlags";
+import { FEATURE_FLAGS, getAllFlags, getFlagMemoized, isFeatureFlag, setFlag, getFlag } from "./lib/featureFlags";
 import { aggregate, getLineAnalytics } from "./lib/analytics";
 import { runSweepTick, sweepStatus } from "./lib/sweep";
 import { logProductEvents, sanitizeBatch } from "./lib/productAnalytics";
@@ -30,7 +30,7 @@ import {
 } from "./lib/gtfsData";
 import { GeocodeRateLimited, geocodeSearch } from "./lib/geocode";
 import { listAlerts, refreshAlerts } from "./lib/alerts";
-import { computeJams, type JamsResponse } from "./lib/jamDetector";
+import { computeJams, journalJams, type JamsResponse } from "./lib/jamDetector";
 import { RateLimitedError, ValidationError, adminTokenOk } from "./lib/errors";
 import { createFeedback, createFeedbackIssue } from "./lib/feedback";
 import {
@@ -377,6 +377,20 @@ app.get("/api/v1/jams", async (c) => {
   }
 });
 
+// Jams: what the detector sees right now (regardless of the show flag) plus the
+// journal of jams shown in the last 7 days. The calibration view.
+app.get("/api/v1/admin/jams", async (c) => {
+  const now = Date.now();
+  const live = await computeJams(c.env, now);
+  const since = new Date(now - 7 * 86400_000).toISOString().slice(0, 10);
+  const { results } = await c.env.STIGLA_ANALYTICS_DB.prepare(
+    "SELECT * FROM jam_journal WHERE day >= ? ORDER BY day DESC, first_at DESC",
+  )
+    .bind(since)
+    .all();
+  return c.json({ live, journal: results });
+});
+
 app.post("/api/v1/admin/alerts/refresh", async (c) => {
   const result = await refreshAlerts(c.env);
   return c.json(result);
@@ -618,6 +632,18 @@ export default {
             (err) => console.error("d1 governor failed", err),
           ),
       );
+
+      // Jam journal: every 5 minutes while jams are shown, record what users see.
+      if (tickAt.getUTCMinutes() % 5 === 0) {
+        ctx.waitUntil(
+          getFlag(env, "jam_detection_show")
+            .then((on) => (on ? journalJams(env, tickAt.getTime()) : 0))
+            .then(
+              (n) => n > 0 && console.log(`jam journal: ${n} active`),
+              (err) => console.error("jam journal failed", err),
+            ),
+        );
+      }
 
       // Cron path applies jitter (randomized 0..2×jitter-s pre-fetch delay) so the
       // upstream hit doesn't land on a fixed phase every minute.
