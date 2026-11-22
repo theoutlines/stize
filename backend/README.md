@@ -15,8 +15,12 @@ cp ../.env.example .dev.vars   # fill in real values, never commit this file
 npm run gtfs:build             # only needed after downloading a fresh GTFS feed
 npm run dev                    # wrangler dev, local
 npm test                       # vitest (runs in the actual Workers runtime)
-npm run deploy                 # wrangler deploy
+npm run deploy                 # manual fallback only; see below
 ```
+
+Deploys are Git-driven: a push to `main` deploys the prod and staging workers
+via Cloudflare Workers Builds, and every other branch uploads a staging version
+with its own preview alias. See `docs/staging.md`.
 
 ## Architecture
 
