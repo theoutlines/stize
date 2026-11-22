@@ -4,8 +4,7 @@ Cloudflare Worker that proxies and normalizes the upstream Belgrade transit
 data source into a stable, versioned API. The client never talks to the
 upstream source directly — only to this Worker.
 
-Deployed at `https://api.stize.app` (legacy `https://stigla-api.theoutlines.xyz`
-stays bound for already-shipped clients). The worker itself keeps its historical
+Deployed at `https://api.stize.app`. The worker itself keeps its historical
 name `stigla-backend` (renaming it would drop the deployment's bindings).
 
 ## Setup
