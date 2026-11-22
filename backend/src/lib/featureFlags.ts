@@ -11,9 +11,6 @@ import type { Env } from "../env";
 //                       are still hidden.
 //   analytics_show    — the app reveals the (draft) analytics screens to users.
 //                       Turn this on only once the screens are ready.
-//   nearby_list       — the app shows the experimental "Nearby" list (a
-//                       draggable sheet over the map). Off on prod, on on
-//                       staging (like every in-dev flag).
 //   nearby_sort_board — the "Nearby" list is ordered by time-to-board (walk to
 //                       the stop + wait for the soonest catchable departure)
 //                       instead of by bare ETA. Off on prod, on on staging.
@@ -66,13 +63,6 @@ import type { Env } from "../env";
 //                       the sweep — to measure the live baseline via
 //                       /admin/sweep/status and set the ceiling. OFF on prod / ON on
 //                       staging. See lib/upstreamBudget.ts.
-//   context_panel     — the app presents the adaptive "context slot": a persistent
-//                       left panel on desktop (≥840px) and unified bottom sheets on
-//                       mobile, both driven by one state machine (nearby → stop →
-//                       vehicle). Purely a client-render flag — the worker is
-//                       unchanged; this entry only lets /config serve the flag so
-//                       it can default ON on staging / OFF on prod and be flipped
-//                       in KV. OFF is the killswitch (today's UI, untouched).
 //   feedback_form     — the drawer's in-app feedback form + its POST
 //                       /api/v1/feedback endpoint. OFF hides the "Write to me"
 //                       action on the client AND makes the endpoint refuse
@@ -102,14 +92,12 @@ import type { Env } from "../env";
 export const FEATURE_FLAGS = [
   "analytics_collect",
   "analytics_show",
-  "nearby_list",
   "nearby_sort_board",
   "coverage_map_show",
   "coverage_on_main_map",
   "vehicles_on_demand",
   "product_analytics",
   "upstream_budget",
-  "context_panel",
   "feedback_form",
   "analytics_sweep",
   "jam_detection_collect",

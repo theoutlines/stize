@@ -21,8 +21,7 @@ import 'route_alerts_strip.dart';
 /// The reusable "stop" view — a stop's live arrivals board, with no assumption
 /// about its container. It is hosted BY three shells that only add chrome:
 ///
-///  * the mobile bottom sheet ([showStopSheet] → `_StopSheet`, both the legacy
-///    OFF path and the `context_panel` ON sheet);
+///  * the mobile bottom sheet ([showStopSheet] → `_StopSheet`);
 ///  * the desktop context panel ([ContextPanel]).
 ///
 /// Extracting it here is exactly the "no duplication of lists/sheets" the

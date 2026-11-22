@@ -51,8 +51,6 @@ Widget _host({required Size size}) {
     overrides: [
       appConfigProvider.overrideWith(
         (ref) async => const AppConfig(version: 'test', flags: {
-          'context_panel': true,
-          'nearby_list': true,
           'vehicles_on_demand': true,
         }),
       ),
