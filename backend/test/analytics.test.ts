@@ -245,10 +245,10 @@ describe("analytics.aggregate + getLineAnalytics", () => {
 
   it("computes sched_delay against the real GTFS timetable for a matched arrival", async () => {
     // Real bundle fact: stop 20001, line 5, direction 00005-1, service RD has a
-    // departure at minute 347 (05:47 Belgrade). 2026-07-14 is a Tuesday (RD
-    // active, no calendar exception). An arrival at 05:50 local (03:50 UTC in
-    // CEST) is 3 min = 180s late vs that 05:47 trip.
-    const observedAt = Math.floor(Date.UTC(2026, 6, 14, 3, 50, 0) / 1000);
+    // departure at minute 355 (05:55 Belgrade, feed v34). 2026-07-14 is a Tuesday (RD
+    // active, no calendar exception). An arrival at 05:58 local (03:58 UTC in
+    // CEST) is 3 min = 180s late vs that 05:55 trip.
+    const observedAt = Math.floor(Date.UTC(2026, 6, 14, 3, 58, 0) / 1000);
     await env.STIGLA_ANALYTICS_DB.prepare(
       `INSERT INTO arrival_events (slot, stop_id, garage_no, vehicle_id, line, direction_route_id, observed_at)
        VALUES (?,'20001','P93001','P93001','5','00005-1',?)`,
