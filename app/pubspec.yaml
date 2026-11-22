@@ -53,6 +53,8 @@ dependencies:
   url_launcher: ^6.3.1
   fl_chart: ^0.69.2
   package_info_plus: ^8.1.2
+  flutter_web_plugins:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:

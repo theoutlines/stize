@@ -537,6 +537,21 @@ app.post("/api/v1/admin/sweep/tick", async (c) => {
 // sweep), remaining sweep budget, and breaker health — so it can be checked
 // WITHOUT `wrangler tail`. Admin-token gated (metrics are operational, not public).
 // Contains NO secrets/tokens — only counts, config values, and derived metrics.
+// Applied D1 migrations per bound database, to compare with the repo's
+// migrations folders (scripts/check-migrations.mjs). Migrations are applied by
+// hand, so this is the drift check (audit round 2, T2).
+app.get("/api/v1/admin/migrations", async (c) => {
+  const read = async (db: D1Database | undefined) => {
+    if (!db) return null;
+    const { results } = await db.prepare("SELECT name FROM d1_migrations ORDER BY id").all<{ name: string }>();
+    return results.map((r) => r.name);
+  };
+  return c.json({
+    ideas: await read(c.env.STIGLA_IDEAS_DB),
+    analytics: await read(c.env.STIGLA_ANALYTICS_DB),
+  });
+});
+
 app.get("/api/v1/admin/sweep/status", async (c) => {
   c.header("cache-control", "no-store");
   // Non-essential read: stood down while the D1 read-budget governor is tripped
