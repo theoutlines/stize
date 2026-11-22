@@ -5,8 +5,9 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 
 // Serbian first — the app's home city is Belgrade. `null` (follow the system)
-// stays on top: it's the default, not a language.
-const _localeOptions = <String?>[null, 'sr', 'en', 'ru'];
+// stays on top: it's the default, not a language. Russian was removed on
+// 2026-11-22: the design-system font (Uncut Sans) has no Cyrillic.
+const _localeOptions = <String?>[null, 'sr', 'en'];
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -65,8 +66,6 @@ class SettingsScreen extends ConsumerWidget {
     switch (code) {
       case 'en':
         return 'English';
-      case 'ru':
-        return 'Русский';
       case 'sr':
         return 'Srpski';
       default:

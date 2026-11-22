@@ -15,6 +15,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 import '../../core/api_config.dart';
 import '../../core/context_slot.dart';
 import '../../core/coverage_heatmap.dart';
+import '../../core/design/stize_tokens.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/follow_camera.dart';
 import '../../core/fps_overlay.dart';
@@ -1040,14 +1041,20 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   // ---- Location -------------------------------------------------------------
 
-  /// On entry we never pop the OS prompt — browsers block a geolocation request
-  /// that isn't tied to a user gesture anyway — so we only start locating when
-  /// access is *already* granted: center instantly on the last-known fix, then
-  /// let the live stream take over. The recenter button ([_recenterOnMe]) is the
-  /// only place we request permission, from a real tap.
+  /// On entry: when access is already granted, center instantly on the
+  /// last-known fix and let the live stream take over. When the user hasn't
+  /// decided yet and the `location_autoprompt` flag is on, ask right away (the
+  /// geolocation prompt does not need a user gesture in Chrome, Safari or
+  /// Firefox; iOS Safari re-asks every session by default, so riders otherwise
+  /// had to tap locate on every visit). A refusal is never re-asked, and a
+  /// failed auto-ask stays silent: the recenter button ([_recenterOnMe]) still
+  /// asks from a real tap.
   Future<void> _initLocation() async {
     final service = ref.read(locationServiceProvider);
-    if (!await service.isPermissionGranted()) return;
+    if (!await service.isPermissionGranted()) {
+      await _autopromptLocation();
+      return;
+    }
     // The first fix (cached or streamed) recenters the camera on the user.
     _pendingRecenter = true;
     final cached = await service.lastKnownIfGranted();
@@ -1055,6 +1062,30 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       _onFix(ll.LatLng(cached.latitude, cached.longitude), ease: false);
     }
     _reconcileLocationStream();
+  }
+
+  bool _autoprompted = false;
+
+  /// Asks for location once per screen life, on entry, when the remote
+  /// `location_autoprompt` flag is on and the user hasn't decided yet. Called
+  /// from [_initLocation] and again when the flag resolves after config loads
+  /// (see the listener in build), so a late config doesn't skip the ask.
+  Future<void> _autopromptLocation() async {
+    if (_autoprompted || !ref.read(locationAutopromptEnabledProvider)) return;
+    // Claimed before the first await, so initState and the flag listener can't
+    // both ask.
+    _autoprompted = true;
+    final service = ref.read(locationServiceProvider);
+    if (!await service.isPermissionUndecided()) return;
+    try {
+      final fresh = await service.getCurrentPosition(); // shows the prompt
+      if (!mounted) return;
+      _pendingRecenter = true;
+      _onFix(ll.LatLng(fresh.latitude, fresh.longitude), ease: false);
+      _reconcileLocationStream();
+    } catch (_) {
+      // Declined, no fix or a platform error: stay quiet on entry, no snackbar.
+    }
   }
 
   /// Applies a fresh position fix: eases the marker toward it (or snaps on the
@@ -2927,6 +2958,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // Favourites are drawn by an imperative source now; refresh it whenever the
     // set changes (no widget rebuild needed for the markers themselves).
     ref.listen(favoriteStopLocationsProvider, (_, _) => _pushStopSources());
+    ref.listen<bool>(locationAutopromptEnabledProvider, (prev, next) {
+      if (next && prev != true) _autopromptLocation();
+    });
 
     // Tram-jam overlay: whenever the jam board changes, (re)build the red segment
     // layer and the badged-vehicle set. Flag-gated (empty board when off → clears).
@@ -3343,7 +3377,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         );
     return IconButton(
       icon: Icon(isFav ? Icons.star : Icons.star_outline),
-      color: isFav ? const Color(0xFFF6A609) : null,
+      color: isFav ? StizeColors.of(context).favorite : null,
       tooltip: isFav
           ? AppLocalizations.of(context).removeFromFavorites
           : AppLocalizations.of(context).addToFavorites,
@@ -3415,11 +3449,16 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          vehicleGlyph(type, size: 16, color: Colors.white),
+          vehicleGlyph(type, size: 16, color: StizeColors.of(context).onTransit),
           const SizedBox(width: 6),
-          Text(line,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w700)),
+          Builder(builder: (context) {
+            final stize = Theme.of(context).extension<StizeColors>();
+            return Text(line,
+                style: stize != null
+                    ? StizeType.lineNumber.copyWith(color: stize.onTransit)
+                    : const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w700));
+          }),
         ],
       ),
     );
@@ -3920,13 +3959,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
+              // Stiže: the floating map-control shadow; OFF keeps the prior soft
+              // drop shadow (killswitch).
+              boxShadow: theme.extension<StizeColors>() != null
+                  ? StizeShadow.shadowMapControl
+                  : const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
             ),
             child: Row(
               children: [
@@ -3942,15 +3985,23 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      vehicleGlyph(type, size: 16, color: Colors.white),
+                      vehicleGlyph(type,
+                          size: 16, color: StizeColors.of(context).onTransit),
                       const SizedBox(width: 6),
-                      Text(
-                        line,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      Builder(builder: (context) {
+                        final stize =
+                            Theme.of(context).extension<StizeColors>();
+                        return Text(
+                          line,
+                          style: stize != null
+                              ? StizeType.lineNumber
+                                  .copyWith(color: stize.onTransit)
+                              : const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                        );
+                      }),
                     ],
                   ),
                 ),
@@ -4633,10 +4684,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.place,
                           size: 18,
-                          color: Color(0xFFE5484D),
+                          color: StizeColors.of(context).place,
                         ),
                         const SizedBox(width: 8),
                         Flexible(

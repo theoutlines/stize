@@ -7,7 +7,19 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-22
 
+### Added
+- **Stiže design system (behind the `ds_stize` flag)** — the app's own design
+  system, forked from the Growth Test Planner's: Uncut Sans everywhere, a 4px
+  grid, dark and light themes, a signal-green accent and a separate transit
+  colour layer. Tokens live in `design/tokens/` and generate the Flutter theme.
+
+### Changed
+- **Trolleybus orange** is slightly darker (`#E8701A`) so white line numbers
+  read on it.
+
 ### Removed
+- **Russian UI.** The app now ships English and Serbian (Latin). Devices set to
+  Russian fall back to English; a saved Russian choice resets to "System".
 - **Legacy `theoutlines.xyz` addresses retired** — Stiže now lives entirely on
   its own domain (web `stize.app`, API `api.stize.app`, staging API
   `api-staging.stize.app`). All three old `theoutlines.xyz` hosts —

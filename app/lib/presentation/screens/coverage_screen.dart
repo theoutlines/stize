@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre/maplibre.dart';
 
 import '../../core/coverage_heatmap.dart';
+import '../../core/design/stize_tokens.dart';
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
 import '../../domain/models/vehicle_type.dart';
@@ -159,7 +160,12 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
               ),
             )
           else
-            const Positioned.fill(child: ColoredBox(color: Color(0xFF11151A))),
+            Positioned.fill(
+              child: ColoredBox(
+                color: Theme.of(context).extension<StizeColors>()?.bg ??
+                    const Color(0xFF11151A),
+              ),
+            ),
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,13 +252,15 @@ class _DensityLegend extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: theme.extension<StizeColors>() != null
+            ? StizeShadow.shadowMapControl
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

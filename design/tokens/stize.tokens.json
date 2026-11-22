@@ -1,0 +1,678 @@
+{
+ "name": "Stiže",
+ "version": 1,
+ "meta": {
+  "forkedFrom": "The Outlines (planner design system), 2026-11-22",
+  "target": "theoutlines/stize: app/lib (Flutter), web landing, store screenshots",
+  "edited": "2026-11-22"
+ },
+ "color": {
+  "themes": [
+   {
+    "id": "dark",
+    "name": "Dark"
+   },
+   {
+    "id": "light",
+    "name": "Light"
+   }
+  ],
+  "tokens": [
+   {
+    "name": "bg",
+    "value": {
+     "dark": "#151515",
+     "light": "#F4F4F2"
+    },
+    "usage": "Page ground behind the map chrome, lists and settings."
+   },
+   {
+    "name": "card",
+    "value": {
+     "dark": "#212121",
+     "light": "#FFFFFF"
+    },
+    "usage": "Cards and rows on bg: arrival rows, favourite stops, idea cards."
+   },
+   {
+    "name": "sheet",
+    "value": {
+     "dark": "#1F1F1F",
+     "light": "#FFFFFF"
+    },
+    "usage": "The bottom sheet over the map (Nearby, stop board, line) and the desktop rail."
+   },
+   {
+    "name": "raised",
+    "value": {
+     "dark": "#2A2A2A",
+     "light": "#FFFFFF"
+    },
+    "usage": "Menus and popovers above a card; in light it is separated by shadow-float, not by tone."
+   },
+   {
+    "name": "frame",
+    "value": {
+     "dark": "#2C2C2C",
+     "light": "#E9E9E6"
+    },
+    "usage": "Tile behind an icon, empty-state picture frame."
+   },
+   {
+    "name": "ink",
+    "value": {
+     "dark": "#FFFFFF",
+     "light": "#151515"
+    },
+    "usage": "Titles, values, the big ETA, primary icons. Was `white` in The Outlines: same role, theme-aware."
+   },
+   {
+    "name": "ink-85",
+    "value": {
+     "dark": "rgba(255,255,255,0.85)",
+     "light": "rgba(21,21,21,0.85)"
+    },
+    "usage": "Body copy when ink is too loud: long explanations, privacy text."
+   },
+   {
+    "name": "ink-80",
+    "value": {
+     "dark": "rgba(255,255,255,0.8)",
+     "light": "rgba(21,21,21,0.8)"
+    },
+    "usage": "Label of the tertiary button (on fill-06)."
+   },
+   {
+    "name": "ink-75",
+    "value": {
+     "dark": "rgba(255,255,255,0.75)",
+     "light": "rgba(21,21,21,0.75)"
+    },
+    "usage": "Control labels, unselected segments, chip labels."
+   },
+   {
+    "name": "ink-60",
+    "value": {
+     "dark": "rgba(255,255,255,0.6)",
+     "light": "rgba(21,21,21,0.66)"
+    },
+    "usage": "Secondary text: destination under a line, stop distance, row labels, chevrons."
+   },
+   {
+    "name": "ink-50",
+    "value": {
+     "dark": "rgba(255,255,255,0.5)",
+     "light": "rgba(21,21,21,0.6)"
+    },
+    "usage": "Floor: notes, Updated N s ago, footers, placeholders. Dark 5.3:1 on bg; light 4.6:1 on bg (alpha raised to 0.6 so it holds)."
+   },
+   {
+    "name": "on-ink",
+    "value": {
+     "dark": "#151515",
+     "light": "#FFFFFF"
+    },
+    "usage": "Text on an ink-filled control: the primary (white/black) button, a picked chip."
+   },
+   {
+    "name": "fill-05",
+    "value": {
+     "dark": "rgba(255,255,255,0.05)",
+     "light": "rgba(21,21,21,0.05)"
+    },
+    "usage": "Rest fill of every 44px control: search field, segmented track."
+   },
+   {
+    "name": "fill-06",
+    "value": {
+     "dark": "rgba(255,255,255,0.06)",
+     "light": "rgba(21,21,21,0.06)"
+    },
+    "usage": "Tertiary button."
+   },
+   {
+    "name": "fill-07",
+    "value": {
+     "dark": "rgba(255,255,255,0.07)",
+     "light": "rgba(21,21,21,0.07)"
+    },
+    "usage": "Chips (line filter, vehicle type)."
+   },
+   {
+    "name": "fill-08",
+    "value": {
+     "dark": "rgba(255,255,255,0.08)",
+     "light": "rgba(21,21,21,0.08)"
+    },
+    "usage": "Icon buttons (40px), map controls on the sheet."
+   },
+   {
+    "name": "fill-10",
+    "value": {
+     "dark": "rgba(255,255,255,0.10)",
+     "light": "rgba(21,21,21,0.10)"
+    },
+    "usage": "Pressed or editing state of a field."
+   },
+   {
+    "name": "fill-14",
+    "value": {
+     "dark": "rgba(255,255,255,0.14)",
+     "light": "rgba(21,21,21,0.14)"
+    },
+    "usage": "Sliding pill of a segmented control."
+   },
+   {
+    "name": "fill-16",
+    "value": {
+     "dark": "rgba(255,255,255,0.16)",
+     "light": "rgba(21,21,21,0.16)"
+    },
+    "usage": "Strong fill: picked tile, slider fill."
+   },
+   {
+    "name": "fill-24",
+    "value": {
+     "dark": "rgba(255,255,255,0.24)",
+     "light": "rgba(21,21,21,0.24)"
+    },
+    "usage": "Progress, scrollbars."
+   },
+   {
+    "name": "fill-32",
+    "value": {
+     "dark": "rgba(255,255,255,0.32)",
+     "light": "rgba(21,21,21,0.32)"
+    },
+    "usage": "Sheet grabber, ticks."
+   },
+   {
+    "name": "line",
+    "value": {
+     "dark": "rgba(255,255,255,0.1)",
+     "light": "rgba(21,21,21,0.1)"
+    },
+    "usage": "Hairlines between rows."
+   },
+   {
+    "name": "scrim",
+    "value": {
+     "dark": "rgba(0,0,0,0.55)",
+     "light": "rgba(0,0,0,0.32)"
+    },
+    "usage": "Behind a modal; never behind the map sheet (the map stays usable)."
+   },
+   {
+    "name": "accent",
+    "value": {
+     "dark": "#2BD47D",
+     "light": "#0A7F45"
+    },
+    "usage": "The one accent (owner's pick 2026-11-22: A, signal green), meaning “look here”: the brand mark, the landing CTA, a live indicator on neutral ground, a likely mistake in a field. Never on transit colour (arrival cards), body text, focus rings or large areas. Dark 9.4:1 on bg; light 4.6:1 on bg."
+   },
+   {
+    "name": "on-accent",
+    "value": {
+     "dark": "#151515",
+     "light": "#FFFFFF"
+    },
+    "usage": "Text and icons on accent (button label 16px medium or larger)."
+   },
+   {
+    "name": "accent-14",
+    "value": {
+     "dark": "rgba(43,212,125,0.14)",
+     "light": "rgba(10,127,69,0.12)"
+    },
+    "usage": "Ground of an accent note or a live badge."
+   },
+   {
+    "name": "transit-bus",
+    "value": {
+     "dark": "#1B67C4",
+     "light": "#1B67C4"
+    },
+    "usage": "Data layer, not UI accent. Bus: line badge, stop pin, vehicle coin, route line. From map_support.dart. Label on it: on-transit (white, 5.6:1)."
+   },
+   {
+    "name": "transit-trolleybus",
+    "value": {
+     "dark": "#E8701A",
+     "light": "#E8701A"
+    },
+    "usage": "Data layer. Trolleybus. Darkened from #EF7B22 (2026-11-22) so the white line number reaches 3.1:1; darker would merge with tram red. Change map_support.dart to match."
+   },
+   {
+    "name": "transit-tram",
+    "value": {
+     "dark": "#D3342B",
+     "light": "#D3342B"
+    },
+    "usage": "Data layer. Tram (Belgrade livery red). Label on it: on-transit (white, 4.9:1)."
+   },
+   {
+    "name": "transit-tram-rail",
+    "value": {
+     "dark": "rgba(211,52,43,0.6)",
+     "light": "rgba(211,52,43,0.6)"
+    },
+    "usage": "Tram rails on the map."
+   },
+   {
+    "name": "transit-mixed",
+    "value": {
+     "dark": "#5B6B7A",
+     "light": "#5B6B7A"
+    },
+    "usage": "Data layer. Stop served by bus + trolleybus (tram always wins)."
+   },
+   {
+    "name": "transit-stuck",
+    "value": {
+     "dark": "#B00842",
+     "light": "#B00842"
+    },
+    "usage": "Data layer. A vehicle that looks stuck; deep crimson, distinct from tram red by lightness."
+   },
+   {
+    "name": "on-transit",
+    "value": {
+     "dark": "#FFFFFF",
+     "light": "#FFFFFF"
+    },
+    "usage": "Line number on bus, tram, mixed and stuck badges."
+   },
+   {
+    "name": "on-transit-trolleybus",
+    "value": {
+     "dark": "#FFFFFF",
+     "light": "#FFFFFF"
+    },
+    "usage": "Line number on the trolleybus badge: white like every other badge (owner, 2026-11-22). 3.1:1, so the number is semibold (line-number style) in lists and medium 16 in chips; never smaller text on orange."
+   },
+   {
+    "name": "favorite",
+    "value": {
+     "dark": "#F6A609",
+     "light": "#B57600"
+    },
+    "usage": "Favourite star on the map and in rows."
+   },
+   {
+    "name": "eta-earlier",
+    "value": {
+     "dark": "#2BD47D",
+     "light": "#0A7F45"
+    },
+    "usage": "ETA delta: arrives earlier than before. Same value as accent."
+   },
+   {
+    "name": "eta-later",
+    "value": {
+     "dark": "rgba(255,255,255,0.75)",
+     "light": "rgba(21,21,21,0.75)"
+    },
+    "usage": "ETA delta: arrives later. Neutral ink with an up arrow, not a colour: later is information, not an error (open question for the owner)."
+   },
+   {
+    "name": "scheduled",
+    "value": {
+     "dark": "rgba(255,255,255,0.6)",
+     "light": "rgba(21,21,21,0.66)"
+    },
+    "usage": "Scheduled (not live) arrival text; paired with the word Scheduled, never colour alone."
+   },
+   {
+    "name": "place",
+    "value": {
+     "dark": "#E5484D",
+     "light": "#D9363C"
+    },
+    "usage": "Searched place pin."
+   }
+  ]
+ },
+ "type": {
+  "fonts": [
+   {
+    "family": "Uncut Sans",
+    "file": "fonts/UncutSans-Variable.woff2",
+    "weight": "300 700",
+    "style": "normal"
+   },
+   {
+    "family": "Geist Mono",
+    "file": "fonts/GeistMono-400.woff2",
+    "weight": "400",
+    "style": "normal"
+   }
+  ],
+  "families": {
+   "sans": "\"Uncut Sans\", system-ui, -apple-system, sans-serif",
+   "mono": "\"Geist Mono\", ui-monospace, Menlo, monospace"
+  },
+  "groups": [
+   {
+    "name": "Display",
+    "family": "sans",
+    "styles": [
+     {
+      "name": "landing-hero",
+      "fontSize": "104px",
+      "lineHeight": "92px",
+      "fontWeight": 500,
+      "letterSpacing": "-0.04em",
+      "usage": "Landing hero only: desktop 104/92, mobile 52/48.",
+      "sample": "See it coming"
+     },
+     {
+      "name": "eta-hero",
+      "fontSize": "44px",
+      "lineHeight": "44px",
+      "fontWeight": 500,
+      "letterSpacing": "-0.045em",
+      "usage": "The big next-arrival ETA on a stop board (“3 min”). Tabular figures.",
+      "sample": "3 min"
+     },
+     {
+      "name": "big-number",
+      "fontSize": "40px",
+      "lineHeight": "40px",
+      "fontWeight": 500,
+      "letterSpacing": "-0.04em",
+      "usage": "ETA in an arrival row, counts on cards. Tabular figures.",
+      "sample": "12"
+     },
+     {
+      "name": "hero-title",
+      "fontSize": "32px",
+      "lineHeight": "36px",
+      "fontWeight": 500,
+      "letterSpacing": "-0.035em",
+      "usage": "Landing section titles; empty-state titles.",
+      "sample": "No favourite stops yet"
+     }
+    ]
+   },
+   {
+    "name": "Text",
+    "family": "sans",
+    "styles": [
+     {
+      "name": "h1",
+      "fontSize": "28px",
+      "lineHeight": "32px",
+      "fontWeight": 500,
+      "letterSpacing": "-0.03em",
+      "usage": "Screen titles: stop name on the stop board, Settings.",
+      "sample": "Slavija"
+     },
+     {
+      "name": "date",
+      "fontSize": "24px",
+      "lineHeight": "28px",
+      "fontWeight": 500,
+      "letterSpacing": "-0.02em",
+      "usage": "Departure time in a schedule row (24h).",
+      "sample": "14:05"
+     },
+     {
+      "name": "section",
+      "fontSize": "20px",
+      "lineHeight": "24px",
+      "fontWeight": 500,
+      "letterSpacing": "-0.02em",
+      "usage": "Section titles in sheets (“Nearby”), line number + destination headers.",
+      "sample": "Nearby"
+     },
+     {
+      "name": "body",
+      "fontSize": "16px",
+      "lineHeight": "24px",
+      "fontWeight": 400,
+      "letterSpacing": "0",
+      "usage": "Running text, answers, field input (never below 16 in a field or iOS zooms).",
+      "sample": "Live positions update every 30 seconds."
+     },
+     {
+      "name": "label",
+      "fontSize": "16px",
+      "lineHeight": "24px",
+      "fontWeight": 500,
+      "letterSpacing": "0",
+      "usage": "Row titles: destination, stop name in lists.",
+      "sample": "Banovo brdo"
+     },
+     {
+      "name": "subtitle",
+      "fontSize": "16px",
+      "lineHeight": "24px",
+      "fontWeight": 400,
+      "letterSpacing": "0",
+      "usage": "Lines under titles in ink-60: stop + distance.",
+      "sample": "Slavija · 350 m"
+     },
+     {
+      "name": "control",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "fontWeight": 500,
+      "letterSpacing": "0",
+      "usage": "Chips, segmented options, badges.",
+      "sample": "All lines"
+     },
+     {
+      "name": "line-number",
+      "fontSize": "16px",
+      "lineHeight": "24px",
+      "fontWeight": 600,
+      "letterSpacing": "0",
+      "usage": "Line number inside a LineBadge in vertical lists (arrival rows, Nearby, My stops). The one semibold in the system (owner, 2026-11-22). Chips and map coins stay medium.",
+      "sample": "31"
+     },
+     {
+      "name": "caption",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "fontWeight": 400,
+      "letterSpacing": "0",
+      "usage": "Legends, Updated N s ago.",
+      "sample": "Updated 12 s ago"
+     },
+     {
+      "name": "note",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "fontWeight": 400,
+      "letterSpacing": "0",
+      "usage": "Sources and footers, in ink-50.",
+      "sample": "Data: Belgrade public transport, live."
+     }
+    ]
+   },
+   {
+    "name": "Numbers",
+    "family": "mono",
+    "styles": [
+     {
+      "name": "mono",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "fontWeight": 400,
+      "letterSpacing": "0",
+      "usage": "Only chart axis ticks (analytics) and slider ends. Never ETAs, line numbers or labels.",
+      "sample": "06  12  18"
+     }
+    ]
+   }
+  ],
+  "rule": "Sizes 10, 12, 16, 20, 24, 28, 32, 40, 44 (and the landing hero 104). Never 13, 14 or 15. Weights 400 and 500, plus 600 only for line-number. Line heights in px, multiples of 4. Uncut Sans covers Latin incl. Serbian č ć ž š đ; it has no Cyrillic, so the app ships EN and SR (Latin) only."
+ },
+ "spacing": {
+  "tokens": [
+   {
+    "name": "space-1",
+    "value": "4px",
+    "usage": "Gap inside a label pair (title + subtitle)."
+   },
+   {
+    "name": "space-2",
+    "value": "8px",
+    "usage": "Gap between a label and its control; between chips."
+   },
+   {
+    "name": "space-3",
+    "value": "12px",
+    "usage": "Gap between rows inside a card."
+   },
+   {
+    "name": "space-4",
+    "value": "16px",
+    "usage": "Side gutter on mobile; card padding; gap between blocks on a screen."
+   },
+   {
+    "name": "space-5",
+    "value": "20px",
+    "usage": "Text inset inside the hero and the verdict card."
+   },
+   {
+    "name": "space-6",
+    "value": "24px",
+    "usage": "Gap between questions in the wizard; between landing sub-blocks."
+   },
+   {
+    "name": "space-8",
+    "value": "32px",
+    "usage": "Space above the footer; between landing sections on mobile."
+   },
+   {
+    "name": "space-10",
+    "value": "40px",
+    "usage": "Gap before the next question on a screen that holds two (a count, then which plans)."
+   },
+   {
+    "name": "space-12",
+    "value": "48px",
+    "usage": "Bottom padding of wizard pages on desktop."
+   }
+  ],
+  "rule": "Every size is a multiple of 4: spacing, heights and widths, radii, icon sizes, type sizes and line heights. Lines and strokes are 1, 2 or 4 px, never 3: 1 for hairlines; 2 for icon strokes, chevrons, focus rings and dashed limits; 4 for slider handles and the share-bar divider. Exceptions: the 2px gap between segments, full-round shapes (radius = half the height)."
+ },
+ "radius": {
+  "tokens": [
+   {
+    "name": "radius-xs",
+    "value": "8px",
+    "usage": "The pill inside a segmented track."
+   },
+   {
+    "name": "radius-sm",
+    "value": "8px",
+    "usage": "Checks, the editable number box."
+   },
+   {
+    "name": "radius-control",
+    "value": "12px",
+    "usage": "Every 44px control: field, slider, segmented track, dropdown; landing tabs."
+   },
+   {
+    "name": "radius-md",
+    "value": "12px",
+    "usage": "Icon buttons, small buttons (40px), weeks cards."
+   },
+   {
+    "name": "radius-button",
+    "value": "16px",
+    "usage": "All three button levels (52px)."
+   },
+   {
+    "name": "radius-tile",
+    "value": "16px",
+    "usage": "Line badge tile (40px), favourite cards."
+   },
+   {
+    "name": "radius-card",
+    "value": "20px",
+    "usage": "Cards and chips (a 36px chip at 20 reads as a pill)."
+   },
+   {
+    "name": "radius-hero",
+    "value": "24px",
+    "usage": "Landing hero, the top of the bottom sheet."
+   }
+  ]
+ },
+ "size": {
+  "tokens": [
+   {
+    "name": "control-h",
+    "value": "44px",
+    "usage": "Height of every text field, slider, segmented control and dropdown."
+   },
+   {
+    "name": "button-h",
+    "value": "52px",
+    "usage": "All three button levels, Back."
+   },
+   {
+    "name": "button-small-h",
+    "value": "40px",
+    "usage": "Small buttons in cards (“Get the plugin”), the landing header button, icon buttons."
+   },
+   {
+    "name": "chip-h",
+    "value": "36px",
+    "usage": "Quick-fill chips; landing tabs."
+   },
+   {
+    "name": "badge-h",
+    "value": "32px",
+    "usage": "Line badge height in rows; comfort badges."
+   },
+   {
+    "name": "chevron-trailing",
+    "value": "16px",
+    "usage": "Chevron at the end of a row, card, field or accordion."
+   },
+   {
+    "name": "chevron-inline",
+    "value": "12px",
+    "usage": "Chevron right after text (idea range, Start date)."
+   }
+  ]
+ },
+ "shadow": {
+  "tokens": [
+   {
+    "name": "shadow-sheet",
+    "value": "0 -12px 32px rgba(0,0,0,0.45)",
+    "usage": "The mobile sheet and the peek bar."
+   },
+   {
+    "name": "shadow-modal",
+    "value": "0 32px 80px rgba(0,0,0,0.6)",
+    "usage": "The desktop modal."
+   },
+   {
+    "name": "shadow-float",
+    "value": "0 24px 64px rgba(0,0,0,0.55)",
+    "usage": "The floating idea card on desktop."
+   },
+   {
+    "name": "shadow-map-control",
+    "value": "0 12px 32px rgba(0,0,0,0.4)",
+    "usage": "Floating map buttons (locate me, layers)."
+   },
+   {
+    "name": "shadow-handle",
+    "value": "0 2px 8px rgba(0,0,0,0.6), 0 0 2px rgba(0,0,0,0.6)",
+    "usage": "Slider handle over busy grounds."
+   },
+   {
+    "name": "shadow-light-card",
+    "value": "0 1px 2px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)",
+    "usage": "Light theme only: cards and raised surfaces that would otherwise sit white on white."
+   }
+  ]
+ }
+}

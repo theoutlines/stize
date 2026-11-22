@@ -8,6 +8,19 @@ import '../l10n/app_localizations.dart';
 /// nearby, the collapsed Scheduled cell's times).
 const int kFarEtaMinutes = 60;
 
+/// The 24h clock time an arrival [etaMinutes] from [now] lands at ("14:05"),
+/// locale-aware with a plain HH:mm fallback. Used by the Stiže arrival card for
+/// a scheduled row's departure time and for far-off live ETAs.
+String clockAt(String localeName, int etaMinutes, {DateTime? now}) {
+  final at = (now ?? DateTime.now()).add(Duration(minutes: etaMinutes));
+  try {
+    return DateFormat.Hm(localeName).format(at); // 24h HH:mm, locale-aware
+  } catch (_) {
+    return '${at.hour.toString().padLeft(2, '0')}:'
+        '${at.minute.toString().padLeft(2, '0')}';
+  }
+}
+
 /// The label for an arrival ETA:
 ///  * "Now" for a due/past arrival (≤ 0),
 ///  * "N min" while that stays readable (< [kFarEtaMinutes]),
@@ -24,13 +37,7 @@ String etaLabel(
   DateTime? now,
 }) {
   if (etaMinutes >= kFarEtaMinutes) {
-    final at = (now ?? DateTime.now()).add(Duration(minutes: etaMinutes));
-    try {
-      return DateFormat.Hm(localeName).format(at); // 24h HH:mm, locale-aware
-    } catch (_) {
-      return '${at.hour.toString().padLeft(2, '0')}:'
-          '${at.minute.toString().padLeft(2, '0')}';
-    }
+    return clockAt(localeName, etaMinutes, now: now);
   }
   return etaMinutes <= 0 ? l10n.arrivalEtaNow : l10n.arrivalEtaMinutes(etaMinutes);
 }

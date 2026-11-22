@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
 import '../../core/api_config.dart';
+import '../../core/design/stize_tokens.dart';
 import '../../core/map_support.dart';
 import '../../core/nearby_focus.dart';
 import '../../core/search.dart';
@@ -236,36 +237,60 @@ class NearbyViewState extends ConsumerState<NearbyView> {
 
   Widget _localSearch(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
+    final stize = theme.extension<StizeColors>();
+    final clearButton = _query.isEmpty
+        ? null
+        : IconButton(
+            icon: Icon(Icons.close, size: stize != null ? 20 : null),
+            onPressed: () {
+              _searchController.clear();
+              _onQueryChanged('');
+            },
+          );
+    // Stiže: the search field sits on its own fill-05 backing inside the sheet,
+    // a 20px search glyph at the left and the text inset to 40px. OFF keeps the
+    // previous rounded surfaceContainerHighest field (killswitch).
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
       child: TextField(
         controller: _searchController,
         onChanged: _onQueryChanged,
         textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          isDense: true,
-          prefixIcon: const Icon(Icons.search),
-          // Unified global search now, same scope as desktop.
-          hintText: l10n.searchHint,
-          filled: true,
-          fillColor:
-              theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(24),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          suffixIcon: _query.isEmpty
-              ? null
-              : IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () {
-                    _searchController.clear();
-                    _onQueryChanged('');
-                  },
+        style: stize != null ? StizeType.body.copyWith(color: stize.ink) : null,
+        decoration: stize != null
+            ? InputDecoration(
+                isDense: true,
+                prefixIcon: Icon(Icons.search, size: 20, color: stize.ink60),
+                prefixIconConstraints:
+                    const BoxConstraints(minWidth: 40, minHeight: 40),
+                hintText: l10n.searchHint,
+                hintStyle: StizeType.body.copyWith(color: stize.ink50),
+                filled: true,
+                fillColor: stize.fill05,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(StizeRadius.radiusControl),
+                  borderSide: BorderSide.none,
                 ),
-        ),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                suffixIcon: clearButton,
+              )
+            : InputDecoration(
+                isDense: true,
+                prefixIcon: const Icon(Icons.search),
+                // Unified global search now, same scope as desktop.
+                hintText: l10n.searchHint,
+                filled: true,
+                fillColor: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                suffixIcon: clearButton,
+              ),
       ),
     );
   }
@@ -434,13 +459,20 @@ class NearbyViewState extends ConsumerState<NearbyView> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            vehicleGlyph(type, size: 16, color: Colors.white),
+            vehicleGlyph(type, size: 16, color: StizeColors.of(context).onTransit),
             const SizedBox(width: 6),
-            Text(line.line,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15)),
+            Builder(builder: (context) {
+              // Stiže: line number = the one semibold, white on every type.
+              // OFF keeps the prior bold 15 (killswitch).
+              final stize = Theme.of(context).extension<StizeColors>();
+              return Text(line.line,
+                  style: stize != null
+                      ? StizeType.lineNumber.copyWith(color: stize.onTransit)
+                      : const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15));
+            }),
           ],
         ),
       ),

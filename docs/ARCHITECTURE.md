@@ -140,5 +140,13 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
   badge — the quick eyeball check that a preview is on the staging backend.
 - The Android release keystore (gitignored) must stay stable across releases —
   regenerating it breaks update installs.
-- Code and comments are English; the app UI is localized EN/RU/SR via
-  `app/lib/l10n/*.arb` (edit all three, then `flutter gen-l10n`).
+- Code and comments are English; the app UI is localized EN/SR (Serbian Latin)
+  via `app/lib/l10n/*.arb` (edit both, then `flutter gen-l10n`). Russian was
+  removed on 2026-11-22: the design-system font (Uncut Sans) has no Cyrillic.
+- Design system: colours, type, spacing, radii and shadows come only from
+  `app/lib/core/design/stize_tokens.dart`, generated from
+  `design/tokens/stize.tokens.json` by `node design/tokens/gen-tokens.mjs`
+  (the JSON is a copy of the Stiže design system; replace it whole, never edit
+  the Dart by hand). `StizeTheme` maps the tokens onto Material, behind the
+  `ds_stize` flag. Transit colours (bus / tram / trolleybus) are a data layer:
+  they say vehicle type only, never state or emphasis.

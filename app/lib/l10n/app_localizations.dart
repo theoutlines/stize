@@ -6,7 +6,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
-import 'app_localizations_ru.dart';
 import 'app_localizations_sr.dart';
 
 // ignore_for_file: type=lint
@@ -96,7 +95,6 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('ru'),
     Locale('sr'),
   ];
 
@@ -376,6 +374,12 @@ abstract class AppLocalizations {
   /// **'{minutes} min'**
   String arrivalEtaMinutes(int minutes);
 
+  /// The 'min' unit under the big ETA number on an arrival card
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get arrivalEtaMinutesUnit;
+
   /// No description provided for @arrivalEtaNow.
   ///
   /// In en, this message translates to:
@@ -391,8 +395,20 @@ abstract class AppLocalizations {
   /// No description provided for @arrivalStopsAway.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =0{here} =1{1 stop away} other{{count} stops away}}'**
+  /// **'{count, plural, =0{At the stop} =1{1 stop away} other{{count} stops away}}'**
   String arrivalStopsAway(int count);
+
+  /// Caption on an arrival card: when the same line comes again, in minutes
+  ///
+  /// In en, this message translates to:
+  /// **'next in {minutes} min'**
+  String arrivalNextIn(int minutes);
+
+  /// Caption on an arrival card: when the same line comes again, as a 24h clock time
+  ///
+  /// In en, this message translates to:
+  /// **'next at {time}'**
+  String arrivalNextAt(String time);
 
   /// No description provided for @vehicleMoving.
   ///
@@ -1174,7 +1190,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['en', 'ru', 'sr'].contains(locale.languageCode);
+      <String>['en', 'sr'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -1185,8 +1201,6 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   switch (locale.languageCode) {
     case 'en':
       return AppLocalizationsEn();
-    case 'ru':
-      return AppLocalizationsRu();
     case 'sr':
       return AppLocalizationsSr();
   }

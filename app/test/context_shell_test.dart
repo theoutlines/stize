@@ -65,10 +65,9 @@ void main() {
   });
 
   group('BackToVehiclePill (follow-lost, decision #8)', () {
-    testWidgets('EN / RU / SR-latin triple', (tester) async {
+    testWidgets('EN / SR-latin pair', (tester) async {
       for (final entry in {
         'en': 'Back to vehicle',
-        'ru': 'Вернуться к транспорту',
         'sr': 'Nazad na vozilo',
       }.entries) {
         await tester.pumpWidget(_wrap(

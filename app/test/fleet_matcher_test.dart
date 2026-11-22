@@ -132,31 +132,30 @@ void main() {
     });
   });
 
-  group('localized content (notes + nicknames) picks by language, falls back to ru', () {
-    test('nickname: ru Cyrillic, sr Serbian-Latin, en ASCII', () {
+  group('localized content (notes + nicknames) picks by language, never ru', () {
+    test('nickname: sr Serbian-Latin, en ASCII, never Cyrillic', () {
       final v = catalog.resolve('P80210'); // KT4 — "Ката"/"Kata"
       expect(v.nicknameSr, 'Ката');
-      expect(v.nicknameFor('ru'), 'Ката');
+      expect(v.nicknameFor('ru'), 'Kata'); // unsupported → ASCII, not Cyrillic
       expect(v.nicknameFor('sr'), 'Kata');
       expect(v.nicknameFor('en'), 'Kata');
 
       // A nickname with diacritics diverges: sr keeps them, en strips them.
       final b = catalog.resolve('P81540'); // Bozankaya — "Турчин"
-      expect(b.nicknameFor('ru'), 'Турчин');
+      expect(b.nicknameFor('ru'), 'Turcin');
       expect(b.nicknameFor('sr'), 'Turčin');
       expect(b.nicknameFor('en'), 'Turcin');
     });
 
     test('note is translated per locale', () {
       final v = catalog.resolve('P80210'); // KT4
-      expect(v.humanNoteFor('ru'), startsWith('Легендарная'));
       expect(v.humanNoteFor('en'), startsWith('The legendary'));
       expect(v.humanNoteFor('sr'), startsWith('Legendarna'));
     });
 
-    test('unknown language falls back to ru note and the ASCII nickname', () {
+    test('unknown language falls back to the en note and the ASCII nickname', () {
       final v = catalog.resolve('P80210');
-      expect(v.humanNoteFor('de'), startsWith('Легендарная'));
+      expect(v.humanNoteFor('de'), startsWith('The legendary'));
       expect(v.nicknameFor('de'), 'Kata');
     });
 

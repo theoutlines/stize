@@ -3,6 +3,7 @@ import 'package:latlong2/latlong.dart' as ll;
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/context_slot.dart';
+import '../../core/design/stize_tokens.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../domain/models/stop.dart';
@@ -80,10 +81,15 @@ class NearbySheet extends StatelessWidget {
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: kSheetRadius,
-              boxShadow: const [
-                BoxShadow(
-                    color: Colors.black26, blurRadius: 12, offset: Offset(0, -2)),
-              ],
+              // Stiže: the system sheet shadow; OFF keeps the prior soft one.
+              boxShadow: theme.extension<StizeColors>() != null
+                  ? StizeShadow.shadowSheet
+                  : const [
+                      BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 12,
+                          offset: Offset(0, -2)),
+                    ],
             ),
             child: Column(
               children: [

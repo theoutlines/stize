@@ -155,14 +155,14 @@ class MovingObjectImages {
   };
 }
 
-// ---- Palette (mirrors map_support.dart) -------------------------------------
+// ---- Palette (mirrors map_support.dart and design/tokens) --------------------
 //
 // Kept as hex strings for the data-driven `circle-color` expression. The values
 // mirror map_support.dart's vehicle colours so a symbol and its line's stops
 // read as the same type; the reserved kinds get distinct hues for later.
 
 const String _busHex = '#1B67C4'; // transit blue
-const String _trolleyHex = '#EF7B22'; // orange
+const String _trolleyHex = '#E8701A'; // orange (design-system transit-trolleybus)
 const String _tramHex = '#D3342B'; // tram red
 const String _metroHex = '#7A3FB0'; // reserved: metro purple
 const String _trainHex = '#2E7D32'; // reserved: train green

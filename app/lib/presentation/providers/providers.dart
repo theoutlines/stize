@@ -104,6 +104,19 @@ final contextPanelEnabledProvider = Provider<bool>(
   (ref) => ref.watch(appConfigProvider).valueOrNull?.contextPanel ?? false,
 );
 
+/// Whether the Stiže design-system theme is on (remote `ds_stize` flag).
+/// Defaults to false until config resolves, so the new theme never flashes in
+/// before the flag is known.
+final dsStizeEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.dsStize ?? false,
+);
+
+/// Whether the map asks for location on entry (remote `location_autoprompt`
+/// flag). Defaults to false until config resolves.
+final locationAutopromptEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(appConfigProvider).valueOrNull?.locationAutoprompt ?? false,
+);
+
 /// Whether the in-app feedback form is available (remote `feedback_form` flag).
 /// Defaults to false until config resolves, so the "Write to me" form stays
 /// hidden if config is unreachable (matches the endpoint's killswitch).
@@ -267,6 +280,21 @@ final linesRepositoryProvider = Provider<LinesRepository>(
 final geocodeRepositoryProvider = Provider<GeocodeRepository>(
   (ref) => GeocodeRepositoryImpl(ref.watch(apiClientProvider)),
 );
+
+/// Route-id → destination (headsign) from the GTFS line directory, so the stop
+/// board can label an arrival with its destination without the per-stop upstream
+/// carrying it. Keyed by the per-direction route_id (the canonical id and its
+/// "{route_id}-{direction_id}" sibling both appear), so a board resolves with
+/// `arrival.directionRouteId ?? arrival.routeId`. Falls back to the offline GTFS
+/// mirror inside the repository; an error resolves to an empty map (no label,
+/// never a crash).
+final lineDestinationsProvider = FutureProvider<Map<String, String>>((ref) async {
+  final lines = await ref.watch(linesRepositoryProvider).getAll();
+  return {
+    for (final l in lines)
+      if (l.destination.trim().isNotEmpty) l.routeId: l.destination,
+  };
+});
 
 /// One shared global search for BOTH breakpoints (owner C#4): the desktop
 /// persistent panel search and the mobile nearby-sheet search both fan out

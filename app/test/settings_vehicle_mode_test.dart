@@ -45,9 +45,11 @@ void main() {
 
     double topOf(String label) => tester.getTopLeft(find.text(label)).dy;
 
+    // Russian was removed on 2026-11-22 (Uncut Sans has no Cyrillic):
+    // the list is System, Srpski, English.
     expect(topOf('System'), lessThan(topOf('Srpski')));
     expect(topOf('Srpski'), lessThan(topOf('English')));
-    expect(topOf('English'), lessThan(topOf('Русский')));
+    expect(find.text('Русский'), findsNothing);
   });
 
   testWidgets('the vehicle mode is NOT a settings item — the map toggle owns it',
