@@ -1,3 +1,4 @@
+import { toLatin } from "./latin";
 import type { Env } from "../env";
 
 const NEWS_LIST_URL = "https://www.bgprevoz.rs/vesti";
@@ -263,5 +264,7 @@ export async function refreshAlerts(env: Env): Promise<{ added: number; total: n
 
 export async function listAlerts(env: Env): Promise<RouteAlert[]> {
   const raw = await env.STIGLA_KV.get(KV_KEY);
-  return raw ? JSON.parse(raw) : [];
+  const alerts: RouteAlert[] = raw ? JSON.parse(raw) : [];
+  // The source publishes in Cyrillic; the app reads Latin (audit round 2, D4).
+  return alerts.map((a) => ({ ...a, title: toLatin(a.title), summary: toLatin(a.summary) }));
 }
