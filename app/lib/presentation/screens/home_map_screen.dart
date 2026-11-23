@@ -341,6 +341,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // is hidden while it is, so the two never overlap (#7).
   bool _stopSheetOpen = false;
 
+  /// Bumped on every mobile stop-sheet open. A sheet's close handler only runs
+  /// its cleanup when it's still the latest one — so swapping one stop for
+  /// another (My stops, "Back to …") doesn't let the old sheet's close tear
+  /// down the new stop's context or camera.
+  int _stopSheetSeq = 0;
+
+  /// The stop currently open in the mobile stop sheet (for "Back to …").
+  ({String id, String? name})? _currentStop;
+
   // ---- Adaptive context slot (context_panel) -------------------------------
   // With the flag ON the three views (nearby → stop → vehicle) share ONE
   // surface: a persistent left panel on desktop (≥840px) or unified bottom
@@ -638,6 +647,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   @override
   Widget build(BuildContext context) {
+    // A stop picked on a screen pushed over the map (My stops) opens here, in
+    // the map's own sheet, instead of a separate stop screen.
+    ref.listen(stopOpenRequestProvider, (_, next) {
+      if (next == null) return;
+      ref.read(stopOpenRequestProvider.notifier).state = null;
+      _switchToStop(next.stopId, next.stopName);
+    });
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     _scheme = theme.colorScheme;

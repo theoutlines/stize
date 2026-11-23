@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import '../widgets/back_to_button.dart';
 import '../widgets/empty_state.dart';
 
 class MyStopsScreen extends ConsumerWidget {
@@ -19,13 +19,9 @@ class MyStopsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const BackToButton(),
+        leadingWidth: BackToButton.leadingWidth,
         title: Text(l10n.navMyStops),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.push('/settings'),
-          ),
-        ],
       ),
       body: favorites.when(
         loading: () => const Center(child: CircularProgressIndicator.adaptive()),
@@ -52,7 +48,17 @@ class MyStopsScreen extends ConsumerWidget {
                   tooltip: l10n.removeFromFavorites,
                   onPressed: () => ref.read(favoritesControllerProvider.notifier).remove(stop.stopId),
                 ),
-                onTap: () => context.push('/stop/${stop.stopId}?name=${Uri.encodeComponent(stop.name)}'),
+                // Open on the map's own sheet (the map flies there), not a
+                // separate stop screen — the stop that was open stays one tap
+                // away via "Back to …".
+                // Pop first, then request: the map swaps its sheet only once
+                // this screen is off the top of the stack.
+                onTap: () {
+                  final request = ref.read(stopOpenRequestProvider.notifier);
+                  Navigator.of(context).pop();
+                  request.state =
+                      (stopId: stop.stopId, stopName: custom ?? stop.name);
+                },
               );
             },
           );

@@ -40,15 +40,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('languages are listed Serbian-first, after System', (tester) async {
+  testWidgets('languages are listed Serbian-first, after Auto', (tester) async {
     await pumpSettings(tester, flagOn: true);
 
-    double topOf(String label) => tester.getTopLeft(find.text(label)).dy;
-
-    // Russian was removed on 2026-11-22 (Uncut Sans has no Cyrillic):
-    // the list is System, Srpski, English.
-    expect(topOf('System'), lessThan(topOf('Srpski')));
-    expect(topOf('Srpski'), lessThan(topOf('English')));
+    // Segments since 2026-11-23: one row, left to right Auto, Srpski, English.
+    double leftOf(Finder f) => tester.getTopLeft(f).dx;
+    final auto = find.text('Auto').first;
+    expect(leftOf(auto), lessThan(leftOf(find.text('Srpski'))));
+    expect(leftOf(find.text('Srpski')), lessThan(leftOf(find.text('English'))));
+    // Russian was removed on 2026-11-22 (Uncut Sans has no Cyrillic).
     expect(find.text('Русский'), findsNothing);
   });
 

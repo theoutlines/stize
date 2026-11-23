@@ -1261,6 +1261,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stops, lines and timetables: open data of the City of Belgrade (Secretariat for Public Transport), published on data.gov.rs under the Serbian open data licence. We repackage them for the app. Map: MapTiler, OpenStreetMap contributors.'**
   String get aboutDataSource;
+
+  /// No description provided for @menuSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Support Stiže'**
+  String get menuSupport;
+
+  /// No description provided for @menuAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get menuAbout;
+
+  /// No description provided for @menuLicenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Licenses'**
+  String get menuLicenses;
+
+  /// No description provided for @menuPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get menuPrivacy;
+
+  /// No description provided for @menuClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close menu'**
+  String get menuClose;
+
+  /// No description provided for @settingsAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get settingsAuto;
+
+  /// No description provided for @settingsAutoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto follows your phone. Transport on the map is switched with the layers button on the map.'**
+  String get settingsAutoHint;
+
+  /// No description provided for @stopBackTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to {name}'**
+  String stopBackTo(String name);
 }
 
 class _AppLocalizationsDelegate

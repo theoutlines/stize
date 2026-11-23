@@ -109,7 +109,13 @@ extension _MapSearch on _HomeMapScreenState {
   /// map. When on-demand, entering stop context makes that stop's arrivals the
   /// map's markers (state B); closing the sheet (unless a vehicle was tapped)
   /// clears them back to A.
-  void _openStopById(String stopId, {String? stopName, ll.LatLng? at, String? source}) {
+  void _openStopById(
+    String stopId, {
+    String? stopName,
+    ll.LatLng? at,
+    String? source,
+    ({String id, String? name})? backTo,
+  }) {
     // Entering a stop context while collapsed re-expands the panel (A#4).
     _expandPanelIfCollapsed();
     // `source` non-null marks a fresh user-initiated open (pin / nearby / search
@@ -138,6 +144,7 @@ extension _MapSearch on _HomeMapScreenState {
     // modal — advance the shared state machine instead. On mobile / flag OFF we
     // fall through to the legacy modal (prod behaviour, untouched).
     if (_panelActive) {
+      ref.read(openStopNameProvider.notifier).state = stopName;
       _setState(() {
         _slotStopId = stopId;
         _slotStopName = stopName;
@@ -148,10 +155,20 @@ extension _MapSearch on _HomeMapScreenState {
     // Hide the bottom UI (Nearby panel / search) while the sheet is up so they
     // don't overlap (#7).
     _setState(() => _stopSheetOpen = true);
+    final seq = ++_stopSheetSeq;
+    _currentStop = (id: stopId, name: stopName);
+    ref.read(openStopNameProvider.notifier).state = stopName;
     showStopSheet(
       context,
       stopId: stopId,
       stopName: stopName,
+      // Redraw the menu button over the scrim so the menu opens over the open
+      // stop in one tap (the stop stays underneath).
+      onOpenMenu: widget.onOpenDrawer,
+      backToName: backTo == null ? null : (backTo.name ?? ''),
+      onBack: backTo == null
+          ? null
+          : () => _switchToStop(backTo.id, backTo.name, withBack: false),
       // Open at the nearby sheet's current height so nearby → stop is a
       // continuous detent, not a jump (owner acceptance #3). `_mobileSheetPx`
       // still holds the nearby height here (reset on the next build).
@@ -167,6 +184,10 @@ extension _MapSearch on _HomeMapScreenState {
       // guaranteed marker, highlights the route and follows (§C).
       onFocusVehicle: (a, asOf) => _focusVehicleFromArrival(a, asOf, source: Ev.srcSheet),
     ).then((_) {
+      // Swapped for another stop: the newer sheet owns the state now.
+      if (seq != _stopSheetSeq) return;
+      _currentStop = null;
+      if (mounted) ref.read(openStopNameProvider.notifier).state = null;
       // The stop modal is gone — clear its bottom inset so the geometry owner
       // doesn't keep a phantom one (the nearby sheet re-feeds its own on return).
       _setMobileSheetPx(0);
@@ -210,6 +231,23 @@ extension _MapSearch on _HomeMapScreenState {
   /// The stop sheet was dismissed. If a vehicle from this stop is now being
   /// followed, keep the stop context alive so closing the line panel can return
   /// to it; otherwise leave state B for A.
+  /// Open [stopId] in place of the stop that's open now (My stops, "Back to …"):
+  /// the current sheet is dismissed without its close cleanup and the new stop
+  /// opens on the same map, at the same sheet height. With [withBack] the new
+  /// sheet offers a one-step link back to the stop that was open.
+  void _switchToStop(String stopId, String? stopName, {bool withBack = true}) {
+    final previous = _currentStop;
+    if (_stopSheetOpen && !_panelActive) {
+      Navigator.of(context).pop();
+    }
+    _openStopById(
+      stopId,
+      stopName: stopName,
+      source: withBack ? Ev.srcFavorites : null,
+      backTo: withBack && previous != null && previous.id != stopId ? previous : null,
+    );
+  }
+
   void _onStopSheetClosed(String stopId) {
     // A vehicle context is now active (a row was tapped): it owns the camera and
     // will return to the origin later — don't restore here, and keep the stop

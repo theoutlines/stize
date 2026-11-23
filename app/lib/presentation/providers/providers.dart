@@ -455,3 +455,14 @@ final customNamesControllerProvider =
       CustomNamesController.new,
     );
 
+
+/// A request to open a stop in the home map's sheet, raised from a screen pushed
+/// over the map (My stops). The home map consumes it (opens the stop on the same
+/// map, with a one-step "Back to" link to the stop that was open) and clears it.
+final stopOpenRequestProvider =
+    StateProvider<({String stopId, String? stopName})?>((ref) => null);
+
+/// Name of the stop currently open in the home map's sheet, or null. Screens
+/// pushed over the map label their back button with it, so the user sees the
+/// stop is still there underneath.
+final openStopNameProvider = StateProvider<String?>((ref) => null);

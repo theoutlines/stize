@@ -255,5 +255,13 @@
   "stopReportBack": "Nazad na stanicu",
   "stopReportTooFast": "Sačekajte minut pre sledeće prijave.",
   "stopReportFailed": "Slanje nije uspelo. Proverite vezu i pokušajte ponovo.",
-  "aboutDataSource": "Stanice, linije i redovi vožnje: otvoreni podaci Grada Beograda (Sekretarijat za javni prevoz), objavljeni na data.gov.rs pod licencom za otvorene podatke Republike Srbije. Podatke prepakujemo za aplikaciju. Mapa: MapTiler, saradnici OpenStreetMap-a."
+  "aboutDataSource": "Stanice, linije i redovi vožnje: otvoreni podaci Grada Beograda (Sekretarijat za javni prevoz), objavljeni na data.gov.rs pod licencom za otvorene podatke Republike Srbije. Podatke prepakujemo za aplikaciju. Mapa: MapTiler, saradnici OpenStreetMap-a.",
+  "menuSupport": "Podrži Stiže",
+  "menuAbout": "O aplikaciji",
+  "menuLicenses": "Licence",
+  "menuPrivacy": "Privatnost",
+  "menuClose": "Zatvori meni",
+  "settingsAuto": "Auto",
+  "settingsAutoHint": "Auto prati podešavanja telefona. Prevoz na mapi se uključuje dugmetom slojeva na mapi.",
+  "stopBackTo": "Nazad na {name}"
 }

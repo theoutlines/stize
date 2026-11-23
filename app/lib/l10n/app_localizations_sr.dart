@@ -676,4 +676,31 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get aboutDataSource =>
       'Stanice, linije i redovi vožnje: otvoreni podaci Grada Beograda (Sekretarijat za javni prevoz), objavljeni na data.gov.rs pod licencom za otvorene podatke Republike Srbije. Podatke prepakujemo za aplikaciju. Mapa: MapTiler, saradnici OpenStreetMap-a.';
+
+  @override
+  String get menuSupport => 'Podrži Stiže';
+
+  @override
+  String get menuAbout => 'O aplikaciji';
+
+  @override
+  String get menuLicenses => 'Licence';
+
+  @override
+  String get menuPrivacy => 'Privatnost';
+
+  @override
+  String get menuClose => 'Zatvori meni';
+
+  @override
+  String get settingsAuto => 'Auto';
+
+  @override
+  String get settingsAutoHint =>
+      'Auto prati podešavanja telefona. Prevoz na mapi se uključuje dugmetom slojeva na mapi.';
+
+  @override
+  String stopBackTo(String name) {
+    return 'Nazad na $name';
+  }
 }

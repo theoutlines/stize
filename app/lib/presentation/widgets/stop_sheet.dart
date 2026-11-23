@@ -26,20 +26,82 @@ Future<void> showStopSheet(
   void Function(Arrival arrival, DateTime asOf)? onFocusVehicle,
   double? initialSize,
   ValueChanged<double>? onHeightChanged,
+  VoidCallback? onOpenMenu,
+  String? backToName,
+  VoidCallback? onBack,
 }) {
+  // Captured here: inside the modal route the status-bar inset may be removed.
+  final topInset = MediaQuery.paddingOf(context).top;
+  final sheet = _StopSheet(
+    stopId: stopId,
+    initialStopName: stopName,
+    onFocusVehicle: onFocusVehicle,
+    initialSize: initialSize,
+    onHeightChanged: onHeightChanged,
+    backToName: backToName,
+    onBack: onBack,
+  );
   return showAppSheet<void>(
     context,
     // A faint scrim so the map behind stays legible — this reads as an overlay
     // on the same map, not a new screen.
     barrierColor: Colors.black.withValues(alpha: 0.08),
-    builder: (_) => _StopSheet(
-      stopId: stopId,
-      initialStopName: stopName,
-      onFocusVehicle: onFocusVehicle,
-      initialSize: initialSize,
-      onHeightChanged: onHeightChanged,
-    ),
+    builder: (_) => onOpenMenu == null
+        ? sheet
+        : _MenuTwinFrame(topInset: topInset, onOpenMenu: onOpenMenu, child: sheet),
   );
+}
+
+/// Full-screen frame around the stop sheet that redraws the map's round menu
+/// button above the scrim, at the same spot. The sheet is modal, so without it
+/// the first tap on the (scrimmed) menu button only closed the stop; now the
+/// menu opens over the open stop in one tap and the stop stays put underneath.
+/// Taps anywhere else above the sheet still dismiss it, as the barrier did.
+class _MenuTwinFrame extends StatelessWidget {
+  const _MenuTwinFrame({
+    required this.topInset,
+    required this.onOpenMenu,
+    required this.child,
+  });
+
+  final double topInset;
+  final VoidCallback onOpenMenu;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox.expand(
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(context).maybePop(),
+            ),
+          ),
+          Align(alignment: Alignment.bottomCenter, child: child),
+          Positioned(
+            left: 12,
+            top: topInset + 12,
+            child: PointerInterceptor(
+              child: Material(
+                color: theme.colorScheme.surface,
+                elevation: 3,
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: IconButton(
+                  icon: const Icon(Icons.menu),
+                  tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+                  onPressed: onOpenMenu,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// The legacy (flag-OFF) mobile bottom-sheet shell around [StopBoard]: a
@@ -58,7 +120,14 @@ class _StopSheet extends StatefulWidget {
     this.onFocusVehicle,
     this.initialSize,
     this.onHeightChanged,
+    this.backToName,
+    this.onBack,
   });
+
+  /// The stop that was open before this one (opened from My stops), shown as a
+  /// one-step "Back to …" link above the board; null hides the link.
+  final String? backToName;
+  final VoidCallback? onBack;
 
   final String stopId;
   final String? initialStopName;
@@ -133,7 +202,26 @@ class _StopSheetState extends State<_StopSheet> {
                       scrollController: scrollController,
                     ),
                   ),
-                ] else
+                ] else ...[
+                  if (widget.backToName != null && widget.onBack != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: TextButton.icon(
+                          onPressed: widget.onBack,
+                          icon: const Icon(Icons.arrow_back, size: 18),
+                          label: Text(
+                            l10n.stopBackTo(widget.backToName!),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
                   Expanded(
                     child: StopBoard(
                       stopId: widget.stopId,
@@ -154,6 +242,7 @@ class _StopSheetState extends State<_StopSheet> {
                             },
                     ),
                   ),
+                ],
               ],
             ),
           ),

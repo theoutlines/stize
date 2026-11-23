@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/vehicle_map_mode.dart';
 import '../../data/analytics/event_logger.dart';
 import '../providers/providers.dart';
-import '../widgets/app_drawer.dart';
+import '../widgets/app_menu.dart';
 import 'coverage_screen.dart';
 import 'home_map_screen.dart';
 
@@ -18,7 +18,6 @@ class RootScreen extends ConsumerStatefulWidget {
 }
 
 class _RootScreenState extends ConsumerState<RootScreen> {
-  final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _index = 0;
   bool _loggedAppOpen = false;
 
@@ -51,7 +50,18 @@ class _RootScreenState extends ConsumerState<RootScreen> {
     );
   }
 
-  void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
+  /// Opens the menu popover. Called from the map's round menu button, the
+  /// desktop panel's burger, the coverage screen, and the menu-button twin drawn
+  /// over an open stop sheet — so the menu opens in one tap with the stop kept.
+  void _openDrawer() {
+    final sectionCount = ref.read(coverageEnabledProvider) ? 2 : 1;
+    showAppMenu(
+      context,
+      topInset: MediaQuery.paddingOf(context).top,
+      currentIndex: _index.clamp(0, sectionCount - 1),
+      onSelectSection: (i) => setState(() => _index = i),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,14 +89,9 @@ class _RootScreenState extends ConsumerState<RootScreen> {
       if (coverageEnabled) CoverageScreen(onOpenDrawer: _openDrawer),
     ];
 
+    // The section pages switch inside one Scaffold; each opens the menu popover
+    // through [_openDrawer].
     return Scaffold(
-      key: _scaffoldKey,
-      drawer: AppDrawer(
-        currentIndex: index,
-        onSelect: (i) => setState(() => _index = i),
-      ),
-      // A single Scaffold owns the drawer; the section pages switch inside it,
-      // and each opens the drawer through [_openDrawer] (hamburger / edge swipe).
       body: IndexedStack(index: index, children: sections),
     );
   }
