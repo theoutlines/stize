@@ -37,4 +37,18 @@ void main() {
             '{"photos":{"x":{"url":"https://evil.example/a.jpg","page":"p","author":"a","license":"CC0"}}}'),
         isEmpty);
   });
+
+  test('model names shown in the UI carry no Cyrillic (the app is EN/SR-Latin)', () {
+    final cyrillic = RegExp(r'[\u0400-\u04FF]');
+    for (final e in (catalog['models_catalog'] as Map).entries) {
+      final name = (e.value as Map)['name'] as String?;
+      if (name == null) continue;
+      expect(cyrillic.hasMatch(name), isFalse, reason: '${e.key}: $name');
+    }
+    for (final c in catalog['classes'] as List) {
+      final name = (c as Map)['model'] as String?;
+      if (name == null) continue;
+      expect(cyrillic.hasMatch(name), isFalse, reason: '${c['id']}: $name');
+    }
+  });
 }
