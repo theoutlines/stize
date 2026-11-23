@@ -812,4 +812,130 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nearbyAroundYou => 'Around you';
+
+  @override
+  String get cityTitle => 'City';
+
+  @override
+  String get cityHeadline => 'How Belgrade transport runs';
+
+  @override
+  String get citySubtitle => 'From arrivals our users saw';
+
+  @override
+  String get cityKpiDelay => 'Average delay';
+
+  @override
+  String get cityKpiInterval => 'Typical interval';
+
+  @override
+  String get cityKpiLines => 'Lines seen';
+
+  @override
+  String get cityKpiArrivals => 'Arrivals seen';
+
+  @override
+  String cityMin(int n) {
+    return '$n min';
+  }
+
+  @override
+  String get cityOnTime => 'on time';
+
+  @override
+  String cityLateBy(int n) {
+    return '$n min late';
+  }
+
+  @override
+  String cityEarlyBy(int n) {
+    return '$n min early';
+  }
+
+  @override
+  String get cityHeatTitle => 'When it runs late';
+
+  @override
+  String get cityHeatSubtitle => 'Average delay by weekday and hour';
+
+  @override
+  String get cityLegendLow => 'on time';
+
+  @override
+  String get cityLegendHigh => 'often late';
+
+  @override
+  String cityHeatWorst(String day, int hour, int min) {
+    return 'Worst: $day at $hour:00, about $min min late.';
+  }
+
+  @override
+  String cityHeatCell(String day, int hour, int next) {
+    return '$day $hour:00–$next:00';
+  }
+
+  @override
+  String cityHeatCellCount(int n) {
+    return '$n arrivals';
+  }
+
+  @override
+  String get cityHeatFew => 'too few arrivals';
+
+  @override
+  String get cityLinesTitle => 'Lines';
+
+  @override
+  String get cityLinesSubtitle => 'Size: arrivals seen · number: average delay';
+
+  @override
+  String cityLinesSummary(String best, String worst) {
+    return '$best is the most punctual line. $worst runs the latest.';
+  }
+
+  @override
+  String get cityLegendBest => 'best';
+
+  @override
+  String get cityLegendWorst => 'worst';
+
+  @override
+  String get cityLegendThin => 'too few arrivals to judge';
+
+  @override
+  String get cityIntervalsTitle => 'Longest real intervals';
+
+  @override
+  String get cityIntervalsSubtitle => 'Evenings 21:00 to 01:00, average wait';
+
+  @override
+  String get cityNote =>
+      'We only see stops people open, at the hours they open them. Lines with too few arrivals are not ranked.';
+
+  @override
+  String get cityEmptyTitle => 'Not enough arrivals yet';
+
+  @override
+  String cityEmptyBody(int min) {
+    return 'Stats appear once we have seen at least $min arrivals.';
+  }
+
+  @override
+  String get cityLineUsual => 'Usually at this hour';
+
+  @override
+  String cityLineEvery(int n) {
+    return 'every $n min';
+  }
+
+  @override
+  String get cityLineHeatSubtitle => 'This line, by weekday and hour';
+
+  @override
+  String cityLineThinBody(int n, int min) {
+    return 'We have seen $n arrivals of this line. Stats appear after $min.';
+  }
+
+  @override
+  String get cityLineNoHour => 'no data for this hour';
 }

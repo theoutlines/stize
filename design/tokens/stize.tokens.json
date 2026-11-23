@@ -227,6 +227,14 @@
     "usage": "Ground of an accent note or a live badge."
    },
    {
+    "name": "late",
+    "value": {
+     "dark": "#FF5C39",
+     "light": "#D9431F"
+    },
+    "usage": "Analytics signal \"problem here\" (city section): the worst line, often-late hours. Only on charts, never on transit colour or body text."
+   },
+   {
     "name": "transit-bus",
     "value": {
      "dark": "#2278E6",

@@ -215,6 +215,8 @@ export interface AnalyticsCell {
   arrivals: number;
   mean_headway_secs: number | null;
   mean_speed_stops_per_min: number | null;
+  delay_count: number; // arrivals matched to the timetable
+  mean_delay_secs: number | null; // signed mean delay; null = unknown
 }
 
 export interface LineAnalyticsResponse {

@@ -815,4 +815,131 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get nearbyAroundYou => 'Oko vas';
+
+  @override
+  String get cityTitle => 'Grad';
+
+  @override
+  String get cityHeadline => 'Kako radi prevoz u Beogradu';
+
+  @override
+  String get citySubtitle => 'Na osnovu dolazaka koje su videli naši korisnici';
+
+  @override
+  String get cityKpiDelay => 'Prosečno kašnjenje';
+
+  @override
+  String get cityKpiInterval => 'Uobičajeni interval';
+
+  @override
+  String get cityKpiLines => 'Viđene linije';
+
+  @override
+  String get cityKpiArrivals => 'Viđeni dolasci';
+
+  @override
+  String cityMin(int n) {
+    return '$n min';
+  }
+
+  @override
+  String get cityOnTime => 'na vreme';
+
+  @override
+  String cityLateBy(int n) {
+    return 'kasni $n min';
+  }
+
+  @override
+  String cityEarlyBy(int n) {
+    return 'ranije $n min';
+  }
+
+  @override
+  String get cityHeatTitle => 'Kada kasni';
+
+  @override
+  String get cityHeatSubtitle => 'Prosečno kašnjenje po danu i satu';
+
+  @override
+  String get cityLegendLow => 'na vreme';
+
+  @override
+  String get cityLegendHigh => 'često kasni';
+
+  @override
+  String cityHeatWorst(String day, int hour, int min) {
+    return 'Najgore: $day u $hour:00, oko $min min kašnjenja.';
+  }
+
+  @override
+  String cityHeatCell(String day, int hour, int next) {
+    return '$day $hour:00–$next:00';
+  }
+
+  @override
+  String cityHeatCellCount(int n) {
+    return 'dolazaka: $n';
+  }
+
+  @override
+  String get cityHeatFew => 'premalo dolazaka';
+
+  @override
+  String get cityLinesTitle => 'Linije';
+
+  @override
+  String get cityLinesSubtitle =>
+      'Veličina: viđeni dolasci · broj: prosečno kašnjenje';
+
+  @override
+  String cityLinesSummary(String best, String worst) {
+    return '$best je najtačnija linija. $worst najviše kasni.';
+  }
+
+  @override
+  String get cityLegendBest => 'najbolja';
+
+  @override
+  String get cityLegendWorst => 'najgora';
+
+  @override
+  String get cityLegendThin => 'premalo dolazaka za ocenu';
+
+  @override
+  String get cityIntervalsTitle => 'Najduži stvarni intervali';
+
+  @override
+  String get cityIntervalsSubtitle => 'Uveče od 21 do 1, prosečno čekanje';
+
+  @override
+  String get cityNote =>
+      'Vidimo samo stanice koje ljudi otvaraju, u satima kada ih otvaraju. Linije sa premalo dolazaka ne rangiramo.';
+
+  @override
+  String get cityEmptyTitle => 'Još nema dovoljno dolazaka';
+
+  @override
+  String cityEmptyBody(int min) {
+    return 'Statistika se pojavljuje kada vidimo bar $min dolazaka.';
+  }
+
+  @override
+  String get cityLineUsual => 'Obično u ovo vreme';
+
+  @override
+  String cityLineEvery(int n) {
+    return 'na svakih $n min';
+  }
+
+  @override
+  String get cityLineHeatSubtitle => 'Ova linija, po danu i satu';
+
+  @override
+  String cityLineThinBody(int n, int min) {
+    return 'Videli smo $n dolazaka ove linije. Statistika se pojavljuje posle $min.';
+  }
+
+  @override
+  String get cityLineNoHour => 'nema podataka za ovaj sat';
 }

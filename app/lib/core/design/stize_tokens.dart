@@ -37,6 +37,7 @@ class StizeColors extends ThemeExtension<StizeColors> {
     required this.accent,
     required this.onAccent,
     required this.accent14,
+    required this.late,
     required this.transitBus,
     required this.transitTrolleybus,
     required this.transitTram,
@@ -130,6 +131,11 @@ class StizeColors extends ThemeExtension<StizeColors> {
   /// `accent-14`: Ground of an accent note or a live badge.
   final Color accent14;
 
+  /// `late`: Analytics signal "problem here" (city section, owner 2026-11-23):
+  /// the worst line, often-late hours, jam days. Only on charts, never on
+  /// transit colour or body text. Kept apart from tram red by hue.
+  final Color late;
+
   /// `transit-bus`: Data layer, not UI accent. Bus: line badge, stop pin, vehicle coin, route line. Aligned 2026-11-23 with tram and trolleybus (same chroma, closer lightness; real Belgrade colours kept). Label on it: on-transit (white, 4.3:1).
   final Color transitBus;
 
@@ -196,6 +202,7 @@ class StizeColors extends ThemeExtension<StizeColors> {
     accent: Color(0xFF2BD47D),
     onAccent: Color(0xFF151515),
     accent14: Color(0x242BD47D),
+    late: Color(0xFFFF5C39),
     transitBus: Color(0xFF2278E6),
     transitTrolleybus: Color(0xFFEA7000),
     transitTram: Color(0xFFE4312F),
@@ -238,6 +245,7 @@ class StizeColors extends ThemeExtension<StizeColors> {
     accent: Color(0xFF0A7F45),
     onAccent: Color(0xFFFFFFFF),
     accent14: Color(0x1F0A7F45),
+    late: Color(0xFFD9431F),
     transitBus: Color(0xFF2278E6),
     transitTrolleybus: Color(0xFFEA7000),
     transitTram: Color(0xFFE4312F),
@@ -285,6 +293,7 @@ class StizeColors extends ThemeExtension<StizeColors> {
     'accent': accent,
     'on-accent': onAccent,
     'accent-14': accent14,
+    'late': late,
     'transit-bus': transitBus,
     'transit-trolleybus': transitTrolleybus,
     'transit-tram': transitTram,
@@ -328,6 +337,7 @@ class StizeColors extends ThemeExtension<StizeColors> {
     Color? accent,
     Color? onAccent,
     Color? accent14,
+    Color? late,
     Color? transitBus,
     Color? transitTrolleybus,
     Color? transitTram,
@@ -368,6 +378,7 @@ class StizeColors extends ThemeExtension<StizeColors> {
     accent: accent ?? this.accent,
     onAccent: onAccent ?? this.onAccent,
     accent14: accent14 ?? this.accent14,
+    late: late ?? this.late,
     transitBus: transitBus ?? this.transitBus,
     transitTrolleybus: transitTrolleybus ?? this.transitTrolleybus,
     transitTram: transitTram ?? this.transitTram,
@@ -413,6 +424,7 @@ class StizeColors extends ThemeExtension<StizeColors> {
       accent: Color.lerp(accent, other.accent, t)!,
       onAccent: Color.lerp(onAccent, other.onAccent, t)!,
       accent14: Color.lerp(accent14, other.accent14, t)!,
+      late: Color.lerp(late, other.late, t)!,
       transitBus: Color.lerp(transitBus, other.transitBus, t)!,
       transitTrolleybus: Color.lerp(
         transitTrolleybus,
