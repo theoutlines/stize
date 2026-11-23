@@ -15,6 +15,7 @@ import 'package:stize/presentation/providers/providers.dart';
 import 'package:stize/presentation/widgets/fleet_model_card.dart';
 import 'package:stize/presentation/widgets/stop_board.dart';
 import 'package:stize/presentation/widgets/stop_sheet.dart';
+import 'package:stize/core/design/stize_icons.dart';
 
 // One AC/low-floor tram so a Fleet-ID badge is tappable → opens the fleet card.
 const _catalogJson = '''
@@ -166,20 +167,20 @@ void main() {
 
       // Tap the Fleet-ID (AC) badge → the sheet swaps to the fleet card subview,
       // in the SAME sheet (no second modal barrier).
-      await tester.tap(find.byIcon(Icons.ac_unit));
+      await tester.tap(find.byIcon(StizeIcons.snowflake));
       await tester.pumpAndSettle();
 
       expect(find.byType(FleetModelView), findsOneWidget);
       // Model name shows in the back header AND as the card headline (same pairing
       // as the desktop panel: nav-row title + card headline).
       expect(find.text('Bozankaya'), findsWidgets);
-      expect(find.byIcon(Icons.arrow_back), findsOneWidget); // back header
+      expect(find.byIcon(StizeIcons.back), findsOneWidget); // back header
       expect(find.byType(StopBoard), findsNothing); // board swapped out
       // The sheet is the same one — detents are unchanged through the swap.
       expect(maxDetent(), kSheetLarge);
 
       // Back returns to the exact previous view (the arrivals board).
-      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.tap(find.byIcon(StizeIcons.back));
       await tester.pumpAndSettle();
 
       expect(find.byType(FleetModelView), findsNothing);

@@ -8,6 +8,7 @@ import '../domain/models/line_info.dart';
 import '../domain/models/stop.dart';
 import '../domain/models/vehicle_type.dart';
 import '../presentation/widgets/vehicle_icon.dart';
+import 'design/stize_icons.dart';
 
 /// The camera is fenced to Belgrade and its immediate agglomeration: the app is
 /// a *city* transit map, so there's no reason to let the user fly out to a
@@ -412,7 +413,7 @@ Future<void> registerStigmaImages(
     style.addImageFromWidget(
       id: MapImages.favorite,
       widget: _stopPin(
-        const Icon(Icons.star_rounded, size: 20, color: Color(0xFFF6A609)),
+        const Icon(StizeIcons.starFilled, size: 20, color: Color(0xFFF6A609)),
         const Color(0xFFF6A609),
         scheme,
       ),
@@ -420,14 +421,14 @@ Future<void> registerStigmaImages(
     style.addImageFromWidget(
       id: MapImages.place,
       widget: _stopPin(
-        const Icon(Icons.place, size: 20, color: Color(0xFFE5484D)),
+        const Icon(StizeIcons.pin, size: 20, color: Color(0xFFE5484D)),
         const Color(0xFFE5484D),
         scheme,
       ),
     ),
     style.addImageFromWidget(
       id: MapImages.vehicle,
-      widget: _vehiclePin(Icons.directions_bus_rounded, scheme.primary, scheme),
+      widget: _vehiclePin(StizeIcons.bus, scheme.primary, scheme),
     ),
     style.addImageFromWidget(id: MapImages.me, widget: _meDot(scheme)),
     style.addImageFromWidget(

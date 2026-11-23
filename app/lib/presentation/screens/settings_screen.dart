@@ -5,6 +5,7 @@ import '../../core/context_slot.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/back_to_button.dart';
+import '../../core/design/stize_icons.dart';
 
 // Serbian first — the app's home city is Belgrade. `null` (follow the system)
 // stays on top: it's the default, not a language. Russian was removed on
@@ -70,7 +71,7 @@ Future<void> showSettingsSheet(BuildContext context) {
                         tooltip: MaterialLocalizations.of(
                           dialogContext,
                         ).closeButtonTooltip,
-                        icon: const Icon(Icons.close, size: 20),
+                        icon: const Icon(StizeIcons.close, size: 20),
                         onPressed: () => Navigator.of(dialogContext).pop(),
                       ),
                     ],

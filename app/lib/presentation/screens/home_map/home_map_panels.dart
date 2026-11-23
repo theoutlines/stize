@@ -227,7 +227,7 @@ extension _MapPanels on _HomeMapScreenState {
           orElse: () => false,
         );
     return IconButton(
-      icon: Icon(isFav ? Icons.star : Icons.star_outline),
+      icon: Icon(isFav ? StizeIcons.starFilled : StizeIcons.star),
       color: isFav ? StizeColors.of(context).favorite : null,
       tooltip: isFav
           ? AppLocalizations.of(context).removeFromFavorites
@@ -345,7 +345,7 @@ extension _MapPanels on _HomeMapScreenState {
             shape: const CircleBorder(),
             clipBehavior: Clip.antiAlias,
             child: IconButton(
-              icon: const Icon(Icons.menu),
+              icon: const Icon(StizeIcons.menu),
               tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
               onPressed: widget.onOpenDrawer,
             ),
@@ -361,7 +361,10 @@ extension _MapPanels on _HomeMapScreenState {
             child: Row(
               children: [
                 const SizedBox(width: 12),
-                Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
+                Icon(
+                  StizeIcons.search,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 Expanded(
                   child: TextField(
                     controller: _searchController,
@@ -382,7 +385,7 @@ extension _MapPanels on _HomeMapScreenState {
                 ),
                 if (_searching)
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(StizeIcons.close),
                     onPressed: _clearSearch,
                   )
                 else
@@ -445,7 +448,7 @@ extension _MapPanels on _HomeMapScreenState {
   }
 
   /// Turns (0..1) for the off-screen direction arrow toward the followed marker,
-  /// or null when it's on-screen. [Icons.navigation] points up at 0.
+  /// or null when it's on-screen. [StizeIcons.nearMe] points up at 0.
   double? _offScreenArrowTurns(Size size) {
     final key = _selectedVehicleKey;
     final controller = _controller;
@@ -894,7 +897,7 @@ extension _MapPanels on _HomeMapScreenState {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.schedule,
+                              StizeIcons.clock,
                               size: 13,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -915,7 +918,7 @@ extension _MapPanels on _HomeMapScreenState {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(StizeIcons.close),
                   onPressed: _closeVehicleContext,
                   tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                 ),
@@ -971,7 +974,7 @@ extension _MapPanels on _HomeMapScreenState {
             else
               _roundButton(
                 theme,
-                icon: Icons.menu,
+                icon: StizeIcons.menu,
                 tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
                 onTap: widget.onOpenDrawer,
               ),
@@ -989,7 +992,7 @@ extension _MapPanels on _HomeMapScreenState {
                 const VehicleModeToggle(),
                 _roundButton(
                   theme,
-                  icon: Icons.my_location,
+                  icon: StizeIcons.locate,
                   onTap: _recenterOnMe,
                 ),
                 if (_showZoomControls) ...[
@@ -1015,12 +1018,12 @@ extension _MapPanels on _HomeMapScreenState {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.add),
+              icon: const Icon(StizeIcons.plus),
               onPressed: () => _zoomBy(1),
             ),
             Divider(height: 1, thickness: 1, color: theme.dividerColor),
             IconButton(
-              icon: const Icon(Icons.remove),
+              icon: const Icon(StizeIcons.minus),
               onPressed: () => _zoomBy(-1),
             ),
           ],
@@ -1082,7 +1085,7 @@ extension _MapPanels on _HomeMapScreenState {
               shape: const CircleBorder(),
               clipBehavior: Clip.antiAlias,
               child: IconButton(
-                icon: Icon(Icons.warning_amber_rounded, color: iconColor),
+                icon: Icon(StizeIcons.warning, color: iconColor),
                 tooltip: l10n.jamModeTooltip,
                 onPressed: () => _setJamMode(!_jamModeOn),
               ),

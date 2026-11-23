@@ -8,6 +8,7 @@ import '../../core/map_style.dart';
 import '../../core/map_support.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
+import '../../core/design/stize_icons.dart';
 
 /// Whole-Belgrade overview — independent of the main map's camera (spec).
 const _belgradeCenter = Geographic(lon: 20.46, lat: 44.81);
@@ -135,7 +136,7 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
         leading: widget.onOpenDrawer == null
             ? null
             : IconButton(
-                icon: const Icon(Icons.menu),
+                icon: const Icon(StizeIcons.menu),
                 onPressed: widget.onOpenDrawer,
               ),
       ),

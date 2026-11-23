@@ -7,6 +7,7 @@ import '../../data/api/api_exceptions.dart';
 import '../../data/feedback/stop_report_dedup.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import '../../core/design/stize_icons.dart';
 
 /// The closed list of problems a rider can report at a stop, in screen order.
 /// The keys are the backend's categories (`STOP_REPORT_CATEGORIES`).
@@ -56,7 +57,7 @@ class StopReportEntry extends StatelessWidget {
         ),
         onPressed: () =>
             showStopReportSheet(context, stopId: stopId, stopName: stopName),
-        icon: const Icon(Icons.outlined_flag_rounded, size: 18),
+        icon: const Icon(StizeIcons.flag, size: 18),
         label: Text(l10n.stopReportEntry),
       ),
     );
@@ -320,7 +321,7 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
             shape: BoxShape.circle,
           ),
           child: Icon(
-            already ? Icons.outlined_flag_rounded : Icons.check_rounded,
+            already ? StizeIcons.flag : StizeIcons.check,
             size: 32,
             color: already ? c.ink : c.onAccent,
           ),

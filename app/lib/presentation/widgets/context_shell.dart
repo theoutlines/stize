@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../core/design/stize_icons.dart';
 
 /// The desktop persistent left panel (owner decision #1/#2/#4/#6) — a
 /// DESKTOP-ONLY surface: on the mobile breakpoint the app keeps today's
@@ -116,7 +117,7 @@ class ContextNavRow extends StatelessWidget {
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(StizeIcons.back),
           onPressed: onBack,
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
         ),
@@ -175,7 +176,7 @@ class BackToVehiclePill extends StatelessWidget {
                   Transform.rotate(
                     angle: arrowTurns! * 2 * 3.1415926,
                     child: Icon(
-                      Icons.navigation,
+                      StizeIcons.nearMe,
                       size: 18,
                       color: theme.colorScheme.onInverseSurface,
                     ),

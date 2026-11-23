@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/fleet_matcher.dart';
 import '../../l10n/app_localizations.dart';
+import '../../core/design/stize_icons.dart';
 
 /// Shared Fleet-ID visual vocabulary (task B2/B3). Small, glanceable badges the
 /// arrivals list and the model card both draw from, so a "❄️" or the eco green
@@ -70,16 +71,18 @@ class FleetBadgeStrip extends StatelessWidget {
 
     // Eco / powertrain.
     if (fleet.powertrain.isElectric) {
-      badges.add(_icon(Icons.eco, onColor ?? _ecoColor, assumed: false));
+      badges.add(_icon(StizeIcons.leaf, onColor ?? _ecoColor, assumed: false));
     } else if (fleet.powertrain == Powertrain.hybrid) {
-      badges.add(_icon(Icons.eco, onColor ?? _hybridColor, assumed: approx));
+      badges.add(
+        _icon(StizeIcons.leaf, onColor ?? _hybridColor, assumed: approx),
+      );
     }
 
     // Air conditioning (positive only — "no AC" is left for the card).
     if (fleet.ac == true) {
       badges.add(
         _icon(
-          Icons.ac_unit,
+          StizeIcons.snowflake,
           onColor ?? _acColor,
           assumed: approx || fleet.isAssumed('ac'),
         ),
@@ -90,7 +93,7 @@ class FleetBadgeStrip extends StatelessWidget {
     if (fleet.lowFloor == true) {
       badges.add(
         _icon(
-          Icons.accessible,
+          StizeIcons.accessible,
           onColor ?? theme.colorScheme.onSurfaceVariant,
           assumed: approx || fleet.isAssumed('low_floor'),
         ),

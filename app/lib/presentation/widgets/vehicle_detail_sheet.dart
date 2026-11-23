@@ -12,6 +12,7 @@ import '../../l10n/app_localizations.dart';
 import '../screens/map_screen_args.dart';
 import 'sheet_chrome.dart';
 import 'vehicle_icon.dart';
+import '../../core/design/stize_icons.dart';
 
 /// Slides up a Yandex-style detail panel for a tapped live vehicle: line +
 /// direction, movement state, and the ordered list of upcoming stops with
@@ -106,7 +107,7 @@ class _VehicleDetailSheet extends StatelessWidget {
                       if (plan.nextStop != null)
                         ListTile(
                           dense: true,
-                          leading: const Icon(Icons.my_location, size: 20),
+                          leading: const Icon(StizeIcons.locate, size: 20),
                           title: Text(plan.nextStop!.name),
                           subtitle: Text(l10n.vehicleNextStop),
                         ),
@@ -135,7 +136,7 @@ class _VehicleDetailSheet extends StatelessWidget {
                         child: SizedBox(
                           width: double.infinity,
                           child: FilledButton.icon(
-                            icon: const Icon(Icons.map_outlined),
+                            icon: const Icon(StizeIcons.map),
                             label: Text(l10n.vehicleShowRoute),
                             onPressed: () => _showRoute(context),
                           ),
@@ -188,7 +189,7 @@ class _VehicleDetailSheet extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
-          stuck ? Icons.warning_amber_rounded : Icons.directions_run,
+          stuck ? StizeIcons.warning : StizeIcons.walk,
           size: 16,
           color: stuck ? stuckColor : movingColor,
         ),
@@ -211,7 +212,7 @@ class _VehicleDetailSheet extends StatelessWidget {
       dense: true,
       visualDensity: VisualDensity.compact,
       leading: Icon(
-        u.isBoardStop ? Icons.star : Icons.circle,
+        u.isBoardStop ? StizeIcons.starFilled : StizeIcons.dot,
         size: u.isBoardStop ? 16 : 8,
         color: u.isBoardStop
             ? theme.colorScheme.primary

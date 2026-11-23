@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/jam.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import '../../core/design/stize_icons.dart';
 
 /// A muted strip at the top of the Nearby list: one soft row per active jam that
 /// touches a line in the current Nearby context. Tap to expand the affected stop
@@ -64,7 +65,7 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
               child: Row(
                 children: [
                   Icon(
-                    Icons.hourglass_bottom,
+                    StizeIcons.hourglass,
                     size: 16,
                     color: theme.colorScheme.onSurface,
                   ),
@@ -78,7 +79,7 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
                     ),
                   ),
                   Icon(
-                    open ? Icons.expand_less : Icons.expand_more,
+                    open ? StizeIcons.chevronUp : StizeIcons.chevronDown,
                     size: 18,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),

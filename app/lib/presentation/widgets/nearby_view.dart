@@ -22,6 +22,7 @@ import 'jam_nearby_strip.dart';
 import 'live_unavailable_banner.dart';
 import 'nearby_list.dart';
 import 'vehicle_icon.dart';
+import '../../core/design/stize_icons.dart';
 
 /// How far the user must move before the Nearby list refetches its set of stops.
 /// Big enough to ignore GPS jitter (and any incidental map movement, which never
@@ -296,7 +297,11 @@ class NearbyViewState extends ConsumerState<NearbyView> {
               style: StizeType.body.copyWith(color: stize.ink),
               decoration: InputDecoration(
                 isDense: true,
-                prefixIcon: Icon(Icons.search, size: 20, color: stize.ink50),
+                prefixIcon: Icon(
+                  StizeIcons.search,
+                  size: 20,
+                  color: stize.ink50,
+                ),
                 prefixIconConstraints: const BoxConstraints(
                   minWidth: 40,
                   minHeight: 44,
@@ -348,7 +353,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       if (rows.isEmpty) {
         return _scrollable(
           controller,
-          EmptyState(icon: Icons.search_off, title: l10n.searchNoResults),
+          EmptyState(icon: StizeIcons.searchOff, title: l10n.searchNoResults),
         );
       }
       return _searchResults(controller, rows, l10n);
@@ -360,7 +365,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       return _scrollable(
         controller,
         EmptyState(
-          icon: Icons.my_location,
+          icon: StizeIcons.locate,
           title: l10n.nearbyNeedsLocationTitle,
           subtitle: widget.locationDenied
               ? l10n.locationDenied
@@ -374,7 +379,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     if (_loading && _groups == null) {
       return _scrollable(
         controller,
-        EmptyState(icon: Icons.near_me_outlined, title: l10n.nearbyLoading),
+        EmptyState(icon: StizeIcons.nearMe, title: l10n.nearbyLoading),
       );
     }
 
@@ -382,7 +387,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       return _scrollable(
         controller,
         EmptyState(
-          icon: Icons.wifi_off_rounded,
+          icon: StizeIcons.offline,
           title: l10n.noNetworkTitle,
           subtitle: l10n.noNetworkSubtitle,
           onRetry: _fetch,
@@ -396,7 +401,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       return _scrollable(
         controller,
         EmptyState(
-          icon: Icons.near_me_disabled_outlined,
+          icon: StizeIcons.nearMeOff,
           title: l10n.nearbyEmptyTitle,
           subtitle: l10n.nearbyEmptySubtitle,
         ),
@@ -473,10 +478,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     final theme = Theme.of(context);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: Icon(
-        Icons.location_on_outlined,
-        color: theme.colorScheme.onSurfaceVariant,
-      ),
+      leading: Icon(StizeIcons.pin, color: theme.colorScheme.onSurfaceVariant),
       title: Text(stop.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: stop.lines.isEmpty
           ? null

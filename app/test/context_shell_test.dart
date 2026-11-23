@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/widgets/context_shell.dart';
+import 'package:stize/core/design/stize_icons.dart';
 
 Widget _wrap(Widget child, {Locale? locale}) => MaterialApp(
   locale: locale,
@@ -41,9 +42,9 @@ void main() {
       expect(find.text('STOP-CONTENT'), findsOneWidget);
       expect(find.text('Batutova'), findsOneWidget);
       // The single nav row has ONE back control and NO close (owner R1 #4).
-      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
-      expect(find.byIcon(Icons.close), findsNothing);
-      await tester.tap(find.byIcon(Icons.arrow_back));
+      expect(find.byIcon(StizeIcons.back), findsOneWidget);
+      expect(find.byIcon(StizeIcons.close), findsNothing);
+      await tester.tap(find.byIcon(StizeIcons.back));
       expect(backTapped, isTrue);
 
       // The panel is exactly the resolved rubber-band width.
@@ -65,7 +66,7 @@ void main() {
       );
       expect(find.text('NEARBY'), findsOneWidget);
       expect(find.byType(ContextNavRow), findsNothing);
-      expect(find.byIcon(Icons.arrow_back), findsNothing);
+      expect(find.byIcon(StizeIcons.back), findsNothing);
     });
   });
 

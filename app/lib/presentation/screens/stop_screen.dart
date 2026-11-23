@@ -18,6 +18,7 @@ import '../widgets/stop_arrivals_list.dart';
 import '../widgets/jam_stop_banner.dart';
 import '../widgets/live_vehicles_map.dart';
 import '../widgets/route_alerts_strip.dart';
+import '../../core/design/stize_icons.dart';
 
 class StopScreen extends ConsumerStatefulWidget {
   const StopScreen({super.key, required this.stopId, this.initialStopName});
@@ -98,7 +99,9 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(isFavoriteAsync ? Icons.star : Icons.star_outline),
+            icon: Icon(
+              isFavoriteAsync ? StizeIcons.starFilled : StizeIcons.star,
+            ),
             onPressed: () {
               final notifier = ref.read(favoritesControllerProvider.notifier);
               if (isFavoriteAsync) {
@@ -125,7 +128,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
             ),
             board.when(
               loading: () => EmptyState(
-                icon: Icons.directions_transit_outlined,
+                icon: StizeIcons.transit,
                 title: l10n.loadingArrivals,
               ),
               error: (err, st) =>
@@ -185,7 +188,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
         child: Row(
           children: [
             Icon(
-              Icons.location_searching,
+              StizeIcons.locate,
               size: 18,
               color: theme.colorScheme.onSurfaceVariant,
             ),

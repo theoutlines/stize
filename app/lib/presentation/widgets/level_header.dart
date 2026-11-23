@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/design/stize_icons.dart';
 
 /// Header of a level in the context slot (mobile sheet / desktop panel).
 ///
@@ -40,7 +41,7 @@ class LevelHeader extends StatelessWidget {
           if (hasBack)
             TextButton.icon(
               onPressed: onBack,
-              icon: const Icon(Icons.arrow_back, size: 18),
+              icon: const Icon(StizeIcons.back, size: 18),
               label: Text(
                 backLabel!,
                 maxLines: 1,
@@ -90,7 +91,7 @@ class LevelHeader extends StatelessWidget {
                           child: SizedBox.square(
                             dimension: 32,
                             child: Icon(
-                              Icons.close,
+                              StizeIcons.close,
                               size: 18,
                               color: scheme.onSurfaceVariant,
                             ),

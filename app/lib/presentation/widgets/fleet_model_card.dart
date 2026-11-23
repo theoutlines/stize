@@ -11,6 +11,7 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'fleet_badges.dart';
 import 'vehicle_icon.dart';
+import '../../core/design/stize_icons.dart';
 
 /// The model card (task B3), opened by tapping a Fleet-ID badge in the arrivals
 /// list. Shows what the passenger is about to ride: the local nickname, a plain
@@ -248,7 +249,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          fleet.ac! ? Icons.ac_unit : Icons.wb_sunny_outlined,
+          fleet.ac! ? StizeIcons.snowflake : StizeIcons.sun,
           fleet.ac! ? l10n.fleetAc : l10n.fleetNoAc,
           positive: fleet.ac!,
           assumed: fleet.isAssumed('ac'),
@@ -261,7 +262,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          fleet.lowFloor! ? Icons.accessible : Icons.stairs_outlined,
+          fleet.lowFloor! ? StizeIcons.accessible : Icons.stairs_outlined,
           fleet.lowFloor! ? l10n.fleetLowFloor : l10n.fleetHighFloor,
           positive: fleet.lowFloor!,
           assumed: fleet.isAssumed('low_floor'),
@@ -277,7 +278,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          Icons.history,
+          StizeIcons.history,
           assumed
               ? l10n.fleetAgeApprox(age, years[0], years[1])
               : '${l10n.fleetAge}: ${l10n.fleetAgeYears(age)}',
@@ -298,7 +299,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          Icons.airline_seat_flat_angled,
+          StizeIcons.seat,
           l10n.fleetArticulated,
           assumed: fleet.approximate,
         ),
@@ -308,7 +309,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          Icons.groups_outlined,
+          StizeIcons.groups,
           l10n.fleetCapacity(fleet.capacity!),
           assumed: fleet.approximate,
         ),
@@ -332,7 +333,7 @@ class FleetModelView extends ConsumerWidget {
         _row(
           theme,
           fleet.powertrain.isElectric
-              ? Icons.eco
+              ? StizeIcons.leaf
               : Icons.local_gas_station_outlined,
           power,
           positive: fleet.powertrain.isElectric,
@@ -438,11 +439,7 @@ class FleetModelView extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Icon(
-            Icons.chair_outlined,
-            size: 20,
-            color: theme.colorScheme.onSurface,
-          ),
+          Icon(StizeIcons.seat, size: 20, color: theme.colorScheme.onSurface),
           const SizedBox(width: 12),
           Text(
             '${l10n.fleetSectionComfort}: ',
@@ -452,7 +449,7 @@ class FleetModelView extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 1),
               child: Icon(
-                i <= score ? Icons.circle : Icons.circle_outlined,
+                i <= score ? StizeIcons.dot : StizeIcons.circle,
                 size: 10,
                 color: i <= score
                     ? dotColor.withValues(alpha: assumed ? 0.6 : 1)

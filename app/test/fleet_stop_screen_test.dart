@@ -13,6 +13,7 @@ import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
 import 'package:stize/presentation/screens/stop_screen.dart';
 import 'package:stize/presentation/widgets/stop_sheet.dart';
+import 'package:stize/core/design/stize_icons.dart';
 
 // A tiny, deterministic catalog: two tram classes with very different comfort,
 // so we exercise badges, the model card and the comfort sort without depending
@@ -137,7 +138,7 @@ void main() {
       expect(find.text('12'), findsWidgets);
       expect(find.text('3'), findsOneWidget);
       // No fleet badges, no comfort sort, no crash.
-      expect(find.byIcon(Icons.ac_unit), findsNothing);
+      expect(find.byIcon(StizeIcons.snowflake), findsNothing);
       expect(find.text('By comfort'), findsNothing);
       expect(tester.takeException(), isNull);
     },
@@ -151,8 +152,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Bozankaya has AC + low floor → those badges appear.
-      expect(find.byIcon(Icons.ac_unit), findsOneWidget);
-      expect(find.byIcon(Icons.accessible), findsOneWidget);
+      expect(find.byIcon(StizeIcons.snowflake), findsOneWidget);
+      expect(find.byIcon(StizeIcons.accessible), findsOneWidget);
 
       // Two distinct classes → the comfort sort is offered.
       expect(find.text('By comfort'), findsOneWidget);
@@ -195,7 +196,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Tap the AC badge (only the Bozankaya has one).
-    await tester.tap(find.byIcon(Icons.ac_unit));
+    await tester.tap(find.byIcon(StizeIcons.snowflake));
     await tester.pumpAndSettle();
 
     expect(find.text('Bozankaya'), findsOneWidget); // model name, headline
@@ -219,7 +220,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.ac_unit));
+    await tester.tap(find.byIcon(StizeIcons.snowflake));
     await tester.pumpAndSettle();
 
     expect(find.text('Bozankaya'), findsOneWidget); // model headline
@@ -266,7 +267,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Sheet is open with Fleet-ID surfaced.
-    expect(find.byIcon(Icons.ac_unit), findsOneWidget);
+    expect(find.byIcon(StizeIcons.snowflake), findsOneWidget);
     expect(find.text('By comfort'), findsOneWidget);
     expect(find.textContaining('P5'), findsNothing); // junk hidden
   });

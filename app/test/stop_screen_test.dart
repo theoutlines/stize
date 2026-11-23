@@ -15,6 +15,7 @@ import 'package:stize/domain/repositories/favorites_repository.dart';
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
 import 'package:stize/presentation/screens/stop_screen.dart';
+import 'package:stize/core/design/stize_icons.dart';
 
 const _batutovaStop = Stop(
   stopId: '20091',
@@ -443,12 +444,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.star_outline), findsOneWidget);
+    expect(find.byIcon(StizeIcons.star), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.star_outline));
+    await tester.tap(find.byIcon(StizeIcons.star));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.star), findsOneWidget);
+    expect(find.byIcon(StizeIcons.starFilled), findsOneWidget);
     expect(await favorites.isFavorite('20091'), isTrue);
   });
 }

@@ -8,6 +8,7 @@ import '../../domain/models/arrival.dart';
 import '../../l10n/app_localizations.dart';
 import 'fleet_badges.dart';
 import 'stize_transit_card.dart';
+import '../../core/design/stize_icons.dart';
 
 class ArrivalTile extends StatelessWidget {
   const ArrivalTile({
@@ -172,7 +173,7 @@ class ArrivalTile extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.repeat_rounded, size: 13, color: style.color),
+            Icon(StizeIcons.repeat, size: 13, color: style.color),
             const SizedBox(width: 2),
             Text(every, style: style),
           ],
@@ -226,7 +227,7 @@ class ArrivalTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            later ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+            later ? StizeIcons.arrowUp : StizeIcons.arrowDown,
             size: 12,
             color: on.withValues(alpha: 0.8),
           ),

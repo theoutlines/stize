@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../core/design/stize_icons.dart';
 
 /// A thin note above an arrivals list: the live board is down, so what follows
 /// is the timetable.
@@ -21,7 +22,7 @@ class LiveUnavailableBanner extends StatelessWidget {
       color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
       child: Row(
         children: [
-          Icon(Icons.schedule_outlined, size: 16, color: scheme.outline),
+          Icon(StizeIcons.clock, size: 16, color: scheme.outline),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

@@ -245,7 +245,7 @@ extension _MapJams on _HomeMapScreenState {
       children: [
         for (final stop in _resultStops)
           ListTile(
-            leading: const Icon(Icons.location_on_outlined),
+            leading: const Icon(StizeIcons.pin),
             title: Text(stop.name),
             subtitle: Text(stop.lines.join(', ')),
             onTap: () => _openStop(stop, source: Ev.srcSearch),
@@ -272,7 +272,7 @@ extension _MapJams on _HomeMapScreenState {
           ),
         for (final place in _resultPlaces)
           ListTile(
-            leading: const Icon(Icons.map_outlined),
+            leading: const Icon(StizeIcons.map),
             title: Text(place.displayName),
             onTap: () => _openPlace(place),
           ),

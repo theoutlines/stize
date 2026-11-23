@@ -8,6 +8,7 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../screens/settings_screen.dart';
 import 'drawer_footer.dart';
+import '../../core/design/stize_icons.dart';
 
 /// Gap between the round menu button and the top-left screen edge (matches the
 /// map's floating controls: SafeArea + 12).
@@ -85,7 +86,7 @@ class AppMenuOverlay extends StatelessWidget {
             shape: const CircleBorder(),
             clipBehavior: Clip.antiAlias,
             child: IconButton(
-              icon: Icon(Icons.close, color: theme.colorScheme.surface),
+              icon: Icon(StizeIcons.close, color: theme.colorScheme.surface),
               tooltip: l10n.menuClose,
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -137,7 +138,7 @@ class AppMenuCard extends ConsumerWidget {
     final rows = <Widget>[
       if (coverage)
         _MenuRow(
-          icon: currentIndex == 1 ? Icons.map_outlined : Icons.hub_outlined,
+          icon: currentIndex == 1 ? StizeIcons.map : Icons.hub_outlined,
           label: currentIndex == 1 ? l10n.navHome : l10n.navCoverage,
           onTap: () {
             Navigator.of(context).pop();
@@ -145,7 +146,7 @@ class AppMenuCard extends ConsumerWidget {
           },
         ),
       _MenuRow(
-        icon: Icons.star_outline,
+        icon: StizeIcons.star,
         label: l10n.navMyStops,
         // A level in the map's sheet / panel, not a separate screen.
         onTap: () {
@@ -162,7 +163,7 @@ class AppMenuCard extends ConsumerWidget {
       // A compact sheet over the current screen, not a full page: two controls
       // don't warrant one, and the map and any open stop stay put.
       _MenuRow(
-        icon: Icons.settings_outlined,
+        icon: StizeIcons.settings,
         label: l10n.settingsTitle,
         onTap: () {
           final host = Navigator.of(context, rootNavigator: true).context;
@@ -192,7 +193,7 @@ class AppMenuCard extends ConsumerWidget {
               ),
             ),
             _MenuRow(
-              icon: Icons.chat_bubble_outline,
+              icon: StizeIcons.chat,
               label: l10n.drawerShareFeedback,
               small: true,
               onTap: () {
@@ -203,7 +204,7 @@ class AppMenuCard extends ConsumerWidget {
             ),
             if (donateUrl != null)
               _MenuRow(
-                icon: Icons.favorite_border,
+                icon: StizeIcons.heart,
                 label: l10n.menuSupport,
                 small: true,
                 // Synchronous launch inside the tap keeps the browser's
@@ -216,7 +217,7 @@ class AppMenuCard extends ConsumerWidget {
             // One full-height row (not three small adjacent links, which were
             // too easy to mis-tap); licences and privacy live inside About.
             _MenuRow(
-              icon: Icons.info_outline,
+              icon: StizeIcons.info,
               label: l10n.aboutTitle,
               small: true,
               onTap: () => go((_, router) => router.push('/about')),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stize/presentation/widgets/level_header.dart';
+import 'package:stize/core/design/stize_icons.dart';
 
 Widget _host(Widget child) => MaterialApp(home: Scaffold(body: child));
 
@@ -14,9 +15,9 @@ void main() {
         LevelHeader(title: 'Slavija', onBack: () {}, onClose: () => closed++),
       ),
     );
-    expect(find.byIcon(Icons.close), findsOneWidget);
-    expect(find.byIcon(Icons.arrow_back), findsNothing);
-    await tester.tap(find.byIcon(Icons.close));
+    expect(find.byIcon(StizeIcons.close), findsOneWidget);
+    expect(find.byIcon(StizeIcons.back), findsNothing);
+    await tester.tap(find.byIcon(StizeIcons.close));
     expect(closed, 1);
   });
 
@@ -35,7 +36,7 @@ void main() {
       ),
     );
     expect(find.text('Slavija'), findsOneWidget);
-    expect(find.byIcon(Icons.close), findsNothing);
+    expect(find.byIcon(StizeIcons.close), findsNothing);
     await tester.tap(find.text('Slavija'));
     expect(back, 1);
   });

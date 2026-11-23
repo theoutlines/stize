@@ -19,6 +19,7 @@ import 'live_unavailable_banner.dart';
 import 'scheduled_group_tile.dart';
 import 'stize_filter_chips.dart';
 import 'stop_report_sheet.dart';
+import '../../core/design/stize_icons.dart';
 
 /// THE arrivals list of a stop, shared by both shutters: the in-app sheet
 /// ([StopBoard]) and the `/stop/:id` deep-link screen ([StopScreen]). Owns the
@@ -106,7 +107,7 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
     if (board.serviceStatus == ServiceStatus.unavailable &&
         board.arrivals.isEmpty) {
       return EmptyState(
-        icon: Icons.pause_circle_outline,
+        icon: StizeIcons.pause,
         title: l10n.serviceKilledTitle,
         subtitle: l10n.serviceKilledSubtitle,
         onRetry: widget.onRetry,
@@ -115,7 +116,7 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
     }
     if (board.arrivals.isEmpty) {
       return EmptyState(
-        icon: Icons.nightlight_outlined,
+        icon: StizeIcons.moon,
         title: l10n.emptyArrivalsTitle,
         subtitle: l10n.emptyArrivalsSubtitle,
       );
@@ -350,15 +351,13 @@ Widget stopArrivalsErrorState(
 ) {
   if (err is NotFoundException) {
     return EmptyState(
-      icon: Icons.location_off_outlined,
+      icon: StizeIcons.locateOff,
       title: l10n.unknownStopTitle,
       subtitle: l10n.unknownStopSubtitle,
     );
   }
   return EmptyState(
-    icon: err is NetworkException
-        ? Icons.wifi_off_rounded
-        : Icons.error_outline,
+    icon: err is NetworkException ? StizeIcons.offline : StizeIcons.error,
     title: l10n.noNetworkTitle,
     subtitle: l10n.noNetworkSubtitle,
     onRetry: onRetry,

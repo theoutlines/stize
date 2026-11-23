@@ -6,6 +6,7 @@ import '../../core/arrival_grouping.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
 import '../../l10n/app_localizations.dart';
+import '../../core/design/stize_icons.dart';
 
 /// The collapsed schedule fallback for one line×direction: a single row that
 /// replaces the N Scheduled rows the fallback used to spray. It shows the
@@ -41,7 +42,7 @@ class ScheduledGroupTile extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.schedule, size: 14, color: caption.color),
+            Icon(StizeIcons.clock, size: 14, color: caption.color),
             const SizedBox(width: StizeSpace.space1),
             Text(l10n.arrivalScheduled, style: caption),
           ],
