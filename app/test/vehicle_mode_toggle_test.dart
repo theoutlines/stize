@@ -41,27 +41,39 @@ void main() {
     expect(tester.getSize(find.byType(VehicleModeToggle)), Size.zero);
   });
 
-  testWidgets('flag ON shows the button, plain in the default on-demand mode',
-      (tester) async {
+  testWidgets('flag ON shows the button, plain in the default on-demand mode', (
+    tester,
+  ) async {
     await tester.pumpWidget(_wrap(flagOn: true));
     await tester.pumpAndSettle();
 
     // The live-transport glyph (bus with signal arcs), not a layers icon.
     expect(find.byType(SvgPicture), findsOneWidget);
     expect(find.byIcon(Icons.layers_outlined), findsNothing);
-    expect(containerOf(tester).read(vehicleMapModeProvider),
-        VehicleMapMode.onDemand);
+    expect(
+      containerOf(tester).read(vehicleMapModeProvider),
+      VehicleMapMode.onDemand,
+    );
 
     final theme = Theme.of(tester.element(find.byType(IconButton)));
     final material = tester.widget<Material>(
-      find.ancestor(of: find.byType(IconButton), matching: find.byType(Material)).first,
+      find
+          .ancestor(
+            of: find.byType(IconButton),
+            matching: find.byType(Material),
+          )
+          .first,
     );
-    expect(material.color, theme.colorScheme.surface,
-        reason: 'the default mode leaves the button plain');
+    expect(
+      material.color,
+      theme.colorScheme.surface,
+      reason: 'the default mode leaves the button plain',
+    );
   });
 
-  testWidgets('a tap flips the mode, names it in a toast, and persists it',
-      (tester) async {
+  testWidgets('a tap flips the mode, names it in a toast, and persists it', (
+    tester,
+  ) async {
     await tester.pumpWidget(_wrap(flagOn: true));
     await tester.pumpAndSettle();
     final container = containerOf(tester);
@@ -80,7 +92,12 @@ void main() {
     // Inverted (light button) while the aquarium is on.
     final theme = Theme.of(tester.element(find.byType(IconButton)));
     final material = tester.widget<Material>(
-      find.ancestor(of: find.byType(IconButton), matching: find.byType(Material)).first,
+      find
+          .ancestor(
+            of: find.byType(IconButton),
+            matching: find.byType(Material),
+          )
+          .first,
     );
     expect(material.color, theme.colorScheme.onSurface);
 
@@ -91,15 +108,34 @@ void main() {
     expect(find.text('Transport on the map: On demand'), findsOneWidget);
   });
 
-  testWidgets('a stored aquarium choice shows up as the active state',
-      (tester) async {
+  testWidgets('a stored aquarium choice shows up as the active state', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'settings_vehicle_map_mode': 'aquarium',
     });
     await tester.pumpWidget(_wrap(flagOn: true));
     await tester.pumpAndSettle();
 
-    expect(containerOf(tester).read(vehicleMapModeProvider),
-        VehicleMapMode.aquarium);
+    expect(
+      containerOf(tester).read(vehicleMapModeProvider),
+      VehicleMapMode.aquarium,
+    );
+  });
+
+  testWidgets('one-time label shows on first appearance only', (tester) async {
+    await tester.pumpWidget(_wrap(flagOn: true));
+    await tester.pumpAndSettle();
+    expect(find.text('Live transport'), findsOneWidget);
+    // Hides by itself after a few seconds.
+    await tester.pump(const Duration(seconds: 7));
+    await tester.pumpAndSettle();
+    expect(find.text('Live transport'), findsNothing);
+
+    // A fresh mount on the same device does not show it again.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(_wrap(flagOn: true));
+    await tester.pumpAndSettle();
+    expect(find.text('Live transport'), findsNothing);
   });
 }

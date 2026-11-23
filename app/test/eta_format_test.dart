@@ -17,16 +17,22 @@ void main() {
       expect(etaLabel(l10n, 'en', 59), '59 min'); // just under the threshold
     });
 
-    test('at/beyond ${kFarEtaMinutes} min it becomes a 24h clock arrival time', () {
-      final now = DateTime(2026, 7, 17, 1, 15); // 01:15
-      expect(etaLabel(l10n, 'en', 90, now: now), '02:45'); // +90m
-      expect(etaLabel(l10n, 'en', 158, now: now), '03:53'); // +158m
-    });
+    test(
+      'at/beyond ${kFarEtaMinutes} min it becomes a 24h clock arrival time',
+      () {
+        final now = DateTime(2026, 7, 17, 1, 15); // 01:15
+        expect(etaLabel(l10n, 'en', 90, now: now), '02:45'); // +90m
+        expect(etaLabel(l10n, 'en', 158, now: now), '03:53'); // +158m
+      },
+    );
 
-    test('the threshold is exactly ${kFarEtaMinutes} (59 → min, 60 → time)', () {
-      final now = DateTime(2026, 7, 17, 12, 0);
-      expect(etaLabel(l10n, 'en', 59, now: now), '59 min');
-      expect(etaLabel(l10n, 'en', 60, now: now), '13:00'); // 12:00 + 60m
-    });
+    test(
+      'the threshold is exactly ${kFarEtaMinutes} (59 → min, 60 → time)',
+      () {
+        final now = DateTime(2026, 7, 17, 12, 0);
+        expect(etaLabel(l10n, 'en', 59, now: now), '59 min');
+        expect(etaLabel(l10n, 'en', 60, now: now), '13:00'); // 12:00 + 60m
+      },
+    );
   });
 }

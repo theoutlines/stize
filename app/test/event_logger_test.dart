@@ -55,25 +55,34 @@ void main() {
     expect(rec.batches, isEmpty);
   });
 
-  test('flush sends one batch with event, props and a stable session id', () async {
-    final rec = _Recorder();
-    final logger = EventLogger(rec.client())..setEnabled(true);
-    logger.log(Ev.appOpen, props: {'mode': Ev.modeOnDemand, 'locale_class': 'sr'});
-    logger.log(Ev.sortComfort);
-    await logger.flush();
+  test(
+    'flush sends one batch with event, props and a stable session id',
+    () async {
+      final rec = _Recorder();
+      final logger = EventLogger(rec.client())..setEnabled(true);
+      logger.log(
+        Ev.appOpen,
+        props: {'mode': Ev.modeOnDemand, 'locale_class': 'sr'},
+      );
+      logger.log(Ev.sortComfort);
+      await logger.flush();
 
-    expect(rec.batches, hasLength(1));
-    final batch = rec.batches.single;
-    expect(batch, hasLength(2));
-    expect(batch[0]['event'], Ev.appOpen);
-    expect(batch[0]['props'], {'mode': Ev.modeOnDemand, 'locale_class': 'sr'});
-    // A no-property event carries no 'props' key.
-    expect(batch[1]['event'], Ev.sortComfort);
-    expect(batch[1].containsKey('props'), isFalse);
-    // Same ephemeral session id across events from one logger instance.
-    expect(batch[0]['session'], isNotEmpty);
-    expect(batch[1]['session'], batch[0]['session']);
-  });
+      expect(rec.batches, hasLength(1));
+      final batch = rec.batches.single;
+      expect(batch, hasLength(2));
+      expect(batch[0]['event'], Ev.appOpen);
+      expect(batch[0]['props'], {
+        'mode': Ev.modeOnDemand,
+        'locale_class': 'sr',
+      });
+      // A no-property event carries no 'props' key.
+      expect(batch[1]['event'], Ev.sortComfort);
+      expect(batch[1].containsKey('props'), isFalse);
+      // Same ephemeral session id across events from one logger instance.
+      expect(batch[0]['session'], isNotEmpty);
+      expect(batch[1]['session'], batch[0]['session']);
+    },
+  );
 
   test('auto-flushes when the size threshold is reached', () async {
     final rec = _Recorder();

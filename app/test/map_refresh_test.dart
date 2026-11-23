@@ -33,12 +33,15 @@ void main() {
     // context, NOT on follow state — following a vehicle (after the stop sheet
     // closed) must keep the context id set, so the data keeps refreshing and
     // nothing freezes. `following` isn't even an input here by design.
-    test('the decision has no follow input — follow cannot freeze the data', () {
-      expect(
-        mapRefreshAction(onDemand: true, stopContextId: '20256'),
-        MapRefresh.pollStop,
-      );
-    });
+    test(
+      'the decision has no follow input — follow cannot freeze the data',
+      () {
+        expect(
+          mapRefreshAction(onDemand: true, stopContextId: '20256'),
+          MapRefresh.pollStop,
+        );
+      },
+    );
   });
 
   group('keepAquariumResult — a fetch outliving the flag flip is discarded', () {
@@ -49,16 +52,25 @@ void main() {
       );
     });
 
-    test('a fetch that lands after the flag flipped ON is dropped (the reload leak)', () {
-      expect(
-        keepAquariumResult(mounted: true, current: true, onDemand: true),
-        isFalse,
-      );
-    });
+    test(
+      'a fetch that lands after the flag flipped ON is dropped (the reload leak)',
+      () {
+        expect(
+          keepAquariumResult(mounted: true, current: true, onDemand: true),
+          isFalse,
+        );
+      },
+    );
 
     test('unmounted or superseded is dropped', () {
-      expect(keepAquariumResult(mounted: false, current: true, onDemand: false), isFalse);
-      expect(keepAquariumResult(mounted: true, current: false, onDemand: false), isFalse);
+      expect(
+        keepAquariumResult(mounted: false, current: true, onDemand: false),
+        isFalse,
+      );
+      expect(
+        keepAquariumResult(mounted: true, current: false, onDemand: false),
+        isFalse,
+      );
     });
   });
 }

@@ -8,25 +8,32 @@ import 'package:stize/domain/models/vehicle_type.dart';
 
 void main() {
   group('VehicleSource.fromApi (tolerant classification)', () {
-    test('only an explicit "scheduled" is scheduled; everything else is live', () {
-      expect(VehicleSource.fromApi('scheduled'), VehicleSource.scheduled);
-      expect(VehicleSource.fromApi('live'), VehicleSource.live);
-      expect(VehicleSource.fromApi(null), VehicleSource.live); // field absent
-      expect(VehicleSource.fromApi('whatever'), VehicleSource.live);
-    });
+    test(
+      'only an explicit "scheduled" is scheduled; everything else is live',
+      () {
+        expect(VehicleSource.fromApi('scheduled'), VehicleSource.scheduled);
+        expect(VehicleSource.fromApi('live'), VehicleSource.live);
+        expect(VehicleSource.fromApi(null), VehicleSource.live); // field absent
+        expect(VehicleSource.fromApi('whatever'), VehicleSource.live);
+      },
+    );
   });
 
   group('AreaVehicle scheduled parsing', () {
-    Map<String, dynamic> json({String? source, String? tripId, String? garage}) => {
-          'line': '2',
-          'vehicle_type': 'tram',
-          'garage_no': garage,
-          'lat': 44.80,
-          'lon': 20.46,
-          'heading': 90,
-          if (source != null) 'source': source,
-          if (tripId != null) 'trip_id': tripId,
-        };
+    Map<String, dynamic> json({
+      String? source,
+      String? tripId,
+      String? garage,
+    }) => {
+      'line': '2',
+      'vehicle_type': 'tram',
+      'garage_no': garage,
+      'lat': 44.80,
+      'lon': 20.46,
+      'heading': 90,
+      if (source != null) 'source': source,
+      if (tripId != null) 'trip_id': tripId,
+    };
 
     test('defaults to live when the backend does not mark the source', () {
       final v = AreaVehicle.fromJson(json(garage: 'P123'));
@@ -51,20 +58,24 @@ void main() {
     test('a scheduled sample yields a scheduled track that still moves', () {
       var now = DateTime.utc(2026, 7, 14, 9);
       final animator = VehicleTrackAnimator(clock: () => now);
-      animator.syncSamples([
-        VehicleSample(
-          key: 'sched:T1',
-          position: const ll.LatLng(44.80, 20.50),
-          line: '2',
-          type: VehicleType.tram,
-          source: VehicleSource.scheduled,
-          trajectory: const [
-            TrajectoryPoint(44.80, 20.50, 0),
-            TrajectoryPoint(44.80, 20.60, 100),
-          ],
-          asOf: now,
-        ),
-      ], 0, now: now);
+      animator.syncSamples(
+        [
+          VehicleSample(
+            key: 'sched:T1',
+            position: const ll.LatLng(44.80, 20.50),
+            line: '2',
+            type: VehicleType.tram,
+            source: VehicleSource.scheduled,
+            trajectory: const [
+              TrajectoryPoint(44.80, 20.50, 0),
+              TrajectoryPoint(44.80, 20.60, 100),
+            ],
+            asOf: now,
+          ),
+        ],
+        0,
+        now: now,
+      );
 
       final track = animator.trackFor('sched:T1')!;
       expect(track.source, VehicleSource.scheduled);

@@ -203,6 +203,7 @@
   "@vehicleModeAll": {
     "description": "Map vehicle mode: every vehicle in the viewport (the background \"aquarium\")"
   },
+  "vehicleModeHint": "Live transport",
   "vehicleModeTooltip": "Transport on the map",
   "@vehicleModeTooltip": {
     "description": "Tooltip of the map's vehicle-mode toggle button"

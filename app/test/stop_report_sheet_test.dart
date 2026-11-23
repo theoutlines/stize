@@ -34,16 +34,18 @@ class _FakeRepo implements FeedbackRepository {
 }
 
 Widget _host(_FakeRepo repo) => ProviderScope(
-      overrides: [
-        feedbackRepositoryProvider.overrideWithValue(repo),
-        appVersionProvider.overrideWith((ref) => Future.value('Stiže 1.0.0 (1)')),
-      ],
-      child: const MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: StopReportSheet(stopId: '20147', stopName: 'Slavija')),
-      ),
-    );
+  overrides: [
+    feedbackRepositoryProvider.overrideWithValue(repo),
+    appVersionProvider.overrideWith((ref) => Future.value('Stiže 1.0.0 (1)')),
+  ],
+  child: const MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(
+      body: StopReportSheet(stopId: '20147', stopName: 'Slavija'),
+    ),
+  ),
+);
 
 FilledButton _send(WidgetTester tester) =>
     tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Send'));
@@ -51,25 +53,33 @@ FilledButton _send(WidgetTester tester) =>
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('send is disabled until a problem is picked; no comment field by default',
-      (tester) async {
-    final repo = _FakeRepo();
-    await tester.pumpWidget(_host(repo));
-    expect(find.byType(RadioListTile<String>), findsNWidgets(6));
-    expect(find.byType(TextField), findsNothing);
-    expect(_send(tester).onPressed, isNull);
+  testWidgets(
+    'send is disabled until a problem is picked; no comment field by default',
+    (tester) async {
+      final repo = _FakeRepo();
+      await tester.pumpWidget(_host(repo));
+      expect(find.byType(RadioListTile<String>), findsNWidgets(6));
+      expect(find.byType(TextField), findsNothing);
+      expect(_send(tester).onPressed, isNull);
 
-    await tester.tap(find.text('Wrong lines'));
-    await tester.pump();
-    expect(_send(tester).onPressed, isNotNull);
+      await tester.tap(find.text('Wrong lines'));
+      await tester.pump();
+      expect(_send(tester).onPressed, isNotNull);
 
-    await tester.tap(find.text('Send'));
-    await tester.pumpAndSettle();
-    expect(repo.reports.single, {'stop': '20147', 'category': 'wrong_lines', 'comment': null});
-    expect(find.text('Thanks, got it'), findsOneWidget);
-  });
+      await tester.tap(find.text('Send'));
+      await tester.pumpAndSettle();
+      expect(repo.reports.single, {
+        'stop': '20147',
+        'category': 'wrong_lines',
+        'comment': null,
+      });
+      expect(find.text('Thanks, got it'), findsOneWidget);
+    },
+  );
 
-  testWidgets('"Something else" shows the text field and needs text', (tester) async {
+  testWidgets('"Something else" shows the text field and needs text', (
+    tester,
+  ) async {
     final repo = _FakeRepo();
     await tester.pumpWidget(_host(repo));
     await tester.tap(find.text('Something else'));

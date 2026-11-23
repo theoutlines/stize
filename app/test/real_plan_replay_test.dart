@@ -23,9 +23,11 @@ void main() {
   final raw =
       jsonDecode(File('test/fixtures/real_plan_line5.json').readAsStringSync())
           as Map<String, dynamic>;
-  final path = RoutePath.fromLatLon((raw['polyline'] as List)
-      .map((p) => (p as List).map((v) => (v as num).toDouble()).toList())
-      .toList())!;
+  final path = RoutePath.fromLatLon(
+    (raw['polyline'] as List)
+        .map((p) => (p as List).map((v) => (v as num).toDouble()).toList())
+        .toList(),
+  )!;
   final plan = (raw['trajectory'] as List)
       .map((e) => TrajectoryPoint.fromJson(e as Map<String, dynamic>))
       .toList();
@@ -37,8 +39,13 @@ void main() {
     required double seconds,
     required double settleAt,
     required void Function(
-            double t, double markerV, double targetV, double gap, bool moving)
-        sample,
+      double t,
+      double markerV,
+      double targetV,
+      double gap,
+      bool moving,
+    )
+    sample,
     void Function(double t, TimedTrajectory tt, DateTime now)? onFrame,
   }) {
     final t = TimedTrajectory.build(path: path, plan: plan, asOf: t0, now: t0)!;
@@ -70,8 +77,13 @@ void main() {
       prevTarget = target;
       final secs = f / 60;
       if (secs >= settleAt) {
-        sample(secs, t.displaySpeed, targetV, t.catchUpGap(now),
-            t.hasForwardMotion(now));
+        sample(
+          secs,
+          t.displaySpeed,
+          targetV,
+          t.catchUpGap(now),
+          t.hasForwardMotion(now),
+        );
         onFrame?.call(secs, t, now);
       }
     }
@@ -96,13 +108,20 @@ void main() {
         if (gap > maxGap) maxGap = gap;
       },
     );
-    expect(maxV - minV, lessThan(0.15),
-        reason: 'marker speed swung ${(maxV - minV).toStringAsFixed(2)} m/s '
-            '(${minV.toStringAsFixed(2)}..${maxV.toStringAsFixed(2)}) while the '
-            'plan held a flat cruise — the catch-up loop is oscillating');
+    expect(
+      maxV - minV,
+      lessThan(0.15),
+      reason:
+          'marker speed swung ${(maxV - minV).toStringAsFixed(2)} m/s '
+          '(${minV.toStringAsFixed(2)}..${maxV.toStringAsFixed(2)}) while the '
+          'plan held a flat cruise — the catch-up loop is oscillating',
+    );
     // The gap must settle at ~planVel·dt, not at the old epsilon boundary.
-    expect(maxGap, lessThan(0.2),
-        reason: 'gap parked at ${maxGap.toStringAsFixed(2)} m');
+    expect(
+      maxGap,
+      lessThan(0.2),
+      reason: 'gap parked at ${maxGap.toStringAsFixed(2)} m',
+    );
   });
 
   test('the marker never stands still while the plan is moving', () {
@@ -116,14 +135,20 @@ void main() {
       settleAt: 10,
       sample: (t, markerV, targetV, gap, moving) {
         if (markerV < 0.05 && targetV > 0.5) {
-          fakeStops.add('t=${t.toStringAsFixed(1)}s targetV='
-              '${targetV.toStringAsFixed(2)}');
+          fakeStops.add(
+            't=${t.toStringAsFixed(1)}s targetV='
+            '${targetV.toStringAsFixed(2)}',
+          );
         }
       },
     );
-    expect(fakeStops, isEmpty,
-        reason: 'marker stood still while the plan was moving: '
-            '${fakeStops.take(5).join(", ")}');
+    expect(
+      fakeStops,
+      isEmpty,
+      reason:
+          'marker stood still while the plan was moving: '
+          '${fakeStops.take(5).join(", ")}',
+    );
   });
 
   test('a moving vehicle reports as moving — the spiderfy gate depends on it', () {
@@ -147,60 +172,90 @@ void main() {
         if (moving) movingFrames++;
       },
     );
-    expect(total, greaterThan(600), reason: 'need a decent sample of moving frames');
-    expect(movingFrames, total,
-        reason: 'a moving vehicle reported as stationary on '
-            '${total - movingFrames} of $total frames — it will be spiderfied '
-            'apart from its neighbours');
-  });
-
-  test('the animator agrees: a live timed vehicle is moving, a stale one is not', () {
-    // The seam the map actually reads: `moving: _vehAnimator.hasMotion(key)`.
-    final t0 = DateTime(2026, 1, 1, 12);
-    var clock = t0;
-    final animator = VehicleTrackAnimator(clock: () => clock);
-    animator.syncSamples([
-      VehicleSample(
-        key: 'P80383',
-        position: ll.LatLng(plan.first.lat, plan.first.lon),
-        line: '5',
-        type: VehicleType.tram,
-        path: path,
-        trajectory: plan,
-        asOf: t0,
-      ),
-    ], 0, now: t0);
-
-    clock = t0.add(const Duration(seconds: 12));
-    animator.advanceTimed(clock);
-    expect(animator.hasMotion('P80383'), isTrue,
-        reason: 'a live, moving vehicle must not be spiderfied');
-
-    // Board goes stale (past the 45 s gate): now it genuinely is parked.
-    clock = t0.add(const Duration(seconds: 200));
-    animator.advanceTimed(clock);
-    expect(animator.hasMotion('P80383'), isFalse,
-        reason: 'a frozen vehicle should fan out normally');
-  });
-
-  test('a dwell still happens, and only where the plan itself stands still', () {
-    var dwellFrames = 0;
-    var mismatched = 0;
-    replay(
-      seconds: 44,
-      settleAt: 10,
-      sample: (t, markerV, targetV, gap, moving) {
-        if (targetV < 0.01) {
-          dwellFrames++;
-          if (markerV > 0.15) mismatched++;
-        }
-      },
+    expect(
+      total,
+      greaterThan(600),
+      reason: 'need a decent sample of moving frames',
     );
-    expect(dwellFrames, greaterThan(60),
-        reason: 'the real plan should still pause at its first station');
-    expect(mismatched, lessThan(dwellFrames ~/ 4),
-        reason: 'the marker kept rolling through the plan\'s standstill');
+    expect(
+      movingFrames,
+      total,
+      reason:
+          'a moving vehicle reported as stationary on '
+          '${total - movingFrames} of $total frames — it will be spiderfied '
+          'apart from its neighbours',
+    );
   });
+
+  test(
+    'the animator agrees: a live timed vehicle is moving, a stale one is not',
+    () {
+      // The seam the map actually reads: `moving: _vehAnimator.hasMotion(key)`.
+      final t0 = DateTime(2026, 1, 1, 12);
+      var clock = t0;
+      final animator = VehicleTrackAnimator(clock: () => clock);
+      animator.syncSamples(
+        [
+          VehicleSample(
+            key: 'P80383',
+            position: ll.LatLng(plan.first.lat, plan.first.lon),
+            line: '5',
+            type: VehicleType.tram,
+            path: path,
+            trajectory: plan,
+            asOf: t0,
+          ),
+        ],
+        0,
+        now: t0,
+      );
+
+      clock = t0.add(const Duration(seconds: 12));
+      animator.advanceTimed(clock);
+      expect(
+        animator.hasMotion('P80383'),
+        isTrue,
+        reason: 'a live, moving vehicle must not be spiderfied',
+      );
+
+      // Board goes stale (past the 45 s gate): now it genuinely is parked.
+      clock = t0.add(const Duration(seconds: 200));
+      animator.advanceTimed(clock);
+      expect(
+        animator.hasMotion('P80383'),
+        isFalse,
+        reason: 'a frozen vehicle should fan out normally',
+      );
+    },
+  );
+
+  test(
+    'a dwell still happens, and only where the plan itself stands still',
+    () {
+      var dwellFrames = 0;
+      var mismatched = 0;
+      replay(
+        seconds: 44,
+        settleAt: 10,
+        sample: (t, markerV, targetV, gap, moving) {
+          if (targetV < 0.01) {
+            dwellFrames++;
+            if (markerV > 0.15) mismatched++;
+          }
+        },
+      );
+      expect(
+        dwellFrames,
+        greaterThan(60),
+        reason: 'the real plan should still pause at its first station',
+      );
+      expect(
+        mismatched,
+        lessThan(dwellFrames ~/ 4),
+        reason: 'the marker kept rolling through the plan\'s standstill',
+      );
+    },
+  );
 
   test('a vehicle pausing at a stop is not fanned apart either', () {
     // The owner's call, and the right one: a dwell is stillness that resolves
@@ -225,9 +280,13 @@ void main() {
       },
     );
     expect(dwellFrames, greaterThan(60), reason: 'no dwell in the window');
-    expect(fannable, 0,
-        reason: 'a vehicle standing at a stop was fannable on $fannable of '
-            '$dwellFrames dwell frames — it would be shoved aside and snap back');
+    expect(
+      fannable,
+      0,
+      reason:
+          'a vehicle standing at a stop was fannable on $fannable of '
+          '$dwellFrames dwell frames — it would be shoved aside and snap back',
+    );
   });
 
   test('the marker only ever stands still at a stop', () {
@@ -241,11 +300,12 @@ void main() {
     // is the wrong way to show waiting. Replayed here with a vehicle running 20%
     // slower than its plan and re-anchored on real fixes every 30 s — the case a
     // single self-consistent plan can never surface, which is why this went out.
-    final wpDist = [for (final p in plan) path.project(ll.LatLng(p.lat, p.lon))];
+    final wpDist = [
+      for (final p in plan) path.project(ll.LatLng(p.lat, p.lon)),
+    ];
     final stations = wpDist.sublist(1); // waypoint 0 is the GPS
-    double offNearestStation(double d) => stations
-        .map((s) => (d - s).abs())
-        .reduce((a, b) => a < b ? a : b);
+    double offNearestStation(double d) =>
+        stations.map((s) => (d - s).abs()).reduce((a, b) => a < b ? a : b);
 
     // Ground truth: the planned curve on a stretched clock.
     double truthAt(double secs) {
@@ -277,7 +337,9 @@ void main() {
         for (var i = 0; i < plan.length - 1; i++) {
           if (wpDist[i + 1] <= truth) continue;
           acc += (plan[i + 1].etaSeconds - plan[i].etaSeconds).toDouble();
-          ahead.add(TrajectoryPoint(plan[i + 1].lat, plan[i + 1].lon, acc.round()));
+          ahead.add(
+            TrajectoryPoint(plan[i + 1].lat, plan[i + 1].lon, acc.round()),
+          );
         }
         if (ahead.length < 2) break;
         final gps = path.pointAt(truth);
@@ -297,15 +359,21 @@ void main() {
       } else if (standStart >= 0) {
         final off = offNearestStation(standAt);
         if (secs - standStart >= 0.4 && off > 20.0) {
-          offPinStands.add('${(secs - standStart).toStringAsFixed(1)}s at '
-              '${off.toStringAsFixed(0)}m out (t=${standStart.toStringAsFixed(0)}s)');
+          offPinStands.add(
+            '${(secs - standStart).toStringAsFixed(1)}s at '
+            '${off.toStringAsFixed(0)}m out (t=${standStart.toStringAsFixed(0)}s)',
+          );
         }
         standStart = -1;
       }
     }
-    expect(offPinStands, isEmpty,
-        reason: 'the marker stood still away from any stop: '
-            '${offPinStands.join("; ")}');
+    expect(
+      offPinStands,
+      isEmpty,
+      reason:
+          'the marker stood still away from any stop: '
+          '${offPinStands.join("; ")}',
+    );
   });
 
   test('a staler board cannot drag a fresher prediction backward', () {
@@ -323,14 +391,14 @@ void main() {
     final animator = VehicleTrackAnimator(clock: () => clock);
 
     VehicleSample sample(DateTime asOf) => VehicleSample(
-          key: 'P80383', // the garage number: the same track from either mouth
-          position: ll.LatLng(plan.first.lat, plan.first.lon),
-          line: '5',
-          type: VehicleType.tram,
-          path: path,
-          trajectory: plan,
-          asOf: asOf,
-        );
+      key: 'P80383', // the garage number: the same track from either mouth
+      position: ll.LatLng(plan.first.lat, plan.first.lon),
+      line: '5',
+      type: VehicleType.tram,
+      path: path,
+      trajectory: plan,
+      asOf: asOf,
+    );
 
     // The fresh board lands first...
     final fresh = t0.subtract(const Duration(seconds: 2));
@@ -340,10 +408,17 @@ void main() {
     // ...then the other mouth delivers a 35 s-older one for the same vehicle.
     clock = t0.add(const Duration(seconds: 1));
     animator.syncSamples(
-        [sample(t0.subtract(const Duration(seconds: 37)))], 0, now: clock);
-    expect(animator.trackFor('P80383')!.timed!.boardAsOf, fresh,
-        reason: 'a staler board replaced a fresher one — the two views of this '
-            'vehicle will disagree by however far it moves in the difference');
+      [sample(t0.subtract(const Duration(seconds: 37)))],
+      0,
+      now: clock,
+    );
+    expect(
+      animator.trackFor('P80383')!.timed!.boardAsOf,
+      fresh,
+      reason:
+          'a staler board replaced a fresher one — the two views of this '
+          'vehicle will disagree by however far it moves in the difference',
+    );
 
     // A genuinely newer board still takes over.
     clock = t0.add(const Duration(seconds: 30));

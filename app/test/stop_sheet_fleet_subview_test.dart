@@ -31,25 +31,31 @@ const _catalogJson = '''
 }
 ''';
 
-const _stop = Stop(stopId: '20091', name: 'Batutova', lat: 44.79, lon: 20.49, lines: ['12']);
+const _stop = Stop(
+  stopId: '20091',
+  name: 'Batutova',
+  lat: 44.79,
+  lon: 20.49,
+  lines: ['12'],
+);
 
 ArrivalsBoard _board() => ArrivalsBoard.fromJson({
-      'stop_id': '20091',
-      'stop_name': 'Batutova',
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-      'arrivals': [
-        {
-          'line': '12',
-          'vehicle_type': 'tram',
-          'eta_minutes': 9,
-          'stops_remaining': 5,
-          'route_id': '00012',
-          'gps': null,
-          'garage_no': 'P81540', // Bozankaya, has AC → tappable badge
-        },
-      ],
-      'service_status': 'ok',
-    });
+  'stop_id': '20091',
+  'stop_name': 'Batutova',
+  'updated_at': DateTime.now().toUtc().toIso8601String(),
+  'arrivals': [
+    {
+      'line': '12',
+      'vehicle_type': 'tram',
+      'eta_minutes': 9,
+      'stops_remaining': 5,
+      'route_id': '00012',
+      'gps': null,
+      'garage_no': 'P81540', // Bozankaya, has AC → tappable badge
+    },
+  ],
+  'service_status': 'ok',
+});
 
 class _FakeArrivals implements ArrivalsRepository {
   _FakeArrivals(this.board);
@@ -65,9 +71,11 @@ class _FakeFavorites implements FavoritesRepository {
   @override
   Future<List<FavoriteStop>> getFavorites() async => List.unmodifiable(_s);
   @override
-  Future<bool> isFavorite(String stopId) async => _s.any((s) => s.stopId == stopId);
+  Future<bool> isFavorite(String stopId) async =>
+      _s.any((s) => s.stopId == stopId);
   @override
-  Future<void> remove(String stopId) async => _s.removeWhere((s) => s.stopId == stopId);
+  Future<void> remove(String stopId) async =>
+      _s.removeWhere((s) => s.stopId == stopId);
 }
 
 Widget _host({ValueChanged<double>? onHeightChanged}) {
@@ -87,10 +95,12 @@ Widget _host({ValueChanged<double>? onHeightChanged}) {
         body: Builder(
           builder: (context) => Center(
             child: ElevatedButton(
-              onPressed: () => showStopSheet(context,
-                  stopId: '20091',
-                  stopName: 'Batutova',
-                  onHeightChanged: onHeightChanged),
+              onPressed: () => showStopSheet(
+                context,
+                stopId: '20091',
+                stopName: 'Batutova',
+                onHeightChanged: onHeightChanged,
+              ),
               child: const Text('open'),
             ),
           ),
@@ -104,8 +114,7 @@ void main() {
   setUp(() => kMapRenderingEnabled = false);
   tearDown(() => kMapRenderingEnabled = true);
 
-  testWidgets(
-      'stop sheet feeds its live height to the map geometry owner '
+  testWidgets('stop sheet feeds its live height to the map geometry owner '
       '(non-zero bottom inset while open — R2 #3 regression)', (tester) async {
     double? reported;
     await tester.pumpWidget(_host(onHeightChanged: (h) => reported = h));
@@ -126,49 +135,56 @@ void main() {
 
     // Sanity: that height feeds a positive bottom map inset.
     final insets = mapInsetsFor(
-        panelActive: false, panelWidth: 0, mobileSheetPx: reported!);
+      panelActive: false,
+      panelWidth: 0,
+      mobileSheetPx: reported!,
+    );
     expect(insets.bottom, greaterThan(0));
   });
 
   testWidgets(
-      'fleet card opens as an in-sheet subview and back returns to the board; '
-      'detents unchanged through the swap', (tester) async {
-    await tester.pumpWidget(_host());
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    'fleet card opens as an in-sheet subview and back returns to the board; '
+    'detents unchanged through the swap',
+    (tester) async {
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
 
-    // The board is up (its comfort/time sort is a board-only control) and no
-    // fleet subview yet.
-    expect(find.byType(StopBoard), findsOneWidget);
-    expect(find.byType(FleetModelView), findsNothing);
+      // The board is up (its comfort/time sort is a board-only control) and no
+      // fleet subview yet.
+      expect(find.byType(StopBoard), findsOneWidget);
+      expect(find.byType(FleetModelView), findsNothing);
 
-    // Detent contract before the swap.
-    double maxDetent() => tester
-        .widget<DraggableScrollableSheet>(find.byType(DraggableScrollableSheet))
-        .maxChildSize;
-    expect(maxDetent(), kSheetLarge);
+      // Detent contract before the swap.
+      double maxDetent() => tester
+          .widget<DraggableScrollableSheet>(
+            find.byType(DraggableScrollableSheet),
+          )
+          .maxChildSize;
+      expect(maxDetent(), kSheetLarge);
 
-    // Tap the Fleet-ID (AC) badge → the sheet swaps to the fleet card subview,
-    // in the SAME sheet (no second modal barrier).
-    await tester.tap(find.byIcon(Icons.ac_unit));
-    await tester.pumpAndSettle();
+      // Tap the Fleet-ID (AC) badge → the sheet swaps to the fleet card subview,
+      // in the SAME sheet (no second modal barrier).
+      await tester.tap(find.byIcon(Icons.ac_unit));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(FleetModelView), findsOneWidget);
-    // Model name shows in the back header AND as the card headline (same pairing
-    // as the desktop panel: nav-row title + card headline).
-    expect(find.text('Bozankaya'), findsWidgets);
-    expect(find.byIcon(Icons.arrow_back), findsOneWidget); // back header
-    expect(find.byType(StopBoard), findsNothing); // board swapped out
-    // The sheet is the same one — detents are unchanged through the swap.
-    expect(maxDetent(), kSheetLarge);
+      expect(find.byType(FleetModelView), findsOneWidget);
+      // Model name shows in the back header AND as the card headline (same pairing
+      // as the desktop panel: nav-row title + card headline).
+      expect(find.text('Bozankaya'), findsWidgets);
+      expect(find.byIcon(Icons.arrow_back), findsOneWidget); // back header
+      expect(find.byType(StopBoard), findsNothing); // board swapped out
+      // The sheet is the same one — detents are unchanged through the swap.
+      expect(maxDetent(), kSheetLarge);
 
-    // Back returns to the exact previous view (the arrivals board).
-    await tester.tap(find.byIcon(Icons.arrow_back));
-    await tester.pumpAndSettle();
+      // Back returns to the exact previous view (the arrivals board).
+      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(FleetModelView), findsNothing);
-    expect(find.byType(StopBoard), findsOneWidget);
-    expect(maxDetent(), kSheetLarge);
-  });
+      expect(find.byType(FleetModelView), findsNothing);
+      expect(find.byType(StopBoard), findsOneWidget);
+      expect(maxDetent(), kSheetLarge);
+    },
+  );
 }

@@ -1,8 +1,5 @@
 part of '../home_map_screen.dart';
 
-/// Height of the desktop search island (burger + pill row).
-const double _kSearchIslandH = 48;
-
 extension _MapPanels on _HomeMapScreenState {
   // ---- Context panel (desktop-only) rendering ------------------------------
 
@@ -73,26 +70,6 @@ extension _MapPanels on _HomeMapScreenState {
               ),
             ),
           ),
-        ),
-      ),
-      // The collapse tab: docked to the panel island's right edge when open, to
-      // the screen's left edge when collapsed. Vertically centred, chevron flips.
-      AnimatedPositioned(
-        duration: _HomeMapScreenState._panelCollapseDuration,
-        curve: _HomeMapScreenState._panelCollapseCurve,
-        left: collapsed ? 0 : inset + panelW,
-        // Docked near the panel's top edge: the panel hugs its content, so a
-        // screen-centred tab could float beside the map below a short panel.
-        top:
-            MediaQuery.paddingOf(context).top +
-            inset +
-            _kSearchIslandH +
-            searchToPanelGap +
-            16,
-        child: PanelCollapseTab(
-          collapsed: collapsed,
-          tooltip: collapsed ? l10n.panelExpand : l10n.panelCollapse,
-          onTap: () => _setState(() => _panelCollapsed = !_panelCollapsed),
         ),
       ),
     ];
@@ -750,20 +727,15 @@ extension _MapPanels on _HomeMapScreenState {
 
     return SafeArea(
       child: Align(
-        alignment: Alignment.topLeft,
+        // Bottom-right (owner, 2026-11-23): out of the way of the panel, the
+        // search and the top-right controls. On mobile it sits above the sheet.
+        alignment: Alignment.bottomRight,
         child: IgnorePointer(
           child: Container(
-            // Clear of the desktop panel island (block #6): sit right of it with
-            // the same gap the search island leaves above the panel, so it
-            // doesn't stick to the island's edge.
+            constraints: const BoxConstraints(maxWidth: 360),
             margin: EdgeInsets.only(
-              top: 72,
-              left: _panelActive
-                  ? kPanelIslandInset +
-                        panelWidthFor(MediaQuery.sizeOf(context).width) +
-                        _HomeMapScreenState._kIslandGap
-                  : _HomeMapScreenState._kIslandGap,
-              right: 8,
+              right: 12,
+              bottom: _panelActive ? 12 : _mobileSheetPx + 8,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
@@ -1004,6 +976,9 @@ extension _MapPanels on _HomeMapScreenState {
                 onTap: widget.onOpenDrawer,
               ),
             Column(
+              // Right-aligned so the one-time label beside the transport
+              // toggle grows to the left and the buttons stay in one column.
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 // Jam-mode toggle: shows ONLY while the city has active jams; a
                 // toggle of the same map (fit to all jams / back), with a red count

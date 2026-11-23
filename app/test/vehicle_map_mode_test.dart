@@ -6,15 +6,22 @@ import 'package:latlong2/latlong.dart' as ll;
 
 void main() {
   group('resolveVehicleMapMode — the setting × flag matrix', () {
-    test('flag OFF is a killswitch: always the aquarium, whatever is stored', () {
-      for (final choice in [null, VehicleMapMode.onDemand, VehicleMapMode.aquarium]) {
-        expect(
-          resolveVehicleMapMode(flagOn: false, choice: choice),
+    test(
+      'flag OFF is a killswitch: always the aquarium, whatever is stored',
+      () {
+        for (final choice in [
+          null,
+          VehicleMapMode.onDemand,
           VehicleMapMode.aquarium,
-          reason: 'stored choice $choice must not survive the killswitch',
-        );
-      }
-    });
+        ]) {
+          expect(
+            resolveVehicleMapMode(flagOn: false, choice: choice),
+            VehicleMapMode.aquarium,
+            reason: 'stored choice $choice must not survive the killswitch',
+          );
+        }
+      },
+    );
 
     test('flag ON, nothing chosen → on-demand is the default', () {
       expect(

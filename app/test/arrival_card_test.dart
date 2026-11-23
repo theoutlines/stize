@@ -17,25 +17,24 @@ Arrival _arrival({
   bool scheduled = false,
   LatLon? gps = const LatLon(44.8, 20.46),
   String garageNo = 'BG123',
-}) =>
-    Arrival(
-      line: '79',
-      vehicleType: type,
-      etaMinutes: eta,
-      stopsRemaining: stops,
-      routeId: '79-0',
-      gps: gps,
-      garageNo: garageNo,
-      scheduled: scheduled,
-    );
+}) => Arrival(
+  line: '79',
+  vehicleType: type,
+  etaMinutes: eta,
+  stopsRemaining: stops,
+  routeId: '79-0',
+  gps: gps,
+  garageNo: garageNo,
+  scheduled: scheduled,
+);
 
 Widget _wrap(Widget child) => MaterialApp(
-      theme: StizeTheme.dark(),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('en'),
-      home: Scaffold(body: child),
-    );
+  theme: StizeTheme.dark(),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  locale: const Locale('en'),
+  home: Scaffold(body: child),
+);
 
 Color _cardFill(WidgetTester tester) {
   final material = tester.widget<Material>(
@@ -45,20 +44,26 @@ Color _cardFill(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('a live card is filled with the transit colour, white number',
-      (tester) async {
+  testWidgets('a live card is filled with the transit colour, white number', (
+    tester,
+  ) async {
     await tester.pumpWidget(_wrap(ArrivalTile(arrival: _arrival())));
     expect(_cardFill(tester), StizeColors.dark.transitBus);
     expect(find.text('79'), findsOneWidget);
   });
 
-  testWidgets('ETA shows the number with a min unit; destination + next trip',
-      (tester) async {
-    await tester.pumpWidget(_wrap(ArrivalTile(
-      arrival: _arrival(eta: 6),
-      destination: 'Vukov spomenik',
-      nextEtaMinutes: 9,
-    )));
+  testWidgets('ETA shows the number with a min unit; destination + next trip', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        ArrivalTile(
+          arrival: _arrival(eta: 6),
+          destination: 'Vukov spomenik',
+          nextEtaMinutes: 9,
+        ),
+      ),
+    );
     expect(find.text('6'), findsOneWidget);
     expect(find.text('min'), findsOneWidget);
     expect(find.text('Vukov spomenik'), findsOneWidget);
@@ -67,16 +72,21 @@ void main() {
   });
 
   testWidgets('a due vehicle reads "now", not 0', (tester) async {
-    await tester.pumpWidget(_wrap(ArrivalTile(arrival: _arrival(eta: 0, stops: 0))));
+    await tester.pumpWidget(
+      _wrap(ArrivalTile(arrival: _arrival(eta: 0, stops: 0))),
+    );
     expect(find.text('now'), findsOneWidget);
     expect(find.text('0'), findsNothing);
   });
 
-  testWidgets('a scheduled row shows a clock time and the Scheduled word',
-      (tester) async {
-    await tester.pumpWidget(_wrap(ArrivalTile(
-      arrival: _arrival(scheduled: true, gps: null, eta: 20),
-    )));
+  testWidgets('a scheduled row shows a clock time and the Scheduled word', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        ArrivalTile(arrival: _arrival(scheduled: true, gps: null, eta: 20)),
+      ),
+    );
     expect(find.text('Scheduled'), findsOneWidget);
     // No "min" unit on a scheduled row — it shows a clock time instead.
     expect(find.text('min'), findsNothing);
@@ -84,7 +94,8 @@ void main() {
 
   testWidgets('the trolleybus card is the darkened orange', (tester) async {
     await tester.pumpWidget(
-        _wrap(ArrivalTile(arrival: _arrival(type: VehicleType.trolleybus))));
+      _wrap(ArrivalTile(arrival: _arrival(type: VehicleType.trolleybus))),
+    );
     expect(_cardFill(tester), StizeColors.dark.transitTrolleybus);
   });
 }

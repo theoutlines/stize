@@ -292,6 +292,9 @@ class AppLocalizationsSr extends AppLocalizations {
   String get vehicleModeAll => 'Sav prevoz';
 
   @override
+  String get vehicleModeHint => 'Prevoz uživo';
+
+  @override
   String get vehicleModeTooltip => 'Prevoz na mapi';
 
   @override

@@ -32,7 +32,7 @@ class LevelHeader extends StatelessWidget {
     final scheme = theme.colorScheme;
     final hasBack = backLabel != null && onBack != null;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -61,22 +61,44 @@ class LevelHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -0.5,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ),
               ?trailing,
               const Spacer(),
               if (!hasBack && onClose != null)
-                IconButton(
-                  onPressed: onClose,
-                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                  style: IconButton.styleFrom(
-                    backgroundColor: scheme.onSurface.withValues(alpha: 0.08),
+                // Compact round close: a 32px circle on the title's centre
+                // line (the old 48px filled square sat off the baseline),
+                // inside a 44px tap target.
+                Semantics(
+                  button: true,
+                  label: MaterialLocalizations.of(context).closeButtonTooltip,
+                  child: InkResponse(
+                    onTap: onClose,
+                    radius: 22,
+                    child: SizedBox.square(
+                      dimension: 44,
+                      child: Center(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: scheme.onSurface.withValues(alpha: 0.08),
+                          ),
+                          child: SizedBox.square(
+                            dimension: 32,
+                            child: Icon(
+                              Icons.close,
+                              size: 18,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  icon: const Icon(Icons.close, size: 20),
                 ),
             ],
           ),

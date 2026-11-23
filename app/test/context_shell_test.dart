@@ -5,34 +5,37 @@ import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/widgets/context_shell.dart';
 
 Widget _wrap(Widget child, {Locale? locale}) => MaterialApp(
-      locale: locale,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: Stack(children: [child])),
-    );
+  locale: locale,
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: Scaffold(body: Stack(children: [child])),
+);
 
 void main() {
   group('ContextPanel (desktop shell)', () {
-    testWidgets('hosts the search row, an optional nav row, and the view',
-        (tester) async {
+    testWidgets('hosts the search row, an optional nav row, and the view', (
+      tester,
+    ) async {
       var backTapped = false;
-      await tester.pumpWidget(_wrap(
-        Align(
-          alignment: Alignment.centerLeft,
-          child: ContextPanel(
-            width: 384,
-            searchField: const TextField(
-              key: Key('panel-search'),
-              decoration: InputDecoration(hintText: 'search'),
+      await tester.pumpWidget(
+        _wrap(
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ContextPanel(
+              width: 384,
+              searchField: const TextField(
+                key: Key('panel-search'),
+                decoration: InputDecoration(hintText: 'search'),
+              ),
+              navRow: ContextNavRow(
+                onBack: () => backTapped = true,
+                title: 'Batutova',
+              ),
+              child: const Center(child: Text('STOP-CONTENT')),
             ),
-            navRow: ContextNavRow(
-              onBack: () => backTapped = true,
-              title: 'Batutova',
-            ),
-            child: const Center(child: Text('STOP-CONTENT')),
           ),
         ),
-      ));
+      );
 
       expect(find.byKey(const Key('panel-search')), findsOneWidget);
       expect(find.text('STOP-CONTENT'), findsOneWidget);
@@ -48,16 +51,18 @@ void main() {
     });
 
     testWidgets('nearby view has no nav row (root)', (tester) async {
-      await tester.pumpWidget(_wrap(
-        Align(
-          alignment: Alignment.centerLeft,
-          child: ContextPanel(
-            width: 360,
-            searchField: const SizedBox(key: Key('s')),
-            child: const Center(child: Text('NEARBY')),
+      await tester.pumpWidget(
+        _wrap(
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ContextPanel(
+              width: 360,
+              searchField: const SizedBox(key: Key('s')),
+              child: const Center(child: Text('NEARBY')),
+            ),
           ),
         ),
-      ));
+      );
       expect(find.text('NEARBY'), findsOneWidget);
       expect(find.byType(ContextNavRow), findsNothing);
       expect(find.byIcon(Icons.arrow_back), findsNothing);
@@ -70,21 +75,26 @@ void main() {
         'en': 'Back to vehicle',
         'sr': 'Nazad na vozilo',
       }.entries) {
-        await tester.pumpWidget(_wrap(
-          BackToVehiclePill(line: '79', onTap: () {}, arrowTurns: 0.25),
-          locale: Locale(entry.key),
-        ));
+        await tester.pumpWidget(
+          _wrap(
+            BackToVehiclePill(line: '79', onTap: () {}, arrowTurns: 0.25),
+            locale: Locale(entry.key),
+          ),
+        );
         await tester.pump();
-        expect(find.text(entry.value), findsOneWidget,
-            reason: 'locale ${entry.key}');
+        expect(
+          find.text(entry.value),
+          findsOneWidget,
+          reason: 'locale ${entry.key}',
+        );
       }
     });
 
     testWidgets('tapping resumes follow', (tester) async {
       var tapped = false;
-      await tester.pumpWidget(_wrap(
-        BackToVehiclePill(line: '5', onTap: () => tapped = true),
-      ));
+      await tester.pumpWidget(
+        _wrap(BackToVehiclePill(line: '5', onTap: () => tapped = true)),
+      );
       await tester.tap(find.text('Back to vehicle'));
       expect(tapped, isTrue);
     });

@@ -7,35 +7,34 @@ import 'package:stize/domain/models/jam.dart';
 
 // A straight west→east route along latitude 44.80, ~150m between vertices.
 RoutePath _straightPath() => RoutePath([
-      for (var i = 0; i < 20; i++) ll.LatLng(44.80, 20.40 + i * 0.002),
-    ]);
+  for (var i = 0; i < 20; i++) ll.LatLng(44.80, 20.40 + i * 0.002),
+]);
 
 Jam _jam({
   required ll.LatLng rear,
   required ll.LatLng front,
   required List<ll.LatLng> vehicles,
   String dir = 'r7',
-}) =>
-    Jam(
-      line: '7',
-      directionRouteId: dir,
-      vehicles: [
-        for (final v in vehicles)
-          JamVehicle(
-            garageNo: 'P8020${vehicles.indexOf(v)}',
-            position: v,
-            stopsRemaining: 5,
-            frozenSecs: 360,
-            isSubstitute: false,
-          ),
-      ],
-      frozenSecs: 360,
-      hasSubstitute: false,
-      segmentRear: rear,
-      segmentFront: front,
-      affectedStopIds: const {'sX'},
-      simulated: false,
-    );
+}) => Jam(
+  line: '7',
+  directionRouteId: dir,
+  vehicles: [
+    for (final v in vehicles)
+      JamVehicle(
+        garageNo: 'P8020${vehicles.indexOf(v)}',
+        position: v,
+        stopsRemaining: 5,
+        frozenSecs: 360,
+        isSubstitute: false,
+      ),
+  ],
+  frozenSecs: 360,
+  hasSubstitute: false,
+  segmentRear: rear,
+  segmentFront: front,
+  affectedStopIds: const {'sX'},
+  simulated: false,
+);
 
 void main() {
   group('RoutePath.offsetOf / subPath', () {
@@ -108,29 +107,44 @@ void main() {
     final vehAlong = path.project(const ll.LatLng(44.80, 20.418));
 
     Jam jamAt(double lon, {String dir = 'r7'}) => _jam(
-          rear: ll.LatLng(44.80, lon - 0.001),
-          front: ll.LatLng(44.80, lon + 0.001),
-          vehicles: [ll.LatLng(44.80, lon)],
-          dir: dir,
-        );
+      rear: ll.LatLng(44.80, lon - 0.001),
+      front: ll.LatLng(44.80, lon + 0.001),
+      vehicles: [ll.LatLng(44.80, lon)],
+      dir: dir,
+    );
 
     test('true when the jam is ahead on the same direction', () {
       expect(
-        isJamAhead(jam: jamAt(20.430), vehicleDirectionRouteId: 'r7', path: path, vehicleAlong: vehAlong),
+        isJamAhead(
+          jam: jamAt(20.430),
+          vehicleDirectionRouteId: 'r7',
+          path: path,
+          vehicleAlong: vehAlong,
+        ),
         isTrue,
       );
     });
 
     test('false for the opposite direction (different direction_route_id)', () {
       expect(
-        isJamAhead(jam: jamAt(20.430, dir: 'r7-1'), vehicleDirectionRouteId: 'r7', path: path, vehicleAlong: vehAlong),
+        isJamAhead(
+          jam: jamAt(20.430, dir: 'r7-1'),
+          vehicleDirectionRouteId: 'r7',
+          path: path,
+          vehicleAlong: vehAlong,
+        ),
         isFalse,
       );
     });
 
     test('false when the jam is already behind the vehicle', () {
       expect(
-        isJamAhead(jam: jamAt(20.405), vehicleDirectionRouteId: 'r7', path: path, vehicleAlong: vehAlong),
+        isJamAhead(
+          jam: jamAt(20.405),
+          vehicleDirectionRouteId: 'r7',
+          path: path,
+          vehicleAlong: vehAlong,
+        ),
         isFalse,
       );
     });
@@ -144,13 +158,20 @@ void main() {
       vehicles: const [ll.LatLng(44.80, 20.410), ll.LatLng(44.80, 20.412)],
     );
 
-    test('a far-away jam with no context match is NOT relevant (quiet button)', () {
-      expect(
-        isJamRelevant(jam,
-            followedLine: '2', openStopId: 'other', userLocation: const ll.LatLng(44.90, 20.60)),
-        isFalse,
-      );
-    });
+    test(
+      'a far-away jam with no context match is NOT relevant (quiet button)',
+      () {
+        expect(
+          isJamRelevant(
+            jam,
+            followedLine: '2',
+            openStopId: 'other',
+            userLocation: const ll.LatLng(44.90, 20.60),
+          ),
+          isFalse,
+        );
+      },
+    );
 
     test('a jam within the Nearby radius of the user IS relevant', () {
       expect(
@@ -164,7 +185,10 @@ void main() {
     });
 
     test('a jam touching the open stop IS relevant', () {
-      expect(isJamRelevant(jam, openStopId: 'sX'), isTrue); // sX is in affectedStopIds
+      expect(
+        isJamRelevant(jam, openStopId: 'sX'),
+        isTrue,
+      ); // sX is in affectedStopIds
     });
   });
 
@@ -193,17 +217,38 @@ void main() {
             'line': '5',
             'direction_route_id': 'r5',
             'vehicles': [
-              {'garage_no': 'P80201', 'lat': 44.8, 'lon': 20.46, 'stops_remaining': 3, 'frozen_secs': 340, 'is_substitute': false},
-              {'garage_no': 'P80202', 'lat': 44.801, 'lon': 20.461, 'stops_remaining': 4, 'frozen_secs': 360, 'is_substitute': false},
+              {
+                'garage_no': 'P80201',
+                'lat': 44.8,
+                'lon': 20.46,
+                'stops_remaining': 3,
+                'frozen_secs': 340,
+                'is_substitute': false,
+              },
+              {
+                'garage_no': 'P80202',
+                'lat': 44.801,
+                'lon': 20.461,
+                'stops_remaining': 4,
+                'frozen_secs': 360,
+                'is_substitute': false,
+              },
             ],
             'frozen_secs': 360,
             'has_substitute': false,
-            'segment': {'rear': {'lat': 44.79, 'lon': 20.45}, 'front': {'lat': 44.81, 'lon': 20.47}},
+            'segment': {
+              'rear': {'lat': 44.79, 'lon': 20.45},
+              'front': {'lat': 44.81, 'lon': 20.47},
+            },
             'affected_stop_ids': ['a', 'b', 'c'],
-          }
+          },
         ],
         'substitutions': [
-          {'line': '5', 'direction_route_id': 'r5', 'garage_nos': ['P93475']}
+          {
+            'line': '5',
+            'direction_route_id': 'r5',
+            'garage_nos': ['P93475'],
+          },
         ],
       });
       expect(board.feedHealthy, isTrue);
@@ -215,9 +260,16 @@ void main() {
     });
 
     test('feed_healthy defaults true when absent, false is honoured', () {
-      expect(JamsBoard.fromJson({'jams': [], 'substitutions': []}).feedHealthy, isTrue);
       expect(
-        JamsBoard.fromJson({'feed_healthy': false, 'jams': [], 'substitutions': []}).feedHealthy,
+        JamsBoard.fromJson({'jams': [], 'substitutions': []}).feedHealthy,
+        isTrue,
+      );
+      expect(
+        JamsBoard.fromJson({
+          'feed_healthy': false,
+          'jams': [],
+          'substitutions': [],
+        }).feedHealthy,
         isFalse,
       );
     });

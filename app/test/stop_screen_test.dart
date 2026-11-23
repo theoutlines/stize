@@ -16,7 +16,13 @@ import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
 import 'package:stize/presentation/screens/stop_screen.dart';
 
-const _batutovaStop = Stop(stopId: '20091', name: 'Batutova', lat: 44.795374, lon: 20.499713, lines: ['79']);
+const _batutovaStop = Stop(
+  stopId: '20091',
+  name: 'Batutova',
+  lat: 44.795374,
+  lon: 20.499713,
+  lines: ['79'],
+);
 
 // Real captured shape from the live backend for stop 20091 (Batutova, line 79).
 final _sampleBoard = ArrivalsBoard.fromJson({
@@ -58,10 +64,12 @@ class _FakeFavoritesRepository implements FavoritesRepository {
   Future<List<FavoriteStop>> getFavorites() async => List.unmodifiable(_stops);
 
   @override
-  Future<bool> isFavorite(String stopId) async => _stops.any((s) => s.stopId == stopId);
+  Future<bool> isFavorite(String stopId) async =>
+      _stops.any((s) => s.stopId == stopId);
 
   @override
-  Future<void> remove(String stopId) async => _stops.removeWhere((s) => s.stopId == stopId);
+  Future<void> remove(String stopId) async =>
+      _stops.removeWhere((s) => s.stopId == stopId);
 }
 
 Widget _wrap(
@@ -75,7 +83,8 @@ Widget _wrap(
   return ProviderScope(
     overrides: [
       arrivalsRepositoryProvider.overrideWithValue(arrivals),
-      if (favorites != null) favoritesRepositoryProvider.overrideWithValue(favorites),
+      if (favorites != null)
+        favoritesRepositoryProvider.overrideWithValue(favorites),
       alertsProvider.overrideWith((ref) async => alerts),
       stopLocationProvider('20091').overrideWith((ref) async => stopLocation),
       appConfigProvider.overrideWith(
@@ -99,7 +108,9 @@ void main() {
   setUp(() => kMapRenderingEnabled = false);
   tearDown(() => kMapRenderingEnabled = true);
 
-  testWidgets('renders a live arrival matching the real backend contract', (tester) async {
+  testWidgets('renders a live arrival matching the real backend contract', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrap(
         const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
@@ -152,12 +163,16 @@ void main() {
     expect(find.text('79'), findsOneWidget);
     // ... but the map slot is replaced by the explained empty state.
     expect(
-      find.text('No live-tracked vehicles to map right now — see the arrivals below.'),
+      find.text(
+        'No live-tracked vehicles to map right now — see the arrivals below.',
+      ),
       findsOneWidget,
     );
   });
 
-  testWidgets('renders a scheduled (timetable) arrival marked as such', (tester) async {
+  testWidgets('renders a scheduled (timetable) arrival marked as such', (
+    tester,
+  ) async {
     final board = ArrivalsBoard.fromJson({
       'stop_id': '20091',
       'stop_name': 'Batutova',
@@ -188,13 +203,17 @@ void main() {
 
     expect(find.text('79'), findsOneWidget);
     expect(
-        find.byWidgetPredicate(
-            (w) => w is Text && RegExp(r'^\d{2}:\d{2}$').hasMatch(w.data ?? '')),
-        findsOneWidget); // a planned time reads as a clock
+      find.byWidgetPredicate(
+        (w) => w is Text && RegExp(r'^\d{2}:\d{2}$').hasMatch(w.data ?? ''),
+      ),
+      findsOneWidget,
+    ); // a planned time reads as a clock
     expect(find.text('Scheduled'), findsOneWidget); // planned marker
   });
 
-  testWidgets('shows the human empty state when there are no arrivals', (tester) async {
+  testWidgets('shows the human empty state when there are no arrivals', (
+    tester,
+  ) async {
     final emptyBoard = ArrivalsBoard.fromJson({
       'stop_id': '20091',
       'stop_name': 'Batutova',
@@ -215,7 +234,9 @@ void main() {
     expect(find.text("It's quiet here right now"), findsOneWidget);
   });
 
-  testWidgets('shows the kill-switch state without a scary error', (tester) async {
+  testWidgets('shows the kill-switch state without a scary error', (
+    tester,
+  ) async {
     final killedBoard = ArrivalsBoard.fromJson({
       'stop_id': '20091',
       'stop_name': '',
@@ -249,33 +270,36 @@ void main() {
     expect(find.text('Looks like the connection dropped'), findsOneWidget);
   });
 
-  testWidgets('shows a route alert banner when it matches a line serving this stop', (tester) async {
-    final alert = RouteAlert(
-      id: 'test-alert',
-      url: 'https://www.bgprevoz.rs/vesti/test-alert',
-      title: 'Test',
-      publishedAt: DateTime(2026, 1, 1),
-      lines: const ['79'],
-      stops: const [],
-      validFrom: null,
-      validUntil: null,
-      confidence: 'line',
-      summary: 'Linija 79 menja trasu.',
-    );
+  testWidgets(
+    'shows a route alert banner when it matches a line serving this stop',
+    (tester) async {
+      final alert = RouteAlert(
+        id: 'test-alert',
+        url: 'https://www.bgprevoz.rs/vesti/test-alert',
+        title: 'Test',
+        publishedAt: DateTime(2026, 1, 1),
+        lines: const ['79'],
+        stops: const [],
+        validFrom: null,
+        validUntil: null,
+        confidence: 'line',
+        summary: 'Linija 79 menja trasu.',
+      );
 
-    await tester.pumpWidget(
-      _wrap(
-        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
-        arrivals: _FakeArrivalsRepository(_sampleBoard),
-        favorites: _FakeFavoritesRepository(),
-        alerts: [alert],
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _wrap(
+          const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+          arrivals: _FakeArrivalsRepository(_sampleBoard),
+          favorites: _FakeFavoritesRepository(),
+          alerts: [alert],
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Linija 79 menja trasu.'), findsOneWidget);
-    expect(find.text('Route change'), findsOneWidget);
-  });
+      expect(find.text('Linija 79 menja trasu.'), findsOneWidget);
+      expect(find.text('Route change'), findsOneWidget);
+    },
+  );
 
   testWidgets('does not show an alert for an unrelated line', (tester) async {
     final alert = RouteAlert(
@@ -310,9 +334,28 @@ void main() {
     // were a Wrap that ballooned into a tall block; now they must be a single
     // horizontally-scrolling row that neither overflows nor drops chips.
     const manyLines = [
-      '401', '402', '403', '404', '405', '407', '408', '410', '411', '412',
-      '413', '525', '526', '527', '551', '552', '553', '554', '555', '860',
-      '862', '863',
+      '401',
+      '402',
+      '403',
+      '404',
+      '405',
+      '407',
+      '408',
+      '410',
+      '411',
+      '412',
+      '413',
+      '525',
+      '526',
+      '527',
+      '551',
+      '552',
+      '553',
+      '554',
+      '555',
+      '860',
+      '862',
+      '863',
     ];
     const bacevac = Stop(
       stopId: '20091',
@@ -327,8 +370,22 @@ void main() {
       'stop_name': 'Baćevac',
       'updated_at': DateTime.now().toUtc().toIso8601String(),
       'arrivals': [
-        {'line': '401', 'vehicle_type': 'bus', 'eta_minutes': 6, 'stops_remaining': 3, 'route_id': '00401', 'gps': {'lat': 44.65, 'lon': 20.28}},
-        {'line': '405', 'vehicle_type': 'bus', 'eta_minutes': 9, 'stops_remaining': 7, 'route_id': '00405', 'gps': {'lat': 44.66, 'lon': 20.29}},
+        {
+          'line': '401',
+          'vehicle_type': 'bus',
+          'eta_minutes': 6,
+          'stops_remaining': 3,
+          'route_id': '00401',
+          'gps': {'lat': 44.65, 'lon': 20.28},
+        },
+        {
+          'line': '405',
+          'vehicle_type': 'bus',
+          'eta_minutes': 9,
+          'stops_remaining': 7,
+          'route_id': '00405',
+          'gps': {'lat': 44.66, 'lon': 20.29},
+        },
       ],
       'service_status': 'ok',
     });
@@ -350,9 +407,11 @@ void main() {
     // Axis.horizontal Scrollable), not a Wrap.
     final horizontal = tester
         .widgetList<Scrollable>(find.byType(Scrollable))
-        .where((s) =>
-            s.axisDirection == AxisDirection.right ||
-            s.axisDirection == AxisDirection.left);
+        .where(
+          (s) =>
+              s.axisDirection == AxisDirection.right ||
+              s.axisDirection == AxisDirection.left,
+        );
     expect(horizontal, isNotEmpty);
 
     // Every chip is built — including the last one, off-screen to the right —
@@ -370,7 +429,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('3 stops away'), findsOneWidget); // 401 stays
-    expect(find.text('7 stops away'), findsNothing);   // 405 filtered out
+    expect(find.text('7 stops away'), findsNothing); // 405 filtered out
   });
 
   testWidgets('toggling favorite updates the star icon', (tester) async {

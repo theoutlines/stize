@@ -291,6 +291,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleModeAll => 'All transport';
 
   @override
+  String get vehicleModeHint => 'Live transport';
+
+  @override
   String get vehicleModeTooltip => 'Transport on the map';
 
   @override

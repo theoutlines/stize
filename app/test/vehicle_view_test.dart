@@ -26,9 +26,7 @@ const _catalogJson = '''
 Widget _wrap({required String? garageNo}) {
   final catalog = FleetCatalog.tryParse(_catalogJson)!;
   return ProviderScope(
-    overrides: [
-      fleetCatalogProvider.overrideWith((ref) async => catalog),
-    ],
+    overrides: [fleetCatalogProvider.overrideWith((ref) async => catalog)],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -53,26 +51,31 @@ void main() {
     expect(find.text('On the move'), findsOneWidget);
   });
 
-  testWidgets('a matched garage shows the About card + model + CTA (decision #7)',
-      (tester) async {
-    await tester.pumpWidget(_wrap(garageNo: '81540'));
-    await tester.pumpAndSettle();
-    expect(find.text('About the vehicle'), findsOneWidget);
-    expect(find.text('Bozankaya'), findsOneWidget);
-    expect(find.textContaining('View model details'), findsOneWidget);
-  });
+  testWidgets(
+    'a matched garage shows the About card + model + CTA (decision #7)',
+    (tester) async {
+      await tester.pumpWidget(_wrap(garageNo: '81540'));
+      await tester.pumpAndSettle();
+      expect(find.text('About the vehicle'), findsOneWidget);
+      expect(find.text('Bozankaya'), findsOneWidget);
+      expect(find.textContaining('View model details'), findsOneWidget);
+    },
+  );
 
-  testWidgets('a junk placeholder id hides the About card entirely (decision #7)',
-      (tester) async {
-    await tester.pumpWidget(_wrap(garageNo: 'P5'));
-    await tester.pumpAndSettle();
-    // No card, no CTA — the placeholder number is never surfaced.
-    expect(find.text('About the vehicle'), findsNothing);
-    expect(find.textContaining('View model details'), findsNothing);
-  });
+  testWidgets(
+    'a junk placeholder id hides the About card entirely (decision #7)',
+    (tester) async {
+      await tester.pumpWidget(_wrap(garageNo: 'P5'));
+      await tester.pumpAndSettle();
+      // No card, no CTA — the placeholder number is never surfaced.
+      expect(find.text('About the vehicle'), findsNothing);
+      expect(find.textContaining('View model details'), findsNothing);
+    },
+  );
 
-  testWidgets('a real-but-unmatched garage still shows (muted), no CTA',
-      (tester) async {
+  testWidgets('a real-but-unmatched garage still shows (muted), no CTA', (
+    tester,
+  ) async {
     // 70260 is a plausible number outside every class range → unknown.
     await tester.pumpWidget(_wrap(garageNo: '70260'));
     await tester.pumpAndSettle();
@@ -82,25 +85,29 @@ void main() {
   });
 
   testWidgets(
-      'a line with no route geometry shows the honest note, not a route list '
-      '(owner R4 #2)', (tester) async {
-    await tester.pumpWidget(ProviderScope(
-      overrides: [fleetCatalogProvider.overrideWith((ref) async => null)],
-      child: const MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: VehicleView(
-            line: 'Ada 4',
-            type: VehicleType.bus,
-            garageNo: null,
-            routeUnavailable: true,
+    'a line with no route geometry shows the honest note, not a route list '
+    '(owner R4 #2)',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [fleetCatalogProvider.overrideWith((ref) async => null)],
+          child: const MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: VehicleView(
+                line: 'Ada 4',
+                type: VehicleType.bus,
+                garageNo: null,
+                routeUnavailable: true,
+              ),
+            ),
           ),
         ),
-      ),
-    ));
-    await tester.pumpAndSettle();
-    expect(find.text('Route unavailable for this line'), findsOneWidget);
-    expect(find.text('Rest of the route'), findsNothing);
-  });
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Route unavailable for this line'), findsOneWidget);
+      expect(find.text('Rest of the route'), findsNothing);
+    },
+  );
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 
 import '../../core/vehicle_map_mode.dart';
 import '../../data/analytics/event_logger.dart';
@@ -15,13 +17,54 @@ import '../providers/providers.dart';
 ///
 /// The choice is persisted, so it survives a restart, and the map switches on
 /// the fly — no restart, no reload.
-class VehicleModeToggle extends ConsumerWidget {
+class VehicleModeToggle extends ConsumerStatefulWidget {
   const VehicleModeToggle({super.key});
 
+  /// SharedPreferences key: the one-time label has been shown on this device.
+  static const hintSeenKey = 'vehicle_mode_hint_seen';
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VehicleModeToggle> createState() => _VehicleModeToggleState();
+}
+
+class _VehicleModeToggleState extends ConsumerState<VehicleModeToggle> {
+  // One-time label next to the button (owner, 2026-11-23): a blind panel read
+  // the corner button as "map layers", so the first time it appears it says
+  // what it is. Shown once per device, hides after a few seconds or on tap.
+  bool _hint = false;
+  bool _hintChecked = false;
+  Timer? _hintTimer;
+
+  Future<void> _maybeShowHint() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(VehicleModeToggle.hintSeenKey) ?? false) return;
+    await prefs.setBool(VehicleModeToggle.hintSeenKey, true);
+    if (!mounted) return;
+    setState(() => _hint = true);
+    _hintTimer = Timer(const Duration(seconds: 6), _hideHint);
+  }
+
+  void _hideHint() {
+    _hintTimer?.cancel();
+    if (mounted && _hint) setState(() => _hint = false);
+  }
+
+  @override
+  void dispose() {
+    _hintTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     if (!ref.watch(vehiclesOnDemandEnabledProvider)) {
       return const SizedBox.shrink();
+    }
+    // The flag arrives with the async config, so the first-show check runs on
+    // the first build where the button is actually visible.
+    if (!_hintChecked) {
+      _hintChecked = true;
+      _maybeShowHint();
     }
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
@@ -37,29 +80,64 @@ class VehicleModeToggle extends ConsumerWidget {
 
     // The gap to the button below is ours, so that hiding this widget hides the
     // spacing with it and the control stack reads exactly as it does today.
+    final button = PointerInterceptor(
+      child: Material(
+        color: aquarium
+            ? theme.colorScheme.onSurface
+            : theme.colorScheme.surface,
+        elevation: 3,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: IconButton(
+          // Bus with signal arcs = live vehicles (owner pick 2026-11-23 after a
+          // blind comprehension panel; replaces the misleading layers glyph).
+          icon: SvgPicture.asset(
+            'assets/icons/live_transport.svg',
+            width: 24,
+            height: 24,
+            colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
+          ),
+          tooltip: l10n.vehicleModeTooltip,
+          onPressed: () {
+            _hideHint();
+            _flip(context, ref, mode, l10n);
+          },
+        ),
+      ),
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: PointerInterceptor(
-        child: Material(
-          color: aquarium
-              ? theme.colorScheme.onSurface
-              : theme.colorScheme.surface,
-          elevation: 3,
-          shape: const CircleBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: IconButton(
-            // Bus with signal arcs = live vehicles (owner pick 2026-11-23 after a
-            // blind comprehension panel; replaces the misleading layers glyph).
-            icon: SvgPicture.asset(
-              'assets/icons/live_transport.svg',
-              width: 24,
-              height: 24,
-              colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
-            ),
-            tooltip: l10n.vehicleModeTooltip,
-            onPressed: () => _flip(context, ref, mode, l10n),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: _hint
+                ? Padding(
+                    key: const ValueKey('hint'),
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Material(
+                      color: theme.colorScheme.inverseSurface,
+                      borderRadius: BorderRadius.circular(16),
+                      elevation: 3,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        child: Text(
+                          l10n.vehicleModeHint,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.onInverseSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('none')),
           ),
-        ),
+          button,
+        ],
       ),
     );
   }

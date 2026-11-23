@@ -5,8 +5,14 @@ import 'package:stize/domain/models/stop.dart';
 import 'package:stize/domain/models/vehicle_type.dart';
 
 // A stop carrying explicit authoritative types (as the GTFS build now emits).
-Stop _typed(List<VehicleType> types) =>
-    Stop(stopId: '1', name: 'X', lat: 44.8, lon: 20.4, lines: const [], types: types);
+Stop _typed(List<VehicleType> types) => Stop(
+  stopId: '1',
+  name: 'X',
+  lat: 44.8,
+  lon: 20.4,
+  lines: const [],
+  types: types,
+);
 
 // A stop with only line numbers and no `types` (a bundle predating the field /
 // the offline cache) — classification must fall back to the line→type index.
@@ -77,40 +83,63 @@ void main() {
     });
   });
 
-  group('stopMarkerType — tram dominance preserved, fed authoritative types', () {
-    test('tram + night bus reads as tram, not mixed (from per-stop types)', () {
-      // Real case: "Batutova" — trams plus night buses. Stays a tram stop.
-      expect(stopMarkerType(_typed([VehicleType.tram, VehicleType.bus])), VehicleType.tram);
-    });
-
-    test('tram + trolley + bus still reads as tram', () {
-      expect(
-        stopMarkerType(_typed([VehicleType.tram, VehicleType.trolleybus, VehicleType.bus])),
-        VehicleType.tram,
+  group(
+    'stopMarkerType — tram dominance preserved, fed authoritative types',
+    () {
+      test(
+        'tram + night bus reads as tram, not mixed (from per-stop types)',
+        () {
+          // Real case: "Batutova" — trams plus night buses. Stays a tram stop.
+          expect(
+            stopMarkerType(_typed([VehicleType.tram, VehicleType.bus])),
+            VehicleType.tram,
+          );
+        },
       );
-    });
 
-    test('pure bus stop is a bus stop', () {
-      expect(stopMarkerType(_typed([VehicleType.bus])), VehicleType.bus);
-    });
+      test('tram + trolley + bus still reads as tram', () {
+        expect(
+          stopMarkerType(
+            _typed([VehicleType.tram, VehicleType.trolleybus, VehicleType.bus]),
+          ),
+          VehicleType.tram,
+        );
+      });
 
-    test('bus + trolley (no tram) is the unified mixed marker', () {
-      expect(stopMarkerType(_typed([VehicleType.bus, VehicleType.trolleybus])), isNull);
-    });
+      test('pure bus stop is a bus stop', () {
+        expect(stopMarkerType(_typed([VehicleType.bus])), VehicleType.bus);
+      });
 
-    test('a 3A/49/94 stop (all buses) is a BUS stop — the Topčiderski park bug', () {
-      // Before the fix this rendered as a tram because "3A" → "3" → tram.
-      expect(stopMarkerType(_lines(['3A', '49', '94'])), VehicleType.bus);
-    });
-  });
+      test('bus + trolley (no tram) is the unified mixed marker', () {
+        expect(
+          stopMarkerType(_typed([VehicleType.bus, VehicleType.trolleybus])),
+          isNull,
+        );
+      });
+
+      test(
+        'a 3A/49/94 stop (all buses) is a BUS stop — the Topčiderski park bug',
+        () {
+          // Before the fix this rendered as a tram because "3A" → "3" → tram.
+          expect(stopMarkerType(_lines(['3A', '49', '94'])), VehicleType.bus);
+        },
+      );
+    },
+  );
 
   group('stopImageFor', () {
     test('tram + night bus uses the tram image', () {
-      expect(stopImageFor(_typed([VehicleType.tram, VehicleType.bus])), MapImages.tram);
+      expect(
+        stopImageFor(_typed([VehicleType.tram, VehicleType.bus])),
+        MapImages.tram,
+      );
     });
 
     test('bus + trolley uses the mixed image', () {
-      expect(stopImageFor(_typed([VehicleType.bus, VehicleType.trolleybus])), MapImages.mixedStop);
+      expect(
+        stopImageFor(_typed([VehicleType.bus, VehicleType.trolleybus])),
+        MapImages.mixedStop,
+      );
     });
 
     test('pure bus uses the bus image', () {

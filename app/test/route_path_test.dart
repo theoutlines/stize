@@ -63,12 +63,14 @@ void main() {
     // A fix a hair closer to the outbound leg (lat 44.80008 vs 44.8000 / 44.8003).
     const nearOutbound = ll.LatLng(44.80008, 20.5100);
 
-    test('with no anchor, an ambiguous fix snaps to the nearest (outbound) leg',
-        () {
-      final d = outAndBack.project(nearOutbound);
-      // Outbound is the first segment, so its along-distance is in the first half.
-      expect(d, lessThan(outAndBack.length / 2));
-    });
+    test(
+      'with no anchor, an ambiguous fix snaps to the nearest (outbound) leg',
+      () {
+        final d = outAndBack.project(nearOutbound);
+        // Outbound is the first segment, so its along-distance is in the first half.
+        expect(d, lessThan(outAndBack.length / 2));
+      },
+    );
 
     test('a return-leg anchor pulls the same fix onto the return leg', () {
       final d = outAndBack.project(nearOutbound, near: returnMid);

@@ -32,9 +32,9 @@ Color _parse(String v) {
 
 void main() {
   // `flutter test` runs from app/, the token JSON lives at the repo root.
-  final json = jsonDecode(
-    File('../design/tokens/stize.tokens.json').readAsStringSync(),
-  ) as Map<String, dynamic>;
+  final json =
+      jsonDecode(File('../design/tokens/stize.tokens.json').readAsStringSync())
+          as Map<String, dynamic>;
   final color = json['color'] as Map<String, dynamic>;
   final themes = [
     for (final t in color['themes'] as List) (t as Map)['id'] as String,
@@ -97,19 +97,41 @@ void main() {
   });
 
   test('type scale stays on the system: sizes and weights', () {
-    final allowedSizes = {10.0, 12.0, 16.0, 20.0, 24.0, 28.0, 32.0, 40.0, 44.0, 104.0};
+    final allowedSizes = {
+      10.0,
+      12.0,
+      16.0,
+      20.0,
+      24.0,
+      28.0,
+      32.0,
+      40.0,
+      44.0,
+      104.0,
+    };
     for (final s in [
-      StizeType.landingHero, StizeType.etaHero, StizeType.bigNumber,
-      StizeType.heroTitle, StizeType.h1, StizeType.date, StizeType.section,
-      StizeType.body, StizeType.label, StizeType.subtitle,
-      StizeType.lineNumber, StizeType.control, StizeType.caption,
-      StizeType.note, StizeType.mono,
+      StizeType.landingHero,
+      StizeType.etaHero,
+      StizeType.bigNumber,
+      StizeType.heroTitle,
+      StizeType.h1,
+      StizeType.date,
+      StizeType.section,
+      StizeType.body,
+      StizeType.label,
+      StizeType.subtitle,
+      StizeType.lineNumber,
+      StizeType.control,
+      StizeType.caption,
+      StizeType.note,
+      StizeType.mono,
     ]) {
       expect(allowedSizes, contains(s.fontSize));
-      expect(
-        [FontWeight.w400, FontWeight.w500, FontWeight.w600],
-        contains(s.fontWeight),
-      );
+      expect([
+        FontWeight.w400,
+        FontWeight.w500,
+        FontWeight.w600,
+      ], contains(s.fontWeight));
     }
     // 600 is reserved for line numbers.
     expect(StizeType.lineNumber.fontWeight, FontWeight.w600);

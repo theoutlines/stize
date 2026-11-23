@@ -50,10 +50,6 @@ class ContextPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // A header (search / nav row) gets a divider under it; the plain nearby
-    // island has neither, so it shows NO top divider — the first card starts
-    // immediately (owner acceptance #1b).
-    final hasHeader = searchField != null || navRow != null;
     return PointerInterceptor(
       child: Material(
         elevation: 3,
@@ -79,71 +75,11 @@ class ContextPanel extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(4, 0, 8, 4),
                     child: navRow!,
                   ),
-                if (hasHeader) const Divider(height: 1),
                 Flexible(
                   fit: hug ? FlexFit.loose : FlexFit.tight,
                   child: child,
                 ),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The Google-Maps-style collapse control: a small vertically-centred tab docked
-/// to the panel's right edge. Tapping it hides the panel (the caller slides it
-/// off and drops the left map inset to zero) and flips the chevron; tapping again
-/// restores it. Styled to the app's surface theme (not a raw Material button).
-///
-/// Purely presentational — [collapsed] drives the chevron direction and [onTap]
-/// toggles. The host positions it (right edge when open, screen edge when
-/// collapsed) and animates the move.
-class PanelCollapseTab extends StatelessWidget {
-  const PanelCollapseTab({
-    super.key,
-    required this.collapsed,
-    required this.onTap,
-    this.tooltip,
-  });
-
-  final bool collapsed;
-  final VoidCallback onTap;
-  final String? tooltip;
-
-  static const double width = 22;
-  static const double height = 48;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // Rounded on the OUTER (right) side only, so it reads as a tab growing out of
-    // the panel's edge — same idea in both states (the panel edge, or the screen
-    // edge once collapsed).
-    const radius = BorderRadius.only(
-      topRight: Radius.circular(8),
-      bottomRight: Radius.circular(8),
-    );
-    return PointerInterceptor(
-      child: Material(
-        color: theme.colorScheme.surface,
-        elevation: 3,
-        borderRadius: radius,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Tooltip(
-            message: tooltip ?? '',
-            child: SizedBox(
-              width: width,
-              height: height,
-              child: Icon(
-                collapsed ? Icons.chevron_right : Icons.chevron_left,
-                size: 20,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
             ),
           ),
         ),

@@ -88,6 +88,7 @@
   "settingsThemeDark": "Tamna",
   "vehicleModeOnDemand": "Na zahtev",
   "vehicleModeAll": "Sav prevoz",
+  "vehicleModeHint": "Prevoz uživo",
   "vehicleModeTooltip": "Prevoz na mapi",
   "vehicleModeSwitched": "Prevoz na mapi: {mode}",
   "aboutTitle": "O aplikaciji Stiže",

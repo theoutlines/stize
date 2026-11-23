@@ -46,7 +46,9 @@ Future<void> _open(WidgetTester tester, Widget host) async {
 }
 
 void main() {
-  testWidgets('menu lists destinations without a redundant Map item', (tester) async {
+  testWidgets('menu lists destinations without a redundant Map item', (
+    tester,
+  ) async {
     await _open(tester, _host());
     expect(find.text('My Stops'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
@@ -55,8 +57,17 @@ void main() {
     expect(find.text('About Stiže'), findsOneWidget);
     expect(find.text('Licenses'), findsNothing);
     // Every row is at least 44 px tall (thumb target).
-    for (final label in ['My Stops', 'Settings', 'Share feedback', 'About Stiže']) {
-      final box = tester.getSize(find.ancestor(of: find.text(label), matching: find.byType(InkWell)).first);
+    for (final label in [
+      'My Stops',
+      'Settings',
+      'Share feedback',
+      'About Stiže',
+    ]) {
+      final box = tester.getSize(
+        find
+            .ancestor(of: find.text(label), matching: find.byType(InkWell))
+            .first,
+      );
       expect(box.height, greaterThanOrEqualTo(44), reason: label);
     }
     // The map is always underneath; no "Map" destination.
@@ -70,21 +81,23 @@ void main() {
 
   testWidgets('support row opens the donate URL', (tester) async {
     final launched = <Uri>[];
-    TestWidgetsFlutterBinding.ensureInitialized()
-        .defaultBinaryMessenger
+    TestWidgetsFlutterBinding.ensureInitialized().defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/url_launcher'),
-      (call) async {
-        if (call.method == 'launch' || call.method == 'launchUrl') {
-          launched.add(Uri.parse((call.arguments as Map)['url'] as String));
-        }
-        return true;
-      },
+          const MethodChannel('plugins.flutter.io/url_launcher'),
+          (call) async {
+            if (call.method == 'launch' || call.method == 'launchUrl') {
+              launched.add(Uri.parse((call.arguments as Map)['url'] as String));
+            }
+            return true;
+          },
+        );
+    addTearDown(
+      () => TestWidgetsFlutterBinding.ensureInitialized().defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('plugins.flutter.io/url_launcher'),
+            null,
+          ),
     );
-    addTearDown(() => TestWidgetsFlutterBinding.ensureInitialized()
-        .defaultBinaryMessenger
-        .setMockMethodCallHandler(
-            const MethodChannel('plugins.flutter.io/url_launcher'), null));
     await _open(tester, _host(donateUrl: 'https://example.org/donate'));
     await tester.tap(find.text('Support Stiže'));
     await tester.pumpAndSettle();
@@ -98,7 +111,9 @@ void main() {
     expect(find.text('My Stops'), findsNothing);
   });
 
-  testWidgets('feedback sheet keeps the form behind the feedback_form flag', (tester) async {
+  testWidgets('feedback sheet keeps the form behind the feedback_form flag', (
+    tester,
+  ) async {
     await _open(tester, _host(feedbackOn: false));
     await tester.tap(find.text('Share feedback'));
     await tester.pumpAndSettle();
@@ -106,7 +121,9 @@ void main() {
     expect(find.text('Write to me'), findsNothing);
   });
 
-  testWidgets('feedback form action shows when feedback_form is on', (tester) async {
+  testWidgets('feedback form action shows when feedback_form is on', (
+    tester,
+  ) async {
     await _open(tester, _host(feedbackOn: true));
     await tester.tap(find.text('Share feedback'));
     await tester.pumpAndSettle();

@@ -26,8 +26,11 @@ void _expectHealthyLiveRows(ArrivalsBoard board, String label) {
   // A live row is a real tracked vehicle: it has a GPS fix...
   for (final a in live) {
     expect(a.gps, isNotNull, reason: '$label live row must carry gps');
-    expect(isPlaceholderGarage(a.garageNo), isFalse,
-        reason: '$label live row must not be a placeholder');
+    expect(
+      isPlaceholderGarage(a.garageNo),
+      isFalse,
+      reason: '$label live row must not be a placeholder',
+    );
   }
   // ...and not every row collapses to "here" (stops_remaining == 0): at least
   // one live row is genuinely several stops away, exactly what the tile renders
@@ -35,7 +38,8 @@ void _expectHealthyLiveRows(ArrivalsBoard board, String label) {
   expect(
     live.any((a) => (a.stopsRemaining ?? 0) > 0),
     isTrue,
-    reason: '$label must have a live row that is >0 stops away (not all "here")',
+    reason:
+        '$label must have a live row that is >0 stops away (not all "here")',
   );
 }
 

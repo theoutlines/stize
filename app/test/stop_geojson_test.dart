@@ -25,27 +25,31 @@ void main() {
     expect(() => jsonDecode(text), throwsFormatException);
   });
 
-  test('jsonEncode serialisation stays valid and round-trips the quoted name', () {
-    final text = jsonEncode({
-      'type': 'FeatureCollection',
-      'features': [
-        {
-          'type': 'Feature',
-          'geometry': {
-            'type': 'Point',
-            'coordinates': [20.5, 44.8],
+  test(
+    'jsonEncode serialisation stays valid and round-trips the quoted name',
+    () {
+      final text = jsonEncode({
+        'type': 'FeatureCollection',
+        'features': [
+          {
+            'type': 'Feature',
+            'geometry': {
+              'type': 'Point',
+              'coordinates': [20.5, 44.8],
+            },
+            'properties': {'stopId': '20190', 'name': quotedName},
           },
-          'properties': {'stopId': '20190', 'name': quotedName},
-        },
-      ],
-    });
-    final decoded = jsonDecode(text) as Map<String, dynamic>;
-    final feature = (decoded['features'] as List).single as Map<String, dynamic>;
-    final props = feature['properties'] as Map<String, dynamic>;
-    expect(props['name'], quotedName);
-    expect(
-      (feature['geometry'] as Map<String, dynamic>)['coordinates'],
-      [20.5, 44.8],
-    );
-  });
+        ],
+      });
+      final decoded = jsonDecode(text) as Map<String, dynamic>;
+      final feature =
+          (decoded['features'] as List).single as Map<String, dynamic>;
+      final props = feature['properties'] as Map<String, dynamic>;
+      expect(props['name'], quotedName);
+      expect((feature['geometry'] as Map<String, dynamic>)['coordinates'], [
+        20.5,
+        44.8,
+      ]);
+    },
+  );
 }

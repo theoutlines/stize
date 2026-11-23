@@ -26,9 +26,10 @@ Widget _host({required Size size}) {
   return ProviderScope(
     overrides: [
       appConfigProvider.overrideWith(
-        (ref) async => const AppConfig(version: 'test', flags: {
-          'vehicles_on_demand': true,
-        }),
+        (ref) async => const AppConfig(
+          version: 'test',
+          flags: {'vehicles_on_demand': true},
+        ),
       ),
       locationServiceProvider.overrideWithValue(_DeniedLocation()),
       favoriteStopLocationsProvider.overrideWith((ref) async => const <Stop>[]),
@@ -50,8 +51,9 @@ void main() {
   setUp(() => kMapRenderingEnabled = false);
   tearDown(() => kMapRenderingEnabled = true);
 
-  testWidgets('desktop (≥840) shows the left panel, not the bottom sheet',
-      (tester) async {
+  testWidgets('desktop (≥840) shows the left panel, not the bottom sheet', (
+    tester,
+  ) async {
     await tester.pumpWidget(_host(size: const Size(1200, 800)));
     await tester.pump(); // let appConfig resolve
     await tester.pump();
@@ -60,36 +62,39 @@ void main() {
   });
 
   testWidgets(
-      'mobile (<840) keeps the LEGACY sheets, not the panel (owner R1 #1: '
-      'panel is desktop-only, mobile untouched)', (tester) async {
-    await tester.pumpWidget(_host(size: const Size(400, 800)));
-    await tester.pump();
-    await tester.pump();
-    // The panel never appears on mobile; the legacy Nearby sheet does.
-    expect(find.byType(ContextPanel), findsNothing);
-    expect(find.byType(NearbySheet), findsOneWidget);
-  });
+    'mobile (<840) keeps the LEGACY sheets, not the panel (owner R1 #1: '
+    'panel is desktop-only, mobile untouched)',
+    (tester) async {
+      await tester.pumpWidget(_host(size: const Size(400, 800)));
+      await tester.pump();
+      await tester.pump();
+      // The panel never appears on mobile; the legacy Nearby sheet does.
+      expect(find.byType(ContextPanel), findsNothing);
+      expect(find.byType(NearbySheet), findsOneWidget);
+    },
+  );
 
   testWidgets(
-      'resizing across 840 swaps only the overlay but keeps ONE map alive',
-      (tester) async {
-    await tester.pumpWidget(_host(size: const Size(1200, 800)));
-    await tester.pump();
-    await tester.pump();
-    expect(find.byType(ContextPanel), findsOneWidget);
-    expect(find.byType(NearbySheet), findsNothing);
-    final stateBefore = tester.state(find.byType(HomeMapScreen));
+    'resizing across 840 swaps only the overlay but keeps ONE map alive',
+    (tester) async {
+      await tester.pumpWidget(_host(size: const Size(1200, 800)));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(ContextPanel), findsOneWidget);
+      expect(find.byType(NearbySheet), findsNothing);
+      final stateBefore = tester.state(find.byType(HomeMapScreen));
 
-    // Cross the breakpoint to mobile.
-    await tester.pumpWidget(_host(size: const Size(400, 800)));
-    await tester.pump();
-    await tester.pump();
+      // Cross the breakpoint to mobile.
+      await tester.pumpWidget(_host(size: const Size(400, 800)));
+      await tester.pump();
+      await tester.pump();
 
-    // Overlay swapped to the legacy mobile UI…
-    expect(find.byType(ContextPanel), findsNothing);
-    expect(find.byType(NearbySheet), findsOneWidget);
-    // …and it's the SAME HomeMapScreen State (the map was never rebuilt from
-    // scratch — no IndexedStack/render-cycle recreation).
-    expect(tester.state(find.byType(HomeMapScreen)), stateBefore);
-  });
+      // Overlay swapped to the legacy mobile UI…
+      expect(find.byType(ContextPanel), findsNothing);
+      expect(find.byType(NearbySheet), findsOneWidget);
+      // …and it's the SAME HomeMapScreen State (the map was never rebuilt from
+      // scratch — no IndexedStack/render-cycle recreation).
+      expect(tester.state(find.byType(HomeMapScreen)), stateBefore);
+    },
+  );
 }

@@ -29,7 +29,8 @@ NearbyGroup _group({
     'stop_name': stopName,
     'distance_meters': distance,
     'arrivals': [
-      for (final e in etas) {'eta_minutes': e, 'garage_no': null, 'stops_remaining': null},
+      for (final e in etas)
+        {'eta_minutes': e, 'garage_no': null, 'stops_remaining': null},
     ],
   });
 }
@@ -71,7 +72,8 @@ class _RecordingNearbyRepo implements NearbyArrivalsRepository {
 Widget _wrap(Widget child, {NearbyArrivalsRepository? repo}) {
   return ProviderScope(
     overrides: [
-      if (repo != null) nearbyArrivalsRepositoryProvider.overrideWithValue(repo),
+      if (repo != null)
+        nearbyArrivalsRepositoryProvider.overrideWithValue(repo),
     ],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -83,7 +85,9 @@ Widget _wrap(Widget child, {NearbyArrivalsRepository? repo}) {
 
 void main() {
   group('NearbyList', () {
-    testWidgets('renders a line+direction card with ETA, stop and distance', (tester) async {
+    testWidgets('renders a line+direction card with ETA, stop and distance', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           NearbyList(
@@ -111,7 +115,8 @@ void main() {
 
     testWidgets('brightness == clickability: a live group has a chevron, a '
         'schedule-only group is dimmed and has none', (tester) async {
-      NearbyGroup mk(String line, {required bool scheduled}) => NearbyGroup.fromJson({
+      NearbyGroup mk(String line, {required bool scheduled}) =>
+          NearbyGroup.fromJson({
             'line': line,
             'vehicle_type': 'bus',
             'destination': 'Dorćol',
@@ -129,21 +134,31 @@ void main() {
             ],
           });
 
-      await tester.pumpWidget(_wrap(NearbyList(groups: [
-        mk('79', scheduled: false), // live → chevron, full brightness
-        mk('26', scheduled: true), // schedule-only → dimmed, no chevron
-      ])));
+      await tester.pumpWidget(
+        _wrap(
+          NearbyList(
+            groups: [
+              mk('79', scheduled: false), // live → chevron, full brightness
+              mk('26', scheduled: true), // schedule-only → dimmed, no chevron
+            ],
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       // The live group's card is live; the schedule-only one is held back.
-      final cards = tester.widgetList<StizeTransitCard>(find.byType(StizeTransitCard)).toList();
+      final cards = tester
+          .widgetList<StizeTransitCard>(find.byType(StizeTransitCard))
+          .toList();
       expect(cards.firstWhere((c) => c.line == '79').live, isTrue);
       expect(cards.firstWhere((c) => c.line == '26').live, isFalse);
     });
   });
 
   group('NearbySheet', () {
-    testWidgets('invites enabling location when there is no fix', (tester) async {
+    testWidgets('invites enabling location when there is no fix', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           NearbySheet(
@@ -160,7 +175,9 @@ void main() {
       expect(find.text('See what\'s nearby'), findsOneWidget);
       expect(find.text('Use my location'), findsOneWidget);
 
-      await tester.pumpWidget(const SizedBox()); // dispose → cancel the 30s timer
+      await tester.pumpWidget(
+        const SizedBox(),
+      ); // dispose → cancel the 30s timer
     });
 
     testWidgets('lists groups fetched from the user location', (tester) async {
@@ -213,7 +230,9 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('shows a human empty state when nothing is nearby', (tester) async {
+    testWidgets('shows a human empty state when nothing is nearby', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           NearbySheet(
@@ -239,19 +258,21 @@ void main() {
     // viewport is not even an input to NearbySheet. A parent rebuild that leaves
     // [userLocation] unchanged (which is exactly what a map pan/zoom does) must
     // not issue a new request.
-    testWidgets('a parent rebuild with the same location issues no new request', (tester) async {
+    testWidgets('a parent rebuild with the same location issues no new request', (
+      tester,
+    ) async {
       final repo = _RecordingNearbyRepo();
       final loc = ll.LatLng(44.8000, 20.4600);
 
       Widget sheet(ll.LatLng at) => _wrap(
-            NearbySheet(
-              userLocation: at,
-              locationDenied: false,
-              active: true,
-              onEnableLocation: () {},
-            ),
-            repo: repo,
-          );
+        NearbySheet(
+          userLocation: at,
+          locationDenied: false,
+          active: true,
+          onEnableLocation: () {},
+        ),
+        repo: repo,
+      );
 
       await tester.pumpWidget(sheet(loc));
       await tester.pump();
@@ -273,14 +294,14 @@ void main() {
     testWidgets('a sub-threshold user move does not refetch', (tester) async {
       final repo = _RecordingNearbyRepo();
       Widget sheet(ll.LatLng at) => _wrap(
-            NearbySheet(
-              userLocation: at,
-              locationDenied: false,
-              active: true,
-              onEnableLocation: () {},
-            ),
-            repo: repo,
-          );
+        NearbySheet(
+          userLocation: at,
+          locationDenied: false,
+          active: true,
+          onEnableLocation: () {},
+        ),
+        repo: repo,
+      );
 
       await tester.pumpWidget(sheet(ll.LatLng(44.8000, 20.4600)));
       await tester.pump();
@@ -295,31 +316,34 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('a real user move past the threshold refetches at the new spot', (tester) async {
-      final repo = _RecordingNearbyRepo();
-      Widget sheet(ll.LatLng at) => _wrap(
-            NearbySheet(
-              userLocation: at,
-              locationDenied: false,
-              active: true,
-              onEnableLocation: () {},
-            ),
-            repo: repo,
-          );
+    testWidgets(
+      'a real user move past the threshold refetches at the new spot',
+      (tester) async {
+        final repo = _RecordingNearbyRepo();
+        Widget sheet(ll.LatLng at) => _wrap(
+          NearbySheet(
+            userLocation: at,
+            locationDenied: false,
+            active: true,
+            onEnableLocation: () {},
+          ),
+          repo: repo,
+        );
 
-      await tester.pumpWidget(sheet(ll.LatLng(44.8000, 20.4600)));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 20));
-      expect(repo.calls.length, 1);
+        await tester.pumpWidget(sheet(ll.LatLng(44.8000, 20.4600)));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 20));
+        expect(repo.calls.length, 1);
 
-      // ~222 m north (> 75 m threshold).
-      await tester.pumpWidget(sheet(ll.LatLng(44.8020, 20.4600)));
-      await tester.pump(const Duration(milliseconds: 20));
-      expect(repo.calls.length, 2);
-      expect(repo.calls.last.lat, closeTo(44.8020, 1e-9));
+        // ~222 m north (> 75 m threshold).
+        await tester.pumpWidget(sheet(ll.LatLng(44.8020, 20.4600)));
+        await tester.pump(const Duration(milliseconds: 20));
+        expect(repo.calls.length, 2);
+        expect(repo.calls.last.lat, closeTo(44.8020, 1e-9));
 
-      await tester.pumpWidget(const SizedBox());
-    });
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
   });
 
   group('shouldRefetchNearby', () {

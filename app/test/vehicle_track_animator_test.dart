@@ -6,7 +6,11 @@ import 'package:stize/core/vehicle_track_animator.dart';
 import 'package:stize/domain/models/arrival.dart';
 import 'package:stize/domain/models/vehicle_type.dart';
 
-Arrival _arrival({required String garageNo, required double lat, required double lon}) {
+Arrival _arrival({
+  required String garageNo,
+  required double lat,
+  required double lon,
+}) {
   return Arrival(
     line: '79',
     vehicleType: VehicleType.bus,
@@ -47,45 +51,53 @@ void main() {
     expect(atHalf.latitude, lessThan(44.81));
   });
 
-  test('a resync mid-animation starts from the current interpolated spot, not from scratch', () {
-    final animator = VehicleTrackAnimator();
-    animator.sync([_arrival(garageNo: 'P1', lat: 0.0, lon: 0.0)], 0);
-    animator.sync([_arrival(garageNo: 'P1', lat: 10.0, lon: 0.0)], 0); // first real move, starts at t=0
+  test(
+    'a resync mid-animation starts from the current interpolated spot, not from scratch',
+    () {
+      final animator = VehicleTrackAnimator();
+      animator.sync([_arrival(garageNo: 'P1', lat: 0.0, lon: 0.0)], 0);
+      animator.sync([
+        _arrival(garageNo: 'P1', lat: 10.0, lon: 0.0),
+      ], 0); // first real move, starts at t=0
 
-    // Halfway to the first target (t=0.5) the vehicle should be at lat 5.0.
-    expect(animator.positionOf('P1', 0.5).latitude, 5.0);
+      // Halfway to the first target (t=0.5) the vehicle should be at lat 5.0.
+      expect(animator.positionOf('P1', 0.5).latitude, 5.0);
 
-    // A new fix lands right at that halfway point (t=0.5), continuing further on.
-    animator.sync([_arrival(garageNo: 'P1', lat: 20.0, lon: 0.0)], 0.5);
+      // A new fix lands right at that halfway point (t=0.5), continuing further on.
+      animator.sync([_arrival(garageNo: 'P1', lat: 20.0, lon: 0.0)], 0.5);
 
-    // The new leg must start from where it visually was (lat 5.0), not
-    // jump back to the old target (10.0) or the old start (0.0).
-    expect(animator.positionOf('P1', 0.0).latitude, 5.0);
-    expect(animator.positionOf('P1', 1.0).latitude, 20.0);
-  });
+      // The new leg must start from where it visually was (lat 5.0), not
+      // jump back to the old target (10.0) or the old start (0.0).
+      expect(animator.positionOf('P1', 0.0).latitude, 5.0);
+      expect(animator.positionOf('P1', 1.0).latitude, 20.0);
+    },
+  );
 
-  test('holds a briefly-missing vehicle through a grace period, then drops it', () {
-    final animator = VehicleTrackAnimator();
-    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
-    expect(animator.tracks.containsKey('P1'), isTrue);
-    expect(animator.opacityFor('P1'), 1.0);
+  test(
+    'holds a briefly-missing vehicle through a grace period, then drops it',
+    () {
+      final animator = VehicleTrackAnimator();
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
+      expect(animator.tracks.containsKey('P1'), isTrue);
+      expect(animator.opacityFor('P1'), 1.0);
 
-    // Missing from one update — held (faded), not dropped (X6 data blip).
-    animator.sync([], 1.0);
-    expect(animator.tracks.containsKey('P1'), isTrue);
-    expect(animator.opacityFor('P1'), lessThan(1.0));
-
-    // Held (and fading further) across the (shortened) grace window.
-    for (var i = 0; i < 2; i++) {
+      // Missing from one update — held (faded), not dropped (X6 data blip).
       animator.sync([], 1.0);
       expect(animator.tracks.containsKey('P1'), isTrue);
-    }
+      expect(animator.opacityFor('P1'), lessThan(1.0));
 
-    // Missing beyond the grace period — now dropped (grace threshold = 3, so a
-    // vehicle absent for a 4th update is removed; faster fade than before).
-    animator.sync([], 1.0);
-    expect(animator.tracks.containsKey('P1'), isFalse);
-  });
+      // Held (and fading further) across the (shortened) grace window.
+      for (var i = 0; i < 2; i++) {
+        animator.sync([], 1.0);
+        expect(animator.tracks.containsKey('P1'), isTrue);
+      }
+
+      // Missing beyond the grace period — now dropped (grace threshold = 3, so a
+      // vehicle absent for a 4th update is removed; faster fade than before).
+      animator.sync([], 1.0);
+      expect(animator.tracks.containsKey('P1'), isFalse);
+    },
+  );
 
   test('clear() drops everything immediately (zoom-out reset)', () {
     final animator = VehicleTrackAnimator();
@@ -132,114 +144,126 @@ void main() {
     expect(h, closeTo(90, 5));
   });
 
-  test('stays on the correct leg of a fold-back route instead of snapping to the parallel one (F1)', () {
-    // Out-and-back: east along lat 44.8000, then back west along lat 44.8003
-    // (~33 m north). The legs run parallel and close, so a fix on the return
-    // leg is geometrically near the outbound leg too.
-    final path = RoutePath.fromLatLon([
-      [44.8000, 20.5000],
-      [44.8000, 20.5200],
-      [44.8003, 20.5200],
-      [44.8003, 20.5000],
-    ]);
-    final animator = VehicleTrackAnimator();
-    // Vehicle starts on the outbound leg, mid-way.
-    animator.syncSamples([
-      VehicleSample(
-        key: 'P1',
-        position: const ll.LatLng(44.8000, 20.5100),
-        line: '79',
-        type: VehicleType.bus,
-        path: path,
-      ),
-    ], 0);
-    final outboundDist = animator.trackFor('P1')!.toDist;
-
-    // It reaches the far end and starts back west on the return leg. Each return
-    // fix is geometrically as close to the outbound leg as to the return leg,
-    // but must be matched to the return leg (monotonically increasing distance).
-    for (final lon in [20.5200, 20.5150, 20.5100, 20.5050]) {
+  test(
+    'stays on the correct leg of a fold-back route instead of snapping to the parallel one (F1)',
+    () {
+      // Out-and-back: east along lat 44.8000, then back west along lat 44.8003
+      // (~33 m north). The legs run parallel and close, so a fix on the return
+      // leg is geometrically near the outbound leg too.
+      final path = RoutePath.fromLatLon([
+        [44.8000, 20.5000],
+        [44.8000, 20.5200],
+        [44.8003, 20.5200],
+        [44.8003, 20.5000],
+      ]);
+      final animator = VehicleTrackAnimator();
+      // Vehicle starts on the outbound leg, mid-way.
       animator.syncSamples([
         VehicleSample(
           key: 'P1',
-          position: ll.LatLng(44.8003, lon),
+          position: const ll.LatLng(44.8000, 20.5100),
           line: '79',
           type: VehicleType.bus,
           path: path,
         ),
-      ], 1.0);
-    }
-    // On the return leg the distance-along is well past the outbound midpoint —
-    // it did NOT snap back onto the outbound leg.
-    expect(animator.trackFor('P1')!.toDist, greaterThan(outboundDist * 2));
-  });
+      ], 0);
+      final outboundDist = animator.trackFor('P1')!.toDist;
 
-  test('flags a vehicle as stuck only after it sits still for a couple of minutes', () {
-    var now = DateTime(2026, 1, 1, 12, 0, 0);
-    final animator = VehicleTrackAnimator(clock: () => now);
-    // First fix: brand new, moving.
-    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
-    expect(animator.isStuck('P1'), isFalse);
+      // It reaches the far end and starts back west on the return leg. Each return
+      // fix is geometrically as close to the outbound leg as to the return leg,
+      // but must be matched to the return leg (monotonically increasing distance).
+      for (final lon in [20.5200, 20.5150, 20.5100, 20.5050]) {
+        animator.syncSamples([
+          VehicleSample(
+            key: 'P1',
+            position: ll.LatLng(44.8003, lon),
+            line: '79',
+            type: VehicleType.bus,
+            path: path,
+          ),
+        ], 1.0);
+      }
+      // On the return leg the distance-along is well past the outbound midpoint —
+      // it did NOT snap back onto the outbound leg.
+      expect(animator.trackFor('P1')!.toDist, greaterThan(outboundDist * 2));
+    },
+  );
 
-    // 90s later, still at the same spot — a long dwell, not yet stuck.
-    now = now.add(const Duration(seconds: 90));
-    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
-    expect(animator.isStuck('P1'), isFalse);
+  test(
+    'flags a vehicle as stuck only after it sits still for a couple of minutes',
+    () {
+      var now = DateTime(2026, 1, 1, 12, 0, 0);
+      final animator = VehicleTrackAnimator(clock: () => now);
+      // First fix: brand new, moving.
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
+      expect(animator.isStuck('P1'), isFalse);
 
-    // Past two minutes without real movement — now it reads as stuck.
-    now = now.add(const Duration(seconds: 60));
-    expect(animator.isStuck('P1'), isTrue);
-
-    // It moves again → back to moving.
-    animator.sync([_arrival(garageNo: 'P1', lat: 44.82, lon: 20.52)], 1.0);
-    expect(animator.isStuck('P1'), isFalse);
-  });
-
-  test('a burst of extra refreshes does not make a still vehicle read as stuck early', () {
-    var now = DateTime(2026, 1, 1, 12, 0, 0);
-    final animator = VehicleTrackAnimator(clock: () => now);
-    animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
-    // Ten quick refreshes over 20s (e.g. from panning) at the same spot.
-    for (var i = 0; i < 10; i++) {
-      now = now.add(const Duration(seconds: 2));
+      // 90s later, still at the same spot — a long dwell, not yet stuck.
+      now = now.add(const Duration(seconds: 90));
       animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
-    }
-    // Only ~20s of stillness — must not be flagged stuck.
-    expect(animator.isStuck('P1'), isFalse);
-  });
+      expect(animator.isStuck('P1'), isFalse);
 
-  test('caps a teleport-sized jump so the marker never races past a plausible speed', () {
-    // A straight ~4 km west-east route.
-    final path = RoutePath.fromLatLon([
-      [44.80, 20.50],
-      [44.80, 20.55],
-    ]);
-    final animator = VehicleTrackAnimator();
-    animator.syncSamples([
-      VehicleSample(
-        key: 'P1',
-        position: const ll.LatLng(44.80, 20.50),
-        line: '2',
-        type: VehicleType.tram,
-        path: path,
-      ),
-    ], 0);
-    // Next fix jumps ~1.5 km along the route in one update — implausible for 30s.
-    animator.syncSamples([
-      VehicleSample(
-        key: 'P1',
-        position: const ll.LatLng(44.80, 20.52),
-        line: '2',
-        type: VehicleType.tram,
-        path: path,
-      ),
-    ], 1.0);
-    // The displayed target is capped ~500 m along, well short of the ~1.5 km fix,
-    // so the marker lags rather than teleporting.
-    final track = animator.trackFor('P1')!;
-    expect(track.toDist, lessThan(700));
-    expect(track.toDist, greaterThan(300));
-  });
+      // Past two minutes without real movement — now it reads as stuck.
+      now = now.add(const Duration(seconds: 60));
+      expect(animator.isStuck('P1'), isTrue);
+
+      // It moves again → back to moving.
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.82, lon: 20.52)], 1.0);
+      expect(animator.isStuck('P1'), isFalse);
+    },
+  );
+
+  test(
+    'a burst of extra refreshes does not make a still vehicle read as stuck early',
+    () {
+      var now = DateTime(2026, 1, 1, 12, 0, 0);
+      final animator = VehicleTrackAnimator(clock: () => now);
+      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
+      // Ten quick refreshes over 20s (e.g. from panning) at the same spot.
+      for (var i = 0; i < 10; i++) {
+        now = now.add(const Duration(seconds: 2));
+        animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
+      }
+      // Only ~20s of stillness — must not be flagged stuck.
+      expect(animator.isStuck('P1'), isFalse);
+    },
+  );
+
+  test(
+    'caps a teleport-sized jump so the marker never races past a plausible speed',
+    () {
+      // A straight ~4 km west-east route.
+      final path = RoutePath.fromLatLon([
+        [44.80, 20.50],
+        [44.80, 20.55],
+      ]);
+      final animator = VehicleTrackAnimator();
+      animator.syncSamples([
+        VehicleSample(
+          key: 'P1',
+          position: const ll.LatLng(44.80, 20.50),
+          line: '2',
+          type: VehicleType.tram,
+          path: path,
+        ),
+      ], 0);
+      // Next fix jumps ~1.5 km along the route in one update — implausible for 30s.
+      animator.syncSamples([
+        VehicleSample(
+          key: 'P1',
+          position: const ll.LatLng(44.80, 20.52),
+          line: '2',
+          type: VehicleType.tram,
+          path: path,
+        ),
+      ], 1.0);
+      // The displayed target is capped ~500 m along, well short of the ~1.5 km fix,
+      // so the marker lags rather than teleporting.
+      final track = animator.trackFor('P1')!;
+      expect(track.toDist, lessThan(700));
+      expect(track.toDist, greaterThan(300));
+    },
+  );
 
   test('carries the line and type onto the track', () {
     final animator = VehicleTrackAnimator();
@@ -264,18 +288,21 @@ void main() {
       expect(animator.hasPendingMotion, isFalse);
     });
 
-    test('is true while a real move is still easing, false once it settles', () {
-      final animator = VehicleTrackAnimator();
-      animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
-      // A fresh fix further along — now there's a leg to play out.
-      animator.sync([_arrival(garageNo: 'P1', lat: 44.81, lon: 20.51)], 0);
-      expect(animator.hasPendingMotion, isTrue);
+    test(
+      'is true while a real move is still easing, false once it settles',
+      () {
+        final animator = VehicleTrackAnimator();
+        animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 1.0);
+        // A fresh fix further along — now there's a leg to play out.
+        animator.sync([_arrival(garageNo: 'P1', lat: 44.81, lon: 20.51)], 0);
+        expect(animator.hasPendingMotion, isTrue);
 
-      // A resync taken at the end of the ease (t=1): current spot == target,
-      // so there's no motion left and the layer can go idle.
-      animator.sync([_arrival(garageNo: 'P1', lat: 44.81, lon: 20.51)], 1.0);
-      expect(animator.hasPendingMotion, isFalse);
-    });
+        // A resync taken at the end of the ease (t=1): current spot == target,
+        // so there's no motion left and the layer can go idle.
+        animator.sync([_arrival(garageNo: 'P1', lat: 44.81, lon: 20.51)], 1.0);
+        expect(animator.hasPendingMotion, isFalse);
+      },
+    );
 
     test('detects motion along a route path', () {
       final path = RoutePath.fromLatLon([
@@ -333,7 +360,9 @@ void main() {
       animator.sync([_arrival(garageNo: 'P1', lat: 44.80, lon: 20.50)], 0);
 
       now = now.add(const Duration(minutes: 5));
-      animator.shiftClock(const Duration(minutes: 5)); // was hidden the whole time
+      animator.shiftClock(
+        const Duration(minutes: 5),
+      ); // was hidden the whole time
       expect(animator.isStuck('P1'), isFalse);
 
       // Now it sits still, foreground, for over two more minutes → stuck.
@@ -368,11 +397,11 @@ void main() {
 
   group('upsert (prune: false) — inject a followed vehicle in isolation', () {
     VehicleSample sample(String key, double lat, double lon) => VehicleSample(
-          key: key,
-          position: ll.LatLng(lat, lon),
-          line: '79',
-          type: VehicleType.bus,
-        );
+      key: key,
+      position: ll.LatLng(lat, lon),
+      line: '79',
+      type: VehicleType.bus,
+    );
 
     test('adds a new vehicle without ageing out the others', () {
       final animator = VehicleTrackAnimator();
@@ -405,32 +434,35 @@ void main() {
     });
   });
 
-  test('a track carries the resolved direction route_id, kept across plain updates', () {
-    // The follow highlight (route line + stop pins) is drawn for the direction
-    // the marker travels; that direction must survive on the track so a
-    // marker-tap follow (which only knows the key) can read it back — even when
-    // a later update sample doesn't re-supply it.
-    final animator = VehicleTrackAnimator();
-    animator.syncSamples([
-      const VehicleSample(
-        key: 'P79',
-        position: ll.LatLng(44.80, 20.50),
-        line: '79',
-        type: VehicleType.bus,
-        directionRouteId: '00079-1',
-      ),
-    ], 0);
-    expect(animator.trackFor('P79')!.directionRouteId, '00079-1');
+  test(
+    'a track carries the resolved direction route_id, kept across plain updates',
+    () {
+      // The follow highlight (route line + stop pins) is drawn for the direction
+      // the marker travels; that direction must survive on the track so a
+      // marker-tap follow (which only knows the key) can read it back — even when
+      // a later update sample doesn't re-supply it.
+      final animator = VehicleTrackAnimator();
+      animator.syncSamples([
+        const VehicleSample(
+          key: 'P79',
+          position: ll.LatLng(44.80, 20.50),
+          line: '79',
+          type: VehicleType.bus,
+          directionRouteId: '00079-1',
+        ),
+      ], 0);
+      expect(animator.trackFor('P79')!.directionRouteId, '00079-1');
 
-    // A later sample with no direction must NOT erase the known one.
-    animator.syncSamples([
-      const VehicleSample(
-        key: 'P79',
-        position: ll.LatLng(44.801, 20.501),
-        line: '79',
-        type: VehicleType.bus,
-      ),
-    ], 0);
-    expect(animator.trackFor('P79')!.directionRouteId, '00079-1');
-  });
+      // A later sample with no direction must NOT erase the known one.
+      animator.syncSamples([
+        const VehicleSample(
+          key: 'P79',
+          position: ll.LatLng(44.801, 20.501),
+          line: '79',
+          type: VehicleType.bus,
+        ),
+      ], 0);
+      expect(animator.trackFor('P79')!.directionRouteId, '00079-1');
+    },
+  );
 }

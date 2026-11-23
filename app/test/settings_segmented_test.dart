@@ -7,15 +7,19 @@ import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/screens/settings_screen.dart';
 
 void main() {
-  testWidgets('settings fit one screen: language and theme as segments', (tester) async {
+  testWidgets('settings fit one screen: language and theme as segments', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(const ProviderScope(
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: SettingsScreen(),
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsScreen(),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(find.text('Language'), findsOneWidget);
     expect(find.text('Theme'), findsOneWidget);
@@ -29,7 +33,11 @@ void main() {
     await tester.pumpAndSettle();
     // The selected segment is the filled one.
     Color fill(String label) => tester
-        .widget<Material>(find.ancestor(of: find.text(label), matching: find.byType(Material)).first)
+        .widget<Material>(
+          find
+              .ancestor(of: find.text(label), matching: find.byType(Material))
+              .first,
+        )
         .color!;
     expect(fill('Dark'), isNot(Colors.transparent));
     expect(fill('Light'), Colors.transparent);

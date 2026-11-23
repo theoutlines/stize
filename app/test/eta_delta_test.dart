@@ -5,42 +5,43 @@ import 'package:stize/domain/models/vehicle_type.dart';
 
 /// A genuinely live vehicle: real GPS, real garage.
 Arrival _live(String line, int eta, {String garage = '101'}) => Arrival(
-      line: line,
-      vehicleType: VehicleType.bus,
-      etaMinutes: eta,
-      stopsRemaining: null,
-      routeId: 'r1',
-      directionRouteId: 'r1',
-      gps: const LatLon(44.8, 20.4),
-      garageNo: garage,
-    );
+  line: line,
+  vehicleType: VehicleType.bus,
+  etaMinutes: eta,
+  stopsRemaining: null,
+  routeId: 'r1',
+  directionRouteId: 'r1',
+  gps: const LatLon(44.8, 20.4),
+  garageNo: garage,
+);
 
 /// A placeholder ("expected") row: valid ETA, no live position (garage P#).
 Arrival _expected(String line, int eta) => Arrival(
-      line: line,
-      vehicleType: VehicleType.bus,
-      etaMinutes: eta,
-      stopsRemaining: 0,
-      routeId: 'r1',
-      directionRouteId: 'r1',
-      gps: const LatLon(44.8, 20.4),
-      garageNo: 'P1',
-    );
+  line: line,
+  vehicleType: VehicleType.bus,
+  etaMinutes: eta,
+  stopsRemaining: 0,
+  routeId: 'r1',
+  directionRouteId: 'r1',
+  gps: const LatLon(44.8, 20.4),
+  garageNo: 'P1',
+);
 
 /// A timetable-fallback row (`source: scheduled`).
 Arrival _scheduled(String line, int eta) => Arrival(
-      line: line,
-      vehicleType: VehicleType.bus,
-      etaMinutes: eta,
-      stopsRemaining: null,
-      routeId: 'r1',
-      directionRouteId: 'r1',
-      gps: null,
-      garageNo: null,
-      scheduled: true,
-    );
+  line: line,
+  vehicleType: VehicleType.bus,
+  etaMinutes: eta,
+  stopsRemaining: null,
+  routeId: 'r1',
+  directionRouteId: 'r1',
+  gps: null,
+  garageNo: null,
+  scheduled: true,
+);
 
-ArrivalsBoard _board(DateTime updatedAt, List<Arrival> arrivals) => ArrivalsBoard(
+ArrivalsBoard _board(DateTime updatedAt, List<Arrival> arrivals) =>
+    ArrivalsBoard(
       stopId: 's1',
       stopName: 'Stop',
       updatedAt: updatedAt,
@@ -111,7 +112,10 @@ void main() {
     });
 
     test('a changed vehicle in the row (different garage) gets no delta', () {
-      final first = diffEtaDeltas(const {}, _board(t0, [_live('26', 18, garage: '101')]));
+      final first = diffEtaDeltas(
+        const {},
+        _board(t0, [_live('26', 18, garage: '101')]),
+      );
       // Same line/position next poll but a different bus — nothing to diff.
       final second = diffEtaDeltas(
         first.arrivalTimes,
@@ -135,20 +139,23 @@ void main() {
       expect(second.deltas, isEmpty);
     });
 
-    test('a whole board of clock-ticks stays silent — no synchronised flash', () {
-      final buses = [
-        for (var i = 0; i < 6; i++) _live('$i', 10 + i, garage: 'g$i'),
-      ];
-      final first = diffEtaDeltas(const {}, _board(t0, buses));
-      // 50s later every count-down has ticked down one minute together.
-      final ticked = [
-        for (var i = 0; i < 6; i++) _live('$i', 9 + i, garage: 'g$i'),
-      ];
-      final second = diffEtaDeltas(
-        first.arrivalTimes,
-        _board(t0.add(const Duration(seconds: 50)), ticked),
-      );
-      expect(second.deltas, isEmpty);
-    });
+    test(
+      'a whole board of clock-ticks stays silent — no synchronised flash',
+      () {
+        final buses = [
+          for (var i = 0; i < 6; i++) _live('$i', 10 + i, garage: 'g$i'),
+        ];
+        final first = diffEtaDeltas(const {}, _board(t0, buses));
+        // 50s later every count-down has ticked down one minute together.
+        final ticked = [
+          for (var i = 0; i < 6; i++) _live('$i', 9 + i, garage: 'g$i'),
+        ];
+        final second = diffEtaDeltas(
+          first.arrivalTimes,
+          _board(t0.add(const Duration(seconds: 50)), ticked),
+        );
+        expect(second.deltas, isEmpty);
+      },
+    );
   });
 }

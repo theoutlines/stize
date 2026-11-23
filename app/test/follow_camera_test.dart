@@ -62,8 +62,14 @@ void main() {
       // The badge is the bottom of the vehicle stack, so below-badge is below
       // ALL vehicle symbols — the coin the user follows never gets covered.
       expect(movingObjectsLayersBottomToTop.first, movingObjectsBadgeLayerId);
-      expect(movingObjectsLayersBottomToTop, contains(movingObjectsArrowLayerId));
-      expect(movingObjectsLayersBottomToTop, contains(movingObjectsLabelLayerId));
+      expect(
+        movingObjectsLayersBottomToTop,
+        contains(movingObjectsArrowLayerId),
+      );
+      expect(
+        movingObjectsLayersBottomToTop,
+        contains(movingObjectsLabelLayerId),
+      );
     });
 
     test('no anchor when the vehicle layers are not up yet', () {

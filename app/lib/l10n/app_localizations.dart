@@ -584,6 +584,12 @@ abstract class AppLocalizations {
   /// **'All transport'**
   String get vehicleModeAll;
 
+  /// No description provided for @vehicleModeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Live transport'**
+  String get vehicleModeHint;
+
   /// Tooltip of the map's vehicle-mode toggle button
   ///
   /// In en, this message translates to:
