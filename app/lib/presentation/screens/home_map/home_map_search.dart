@@ -521,7 +521,10 @@ extension _MapSearch on _HomeMapScreenState {
   /// The round map buttons, pushed up past the top edge as the rising pill
   /// reaches them (owner, 2026-11-23). Desktop and level views: unmoved.
   Widget _pushedTopButtons(ThemeData theme, Size size) {
-    final buttons = _topButtons(theme);
+    final buttons = KeyedSubtree(
+      key: _topButtonsKey,
+      child: _topButtons(theme),
+    );
     final pillShown =
         !_panelActive &&
         _focus == null &&
@@ -533,9 +536,14 @@ extension _MapSearch on _HomeMapScreenState {
       animation: _sheetCtl,
       child: buttons,
       builder: (context, child) {
-        // Buttons stack bottom (menu 48 + top inset 12) plus the live toggle
-        // under it; the pill pushes once it is within 12px of that edge.
-        final buttonsBottom = MediaQuery.paddingOf(context).top + 12 + 48 + 58;
+        // The measured bottom of the button stack (zoom control included on
+        // web); the pill pushes once it is within 12px of that edge.
+        final box =
+            _topButtonsKey.currentContext?.findRenderObject() as RenderBox?;
+        // The right-hand button column (keyed in _topButtons) sits below the
+        // status-bar inset and a 12px margin.
+        final rowH = box != null && box.hasSize ? box.size.height : 120.0;
+        final buttonsBottom = MediaQuery.paddingOf(context).top + 12 + rowH;
         final gap = _pillTopFor(size) - StizeSpace.space3 - buttonsBottom;
         return Transform.translate(
           offset: Offset(0, gap < 0 ? gap : 0),
