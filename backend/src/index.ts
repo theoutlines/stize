@@ -43,6 +43,7 @@ import {
   resolveGovernorConfig,
   runD1Governor,
 } from "./lib/d1Governor";
+import { kvGetCached } from "./lib/kvCache";
 
 // KV key for the drawer's optional Donate link. Empty/unset ⇒ the client hides
 // the Donate item; set it (dashboard/wrangler) to reveal it. See feature-flags.md.
@@ -94,7 +95,7 @@ app.get("/api/v1/health", async (c) => {
 // flag flip (via /admin/flags) reaches clients on their next fetch, no rebuild.
 app.get("/api/v1/config", async (c) => {
   const config: Record<string, string> = {};
-  const donateUrl = (await c.env.STIGLA_KV.get(DONATE_URL_KV_KEY))?.trim();
+  const donateUrl = (await kvGetCached(c.env, DONATE_URL_KV_KEY))?.trim();
   if (donateUrl) config.donate_url = donateUrl;
 
   const body: ConfigResponse = {

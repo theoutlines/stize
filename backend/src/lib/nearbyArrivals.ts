@@ -11,6 +11,7 @@ import { getFlag } from "./featureFlags";
 import { nearbyStops, getLineDtoByRouteId } from "./gtfsData";
 import { haversineDistanceMeters } from "./haversine";
 import type { WaitUntilCtx } from "./swrCache";
+import { kvGetCached } from "./kvCache";
 
 // The "Nearby" list reconstructs "which lines can I catch from here, and when"
 // by fanning out to the arrivals of each nearby stop and grouping them by line +
@@ -44,7 +45,7 @@ export const NEARBY_SCHEDULE_STOPS_DEFAULT = 5;
 const SCHEDULE_STOPS_KV_KEY = "config:nearby_schedule_stops";
 
 export async function resolveNearbyScheduleStops(env: Env): Promise<number> {
-  const raw = await env.STIGLA_KV.get(SCHEDULE_STOPS_KV_KEY);
+  const raw = await kvGetCached(env, SCHEDULE_STOPS_KV_KEY);
   const n = raw === null ? NEARBY_SCHEDULE_STOPS_DEFAULT : parseInt(raw, 10);
   if (Number.isNaN(n)) return NEARBY_SCHEDULE_STOPS_DEFAULT;
   return Math.max(0, Math.min(MAX_STOPS_FANOUT, n));

@@ -1,5 +1,6 @@
 import { toLatin } from "./latin";
 import type { Env } from "../env";
+import { kvGetCached } from "./kvCache";
 
 const NEWS_LIST_URL = "https://www.bgprevoz.rs/vesti";
 const KV_KEY = "route_alerts_v1";
@@ -263,7 +264,8 @@ export async function refreshAlerts(env: Env): Promise<{ added: number; total: n
 }
 
 export async function listAlerts(env: Env): Promise<RouteAlert[]> {
-  const raw = await env.STIGLA_KV.get(KV_KEY);
+  // Refreshed by a daily cron: a 30s in-isolate cache is invisible to users.
+  const raw = await kvGetCached(env, KV_KEY);
   const alerts: RouteAlert[] = raw ? JSON.parse(raw) : [];
   // The source publishes in Cyrillic; the app reads Latin (audit round 2, D4).
   return alerts.map((a) => ({ ...a, title: toLatin(a.title), summary: toLatin(a.summary) }));

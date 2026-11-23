@@ -2,6 +2,7 @@ import type { Env } from "../env";
 import type { ArrivalDto, VehicleType } from "../types";
 import { haversineDistanceMeters } from "./haversine";
 import { getLineDirectionEndpoints, getRouteShape, getAllLines, getRouteTrips } from "./gtfsData";
+import { kvGetCached } from "./kvCache";
 
 // Tram-jam ("stalled segment") detection. Two responsibilities, both cheap:
 //
@@ -64,7 +65,7 @@ export interface JamConfig {
 
 async function readJamConfig(env: Env): Promise<JamConfig> {
   const num = async (key: string, def: number, lo: number, hi: number) => {
-    const raw = await env.STIGLA_KV.get(`config:${key}`);
+    const raw = await kvGetCached(env, `config:${key}`);
     const v = raw == null ? def : Number(raw);
     return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def;
   };

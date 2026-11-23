@@ -1,6 +1,7 @@
 import type { Env } from "../env";
 import type { WaitUntilCtx } from "./swrCache";
 import { getFlagMemoized } from "./featureFlags";
+import { kvGetCached } from "./kvCache";
 
 // ---------------------------------------------------------------------------
 // Upstream request budget + degradation breaker (polite-client pacing).
@@ -129,8 +130,8 @@ export interface BreakerConfig {
 
 export async function resolveBudgetConfig(env: Env): Promise<BudgetConfig> {
   const [ceilingRaw, reserveRaw] = await Promise.all([
-    env.STIGLA_KV.get(KV_BUDGET_HOURLY),
-    env.STIGLA_KV.get(KV_LIVE_RESERVE_HOURLY),
+    kvGetCached(env, KV_BUDGET_HOURLY),
+    kvGetCached(env, KV_LIVE_RESERVE_HOURLY),
   ]);
   return {
     ceiling: parseIntKv(ceilingRaw, DEFAULT_BUDGET_HOURLY),
@@ -139,15 +140,15 @@ export async function resolveBudgetConfig(env: Env): Promise<BudgetConfig> {
 }
 
 export async function resolveJitterSeconds(env: Env): Promise<number> {
-  return parseIntKv(await env.STIGLA_KV.get(KV_JITTER_SECONDS), DEFAULT_JITTER_SECONDS);
+  return parseIntKv(await kvGetCached(env, KV_JITTER_SECONDS), DEFAULT_JITTER_SECONDS);
 }
 
 export async function resolveBreakerConfig(env: Env): Promise<BreakerConfig> {
   const [p95, frac, win, min] = await Promise.all([
-    env.STIGLA_KV.get(KV_BREAKER_LATENCY_P95_MS),
-    env.STIGLA_KV.get(KV_BREAKER_NON_JSON_FRACTION),
-    env.STIGLA_KV.get(KV_BREAKER_WINDOW_SECONDS),
-    env.STIGLA_KV.get(KV_BREAKER_MIN_SAMPLES),
+    kvGetCached(env, KV_BREAKER_LATENCY_P95_MS),
+    kvGetCached(env, KV_BREAKER_NON_JSON_FRACTION),
+    kvGetCached(env, KV_BREAKER_WINDOW_SECONDS),
+    kvGetCached(env, KV_BREAKER_MIN_SAMPLES),
   ]);
   return {
     latencyP95Ms: parseIntKv(p95, DEFAULT_BREAKER_LATENCY_P95_MS),

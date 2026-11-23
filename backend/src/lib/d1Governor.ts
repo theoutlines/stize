@@ -1,5 +1,6 @@
 import type { Env } from "../env";
 import { getFlag, setFlag, type FeatureFlag } from "./featureFlags";
+import { kvGetCached } from "./kvCache";
 
 // ---------------------------------------------------------------------------
 // D1 write-budget governor.
@@ -120,12 +121,12 @@ function parsePositive(raw: string | null, fallback: number, max = Number.MAX_SA
 
 export async function resolveGovernorConfig(env: Env): Promise<GovernorConfig> {
   const [pct, limit, rpct, rlimit, interval, apct] = await Promise.all([
-    env.STIGLA_KV.get(KV_THRESHOLD_PCT),
-    env.STIGLA_KV.get(KV_DAILY_LIMIT),
-    env.STIGLA_KV.get(KV_READ_THRESHOLD_PCT),
-    env.STIGLA_KV.get(KV_DAILY_READ_LIMIT),
-    env.STIGLA_KV.get(KV_INTERVAL_MIN),
-    env.STIGLA_KV.get(KV_ANALYTICS_PCT),
+    kvGetCached(env, KV_THRESHOLD_PCT),
+    kvGetCached(env, KV_DAILY_LIMIT),
+    kvGetCached(env, KV_READ_THRESHOLD_PCT),
+    kvGetCached(env, KV_DAILY_READ_LIMIT),
+    kvGetCached(env, KV_INTERVAL_MIN),
+    kvGetCached(env, KV_ANALYTICS_PCT),
   ]);
   return {
     thresholdPct: parsePositive(pct, DEFAULT_THRESHOLD_PCT, 100),
