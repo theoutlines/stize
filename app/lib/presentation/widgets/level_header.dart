@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import '../../core/design/stize_icons.dart';
 
 /// Header of a level in the context slot (mobile sheet / desktop panel).
@@ -65,9 +66,9 @@ class LevelHeader extends StatelessWidget {
                           backLabel!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                          style: StizeText.of(
+                            context,
+                          ).body.copyWith(color: scheme.onSurfaceVariant),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -89,7 +90,7 @@ class LevelHeader extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         // Screen title per the system: h1 (28/32, 500).
-                        style: theme.textTheme.headlineMedium,
+                        style: StizeText.of(context).h1,
                       ),
                     ),
                     ?trailing,

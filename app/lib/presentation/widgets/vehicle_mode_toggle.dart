@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
@@ -132,7 +133,7 @@ class _VehicleModeToggleState extends ConsumerState<VehicleModeToggle> {
                             ),
                             child: Text(
                               l10n.vehicleModeHint,
-                              style: theme.textTheme.labelLarge?.copyWith(
+                              style: StizeText.of(context).label.copyWith(
                                 color: theme.colorScheme.onInverseSurface,
                               ),
                             ),

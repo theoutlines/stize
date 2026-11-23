@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/route_alert.dart';
@@ -109,9 +110,9 @@ class JamStopBanner extends ConsumerWidget {
           Expanded(
             child: Text(
               text,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurface,
-              ),
+              style: StizeText.of(
+                context,
+              ).caption.copyWith(color: scheme.onSurface),
             ),
           ),
         ],

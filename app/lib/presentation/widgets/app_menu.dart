@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
@@ -284,11 +285,7 @@ class _MenuRow extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style:
-                      (small
-                              ? theme.textTheme.bodyMedium
-                              : theme.textTheme.bodyLarge)
-                          ?.copyWith(color: color),
+                  style: StizeText.of(context).body.copyWith(color: color),
                 ),
               ),
             ],

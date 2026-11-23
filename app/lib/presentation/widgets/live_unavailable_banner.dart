@@ -1,3 +1,4 @@
+import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -27,9 +28,9 @@ class LiveUnavailableBanner extends StatelessWidget {
           Expanded(
             child: Text(
               l10n.liveUnavailableBanner,
-              style: Theme.of(
+              style: StizeText.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: scheme.outline),
+              ).caption.copyWith(color: scheme.outline),
             ),
           ),
         ],

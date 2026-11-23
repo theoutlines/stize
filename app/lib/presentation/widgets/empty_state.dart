@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 
 /// A calm, human-toned placeholder for empty/error/loading states —
 /// never a bare "Error 500" or spinner-only screen.
@@ -31,16 +32,16 @@ class EmptyState extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               title,
-              style: theme.textTheme.titleMedium,
+              style: StizeText.of(context).label,
               textAlign: TextAlign.center,
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 8),
               Text(
                 subtitle!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.outline,
-                ),
+                style: StizeText.of(
+                  context,
+                ).body.copyWith(color: theme.colorScheme.outline),
                 textAlign: TextAlign.center,
               ),
             ],

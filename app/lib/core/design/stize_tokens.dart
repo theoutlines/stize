@@ -6,6 +6,10 @@
 
 import 'package:flutter/material.dart';
 
+// Motion tokens are hand-written (not in the JSON yet); re-exported so
+// importing the tokens brings them along.
+export 'stize_motion.dart';
+
 /// Theme-aware colours of the Stiže design system. Read with
 /// `StizeColors.of(context)`.
 @immutable
@@ -51,6 +55,14 @@ class StizeColors extends ThemeExtension<StizeColors> {
     required this.etaLater,
     required this.scheduled,
     required this.place,
+    required this.jam,
+    required this.moving,
+    required this.fleetEco,
+    required this.fleetHybrid,
+    required this.fleetAc,
+    required this.alertCount,
+    required this.guideNight,
+    required this.stripeLine,
   });
 
   /// `bg`: Page ground behind the map chrome, lists and settings.
@@ -131,9 +143,7 @@ class StizeColors extends ThemeExtension<StizeColors> {
   /// `accent-14`: Ground of an accent note or a live badge.
   final Color accent14;
 
-  /// `late`: Analytics signal "problem here" (city section, owner 2026-11-23):
-  /// the worst line, often-late hours, jam days. Only on charts, never on
-  /// transit colour or body text. Kept apart from tram red by hue.
+  /// `late`: Analytics signal "problem here" (city section): the worst line, often-late hours. Only on charts, never on transit colour or body text.
   final Color late;
 
   /// `transit-bus`: Data layer, not UI accent. Bus: line badge, stop pin, vehicle coin, route line. Aligned 2026-11-23 with tram and trolleybus (same chroma, closer lightness; real Belgrade colours kept). Label on it: on-transit (white, 4.3:1).
@@ -174,6 +184,30 @@ class StizeColors extends ThemeExtension<StizeColors> {
 
   /// `place`: Searched place pin.
   final Color place;
+
+  /// `jam`: Traffic jam on a line or ahead of a vehicle: strip and banner tint (at 12-14%), jam markers on the map.
+  final Color jam;
+
+  /// `moving`: Vehicle status "moving" in the vehicle sheet.
+  final Color moving;
+
+  /// `fleet-eco`: Fleet badge: electric / low-emission vehicle.
+  final Color fleetEco;
+
+  /// `fleet-hybrid`: Fleet badge: hybrid vehicle.
+  final Color fleetHybrid;
+
+  /// `fleet-ac`: Fleet badge: air conditioning.
+  final Color fleetAc;
+
+  /// `alert-count`: Count bubble on the route-alerts button.
+  final Color alertCount;
+
+  /// `guide-night`: Belgrade guide night state (00:00 to 04:59) background.
+  final Color guideNight;
+
+  /// `stripe-line`: Hairline under a full-width transit stripe in lists.
+  final Color stripeLine;
 
   static const dark = StizeColors(
     bg: Color(0xFF151515),
@@ -216,6 +250,14 @@ class StizeColors extends ThemeExtension<StizeColors> {
     etaLater: Color(0xBFFFFFFF),
     scheduled: Color(0x99FFFFFF),
     place: Color(0xFFE5484D),
+    jam: Color(0xFFE8A317),
+    moving: Color(0xFF2E9E5B),
+    fleetEco: Color(0xFF1E7A46),
+    fleetHybrid: Color(0xFFB25A00),
+    fleetAc: Color(0xFF2278E6),
+    alertCount: Color(0xFFD90429),
+    guideNight: Color(0xFF1B2A4A),
+    stripeLine: Color(0x2E000000),
   );
 
   static const light = StizeColors(
@@ -259,6 +301,14 @@ class StizeColors extends ThemeExtension<StizeColors> {
     etaLater: Color(0xBF151515),
     scheduled: Color(0xA8151515),
     place: Color(0xFFD9363C),
+    jam: Color(0xFFE8A317),
+    moving: Color(0xFF2E9E5B),
+    fleetEco: Color(0xFF1E7A46),
+    fleetHybrid: Color(0xFFB25A00),
+    fleetAc: Color(0xFF2278E6),
+    alertCount: Color(0xFFD90429),
+    guideNight: Color(0xFF1B2A4A),
+    stripeLine: Color(0x2E000000),
   );
 
   /// The colours of the current theme; dark when the extension is missing.
@@ -307,6 +357,14 @@ class StizeColors extends ThemeExtension<StizeColors> {
     'eta-later': etaLater,
     'scheduled': scheduled,
     'place': place,
+    'jam': jam,
+    'moving': moving,
+    'fleet-eco': fleetEco,
+    'fleet-hybrid': fleetHybrid,
+    'fleet-ac': fleetAc,
+    'alert-count': alertCount,
+    'guide-night': guideNight,
+    'stripe-line': stripeLine,
   };
 
   @override
@@ -351,6 +409,14 @@ class StizeColors extends ThemeExtension<StizeColors> {
     Color? etaLater,
     Color? scheduled,
     Color? place,
+    Color? jam,
+    Color? moving,
+    Color? fleetEco,
+    Color? fleetHybrid,
+    Color? fleetAc,
+    Color? alertCount,
+    Color? guideNight,
+    Color? stripeLine,
   }) => StizeColors(
     bg: bg ?? this.bg,
     card: card ?? this.card,
@@ -392,6 +458,14 @@ class StizeColors extends ThemeExtension<StizeColors> {
     etaLater: etaLater ?? this.etaLater,
     scheduled: scheduled ?? this.scheduled,
     place: place ?? this.place,
+    jam: jam ?? this.jam,
+    moving: moving ?? this.moving,
+    fleetEco: fleetEco ?? this.fleetEco,
+    fleetHybrid: fleetHybrid ?? this.fleetHybrid,
+    fleetAc: fleetAc ?? this.fleetAc,
+    alertCount: alertCount ?? this.alertCount,
+    guideNight: guideNight ?? this.guideNight,
+    stripeLine: stripeLine ?? this.stripeLine,
   );
 
   @override
@@ -446,6 +520,14 @@ class StizeColors extends ThemeExtension<StizeColors> {
       etaLater: Color.lerp(etaLater, other.etaLater, t)!,
       scheduled: Color.lerp(scheduled, other.scheduled, t)!,
       place: Color.lerp(place, other.place, t)!,
+      jam: Color.lerp(jam, other.jam, t)!,
+      moving: Color.lerp(moving, other.moving, t)!,
+      fleetEco: Color.lerp(fleetEco, other.fleetEco, t)!,
+      fleetHybrid: Color.lerp(fleetHybrid, other.fleetHybrid, t)!,
+      fleetAc: Color.lerp(fleetAc, other.fleetAc, t)!,
+      alertCount: Color.lerp(alertCount, other.alertCount, t)!,
+      guideNight: Color.lerp(guideNight, other.guideNight, t)!,
+      stripeLine: Color.lerp(stripeLine, other.stripeLine, t)!,
     );
   }
 }
@@ -505,6 +587,9 @@ abstract final class StizeRadius {
 
   /// `radius-hero`: Landing hero, the top of the bottom sheet.
   static const double radiusHero = 24.0;
+
+  /// `radius-pill`: Fully rounded: pills, dots, progress tracks.
+  static const double radiusPill = 999.0;
 }
 
 /// Component sizes.
@@ -748,35 +833,4 @@ abstract final class StizeType {
     fontWeight: FontWeight.w400,
     letterSpacing: 0.0,
   );
-}
-
-/// Motion tokens from the system's motion library (transitions.dev scale).
-/// Opens carry the distance; closes are quicker and quieter.
-abstract final class StizeMotion {
-  static const Duration stagger = Duration(milliseconds: 40);
-  static const Duration micro = Duration(milliseconds: 80);
-
-  /// Close of a menu/modal, a text or number swap.
-  static const Duration quick = Duration(milliseconds: 150);
-
-  /// Open of a menu/modal, an icon swap, a list item entering.
-  static const Duration fast = Duration(milliseconds: 250);
-
-  /// A panel or sheet closing.
-  static const Duration medium = Duration(milliseconds: 350);
-
-  /// A panel or sheet opening.
-  static const Duration slow = Duration(milliseconds: 400);
-
-  /// Surface motion: open/close, slide, resize, position change.
-  static const Curve smoothOut = Cubic(0.22, 1, 0.36, 1);
-
-  /// Text and icon swaps.
-  static const Curve inOut = Curves.easeInOut;
-
-  /// Travel of an in-place text swap.
-  static const double distanceMicro = 4;
-
-  /// Pre-scale of a dropdown / popover opening.
-  static const double scaleDropdown = 0.97;
 }

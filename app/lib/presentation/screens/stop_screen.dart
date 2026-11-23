@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:stize/core/design/stize_text.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -196,9 +197,9 @@ class _StopScreenState extends ConsumerState<StopScreen> {
             Expanded(
               child: Text(
                 l10n.noLiveVehiclesOnMap,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: StizeText.of(
+                  context,
+                ).caption.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
             ),
           ],

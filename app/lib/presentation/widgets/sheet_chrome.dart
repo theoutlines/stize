@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import '../../core/design/stize_icons.dart';
 
@@ -70,7 +71,6 @@ class SheetBackHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 16, 4),
       child: Row(
@@ -83,7 +83,7 @@ class SheetBackHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: theme.textTheme.titleMedium,
+              style: StizeText.of(context).label,
               overflow: TextOverflow.ellipsis,
             ),
           ),

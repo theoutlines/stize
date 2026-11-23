@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 
 import '../../core/design/components/stize_segmented.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
@@ -68,7 +69,7 @@ Future<void> showSettingsSheet(BuildContext context) {
                         Expanded(
                           child: Text(
                             l10n.settingsTitle,
-                            style: Theme.of(dialogContext).textTheme.titleLarge,
+                            style: StizeText.of(dialogContext).section,
                           ),
                         ),
                         IconButton(
@@ -110,7 +111,7 @@ Future<void> showSettingsSheet(BuildContext context) {
               children: [
                 Text(
                   l10n.settingsTitle,
-                  style: Theme.of(sheetContext).textTheme.titleLarge,
+                  style: StizeText.of(sheetContext).section,
                 ),
                 const SizedBox(height: 16),
                 const SettingsPanel(),
@@ -164,7 +165,7 @@ class SettingsPanel extends ConsumerWidget {
           const SizedBox(height: 16),
           Text(
             l10n.settingsAutoHint,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            style: StizeText.of(context).caption.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),

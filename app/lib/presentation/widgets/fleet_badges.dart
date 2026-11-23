@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 
 import '../../core/fleet_matcher.dart';
 import '../../l10n/app_localizations.dart';
@@ -10,9 +11,6 @@ import '../../core/design/stize_tokens.dart';
 /// reads the same in both places.
 
 /// Green for zero-emission (electric / trolley / tram), amber for hybrids.
-const _ecoColor = Color(0xFF1E7A46);
-const _hybridColor = Color(0xFFB25A00);
-const _acColor = Color(0xFF2278E6);
 
 /// Vehicle age in whole years from the middle of the build range, or null when
 /// build years are unknown. Anchored to the current calendar year.
@@ -61,9 +59,9 @@ class FleetBadgeStrip extends StatelessWidget {
       if (n == null || n.trim().isEmpty) return const SizedBox.shrink();
       return Text(
         l10n.fleetVehicleNumber(n),
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: onColor ?? theme.colorScheme.outline,
-        ),
+        style: StizeText.of(
+          context,
+        ).caption.copyWith(color: onColor ?? theme.colorScheme.outline),
       );
     }
 
@@ -72,10 +70,20 @@ class FleetBadgeStrip extends StatelessWidget {
 
     // Eco / powertrain.
     if (fleet.powertrain.isElectric) {
-      badges.add(_icon(StizeIcons.leaf, onColor ?? _ecoColor, assumed: false));
+      badges.add(
+        _icon(
+          StizeIcons.leaf,
+          onColor ?? StizeColors.of(context).fleetEco,
+          assumed: false,
+        ),
+      );
     } else if (fleet.powertrain == Powertrain.hybrid) {
       badges.add(
-        _icon(StizeIcons.leaf, onColor ?? _hybridColor, assumed: approx),
+        _icon(
+          StizeIcons.leaf,
+          onColor ?? StizeColors.of(context).fleetHybrid,
+          assumed: approx,
+        ),
       );
     }
 
@@ -84,7 +92,7 @@ class FleetBadgeStrip extends StatelessWidget {
       badges.add(
         _icon(
           StizeIcons.snowflake,
-          onColor ?? _acColor,
+          onColor ?? StizeColors.of(context).fleetAc,
           assumed: approx || fleet.isAssumed('ac'),
         ),
       );
@@ -124,9 +132,9 @@ class FleetBadgeStrip extends StatelessWidget {
             padding: const EdgeInsets.only(right: 4),
             child: Text(
               '~',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: onColor ?? theme.colorScheme.outline,
-              ),
+              style: StizeText.of(
+                context,
+              ).caption.copyWith(color: onColor ?? theme.colorScheme.outline),
             ),
           ),
         for (var i = 0; i < badges.length; i++) ...[
@@ -173,7 +181,7 @@ class FleetBadgeStrip extends StatelessWidget {
     final color = onColor ?? theme.colorScheme.outline;
     return Text(
       l10n.fleetAgeYears(age),
-      style: theme.textTheme.bodySmall?.copyWith(
+      style: StizeText.of(context).caption.copyWith(
         color: assumed ? color.withValues(alpha: 0.7) : color,
         fontFeatures: const [],
       ),

@@ -1,4 +1,6 @@
+import 'package:stize/core/design/stize_tokens.dart';
 import 'dart:math' as math;
+import 'package:stize/core/design/stize_text.dart';
 
 import 'package:flutter/material.dart';
 import 'package:maplibre/maplibre.dart';
@@ -176,7 +178,7 @@ class CompactAttribution extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final style = Theme.of(context).textTheme.labelSmall?.copyWith(
+    final style = StizeText.of(context).note.copyWith(
       color: scheme.onSurface.withValues(alpha: 0.7),
       fontSize: 9.5,
       height: 1.0,
@@ -601,7 +603,7 @@ class _VehicleMarkerState extends State<VehicleMarker>
                 final glowOpacity = widget.stuck ? 0.55 : (1 - t) * 0.5;
                 return DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(StizeRadius.radiusPill),
                     boxShadow: [
                       BoxShadow(
                         color: haloColor.withValues(alpha: glowOpacity),

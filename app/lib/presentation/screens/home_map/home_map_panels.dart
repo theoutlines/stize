@@ -367,7 +367,7 @@ extension _MapPanels on _HomeMapScreenState {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(StizeRadius.radiusPill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -502,7 +502,7 @@ extension _MapPanels on _HomeMapScreenState {
                   ),
                   child: Text(
                     l10n.vehicleOffScreen(line),
-                    style: theme.textTheme.labelMedium,
+                    style: StizeText.of(context).control,
                   ),
                 ),
               BackToVehiclePill(
@@ -825,6 +825,7 @@ extension _MapPanels on _HomeMapScreenState {
                 for (final line in lines)
                   Text(
                     line,
+                    // ds-ok: staging-only diagnostics overlay.
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -870,7 +871,7 @@ extension _MapPanels on _HomeMapScreenState {
                     const SizedBox(width: 8),
                     Text(
                       l10n.mapZoomInForVehicles,
-                      style: theme.textTheme.bodySmall,
+                      style: StizeText.of(context).caption,
                     ),
                   ],
                 ),
@@ -961,7 +962,7 @@ extension _MapPanels on _HomeMapScreenState {
                             AppLocalizations.of(context).followingVehicle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium,
+                        style: StizeText.of(context).body,
                       ),
                       // A tapped schedule-predicted object honestly says so — its
                       // position is a GTFS estimate, not a live fix.
@@ -980,7 +981,7 @@ extension _MapPanels on _HomeMapScreenState {
                                 AppLocalizations.of(context).vehicleScheduled,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.labelSmall?.copyWith(
+                                style: StizeText.of(context).note.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
@@ -1150,7 +1151,7 @@ extension _MapPanels on _HomeMapScreenState {
     final iconColor = _jamModeOn
         ? Colors.white
         : (loud
-              ? _HomeMapScreenState._jamAmber
+              ? StizeColors.of(context).jam
               : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.55));
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1160,7 +1161,7 @@ extension _MapPanels on _HomeMapScreenState {
           children: [
             Material(
               color: _jamModeOn
-                  ? _HomeMapScreenState._jamAmber
+                  ? StizeColors.of(context).jam
                   : theme.colorScheme.surface,
               elevation: 3,
               shape: const CircleBorder(),
@@ -1187,17 +1188,15 @@ extension _MapPanels on _HomeMapScreenState {
                       minWidth: 20,
                       minHeight: 20,
                     ),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFD90429),
+                    decoration: BoxDecoration(
+                      color: StizeColors.of(context).alertCount,
                       shape: BoxShape.circle,
                     ),
                     child: Text(
                       '$relevant',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: StizeType.control.copyWith(
                         color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
                         height: 1.0,
                       ),
                     ),

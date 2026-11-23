@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:stize/core/design/stize_text.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -503,9 +504,9 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Text(
         text,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.outline,
-        ),
+        style: StizeText.of(
+          context,
+        ).control.copyWith(color: theme.colorScheme.outline),
       ),
     );
   }
