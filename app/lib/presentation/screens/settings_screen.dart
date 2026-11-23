@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../core/design/components/stize_segmented.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -139,7 +141,7 @@ class SettingsPanel extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SegmentedSetting<String?>(
+          StizeSegmented<String?>(
             label: l10n.settingsLanguage,
             value: settings.localeCode,
             options: [
@@ -149,7 +151,7 @@ class SettingsPanel extends ConsumerWidget {
             onChanged: controller.setLocaleCode,
           ),
           const SizedBox(height: 20),
-          _SegmentedSetting<ThemeMode>(
+          StizeSegmented<ThemeMode>(
             label: l10n.settingsTheme,
             value: settings.themeMode,
             options: [
@@ -184,78 +186,3 @@ class SettingsPanel extends ConsumerWidget {
 }
 
 /// A labelled row of equal-width segments; the selected one is filled.
-class _SegmentedSetting<T> extends StatelessWidget {
-  const _SegmentedSetting({
-    required this.label,
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
-
-  final String label;
-  final T value;
-  final List<(T, String)> options;
-  final ValueChanged<T> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: scheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: scheme.onSurface.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              for (final (option, text) in options)
-                Expanded(
-                  child: Semantics(
-                    button: true,
-                    selected: option == value,
-                    child: Material(
-                      color: option == value
-                          ? scheme.onSurface
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: () => onChanged(option),
-                        child: SizedBox(
-                          height: 40,
-                          child: Center(
-                            child: Text(
-                              text,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w500,
-                                color: option == value
-                                    ? scheme.surface
-                                    : scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}

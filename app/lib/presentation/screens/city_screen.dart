@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/design/components/stize_line_badge.dart';
 import '../../core/design/stize_icons.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../core/map_support.dart';
@@ -843,7 +844,7 @@ class _Intervals extends StatelessWidget {
                           StizeRadius.radiusXs,
                         ),
                       ),
-                      child: _Badge(line: l.line),
+                      child: StizeLineBadge(line: l.line),
                     ),
                     const Spacer(),
                     Text(
@@ -858,37 +859,6 @@ class _Intervals extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.line, this.big = false});
-  final String line;
-  final bool big;
-
-  @override
-  Widget build(BuildContext context) {
-    final type = lineTypeOf(line);
-    // Hugs its number: never stretches to the row it sits in.
-    return Container(
-      constraints: BoxConstraints(minWidth: big ? 36 : 28),
-      height: big ? 28 : 22,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: BoxDecoration(
-        color: vehicleColor(type),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Center(
-        widthFactor: 1,
-        child: Text(
-          line,
-          style: StizeType.lineNumber.copyWith(
-            color: StizeColors.of(context).onTransit,
-            fontSize: big ? 16 : 14,
-          ),
-        ),
       ),
     );
   }
@@ -1004,7 +974,7 @@ class CityLineScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [_Badge(line: line, big: true)],
+          children: [StizeLineBadge(line: line, big: true)],
         ),
       ),
       body: async.when(
