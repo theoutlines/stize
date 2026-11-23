@@ -11,6 +11,7 @@ import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
 import 'package:stize/presentation/screens/home_map_screen.dart';
 import 'package:stize/presentation/widgets/context_shell.dart';
+import 'package:stize/presentation/widgets/map_search_pill.dart';
 import 'package:stize/presentation/widgets/nearby_sheet.dart';
 
 /// Location permanently denied → the map never starts a stream (keeps the test
@@ -22,7 +23,7 @@ class _DeniedLocation extends LocationService {
   Future<Position?> lastKnownIfGranted() async => null;
 }
 
-Widget _host({required Size size}) {
+Widget _host({required Size size, double keyboard = 0}) {
   return ProviderScope(
     overrides: [
       appConfigProvider.overrideWith(
@@ -38,7 +39,10 @@ Widget _host({required Size size}) {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: MediaQuery(
-        data: MediaQueryData(size: size),
+        data: MediaQueryData(
+          size: size,
+          viewInsets: EdgeInsets.only(bottom: keyboard),
+        ),
         child: const HomeMapScreen(),
       ),
     ),
@@ -66,6 +70,26 @@ void main() {
         .descendant(of: find.byType(Scaffold), matching: find.byType(Stack))
         .first;
     expect(tester.getSize(stack), const Size(1200, 900));
+  });
+
+  testWidgets('mobile: with the keyboard up the pill still rides on the list', (
+    tester,
+  ) async {
+    // Regression (owner, iPhone 2026-11-23): the keyboard shrinks the body, and
+    // the pill was placed from the full screen height, landing on the cards.
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_host(size: const Size(390, 844), keyboard: 300));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    final pill = tester.getRect(find.byType(MapSearchPill));
+    const bodyH = 844 - 300;
+    final sheetTop = bodyH * (1 - NearbySheet.oneScrollRest);
+    expect(pill.bottom, lessThanOrEqualTo(sheetTop));
+    expect(pill.bottom, greaterThan(sheetTop - 40));
   });
 
   testWidgets('desktop (≥840) shows the left panel, not the bottom sheet', (

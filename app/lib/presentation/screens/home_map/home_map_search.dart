@@ -487,7 +487,7 @@ extension _MapSearch on _HomeMapScreenState {
 
   /// The sheet lives in the Scaffold body, which shrinks by the keyboard.
   double _bodyH(Size size) =>
-      size.height - MediaQuery.viewInsetsOf(context).bottom;
+      _bodyHeight ?? size.height - MediaQuery.viewInsetsOf(context).bottom;
 
   /// The pill's top for the current sheet height: it rides on the map just
   /// above the sheet, and stops under the status bar.
