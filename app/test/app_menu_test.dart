@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
@@ -106,5 +107,15 @@ void main() {
     await tester.tap(find.text('Share feedback'));
     await tester.pumpAndSettle();
     expect(find.text('Write to me'), findsOneWidget);
+  });
+
+  testWidgets('Settings opens as a sheet with both controls', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await _open(tester, _host());
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('Theme'), findsOneWidget);
+    expect(find.byType(BottomSheet), findsOneWidget);
   });
 }

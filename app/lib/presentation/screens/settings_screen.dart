@@ -10,14 +10,14 @@ import '../widgets/back_to_button.dart';
 // 2026-11-22: the design-system font (Uncut Sans) has no Cyrillic.
 const _localeOptions = <String?>[null, 'sr', 'en'];
 
-class SettingsScreen extends ConsumerWidget {
+/// Settings as a full page — kept for the `/settings` route (deep links); the
+/// menu opens the same controls as a sheet ([showSettingsSheet]).
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final settingsAsync = ref.watch(settingsControllerProvider);
-    final controller = ref.read(settingsControllerProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
@@ -25,44 +25,88 @@ class SettingsScreen extends ConsumerWidget {
         leadingWidth: BackToButton.leadingWidth,
         title: Text(l10n.settingsTitle),
       ),
-      body: settingsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator.adaptive()),
-        error: (err, st) => Center(child: Text(err.toString())),
-        // Everything on one screen, no nested pages: two segmented controls.
-        // No vehicle-mode item here by design: the map's layers button is the
-        // single control for it (the mode persists via SettingsStore).
-        data: (settings) => ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          children: [
-            _SegmentedSetting<String?>(
-              label: l10n.settingsLanguage,
-              value: settings.localeCode,
-              options: [
-                for (final code in _localeOptions)
-                  (code, code == null ? l10n.settingsAuto : _localeLabel(code)),
-              ],
-              onChanged: controller.setLocaleCode,
-            ),
-            const SizedBox(height: 20),
-            _SegmentedSetting<ThemeMode>(
-              label: l10n.settingsTheme,
-              value: settings.themeMode,
-              options: [
-                (ThemeMode.system, l10n.settingsAuto),
-                (ThemeMode.light, l10n.settingsThemeLight),
-                (ThemeMode.dark, l10n.settingsThemeDark),
-              ],
-              onChanged: controller.setThemeMode,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.settingsAutoHint,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ],
+      body: const SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: SettingsPanel(),
+      ),
+    );
+  }
+}
+
+/// Opens Settings as a compact sheet over whatever is on screen (the menu's
+/// entry point): two controls don't warrant a full-screen page, and the map and
+/// any open stop stay where they are underneath.
+Future<void> showSettingsSheet(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheetContext) {
+      final l10n = AppLocalizations.of(sheetContext);
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(l10n.settingsTitle, style: Theme.of(sheetContext).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              const SettingsPanel(),
+            ],
+          ),
         ),
+      );
+    },
+  );
+}
+
+/// The settings controls: language and theme as segmented controls. No
+/// vehicle-mode item by design: the map's layers button is the single control
+/// for it (the mode persists via SettingsStore).
+class SettingsPanel extends ConsumerWidget {
+  const SettingsPanel({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final settingsAsync = ref.watch(settingsControllerProvider);
+    final controller = ref.read(settingsControllerProvider.notifier);
+    return settingsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator.adaptive()),
+      error: (err, st) => Center(child: Text(err.toString())),
+      data: (settings) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SegmentedSetting<String?>(
+            label: l10n.settingsLanguage,
+            value: settings.localeCode,
+            options: [
+              for (final code in _localeOptions)
+                (code, code == null ? l10n.settingsAuto : _localeLabel(code)),
+            ],
+            onChanged: controller.setLocaleCode,
+          ),
+          const SizedBox(height: 20),
+          _SegmentedSetting<ThemeMode>(
+            label: l10n.settingsTheme,
+            value: settings.themeMode,
+            options: [
+              (ThemeMode.system, l10n.settingsAuto),
+              (ThemeMode.light, l10n.settingsThemeLight),
+              (ThemeMode.dark, l10n.settingsThemeDark),
+            ],
+            onChanged: controller.setThemeMode,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            l10n.settingsAutoHint,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ],
       ),
     );
   }

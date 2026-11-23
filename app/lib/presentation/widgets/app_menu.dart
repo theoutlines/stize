@@ -8,6 +8,7 @@ import '../../core/external_link.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../screens/my_stops_screen.dart';
+import '../screens/settings_screen.dart';
 import 'drawer_footer.dart';
 
 /// Gap between the round menu button and the top-left screen edge (matches the
@@ -159,10 +160,16 @@ class AppMenuCard extends ConsumerWidget {
           label: 'Аналитика',
           onTap: () => go((_, router) => router.push('/analytics')),
         ),
+      // A compact sheet over the current screen, not a full page: two controls
+      // don't warrant one, and the map and any open stop stay put.
       _MenuRow(
         icon: Icons.settings_outlined,
         label: l10n.settingsTitle,
-        onTap: () => go((_, router) => router.push('/settings')),
+        onTap: () {
+          final host = Navigator.of(context, rootNavigator: true).context;
+          Navigator.of(context).pop();
+          showSettingsSheet(host);
+        },
       ),
     ];
 
