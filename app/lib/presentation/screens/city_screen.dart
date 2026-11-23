@@ -853,20 +853,23 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final type = lineTypeOf(line);
+    // Hugs its number: never stretches to the row it sits in.
     return Container(
       constraints: BoxConstraints(minWidth: big ? 36 : 28),
       height: big ? 28 : 22,
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: vehicleColor(type),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(
-        line,
-        style: StizeType.lineNumber.copyWith(
-          color: StizeColors.of(context).onTransit,
-          fontSize: big ? 16 : 14,
+      child: Center(
+        widthFactor: 1,
+        child: Text(
+          line,
+          style: StizeType.lineNumber.copyWith(
+            color: StizeColors.of(context).onTransit,
+            fontSize: big ? 16 : 14,
+          ),
         ),
       ),
     );
