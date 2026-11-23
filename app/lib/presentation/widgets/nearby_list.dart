@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'animated_entries.dart';
+import 'flat_cards.dart';
 
 import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
@@ -42,16 +43,20 @@ class NearbyList extends StatelessWidget {
     // Stiže: colour cards 4px apart (owner spec, same as the stop board).
     // Cards animate in and out on a refresh instead of popping (owner,
     // 2026-11-23); the list is short, so one animated column is fine.
+    final flat = FlatCards.of(context);
     final list = ListView(
       controller: scrollController,
       // Top padding matches the horizontal (side) padding so the first card is
       // inset equally from the island's top and sides (owner desktop request).
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+      // Flat (mobile one-scroll): edge to edge, no inset.
+      padding: flat
+          ? const EdgeInsets.only(bottom: 24)
+          : const EdgeInsets.fromLTRB(12, 12, 12, 24),
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         ?header,
         AnimatedEntries(
-          gap: StizeSpace.space1,
+          gap: flat ? 0 : StizeSpace.space1,
           children: [
             for (final g in groups)
               NearbyCard(

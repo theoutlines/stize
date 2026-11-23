@@ -60,6 +60,7 @@ import 'settings_screen.dart';
 import '../widgets/drawer_footer.dart';
 import '../widgets/guide/belgrade_guide.dart';
 import '../widgets/level_header.dart';
+import '../widgets/map_search_pill.dart';
 import '../widgets/my_stops_list.dart';
 import '../widgets/vehicle_icon.dart';
 import '../widgets/vehicle_mode_toggle.dart';
@@ -358,6 +359,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// sheet, so its height stays continuous across levels.
   final _sheetCtl = DraggableScrollableController();
 
+  // One-scroll home (mobile): the search pill on the map.
+  final _pillCtl = TextEditingController();
+  final _pillFocus = FocusNode();
+  bool _pillActive = false;
+
   // ---- Adaptive context slot (context_panel) -------------------------------
   // With the flag ON the three views (nearby → stop → vehicle) share ONE
   // surface: a persistent left panel on desktop (≥840px) or unified bottom
@@ -499,6 +505,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _vehAnim.dispose();
     _searchController.dispose();
     _focusNode.dispose();
+    _pillCtl.dispose();
+    _pillFocus.dispose();
     _sheetCtl.dispose();
     super.dispose();
   }
@@ -854,7 +862,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             else
               const SizedBox.expand(),
             // Round action buttons at the top: menu (left), recenter (right).
-            _topButtons(theme),
+            _pushedTopButtons(theme, size),
             // Staging-only stop-render diagnostics (isStaging; invisible in prod).
             // The one reliable render-observation channel on Flutter-CanvasKit —
             // see _stopDiagnosticsOverlay and the map-render gotchas.
@@ -883,6 +891,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             else
               NearbySheet(
                 controller: _sheetCtl,
+                oneScroll: true,
+                maxSize: _oneScrollMax(size),
+                searchController: _pillCtl,
+                searchActive: _pillActive,
                 // A level (stop / My stops / model) replaces Nearby inside this
                 // same sheet; null = Nearby.
                 levelHeader: _slotNavRow(l10n),
@@ -903,6 +915,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                 // vehicle is kept above the sheet as it's dragged (R2 #2).
                 onHeightChanged: _onMobileSheetHeight,
               ),
+            if (_oneScrollRoot) _searchPill(l10n, size),
             // On-device FPS meter — diagnostic only, off in the normal app; on a
             // staging preview the owner enables it with `?fps=1` to compare the
             // symbol layer against the widget path at different vehicle counts.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'animated_entries.dart';
+import 'flat_cards.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/arrival_grouping.dart';
@@ -163,6 +164,7 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
         .watch(stopPlannedHeadwaysProvider(widget.stopId))
         .valueOrNull;
 
+    final flat = FlatCards.of(context);
     final tiles = <Widget>[];
     var firstCard = true; // the nearest arrival reads biggest
     void addTile(Arrival arrival, FleetVehicle? fleet, List<int>? later) {
@@ -326,19 +328,31 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
           ),
         // 4px between the colour cards, with a 16px side gutter.
         Padding(
-          padding: const EdgeInsets.fromLTRB(
-            StizeSpace.space4,
+          // Flat (mobile one-scroll): cards run edge to edge.
+          padding: EdgeInsets.fromLTRB(
+            flat ? 0 : StizeSpace.space4,
             StizeSpace.space1,
-            StizeSpace.space4,
+            flat ? 0 : StizeSpace.space4,
             0,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AnimatedEntries(gap: StizeSpace.space1, children: tiles),
+              AnimatedEntries(
+                gap: flat ? 0 : StizeSpace.space1,
+                children: tiles,
+              ),
               const SizedBox(height: StizeSpace.space2),
               // The quiet way to flag wrong data: last, never next to arrivals.
-              StopReportEntry(stopId: widget.stopId, stopName: board.stopName),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: flat ? StizeSpace.space4 : 0,
+                ),
+                child: StopReportEntry(
+                  stopId: widget.stopId,
+                  stopName: board.stopName,
+                ),
+              ),
             ],
           ),
         ),

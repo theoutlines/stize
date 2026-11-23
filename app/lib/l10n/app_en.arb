@@ -507,5 +507,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "locateMeTooltip": "Show where I am",
+  "nearbyAroundYou": "Around you"
 }

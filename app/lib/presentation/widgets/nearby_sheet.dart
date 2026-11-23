@@ -7,6 +7,7 @@ import '../../core/design/stize_tokens.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../domain/models/stop.dart';
+import 'flat_cards.dart';
 import 'nearby_view.dart';
 import 'sheet_chrome.dart';
 
@@ -32,6 +33,10 @@ class NearbySheet extends StatelessWidget {
     this.onHeightChanged,
     this.controller,
     this.banner,
+    this.oneScroll = false,
+    this.maxSize,
+    this.searchController,
+    this.searchActive = false,
     this.levelHeader,
     this.levelBody,
   });
@@ -43,6 +48,18 @@ class NearbySheet extends StatelessWidget {
 
   /// Contextual guide strip under the search (see NearbyView.banner).
   final Widget? banner;
+
+  /// One-scroll home (owner, 2026-11-23): no snapping, no grabber, the sheet
+  /// rises continuously up to [maxSize] (just under the map's search pill) and
+  /// then its list scrolls; cards run edge to edge. The search is the pill on
+  /// the map ([searchController] / [searchActive]), not a row in the sheet.
+  final bool oneScroll;
+  final double? maxSize;
+  final TextEditingController? searchController;
+  final bool searchActive;
+
+  /// Where the one-scroll sheet rests when the home opens.
+  static const double oneScrollRest = 0.42;
 
   /// Sheet size before search focus raised it, so Cancel returns "as it was".
   static final _preSearch = Expando<double>();
@@ -104,10 +121,10 @@ class NearbySheet extends StatelessWidget {
         controller: controller,
         // Unified detents (owner R2 #4): large is NOT fullscreen — a strip of map
         // always stays on top.
-        initialChildSize: kSheetPeek,
+        initialChildSize: oneScroll ? oneScrollRest : kSheetPeek,
         minChildSize: 0.12,
-        maxChildSize: kSheetLarge,
-        snap: true,
+        maxChildSize: oneScroll ? (maxSize ?? kSheetLarge) : kSheetLarge,
+        snap: !oneScroll,
         // Two resting places for a drag (owner, 2026-11-23): stopping halfway
         // and then pulling again felt like friction. Half is still used when
         // a level opens programmatically, so the stop stays visible on the map.
@@ -129,31 +146,41 @@ class NearbySheet extends StatelessWidget {
               // scrollable used to, so a drag on the search or the strip did
               // nothing.
               child: _SheetDragArea(
+                snap: !oneScroll,
                 controller: controller,
                 viewport: viewport,
-                child: Column(
-                  children: [
-                    const SheetDragHandle(),
-                    if (levelBody != null) ...[
-                      ?levelHeader,
-                      Expanded(child: levelBody!(scrollController)),
-                    ] else
-                      Expanded(
-                        child: NearbyView(
-                          userLocation: userLocation,
-                          locationDenied: locationDenied,
-                          active: active,
-                          onEnableLocation: onEnableLocation,
-                          onTapGroup: onTapGroup,
-                          onSelectStop: onSelectStop,
-                          onSelectLine: onSelectLine,
-                          scrollController: scrollController,
-                          banner: banner,
-                          onSearchFocus: () => _toDetent(kSheetLarge),
-                          onSearchCancel: _restoreDetent,
+                child: FlatCards(
+                  flat: oneScroll,
+                  child: Column(
+                    children: [
+                      if (oneScroll)
+                        const SizedBox(height: StizeSpace.space2)
+                      else
+                        const SheetDragHandle(),
+                      if (levelBody != null) ...[
+                        ?levelHeader,
+                        Expanded(child: levelBody!(scrollController)),
+                      ] else
+                        Expanded(
+                          child: NearbyView(
+                            userLocation: userLocation,
+                            locationDenied: locationDenied,
+                            active: active,
+                            onEnableLocation: onEnableLocation,
+                            onTapGroup: onTapGroup,
+                            onSelectStop: onSelectStop,
+                            onSelectLine: onSelectLine,
+                            scrollController: scrollController,
+                            banner: banner,
+                            showLocalSearch: !oneScroll,
+                            externalSearch: searchController,
+                            externalSearchActive: searchActive,
+                            onSearchFocus: () => _toDetent(kSheetLarge),
+                            onSearchCancel: _restoreDetent,
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -168,11 +195,13 @@ class NearbySheet extends StatelessWidget {
 /// and a release snaps to peek or large (by flick direction, else nearest).
 class _SheetDragArea extends StatelessWidget {
   const _SheetDragArea({
+    this.snap = true,
     required this.controller,
     required this.viewport,
     required this.child,
   });
 
+  final bool snap;
   final DraggableScrollableController? controller;
   final double viewport;
   final Widget child;
@@ -192,7 +221,7 @@ class _SheetDragArea extends StatelessWidget {
         c.jumpTo(next);
       },
       onVerticalDragEnd: (d) {
-        if (!c.isAttached) return;
+        if (!c.isAttached || !snap) return;
         final v = d.primaryVelocity ?? 0;
         final double target;
         if (v < -300) {

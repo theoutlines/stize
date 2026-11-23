@@ -809,4 +809,10 @@ class AppLocalizationsSr extends AppLocalizations {
   String arrivalThenTo(String place) {
     return 'Zatim do $place';
   }
+
+  @override
+  String get locateMeTooltip => 'Prikaži gde sam';
+
+  @override
+  String get nearbyAroundYou => 'Oko vas';
 }

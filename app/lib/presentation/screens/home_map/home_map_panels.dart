@@ -1055,11 +1055,13 @@ extension _MapPanels on _HomeMapScreenState {
                 // Hides itself — gap and all — while the flag is off, so the
                 // killswitch leaves this stack exactly as production has it.
                 const VehicleModeToggle(),
-                _roundButton(
-                  theme,
-                  icon: StizeIcons.locate,
-                  onTap: _recenterOnMe,
-                ),
+                // On the mobile Nearby root "where am I" lives in the pill.
+                if (!_oneScrollRoot)
+                  _roundButton(
+                    theme,
+                    icon: StizeIcons.locate,
+                    onTap: _recenterOnMe,
+                  ),
                 if (_showZoomControls) ...[
                   const SizedBox(height: 12),
                   _zoomControl(theme),

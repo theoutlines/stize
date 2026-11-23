@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'flat_cards.dart';
+
 import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
 import '../../domain/models/vehicle_type.dart';
@@ -97,11 +99,16 @@ class StizeTransitCard extends StatelessWidget {
     );
     final dest = destination?.trim();
 
+    final flat = FlatCards.of(context);
     final card = Material(
       // A timetable time is a neutral card with a coloured line badge: a dimmed
       // colour fill read as muddy navy / brown next to the live cards.
       color: scheduled ? c.fill08 : fillFor(c, type),
-      borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
+      // Edge-to-edge in the mobile sheet: square, a hairline below.
+      borderRadius: flat ? null : BorderRadius.circular(StizeRadius.radiusCard),
+      shape: flat
+          ? const Border(bottom: BorderSide(color: Color(0x2E000000)))
+          : null,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
