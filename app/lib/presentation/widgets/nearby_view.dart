@@ -63,6 +63,8 @@ class NearbyView extends ConsumerStatefulWidget {
     this.scrollController,
     this.showLocalSearch = true,
     this.banner,
+    this.externalSearch,
+    this.externalSearchActive = false,
     this.onSearchFocus,
     this.onSearchCancel,
     this.hugContent = false,
@@ -105,6 +107,11 @@ class NearbyView extends ConsumerStatefulWidget {
   /// at a hub). Null = none.
   final Widget? banner;
 
+  /// One-scroll home: the search lives in the pill on the map. Its text drives
+  /// this list's query, and while it is active the nearby cards step aside.
+  final TextEditingController? externalSearch;
+  final bool externalSearchActive;
+
   @override
   ConsumerState<NearbyView> createState() => NearbyViewState();
 }
@@ -137,6 +144,8 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   @override
   void initState() {
     super.initState();
+    widget.externalSearch?.addListener(_onExternalQuery);
+    _searchFocused = widget.externalSearchActive;
     _searchFocus.addListener(() {
       if (_searchFocus.hasFocus == _searchFocused) return;
       setState(() => _searchFocused = _searchFocus.hasFocus);
@@ -147,9 +156,22 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     _resume; // start listening for foreground returns
   }
 
+  void _onExternalQuery() {
+    final q = widget.externalSearch!.text;
+    if (q != _query) _onQueryChanged(q);
+  }
+
   @override
   void didUpdateWidget(covariant NearbyView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.externalSearch != widget.externalSearch) {
+      oldWidget.externalSearch?.removeListener(_onExternalQuery);
+      widget.externalSearch?.addListener(_onExternalQuery);
+    }
+    if (widget.externalSearch != null &&
+        widget.externalSearchActive != _searchFocused) {
+      _searchFocused = widget.externalSearchActive;
+    }
     if (widget.active != oldWidget.active) {
       if (widget.active) {
         _startTimer();
@@ -169,6 +191,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
 
   @override
   void dispose() {
+    widget.externalSearch?.removeListener(_onExternalQuery);
     _timer?.cancel();
     _resume.dispose();
     _searchDebounce?.cancel();

@@ -1501,6 +1501,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Then to {place}'**
   String arrivalThenTo(String place);
+
+  /// No description provided for @locateMeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Show where I am'**
+  String get locateMeTooltip;
+
+  /// No description provided for @nearbyAroundYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Around you'**
+  String get nearbyAroundYou;
 }
 
 class _AppLocalizationsDelegate

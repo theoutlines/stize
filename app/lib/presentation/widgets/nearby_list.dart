@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'animated_entries.dart';
+import 'flat_cards.dart';
 
 import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
@@ -42,23 +43,44 @@ class NearbyList extends StatelessWidget {
     // Stiže: colour cards 4px apart (owner spec, same as the stop board).
     // Cards animate in and out on a refresh instead of popping (owner,
     // 2026-11-23); the list is short, so one animated column is fine.
+    final flat = FlatCards.of(context);
     final list = ListView(
       controller: scrollController,
       // Top padding matches the horizontal (side) padding so the first card is
       // inset equally from the island's top and sides (owner desktop request).
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+      // Flat (mobile one-scroll): edge to edge, no inset.
+      padding: flat
+          ? const EdgeInsets.only(bottom: 24)
+          : const EdgeInsets.fromLTRB(12, 12, 12, 24),
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         ?header,
         AnimatedEntries(
-          gap: StizeSpace.space1,
+          gap: flat ? 0 : StizeSpace.space1,
           children: [
-            for (final g in groups)
-              NearbyCard(
-                key: ValueKey(g.key),
-                group: g,
-                onTap: onTapGroup == null ? null : () => onTapGroup!(g),
-              ),
+            // Mobile (flat): one card per line, directions swiped inside it.
+            if (flat)
+              for (final line in carouselByLine(groups))
+                line.length == 1
+                    ? NearbyCard(
+                        key: ValueKey(line.first.key),
+                        group: line.first,
+                        onTap: onTapGroup == null
+                            ? null
+                            : () => onTapGroup!(line.first),
+                      )
+                    : LineDirectionsCarousel(
+                        key: ValueKey('line|${line.first.line}'),
+                        groups: line,
+                        onTapGroup: onTapGroup,
+                      )
+            else
+              for (final g in groups)
+                NearbyCard(
+                  key: ValueKey(g.key),
+                  group: g,
+                  onTap: onTapGroup == null ? null : () => onTapGroup!(g),
+                ),
           ],
         ),
       ],
@@ -121,6 +143,118 @@ class NearbyCard extends StatelessWidget {
       scheduled: scheduled,
       live: hasLive,
       onTap: onTap,
+    );
+  }
+}
+
+/// Groups of the same line become one card whose directions are swiped
+/// through, with dots on top (owner, 2026-11-23, after Transit). The card
+/// sits where the line's soonest direction sits in [groups]; a line with one
+/// direction stays a plain card.
+List<List<NearbyGroup>> carouselByLine(List<NearbyGroup> groups) {
+  final byLine = <String, List<NearbyGroup>>{};
+  final order = <String>[];
+  for (final g in groups) {
+    final k = g.line;
+    if (!byLine.containsKey(k)) order.add(k);
+    (byLine[k] ??= []).add(g);
+  }
+  return [for (final k in order) byLine[k]!];
+}
+
+/// One line, several directions: a swipeable card with page dots.
+class LineDirectionsCarousel extends StatefulWidget {
+  const LineDirectionsCarousel({
+    super.key,
+    required this.groups,
+    this.onTapGroup,
+  });
+
+  final List<NearbyGroup> groups;
+  final void Function(NearbyGroup group)? onTapGroup;
+
+  @override
+  State<LineDirectionsCarousel> createState() => _LineDirectionsCarouselState();
+}
+
+class _LineDirectionsCarouselState extends State<LineDirectionsCarousel> {
+  int _page = 0;
+  int _dir = 1; // slide direction of the last change
+
+  void _go(int delta) {
+    final n = widget.groups.length;
+    final next = (_page + delta).clamp(0, n - 1);
+    if (next == _page) return;
+    setState(() {
+      _dir = delta;
+      _page = next;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = widget.groups.length;
+    final page = _page.clamp(0, n - 1);
+    final g = widget.groups[page];
+    return GestureDetector(
+      // Horizontal swipes page the directions; vertical drags still scroll.
+      onHorizontalDragEnd: (d) {
+        final v = d.primaryVelocity ?? 0;
+        if (v < -200) _go(1);
+        if (v > 200) _go(-1);
+      },
+      child: Stack(
+        children: [
+          AnimatedSwitcher(
+            duration: StizeMotion.fast,
+            switchInCurve: StizeMotion.smoothOut,
+            switchOutCurve: StizeMotion.smoothOut,
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: Offset(0.08 * _dir, 0),
+                  end: Offset.zero,
+                ).animate(anim),
+                child: child,
+              ),
+            ),
+            layoutBuilder: (current, previous) =>
+                Stack(children: [...previous, ?current]),
+            child: NearbyCard(
+              key: ValueKey(g.key),
+              group: g,
+              onTap: widget.onTapGroup == null
+                  ? null
+                  : () => widget.onTapGroup!(g),
+            ),
+          ),
+          Positioned(
+            top: StizeSpace.space4,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var i = 0; i < n; i++)
+                    Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(
+                          alpha: i == page ? 0.95 : 0.4,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

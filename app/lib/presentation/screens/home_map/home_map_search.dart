@@ -447,4 +447,108 @@ extension _MapSearch on _HomeMapScreenState {
     }
     return null;
   }
+
+  // ---- One-scroll home (mobile) --------------------------------------------
+
+  /// Mobile Nearby root: the pill is on the map (levels have their own header).
+  bool get _oneScrollRoot =>
+      !_panelActive &&
+      _focus == null &&
+      _selectedVehicleKey == null &&
+      _levels.isEmpty &&
+      _slotModel == null;
+
+  /// Where the pinned pill sits: just under the status bar.
+  double _pillPinnedTop() =>
+      MediaQuery.paddingOf(context).top + StizeSpace.space4;
+
+  /// The sheet rises to just under the pinned pill, then its list scrolls.
+  double _oneScrollMax(Size size) {
+    final top = _pillPinnedTop() + MapSearchPill.height + StizeSpace.space4;
+    return ((size.height - top) / size.height).clamp(0.5, 0.95);
+  }
+
+  /// The pill's top for the current sheet height: it rides on the map just
+  /// above the sheet, and stops under the status bar.
+  double _pillTopFor(Size size) {
+    final s = _sheetCtl.isAttached ? _sheetCtl.size : NearbySheet.oneScrollRest;
+    final sheetTop = size.height * (1 - s);
+    final riding = sheetTop - MapSearchPill.height - StizeSpace.space4;
+    return riding < _pillPinnedTop() ? _pillPinnedTop() : riding;
+  }
+
+  Widget _searchPill(AppLocalizations l10n, Size size) {
+    return AnimatedBuilder(
+      animation: _sheetCtl,
+      builder: (context, child) => Positioned(
+        left: StizeSpace.space4,
+        right: StizeSpace.space4,
+        top: _pillTopFor(size),
+        child: child!,
+      ),
+      child: MapSearchPill(
+        controller: _pillCtl,
+        focusNode: _pillFocus,
+        active: _pillActive,
+        placeLabel: _meTo == null ? null : l10n.nearbyAroundYou,
+        onLocate: _recenterOnMe,
+        onActivate: () {
+          _setState(() => _pillActive = true);
+          if (_sheetCtl.isAttached) {
+            _sheetCtl.animateTo(
+              _oneScrollMax(size),
+              duration: StizeMotion.slow,
+              curve: StizeMotion.smoothOut,
+            );
+          }
+        },
+        onClose: () {
+          _pillCtl.clear();
+          _pillFocus.unfocus();
+          _setState(() => _pillActive = false);
+          if (_sheetCtl.isAttached) {
+            _sheetCtl.animateTo(
+              NearbySheet.oneScrollRest,
+              duration: StizeMotion.medium,
+              curve: StizeMotion.smoothOut,
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  /// The round map buttons, pushed up past the top edge as the rising pill
+  /// reaches them (owner, 2026-11-23). Desktop and level views: unmoved.
+  Widget _pushedTopButtons(ThemeData theme, Size size) {
+    final buttons = _topButtons(theme);
+    if (!_oneScrollRoot) return buttons;
+    return AnimatedBuilder(
+      animation: _sheetCtl,
+      child: buttons,
+      builder: (context, child) {
+        // The measured bottom of the button stack (zoom control included on
+        // web); the pill pushes once it is within 12px of that edge.
+        // Measured after layout, never during build (a render object can be
+        // inactive mid-build).
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final ctx = _topButtonsKey.currentContext;
+          if (ctx == null || !ctx.mounted) return;
+          final box = ctx.findRenderObject();
+          if (box is RenderBox && box.attached && box.hasSize) {
+            _topButtonsH = box.size.height;
+          }
+        });
+        // The right-hand button column (keyed in _topButtons) sits below the
+        // status-bar inset and a 12px margin.
+        final buttonsBottom =
+            MediaQuery.paddingOf(context).top + 12 + _topButtonsH;
+        final gap = _pillTopFor(size) - StizeSpace.space3 - buttonsBottom;
+        return Transform.translate(
+          offset: Offset(0, gap < 0 ? gap : 0),
+          child: child,
+        );
+      },
+    );
+  }
 }

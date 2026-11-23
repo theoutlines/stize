@@ -806,4 +806,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String arrivalThenTo(String place) {
     return 'Then to $place';
   }
+
+  @override
+  String get locateMeTooltip => 'Show where I am';
+
+  @override
+  String get nearbyAroundYou => 'Around you';
 }

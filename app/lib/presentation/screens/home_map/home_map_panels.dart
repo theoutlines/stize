@@ -803,7 +803,10 @@ extension _MapPanels on _HomeMapScreenState {
             constraints: const BoxConstraints(maxWidth: 360),
             margin: EdgeInsets.only(
               right: 12,
-              bottom: _panelActive ? 12 : _mobileSheetPx + 8,
+              bottom: _panelActive
+                  ? 12
+                  : _mobileSheetPx +
+                        (_oneScrollRoot ? MapSearchPill.height + 32 : 8),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
@@ -1044,6 +1047,10 @@ extension _MapPanels on _HomeMapScreenState {
                 onTap: widget.onOpenDrawer,
               ),
             Column(
+              // Measured by the one-scroll pill (its bottom is where the pill
+              // starts pushing the buttons up).
+              key: _topButtonsKey,
+              mainAxisSize: MainAxisSize.min,
               // Right-aligned so the one-time label beside the transport
               // toggle grows to the left and the buttons stay in one column.
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -1055,11 +1062,13 @@ extension _MapPanels on _HomeMapScreenState {
                 // Hides itself — gap and all — while the flag is off, so the
                 // killswitch leaves this stack exactly as production has it.
                 const VehicleModeToggle(),
-                _roundButton(
-                  theme,
-                  icon: StizeIcons.locate,
-                  onTap: _recenterOnMe,
-                ),
+                // On the mobile Nearby root "where am I" lives in the pill.
+                if (!_oneScrollRoot)
+                  _roundButton(
+                    theme,
+                    icon: StizeIcons.locate,
+                    onTap: _recenterOnMe,
+                  ),
                 if (_showZoomControls) ...[
                   const SizedBox(height: 12),
                   _zoomControl(theme),
