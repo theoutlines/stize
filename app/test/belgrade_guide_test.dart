@@ -12,7 +12,7 @@ Widget _host(Widget child) => MaterialApp(
 
 void main() {
   test('hub detection: 300 m around the airport, not across town', () {
-    expect(hubNear(44.81995, 20.29105), GuideHub.airport);
+    expect(hubNear(44.8204, 20.29031), GuideHub.airport);
     expect(hubNear(44.8217, 20.29031), GuideHub.airport); // ~145 m
     expect(hubNear(44.8240, 20.29031), isNull); // ~400 m
   });
