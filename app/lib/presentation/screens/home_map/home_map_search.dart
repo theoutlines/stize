@@ -462,6 +462,22 @@ extension _MapSearch on _HomeMapScreenState {
   double _pillPinnedTop() =>
       MediaQuery.paddingOf(context).top + StizeSpace.space4;
 
+  /// Typing in the pill raises the list to just under the pinned pill; an
+  /// emptied query lets it settle back to rest.
+  void _onPillQuery() {
+    if (!_pillActive || !_sheetCtl.isAttached) return;
+    final size = MediaQuery.sizeOf(context);
+    final want = _pillCtl.text.isEmpty
+        ? NearbySheet.oneScrollRest
+        : _oneScrollMax(size);
+    if ((_sheetCtl.size - want).abs() < 0.01) return;
+    _sheetCtl.animateTo(
+      want,
+      duration: StizeMotion.slow,
+      curve: StizeMotion.smoothOut,
+    );
+  }
+
   /// The sheet rises to just under the pinned pill, then its list scrolls.
   double _oneScrollMax(Size size) {
     final top = _pillPinnedTop() + MapSearchPill.height + StizeSpace.space4;
@@ -476,8 +492,8 @@ extension _MapSearch on _HomeMapScreenState {
   /// The pill's top for the current sheet height: it rides on the map just
   /// above the sheet, and stops under the status bar.
   double _pillTopFor(Size size) {
-    // While searching the pill stays pinned at the top (keyboard open).
-    if (_pillActive) return _pillPinnedTop();
+    // Searching with a query: the pill stays pinned at the top.
+    if (_pillActive && _pillCtl.text.isNotEmpty) return _pillPinnedTop();
     final s = _sheetCtl.isAttached ? _sheetCtl.size : NearbySheet.oneScrollRest;
     final sheetTop = _bodyH(size) * (1 - s);
     final riding = sheetTop - MapSearchPill.height - StizeSpace.space4;
@@ -499,16 +515,10 @@ extension _MapSearch on _HomeMapScreenState {
         active: _pillActive,
         placeLabel: _meTo == null ? null : l10n.nearbyAroundYou,
         onLocate: _recenterOnMe,
-        onActivate: () {
-          _setState(() => _pillActive = true);
-          if (_sheetCtl.isAttached) {
-            _sheetCtl.animateTo(
-              _oneScrollMax(size),
-              duration: StizeMotion.slow,
-              curve: StizeMotion.smoothOut,
-            );
-          }
-        },
+        // Nothing moves on the tap itself: iOS drops the keyboard when the
+        // focused field jumps during the tap (owner, 2026-11-23). The list
+        // rises once a query is typed (see _onPillQuery).
+        onActivate: () => _setState(() => _pillActive = true),
         onClose: () {
           _pillCtl.clear();
           _pillFocus.unfocus();

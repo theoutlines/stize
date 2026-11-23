@@ -456,6 +456,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   @override
   void initState() {
     super.initState();
+    _pillCtl.addListener(_onPillQuery);
     WidgetsBinding.instance.addObserver(this);
     guideOpenedBefore().then((v) {
       if (mounted && v != _guideSeen) setState(() => _guideSeen = v);

@@ -426,8 +426,10 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     }
 
     // Focused search with nothing typed yet: the nearby cards step aside so
-    // the sheet is the search (owner, 2026-11-23).
-    if (_searchFocused && _query.isEmpty) {
+    // the sheet is the search (owner, 2026-11-23). The map pill (external
+    // search) keeps them until a query is typed: an empty sheet under the
+    // keyboard read as broken.
+    if (_searchFocused && _query.isEmpty && widget.externalSearch == null) {
       return _scrollable(controller, const SizedBox.shrink());
     }
 

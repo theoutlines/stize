@@ -155,6 +155,7 @@ extension _MapPanels on _HomeMapScreenState {
     final model = _slotModel;
     if (model != null) {
       return FleetModelView(
+        showTitle: false,
         fleet: model.fleet,
         fallbackType: model.type,
         garageNo: model.garageNo,
