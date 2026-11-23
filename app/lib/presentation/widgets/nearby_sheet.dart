@@ -153,7 +153,6 @@ class NearbySheet extends StatelessWidget {
                 controller: controller,
                 viewport: viewport,
                 child: FlatCards(
-                  flat: oneScroll,
                   // One-scroll: the first card itself carries the sheet's top
                   // radius, nothing peeks above it.
                   child: ClipRRect(

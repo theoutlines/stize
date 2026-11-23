@@ -87,13 +87,14 @@ class StizeTransitCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = StizeColors.of(context);
     final on = onFor(c, scheduled);
-    final pad = emphasis
-        ? const EdgeInsets.all(StizeSpace.space4)
-        : const EdgeInsets.symmetric(
-            horizontal: StizeSpace.space4,
-            vertical: StizeSpace.space3,
-          );
-    final lineStyle = (emphasis ? StizeType.h1 : StizeType.section).copyWith(
+    // One size for every card in every list (owner, 2026-11-23: the bigger
+    // first card read as a different component). `emphasis` is kept for
+    // callers but no longer changes the card.
+    const pad = EdgeInsets.symmetric(
+      horizontal: StizeSpace.space4,
+      vertical: StizeSpace.space3,
+    );
+    final lineStyle = StizeType.section.copyWith(
       fontWeight: FontWeight.w600,
       color: on,
     );

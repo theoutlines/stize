@@ -471,9 +471,11 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       }
       children.add(_rowWidget(rows[i]));
     }
+    // Cards run edge to edge like every list; the stop/line rows keep a
+    // 16px inset of their own.
     return ListView(
       controller: controller,
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+      padding: const EdgeInsets.only(bottom: 24),
       physics: const AlwaysScrollableScrollPhysics(),
       children: children,
     );
@@ -482,14 +484,11 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   Widget _rowWidget(SearchRow row) {
     switch (row) {
       case NearbySearchRow(:final group):
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: NearbyCard(
-            group: group,
-            onTap: widget.onTapGroup == null
-                ? null
-                : () => widget.onTapGroup!(group),
-          ),
+        return NearbyCard(
+          group: group,
+          onTap: widget.onTapGroup == null
+              ? null
+              : () => widget.onTapGroup!(group),
         );
       case StopSearchRow(:final stop):
         return _stopTile(stop);
@@ -501,7 +500,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   Widget _sectionHeader(String text) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 12, 4, 4),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Text(
         text,
         style: theme.textTheme.labelMedium?.copyWith(
@@ -514,7 +513,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   Widget _stopTile(Stop stop) {
     final theme = Theme.of(context);
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       leading: Icon(StizeIcons.pin, color: theme.colorScheme.onSurfaceVariant),
       title: Text(stop.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: stop.lines.isEmpty
@@ -534,7 +533,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     final type = line.vehicleType;
     final color = vehicleColor(type);
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       leading: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         constraints: const BoxConstraints(minWidth: 52),
