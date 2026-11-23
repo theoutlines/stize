@@ -6,8 +6,6 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 import '../../core/external_link.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
-import '../screens/settings_screen.dart';
-import 'drawer_footer.dart';
 import '../../core/design/stize_icons.dart';
 import '../../core/design/stize_tokens.dart';
 
