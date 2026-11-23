@@ -95,60 +95,73 @@ class MapSearchPill extends StatelessWidget {
                   // The field is always mounted so a tap lands on a real input:
                   // iOS only opens the keyboard when focus comes from the tap
                   // itself (owner, 2026-11-23: the first tap opened nothing).
+                  // Fill the pill's height; both layers centre on it (owner,
+                  // iPhone: the hint rode high in the field).
                   child: Stack(
+                    fit: StackFit.expand,
                     alignment: Alignment.centerLeft,
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: StizeSpace.space3,
                         ),
-                        child: TextField(
-                          controller: controller,
-                          focusNode: focusNode,
-                          onTap: active ? null : onActivate,
-                          textInputAction: TextInputAction.search,
-                          textAlignVertical: TextAlignVertical.center,
-                          style: StizeType.body.copyWith(
-                            color: active ? c.ink : Colors.transparent,
-                          ),
-                          cursorColor: active ? c.ink : Colors.transparent,
-                          decoration: InputDecoration(
-                            hintText: active ? l10n.searchHint : null,
-                            hintStyle: StizeType.body.copyWith(color: c.ink50),
-                            filled: false,
-                            isCollapsed: true,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            onTap: active ? null : onActivate,
+                            textInputAction: TextInputAction.search,
+                            textAlignVertical: TextAlignVertical.center,
+                            style: StizeType.body.copyWith(
+                              color: active ? c.ink : Colors.transparent,
+                            ),
+                            cursorColor: active ? c.ink : Colors.transparent,
+                            decoration: InputDecoration(
+                              hintText: active ? l10n.searchHint : null,
+                              hintStyle: StizeType.body.copyWith(
+                                color: c.ink50,
+                              ),
+                              filled: false,
+                              isCollapsed: true,
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                            ),
                           ),
                         ),
                       ),
                       if (!active)
                         IgnorePointer(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: StizeSpace.space3,
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  l10n.contextNearbyTitle,
-                                  style: StizeType.caption.copyWith(
-                                    color: c.ink60,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: StizeSpace.space3,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    l10n.contextNearbyTitle,
+                                    style: StizeType.caption.copyWith(
+                                      color: c.ink60,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  placeLabel ?? l10n.searchHint,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: StizeType.body.copyWith(
-                                    color: placeLabel == null ? c.ink50 : c.ink,
+                                  Text(
+                                    placeLabel ?? l10n.searchHint,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: StizeType.body.copyWith(
+                                      color: placeLabel == null
+                                          ? c.ink50
+                                          : c.ink,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),

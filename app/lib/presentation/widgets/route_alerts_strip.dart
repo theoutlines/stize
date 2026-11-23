@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/design/stize_tokens.dart';
+
 import '../../core/external_link.dart';
 import '../../domain/models/route_alert.dart';
 import '../../l10n/app_localizations.dart';
@@ -171,12 +173,10 @@ class _AlertRow extends StatelessWidget {
                   ),
                   style: theme.textTheme.bodyMedium?.copyWith(color: fg),
                 ),
+                const SizedBox(height: StizeSpace.space3),
+                // The system tertiary button as is (owner, 2026-11-23: the
+                // zero-padding version hugged the label and looked crooked).
                 TextButton(
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 32),
-                    foregroundColor: fg,
-                  ),
                   onPressed: () => openExternalUrl(alert.url),
                   child: Text(l10n.alertReadMore),
                 ),

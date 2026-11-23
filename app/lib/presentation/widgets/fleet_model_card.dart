@@ -57,7 +57,12 @@ class FleetModelView extends ConsumerWidget {
     required this.fallbackType,
     this.garageNo,
     this.scrollController,
+    this.showTitle = true,
   });
+
+  /// False when a level header above already shows the model name (the sheet
+  /// and the desktop panel): the name is not repeated in the body.
+  final bool showTitle;
 
   final FleetVehicle fleet;
   final VehicleType fallbackType;
@@ -81,8 +86,18 @@ class FleetModelView extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _header(context, theme, l10n, lang),
-        const SizedBox(height: 12),
+        if (showTitle) ...[
+          _header(context, theme, l10n, lang),
+          const SizedBox(height: 12),
+        ] else if (fleet.nicknameFor(lang) != null) ...[
+          Text(
+            fleet.nicknameFor(lang)!,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         _heroSlot(context, theme, l10n, photo),
         if (note != null) ...[
           const SizedBox(height: 16),
