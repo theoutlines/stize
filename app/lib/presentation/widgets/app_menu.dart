@@ -44,9 +44,12 @@ Future<void> showAppMenu(
       ),
     ),
     transitionBuilder: (_, animation, _, child) {
+      // Opens on fast (250), closes on quick (150): the reverse curve is done
+      // in the first 60% of the run.
       final curved = CurvedAnimation(
         parent: animation,
         curve: StizeMotion.smoothOut,
+        reverseCurve: StizeMotion.closeQuick,
       );
       return FadeTransition(
         opacity: curved,

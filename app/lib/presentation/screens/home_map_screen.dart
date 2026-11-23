@@ -102,7 +102,7 @@ const _vehiclesMaxRadius = 1500.0;
 // Short ease so the "my position" marker glides to each fresh GPS fix instead
 // of snapping. Fixes are frequent (distance-filtered ~8 m), so this stays well
 // under the typical gap between them; linear reads as constant travel speed.
-const _meEaseDuration = Duration(milliseconds: 700);
+const _meEaseDuration = StizeMotion.camera;
 // If the active screen hasn't seen a fix for this long, the position stream is
 // assumed to have silently stalled (a known web / iOS-Safari quirk after the
 // tab regains visibility) and is recreated. Only applies while active.
@@ -653,7 +653,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   // A deliberate deceleration-curve glide (slow-ish flyTo), so a short move
   // reads as a glide, not a teleport.
-  static const _cameraEaseDuration = Duration(milliseconds: 700);
+  static const _cameraEaseDuration = StizeMotion.camera;
   static const double _cameraEaseSpeed = 0.55;
 
   /// Re-settle the camera after the overlap geometry changed (panel width /
@@ -661,7 +661,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// short ease that keeps the focus centred in the new visible area, or, with
   /// no focus, shifts the free-browse scene by the geometry delta (open the
   /// panel → the city slides right by half the panel, it isn't covered).
-  static const _geometryEaseDuration = Duration(milliseconds: 280);
+  static const _geometryEaseDuration = StizeMotion.fast;
 
   // Follow re-centres at ~15fps, not every render frame. Panning the whole map
   // with a jumpTo on every one of ~60 fps thrashes the tile/label renderer and
@@ -978,8 +978,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// built when [_panelActive] (flag ON *and* wide); mobile never reaches here.
   // The panel collapse slide/tab share one short duration + curve (owner A#2:
   // ~200ms, no fancy physics).
-  static const _panelCollapseDuration = Duration(milliseconds: 200);
-  static const _panelCollapseCurve = Curves.easeInOut;
+  static const _panelCollapseDuration = StizeMotion.panelSlide;
+  static const _panelCollapseCurve = StizeMotion.inOut;
 
   // Gap between the search island and the panel island (and, on staging, between
   // the panel island and the diagnostics overlay) — one value so they match.

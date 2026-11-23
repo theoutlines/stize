@@ -54,7 +54,7 @@ extension _MapGeometry on _HomeMapScreenState {
         padding: _mapInsets,
         nativeDuration: duration,
         webSpeed: webSpeed,
-        webMaxDuration: const Duration(milliseconds: 800),
+        webMaxDuration: StizeMotion.cameraMax,
       );
     });
     return flight;
@@ -284,7 +284,7 @@ extension _MapGeometry on _HomeMapScreenState {
           zoom: zoom,
           nativeDuration: _HomeMapScreenState._geometryEaseDuration,
           webSpeed: 1.4,
-          webMaxDuration: const Duration(milliseconds: 400),
+          webMaxDuration: StizeMotion.slow,
         );
       } else {
         // padding stays zero — the target pixel already encodes the geometry.
