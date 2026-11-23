@@ -1255,6 +1255,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn’t send. Check the connection and try again.'**
   String get stopReportFailed;
+
+  /// Open-data attribution required by the licence (source body, where published, that the data is modified).
+  ///
+  /// In en, this message translates to:
+  /// **'Stops, lines and timetables: open data of the City of Belgrade (Secretariat for Public Transport), published on data.gov.rs under the Serbian open data licence. We repackage them for the app. Map: MapTiler, OpenStreetMap contributors.'**
+  String get aboutDataSource;
 }
 
 class _AppLocalizationsDelegate

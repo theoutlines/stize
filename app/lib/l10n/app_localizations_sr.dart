@@ -672,4 +672,8 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get stopReportFailed =>
       'Slanje nije uspelo. Proverite vezu i pokušajte ponovo.';
+
+  @override
+  String get aboutDataSource =>
+      'Stanice, linije i redovi vožnje: otvoreni podaci Grada Beograda (Sekretarijat za javni prevoz), objavljeni na data.gov.rs pod licencom za otvorene podatke Republike Srbije. Podatke prepakujemo za aplikaciju. Mapa: MapTiler, saradnici OpenStreetMap-a.';
 }

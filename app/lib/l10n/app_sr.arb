@@ -254,5 +254,6 @@
   "stopReportAlreadyBody": "Danas ste nam već javili „{what}“ za ovu stanicu. Jedna prijava je dovoljna: proverićemo.",
   "stopReportBack": "Nazad na stanicu",
   "stopReportTooFast": "Sačekajte minut pre sledeće prijave.",
-  "stopReportFailed": "Slanje nije uspelo. Proverite vezu i pokušajte ponovo."
+  "stopReportFailed": "Slanje nije uspelo. Proverite vezu i pokušajte ponovo.",
+  "aboutDataSource": "Stanice, linije i redovi vožnje: otvoreni podaci Grada Beograda (Sekretarijat za javni prevoz), objavljeni na data.gov.rs pod licencom za otvorene podatke Republike Srbije. Podatke prepakujemo za aplikaciju. Mapa: MapTiler, saradnici OpenStreetMap-a."
 }

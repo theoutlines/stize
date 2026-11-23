@@ -3,6 +3,13 @@
 This is primarily a personal project with a small circle of collaborators, but
 issues and PRs are welcome.
 
+## Licence of contributions
+
+By opening a PR you agree that your contribution is licensed under AGPL-3.0
+together with the store-distribution permission in
+`LICENSE-STORE-EXCEPTION.md` (so the app can be shipped through the App Store
+and Google Play).
+
 ## Ground rules
 
 - Never commit secrets. Copy `.env.example` to a local `.env` (or use

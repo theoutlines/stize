@@ -110,3 +110,15 @@ enum-only properties live in
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how it's built + non-obvious gotchas.
 - [`CHANGELOG.md`](CHANGELOG.md) — human-readable history.
 - Licensed under **AGPL-3.0** — see [`LICENSE`](LICENSE).
+- **App store exception:** the copyright holder additionally permits
+  distribution through app stores, see [`LICENSE-STORE-EXCEPTION.md`](LICENSE-STORE-EXCEPTION.md).
+
+## Data sources
+
+- Stops, lines, route shapes and timetables: open data of the City of Belgrade
+  (Secretariat for Public Transport), published on
+  [data.gov.rs](https://data.gov.rs/sr/datasets/gradski-javni-prevoz-u-beogradu-gtfs/)
+  under the Serbian open data licence. The feeds are repackaged (merged,
+  compacted, a few stop positions corrected) by `backend/scripts/build-gtfs.mjs`.
+- Map tiles: MapTiler, © OpenStreetMap contributors.
+- Fleet photos: Wikimedia Commons, credited per photo in the app.
