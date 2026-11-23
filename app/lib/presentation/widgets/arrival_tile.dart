@@ -139,7 +139,7 @@ class ArrivalTile extends StatelessWidget {
 
     // The next trip of this line, with its unit always attached.
     String? next;
-    if (nextEtaMinutes != null) {
+    if (nextEtaMinutes != null && nextEtaMinutes! > 0) {
       next = nextEtaMinutes! >= kFarEtaMinutes
           ? l10n.arrivalNextAt(clockAt(localeName, nextEtaMinutes!))
           : l10n.arrivalNextIn(nextEtaMinutes! <= 0 ? 0 : nextEtaMinutes!);
@@ -174,7 +174,7 @@ class ArrivalTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(StizeIcons.repeat, size: 13, color: style.color),
-            const SizedBox(width: 2),
+            const SizedBox(width: 4),
             Text(every, style: style),
           ],
         ),
@@ -222,7 +222,7 @@ class ArrivalTile extends StatelessWidget {
   Widget _cardEtaDelta(Color on) {
     final later = etaDeltaMinutes! > 0;
     return Padding(
-      padding: const EdgeInsets.only(top: 2),
+      padding: const EdgeInsets.only(top: 4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -70,7 +70,7 @@ class ContextPanel extends StatelessWidget {
               children: [
                 if (searchField != null)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 8, 12, 6),
+                    padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
                     child: searchField!,
                   ),
                 // A LevelHeader owns its insets (one 16px left edge with the
@@ -174,7 +174,7 @@ class BackToVehiclePill extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -193,7 +193,7 @@ class BackToVehiclePill extends StatelessWidget {
                   l10n.backToVehicle,
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: theme.colorScheme.onInverseSurface,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],

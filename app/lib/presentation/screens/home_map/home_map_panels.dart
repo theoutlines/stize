@@ -84,6 +84,9 @@ extension _MapPanels on _HomeMapScreenState {
         _StopLevel(:final id, :final name) =>
           ref.watch(stopLocationProvider(id)).valueOrNull?.name ?? name ?? '',
         _MyStopsLevel() => l10n.navMyStops,
+        _SettingsLevel() => l10n.settingsTitle,
+        _FeedbackLevel(:final form) =>
+          form ? l10n.feedbackFormTitle : l10n.drawerFeedbackSheetTitle,
         _GuideLevel(:final page) => switch (page) {
           GuidePage.home => l10n.guideTitle,
           GuidePage.readStop => l10n.guideReadStop,
@@ -112,6 +115,8 @@ extension _MapPanels on _HomeMapScreenState {
       case ContextView.stop:
       case ContextView.myStops:
       case ContextView.guide:
+      case ContextView.settings:
+      case ContextView.feedback:
         final top = _levels.last;
         final title = _levelTitle(top, l10n);
         return LevelHeader(
@@ -169,6 +174,41 @@ extension _MapPanels on _HomeMapScreenState {
           showLocalSearch: false,
           hugContent: true,
           banner: _guideBanner(l10n),
+        );
+      case ContextView.settings:
+        return ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: const [SettingsPanel()],
+        );
+      case ContextView.feedback:
+        final fb = _levels.last as _FeedbackLevel;
+        if (fb.form) {
+          return SingleChildScrollView(
+            controller: scrollController,
+            padding: const EdgeInsets.only(top: 8),
+            child: FeedbackForm(showTitle: false, onSent: _popLevel),
+          );
+        }
+        final formEnabled = ref.watch(feedbackFormEnabledProvider);
+        return ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            if (formEnabled)
+              GuideRow(
+                icon: StizeIcons.edit,
+                title: l10n.feedbackWriteToMe,
+                subtitle: l10n.feedbackWriteToMeSubtitle,
+                onTap: () => _pushLevel(const _FeedbackLevel(form: true)),
+              ),
+            GuideRow(
+              icon: StizeIcons.bug,
+              title: l10n.feedbackGithubIssues,
+              subtitle: l10n.feedbackGithubIssuesSubtitle,
+              onTap: () => openExternalUrl(kRepoIssuesUrl),
+            ),
+          ],
         );
       case ContextView.guide:
         final page = (_levels.last as _GuideLevel).page;
@@ -319,7 +359,7 @@ extension _MapPanels on _HomeMapScreenState {
   Widget _linePill(String line, VehicleType type) {
     final color = vehicleColor(type);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(999),
@@ -332,7 +372,7 @@ extension _MapPanels on _HomeMapScreenState {
             size: 16,
             color: StizeColors.of(context).onTransit,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           Builder(
             builder: (context) {
               final stize = StizeColors.of(context);
@@ -379,7 +419,7 @@ extension _MapPanels on _HomeMapScreenState {
         ],
         Expanded(
           child: Material(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(24),
             elevation: 3,
             color: theme.colorScheme.surface,
             clipBehavior: Clip.antiAlias,
@@ -449,7 +489,7 @@ extension _MapPanels on _HomeMapScreenState {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 6,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface.withValues(alpha: 0.92),
@@ -765,7 +805,7 @@ extension _MapPanels on _HomeMapScreenState {
               right: 12,
               bottom: _panelActive ? 12 : _mobileSheetPx + 8,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.72),
               borderRadius: BorderRadius.circular(8),
@@ -779,7 +819,7 @@ extension _MapPanels on _HomeMapScreenState {
                     line,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 11,
+                      fontSize: 12,
                       height: 1.35,
                       fontFamily: 'monospace',
                     ),
@@ -808,7 +848,7 @@ extension _MapPanels on _HomeMapScreenState {
               color: theme.colorScheme.surface.withValues(alpha: 0.92),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
+                  horizontal: 16,
                   vertical: 8,
                 ),
                 child: Row(
@@ -869,12 +909,12 @@ extension _MapPanels on _HomeMapScreenState {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+                    horizontal: 12,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
                     color: color,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -884,7 +924,7 @@ extension _MapPanels on _HomeMapScreenState {
                         size: 16,
                         color: StizeColors.of(context).onTransit,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       Builder(
                         builder: (context) {
                           final stize = StizeColors.of(context);
@@ -1021,7 +1061,7 @@ extension _MapPanels on _HomeMapScreenState {
                   onTap: _recenterOnMe,
                 ),
                 if (_showZoomControls) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   _zoomControl(theme),
                 ],
               ],
@@ -1097,7 +1137,7 @@ extension _MapPanels on _HomeMapScreenState {
               ? _HomeMapScreenState._jamAmber
               : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.55));
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: PointerInterceptor(
         child: Stack(
           clipBehavior: Clip.none,
@@ -1110,6 +1150,9 @@ extension _MapPanels on _HomeMapScreenState {
               shape: const CircleBorder(),
               clipBehavior: Clip.antiAlias,
               child: IconButton(
+                // Round ink on a round button (the theme's icon-button shape
+                // is a 12px square, which showed as a square inside the circle).
+                style: IconButton.styleFrom(shape: const CircleBorder()),
                 icon: Icon(StizeIcons.warning, color: iconColor),
                 tooltip: l10n.jamModeTooltip,
                 onPressed: () => _setJamMode(!_jamModeOn),
@@ -1137,8 +1180,8 @@ extension _MapPanels on _HomeMapScreenState {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                         height: 1.0,
                       ),
                     ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'animated_entries.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/arrival_grouping.dart';
@@ -167,6 +169,13 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
       final dir = arrival.directionRouteId ?? arrival.routeId;
       tiles.add(
         ArrivalTile(
+          // Stable identity for the animated list: one live card per
+          // line×direction (folded), else the vehicle.
+          key: ValueKey(
+            later != null
+                ? 'row|${arrival.line}|$dir'
+                : 'row|${arrival.line}|$dir|${arrival.garageNo ?? arrival.etaMinutes}',
+          ),
           arrival: arrival,
           etaDeltaMinutes: _etaDelta[arrival.garageNo],
           fleet: fleet,
@@ -232,6 +241,7 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
           if (displayDestination(e.value, board.stopName, marker) == marker)
             e.key,
       };
+      final schedSeen = <String, int>{};
       for (final entry in foldLiveByDirection(
         groupArrivals(visibleArrivals, terminatingDirections: terminating),
       )) {
@@ -239,7 +249,13 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
           case ArrivalRow(:final arrival, :final index, :final laterEtaMinutes):
             addTile(arrival, fleetByIndex[index], laterEtaMinutes);
           case ScheduledGroupCell():
-            tiles.add(ScheduledGroupTile(cell: entry));
+            final n = schedSeen[entry.line] = (schedSeen[entry.line] ?? 0) + 1;
+            tiles.add(
+              ScheduledGroupTile(
+                key: ValueKey('sch|${entry.line}|$n'),
+                cell: entry,
+              ),
+            );
         }
       }
     }
@@ -258,7 +274,7 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
         ?widget.aboveFreshness,
         Padding(
           // Reads as the title's subline: tight under the level header.
-          padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: Text(
             _freshnessLabel(l10n, board.updatedAt),
             style: theme.textTheme.bodySmall?.copyWith(
@@ -319,10 +335,7 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (var i = 0; i < tiles.length; i++) ...[
-                if (i > 0) const SizedBox(height: StizeSpace.space1),
-                tiles[i],
-              ],
+              AnimatedEntries(gap: StizeSpace.space1, children: tiles),
               const SizedBox(height: StizeSpace.space2),
               // The quiet way to flag wrong data: last, never next to arrivals.
               StopReportEntry(stopId: widget.stopId, stopName: board.stopName),

@@ -260,7 +260,7 @@ class _DensityLegend extends StatelessWidget {
           ];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(12),
@@ -273,7 +273,7 @@ class _DensityLegend extends StatelessWidget {
           Text(
             l10n.coverageLegendTitle,
             style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 8),

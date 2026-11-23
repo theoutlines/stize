@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../domain/models/arrival.dart';
 import '../domain/models/nearby_arrival.dart';
 import 'live_position.dart';
@@ -93,4 +95,57 @@ Arrival? nearbyFollowTarget(NearbyGroup group, List<Arrival> boardArrivals) {
     }
   }
   return soonestLive; // null when the board has no live match → open the stop
+}
+
+/// Drops timetable departures that can't physically happen (owner,
+/// 2026-11-23), with the same horizons as the stop board:
+///  * at a stop that has any live vehicle, a scheduled departure sooner than
+///    the soonest live one there would already be on the map if it existed;
+///  * within one line×direction, a scheduled departure at or before its own
+///    latest live ETA is that same vehicle.
+/// A stop with no live data keeps its timetable (night / fallback). Groups
+/// left with nothing are removed.
+List<NearbyGroup> pruneImpossibleScheduled(List<NearbyGroup> groups) {
+  final soonestLiveAtStop = <String, int>{};
+  for (final g in groups) {
+    for (final a in g.arrivals) {
+      if (a.isScheduled) continue;
+      final prev = soonestLiveAtStop[g.stopId];
+      if (prev == null || a.etaMinutes < prev) {
+        soonestLiveAtStop[g.stopId] = a.etaMinutes;
+      }
+    }
+  }
+  final out = <NearbyGroup>[];
+  for (final g in groups) {
+    final stopHorizon = soonestLiveAtStop[g.stopId];
+    final live = [
+      for (final a in g.arrivals)
+        if (!a.isScheduled) a.etaMinutes,
+    ];
+    final ownHorizon = live.isEmpty ? null : live.reduce(math.max);
+    final kept = [
+      for (final a in g.arrivals)
+        if (!a.isScheduled ||
+            ((stopHorizon == null || a.etaMinutes >= stopHorizon) &&
+                (ownHorizon == null || a.etaMinutes > ownHorizon)))
+          a,
+    ];
+    if (kept.isEmpty) continue;
+    out.add(
+      kept.length == g.arrivals.length
+          ? g
+          : NearbyGroup(
+              line: g.line,
+              vehicleType: g.vehicleType,
+              destination: g.destination,
+              routeId: g.routeId,
+              stopId: g.stopId,
+              stopName: g.stopName,
+              distanceMeters: g.distanceMeters,
+              arrivals: kept,
+            ),
+    );
+  }
+  return out;
 }

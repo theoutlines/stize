@@ -917,7 +917,7 @@ abstract class AppLocalizations {
   /// No description provided for @feedbackWriteToMeSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Send a message — bugs, ideas, anything.'**
+  /// **'Send a message: bugs, ideas, anything.'**
   String get feedbackWriteToMeSubtitle;
 
   /// No description provided for @feedbackGithubIssues.

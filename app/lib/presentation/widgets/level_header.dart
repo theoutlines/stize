@@ -37,7 +37,7 @@ class LevelHeader extends StatelessWidget {
     return Padding(
       // Right: 10 + the 44px tap box's 6px inset puts the 32px close circle on
       // the same 16px edge as the cards below.
-      padding: const EdgeInsets.fromLTRB(16, 10, 10, 0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -59,7 +59,7 @@ class LevelHeader extends StatelessWidget {
                         size: 18,
                         color: scheme.onSurfaceVariant,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       Flexible(
                         child: Text(
                           backLabel!,
@@ -88,10 +88,8 @@ class LevelHeader extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.3,
-                        ),
+                        // Screen title per the system: h1 (28/32, 500).
+                        style: theme.textTheme.headlineMedium,
                       ),
                     ),
                     ?trailing,

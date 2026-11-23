@@ -103,20 +103,27 @@ void showFeedbackForm(BuildContext context) {
       child: ((_) => const Padding(
         // Lift above the keyboard.
         padding: EdgeInsets.only(bottom: 0),
-        child: _FeedbackForm(),
+        child: FeedbackForm(),
       ))(ctx),
     ),
   );
 }
 
-class _FeedbackForm extends ConsumerStatefulWidget {
-  const _FeedbackForm();
+class FeedbackForm extends ConsumerStatefulWidget {
+  const FeedbackForm({super.key, this.onSent, this.showTitle = true});
+
+  /// Called after a successful send instead of popping a route (the form as a
+  /// level in the map's sheet/panel).
+  final VoidCallback? onSent;
+
+  /// The sheet shows its own title; as a level the header carries it.
+  final bool showTitle;
 
   @override
-  ConsumerState<_FeedbackForm> createState() => _FeedbackFormState();
+  ConsumerState<FeedbackForm> createState() => _FeedbackFormState();
 }
 
-class _FeedbackFormState extends ConsumerState<_FeedbackForm> {
+class _FeedbackFormState extends ConsumerState<FeedbackForm> {
   final _messageController = TextEditingController();
   final _contactController = TextEditingController();
   bool _sending = false;
@@ -158,7 +165,11 @@ class _FeedbackFormState extends ConsumerState<_FeedbackForm> {
             locale: locale,
           );
       if (!mounted) return;
-      navigator.pop();
+      if (widget.onSent != null) {
+        widget.onSent!();
+      } else {
+        navigator.pop();
+      }
       messenger.showSnackBar(SnackBar(content: Text(l10n.feedbackSent)));
     } on RateLimitedException {
       if (!mounted) return;
@@ -181,17 +192,19 @@ class _FeedbackFormState extends ConsumerState<_FeedbackForm> {
     final l10n = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        20,
+        16,
         0,
-        20,
-        20 + MediaQuery.viewInsetsOf(context).bottom,
+        16,
+        16 + MediaQuery.viewInsetsOf(context).bottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l10n.feedbackFormTitle, style: theme.textTheme.titleLarge),
-          const SizedBox(height: 12),
+          if (widget.showTitle) ...[
+            Text(l10n.feedbackFormTitle, style: theme.textTheme.titleLarge),
+            const SizedBox(height: 12),
+          ],
           TextField(
             controller: _messageController,
             minLines: 3,

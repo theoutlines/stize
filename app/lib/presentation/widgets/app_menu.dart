@@ -9,6 +9,7 @@ import '../providers/providers.dart';
 import '../screens/settings_screen.dart';
 import 'drawer_footer.dart';
 import '../../core/design/stize_icons.dart';
+import '../../core/design/stize_tokens.dart';
 
 /// Gap between the round menu button and the top-left screen edge (matches the
 /// map's floating controls: SafeArea + 12).
@@ -35,7 +36,7 @@ Future<void> showAppMenu(
     barrierDismissible: true,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black.withValues(alpha: 0.35),
-    transitionDuration: const Duration(milliseconds: 160),
+    transitionDuration: StizeMotion.fast,
     pageBuilder: (menuContext, _, _) => PointerInterceptor(
       child: AppMenuOverlay(
         topInset: topInset,
@@ -44,12 +45,18 @@ Future<void> showAppMenu(
       ),
     ),
     transitionBuilder: (_, animation, _, child) {
-      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: StizeMotion.smoothOut,
+      );
       return FadeTransition(
         opacity: curved,
         child: ScaleTransition(
           alignment: Alignment.topLeft,
-          scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
+          scale: Tween<double>(
+            begin: StizeMotion.scaleDropdown,
+            end: 1,
+          ).animate(curved),
           child: child,
         ),
       );
@@ -78,6 +85,15 @@ class AppMenuOverlay extends StatelessWidget {
     final top = topInset + kMenuButtonInset;
     return Stack(
       children: [
+        // A tap anywhere outside the card closes the menu (owner, 2026-11-23).
+        // The pointer interceptor around the overlay swallows taps before the
+        // route's barrier sees them, so the overlay dismisses itself.
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).maybePop(),
+          ),
+        ),
         Positioned(
           left: kMenuButtonInset,
           top: top,
@@ -174,16 +190,15 @@ class AppMenuCard extends ConsumerWidget {
         icon: StizeIcons.settings,
         label: l10n.settingsTitle,
         onTap: () {
-          final host = Navigator.of(context, rootNavigator: true).context;
           Navigator.of(context).pop();
-          showSettingsSheet(host);
+          ref.read(settingsRequestProvider.notifier).state++;
         },
       ),
     ];
 
     return Material(
       color: theme.colorScheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(20),
       elevation: 8,
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -194,7 +209,7 @@ class AppMenuCard extends ConsumerWidget {
           children: [
             ...rows,
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
               child: Divider(
                 height: 1,
                 color: theme.colorScheme.outlineVariant,
@@ -205,9 +220,8 @@ class AppMenuCard extends ConsumerWidget {
               label: l10n.drawerShareFeedback,
               small: true,
               onTap: () {
-                final host = Navigator.of(context, rootNavigator: true).context;
                 Navigator.of(context).pop();
-                showFeedbackSheet(host);
+                ref.read(feedbackRequestProvider.notifier).state++;
               },
             ),
             if (donateUrl != null)
@@ -257,12 +271,12 @@ class _MenuRow extends StatelessWidget {
         ? theme.colorScheme.onSurfaceVariant
         : theme.colorScheme.onSurface;
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: SizedBox(
         height: small ? 44 : 48,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
               Icon(icon, size: small ? 20 : 22, color: color),

@@ -83,7 +83,7 @@ class _AnalyticsLineScreenState extends ConsumerState<AnalyticsLineScreen> {
                 valueOf: (c) => c.meanHeadwaySecs,
                 lowerIsBetter: true,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               const _ReliabilityLegend(lowLabel: 'чаще', highLabel: 'реже'),
             ],
           ),
@@ -203,7 +203,7 @@ class _AnalyticsLineScreenState extends ConsumerState<AnalyticsLineScreen> {
               ),
               const SizedBox(height: 12),
               Text('Данных пока мало', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 'Мы только начали копить историю по этой линии. '
                 'Загляни позже — сетки и графики наполнятся со временем.',
@@ -242,7 +242,7 @@ class _Card extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

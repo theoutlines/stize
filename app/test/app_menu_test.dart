@@ -111,32 +111,29 @@ void main() {
     expect(find.text('My Stops'), findsNothing);
   });
 
-  testWidgets('feedback sheet keeps the form behind the feedback_form flag', (
+  // Settings and Feedback open as levels of the map's one sheet (owner,
+  // 2026-11-23): the menu only closes itself and asks the map to open them.
+  testWidgets('Share feedback asks the map for the feedback level', (
     tester,
   ) async {
-    await _open(tester, _host(feedbackOn: false));
+    await _open(tester, _host());
+    final container = ProviderScope.containerOf(
+      tester.element(find.text('Share feedback')),
+    );
     await tester.tap(find.text('Share feedback'));
     await tester.pumpAndSettle();
-    expect(find.text('GitHub Issues'), findsOneWidget);
-    expect(find.text('Write to me'), findsNothing);
+    expect(container.read(feedbackRequestProvider), 1);
+    expect(find.text('Share feedback'), findsNothing);
   });
 
-  testWidgets('feedback form action shows when feedback_form is on', (
-    tester,
-  ) async {
-    await _open(tester, _host(feedbackOn: true));
-    await tester.tap(find.text('Share feedback'));
-    await tester.pumpAndSettle();
-    expect(find.text('Write to me'), findsOneWidget);
-  });
-
-  testWidgets('Settings opens as a sheet with both controls', (tester) async {
+  testWidgets('Settings asks the map for the settings level', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await _open(tester, _host());
+    final container = ProviderScope.containerOf(
+      tester.element(find.text('Settings')),
+    );
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
-    expect(find.text('Language'), findsOneWidget);
-    expect(find.text('Theme'), findsOneWidget);
-    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(container.read(settingsRequestProvider), 1);
   });
 }

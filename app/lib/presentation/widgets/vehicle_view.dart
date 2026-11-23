@@ -107,7 +107,7 @@ class VehicleView extends ConsumerWidget {
         _statusChip(theme, l10n),
         if (jamAhead) _jamAheadWarning(theme, l10n),
         if (scheduled) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -178,10 +178,10 @@ class VehicleView extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFFE8A317).withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
@@ -243,7 +243,7 @@ class VehicleView extends ConsumerWidget {
         ? theme.colorScheme.primary
         : theme.colorScheme.outline;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           Icon(
@@ -251,7 +251,7 @@ class VehicleView extends ConsumerWidget {
             size: isNext ? 15 : 7,
             color: color,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               u.stop.name,
@@ -259,13 +259,13 @@ class VehicleView extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
               style: isNext
                   ? theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                     )
                   : theme.textTheme.bodyMedium,
             ),
           ),
           if (u.isBoardStop) ...[
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Text(
               l10n.vehicleYourStop,
               style: theme.textTheme.labelSmall?.copyWith(
@@ -278,7 +278,7 @@ class VehicleView extends ConsumerWidget {
             Text(
               eta <= 0 ? l10n.arrivalEtaNow : l10n.vehicleEtaMinutesApprox(eta),
               style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: isNext ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: isNext ? FontWeight.w500 : FontWeight.w500,
               ),
             ),
           ],
@@ -298,12 +298,12 @@ class VehicleView extends ConsumerWidget {
           size: 16,
           color: stuck ? stuckColor : movingColor,
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
         Text(
           stuck ? l10n.vehicleStuck : l10n.vehicleMoving,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: stuck ? stuckColor : movingColor,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -346,14 +346,14 @@ class VehicleView extends ConsumerWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: vehicleColor(type).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: vehicleGlyph(type, size: 18, color: vehicleColor(type)),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

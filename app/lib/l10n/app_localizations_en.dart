@@ -478,7 +478,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get feedbackWriteToMeSubtitle =>
-      'Send a message — bugs, ideas, anything.';
+      'Send a message: bugs, ideas, anything.';
 
   @override
   String get feedbackGithubIssues => 'GitHub Issues';

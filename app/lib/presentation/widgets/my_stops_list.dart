@@ -47,7 +47,7 @@ class MyStopsList extends ConsumerWidget {
           controller: scrollController,
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
           itemCount: stops.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 6),
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
           itemBuilder: (context, i) {
             final stop = stops[i];
             final custom = customNames['stop:${stop.stopId}'];

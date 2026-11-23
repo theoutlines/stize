@@ -479,7 +479,7 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get feedbackWriteToMeSubtitle =>
-      'Pošalji poruku — greške, ideje, bilo šta.';
+      'Pošalji poruku: greške, ideje, bilo šta.';
 
   @override
   String get feedbackGithubIssues => 'GitHub Issues';

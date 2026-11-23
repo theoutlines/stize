@@ -109,7 +109,7 @@ class HourlySparkline extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(width: 12, height: 3, color: s.color),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Text(s.label, style: theme.textTheme.labelMedium),
                   ],
                 ),

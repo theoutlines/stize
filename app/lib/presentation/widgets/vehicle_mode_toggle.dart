@@ -106,7 +106,7 @@ class _VehicleModeToggleState extends ConsumerState<VehicleModeToggle> {
       ),
     );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -128,7 +128,7 @@ class _VehicleModeToggleState extends ConsumerState<VehicleModeToggle> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: 7,
+                              vertical: 8,
                             ),
                             child: Text(
                               l10n.vehicleModeHint,

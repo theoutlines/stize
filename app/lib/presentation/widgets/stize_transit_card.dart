@@ -119,7 +119,7 @@ class StizeTransitCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: StizeSpace.space2,
-                          vertical: 2,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
                           color: fillFor(c, type),
@@ -229,11 +229,36 @@ class StizeTransitCard extends StatelessWidget {
       value = Text(text, style: StizeType.bigNumber.copyWith(color: on));
     }
 
+    // A changed ETA swaps softly (text swap: 150ms, 4px, in-out) instead of
+    // jumping (owner, 2026-11-23).
+    final keyed = KeyedSubtree(
+      key: ValueKey(value is Text ? value.data : m),
+      child: value,
+    );
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        value,
+        AnimatedSwitcher(
+          duration: StizeMotion.quick,
+          switchInCurve: StizeMotion.inOut,
+          switchOutCurve: StizeMotion.inOut,
+          layoutBuilder: (current, previous) => Stack(
+            alignment: Alignment.centerRight,
+            children: [...previous, ?current],
+          ),
+          transitionBuilder: (child, anim) => FadeTransition(
+            opacity: anim,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.1),
+                end: Offset.zero,
+              ).animate(anim),
+              child: child,
+            ),
+          ),
+          child: keyed,
+        ),
         if (unit != null)
           Text(unit, style: captionStyle(c, scheduled: scheduled)),
         ?etaFooter,

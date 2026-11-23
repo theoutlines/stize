@@ -10,7 +10,7 @@ import 'package:flutter/painting.dart' show EdgeInsets;
 ///
 /// Everything here is pure so the breakpoint / width maths is unit-testable on
 /// its own.
-enum ContextView { nearby, stop, myStops, guide, vehicle }
+enum ContextView { nearby, stop, myStops, guide, settings, feedback, vehicle }
 
 // ---- Breakpoint ------------------------------------------------------------
 

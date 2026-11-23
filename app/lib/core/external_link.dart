@@ -18,8 +18,10 @@ import 'package:url_launcher/url_launcher.dart';
 Future<bool> openExternalUrl(String url) {
   final uri = Uri.parse(url);
   if (kIsWeb) {
-    // `_self` is the popup-blocker-proof path; the mode is ignored on web.
-    return launchUrl(uri, webOnlyWindowName: '_self');
+    // A new tab, so leaving for Support/GitHub never replaces the app (owner,
+    // 2026-11-23). Called synchronously inside the tap, so the browser's user
+    // activation lets the tab open without a popup block.
+    return launchUrl(uri, webOnlyWindowName: '_blank');
   }
   return launchUrl(uri, mode: LaunchMode.externalApplication);
 }

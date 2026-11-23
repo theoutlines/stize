@@ -85,13 +85,13 @@ class FleetModelView extends ConsumerWidget {
         const SizedBox(height: 12),
         _heroSlot(context, theme, l10n, photo),
         if (note != null) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Text(note, style: theme.textTheme.bodyMedium),
         ],
         const SizedBox(height: 16),
         ..._attributes(context, theme, l10n, lang),
         if (fleet.approximate) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Text(
             l10n.fleetApproxNote,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -149,7 +149,7 @@ class FleetModelView extends ConsumerWidget {
             color: StizeColors.of(context).onTransit,
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,7 +157,7 @@ class FleetModelView extends ConsumerWidget {
               Text(
                 model,
                 style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               if (nickname != null)
@@ -216,7 +216,7 @@ class FleetModelView extends ConsumerWidget {
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         InkWell(
           borderRadius: BorderRadius.circular(4),
           onTap: () => launchUrl(
@@ -224,7 +224,7 @@ class FleetModelView extends ConsumerWidget {
             mode: LaunchMode.externalApplication,
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(vertical: 4),
             child: Text(
               l10n.fleetPhotoCredit(photo.author, photo.license),
               maxLines: 2,
@@ -414,7 +414,7 @@ class FleetModelView extends ConsumerWidget {
         : (muted ? theme.colorScheme.outline : theme.colorScheme.onSurface);
     final color = assumed ? baseColor.withValues(alpha: 0.6) : baseColor;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -442,7 +442,7 @@ class FleetModelView extends ConsumerWidget {
         : (score == 3 ? l10n.fleetComfortOk : l10n.fleetComfortComfy);
     final dotColor = theme.colorScheme.primary;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           Icon(StizeIcons.seat, size: 20, color: theme.colorScheme.onSurface),
@@ -453,7 +453,7 @@ class FleetModelView extends ConsumerWidget {
           ),
           for (var i = 1; i <= 5; i++)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Icon(
                 i <= score ? StizeIcons.dot : StizeIcons.circle,
                 size: 10,

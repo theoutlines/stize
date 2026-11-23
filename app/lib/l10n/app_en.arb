@@ -340,7 +340,7 @@
   },
   "drawerFeedbackSheetTitle": "Feedback",
   "feedbackWriteToMe": "Write to me",
-  "feedbackWriteToMeSubtitle": "Send a message — bugs, ideas, anything.",
+  "feedbackWriteToMeSubtitle": "Send a message: bugs, ideas, anything.",
   "feedbackGithubIssues": "GitHub Issues",
   "feedbackGithubIssuesSubtitle": "For technical reports (public).",
   "feedbackFormTitle": "Write to me",

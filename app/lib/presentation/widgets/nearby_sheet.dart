@@ -51,11 +51,7 @@ class NearbySheet extends StatelessWidget {
     final c = controller;
     if (c == null || !c.isAttached) return;
     _preSearch[c] ??= c.size;
-    c.animateTo(
-      size,
-      duration: const Duration(milliseconds: 240),
-      curve: Curves.easeOutCubic,
-    );
+    c.animateTo(size, duration: StizeMotion.slow, curve: StizeMotion.smoothOut);
   }
 
   void _restoreDetent() {
@@ -63,11 +59,7 @@ class NearbySheet extends StatelessWidget {
     if (c == null || !c.isAttached) return;
     final back = _preSearch[c] ?? kSheetPeek;
     _preSearch[c] = null;
-    c.animateTo(
-      back,
-      duration: const Duration(milliseconds: 240),
-      curve: Curves.easeOutCubic,
-    );
+    c.animateTo(back, duration: StizeMotion.slow, curve: StizeMotion.smoothOut);
   }
 
   /// When a level is open (a stop, My stops, a vehicle model), its header and
@@ -214,8 +206,8 @@ class _SheetDragArea extends StatelessWidget {
         }
         c.animateTo(
           target,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
+          duration: StizeMotion.slow,
+          curve: StizeMotion.smoothOut,
         );
       },
       child: child,
