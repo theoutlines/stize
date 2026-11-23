@@ -938,4 +938,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cityLineNoHour => 'no data for this hour';
+
+  @override
+  String cityLinesBestOnly(String best) {
+    return '$best is the most punctual line; none of the busy lines runs notably late.';
+  }
 }

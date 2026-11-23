@@ -1723,6 +1723,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'no data for this hour'**
   String get cityLineNoHour;
+
+  /// No description provided for @cityLinesBestOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'{best} is the most punctual line; none of the busy lines runs notably late.'**
+  String cityLinesBestOnly(String best);
 }
 
 class _AppLocalizationsDelegate

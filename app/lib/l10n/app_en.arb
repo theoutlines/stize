@@ -632,5 +632,13 @@
       }
     }
   },
-  "cityLineNoHour": "no data for this hour"
+  "cityLineNoHour": "no data for this hour",
+  "cityLinesBestOnly": "{best} is the most punctual line; none of the busy lines runs notably late.",
+  "@cityLinesBestOnly": {
+    "placeholders": {
+      "best": {
+        "type": "String"
+      }
+    }
+  }
 }
