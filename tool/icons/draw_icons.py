@@ -57,6 +57,9 @@ I={
 'bug':'<path d="M8 9h8v6a4 4 0 0 1-8 0zM9.5 9a2.5 2.5 0 0 1 5 0M3 13h5M16 13h5M4 8l4 2M20 8l-4 2M4 19l4-2M20 19l-4-2M12 11v8"/>',
 'seat':'<path d="M7 3v11h9l2 7M7 14l-2 7M7 9h6"/>',
 'circle':'<circle cx="12" cy="12" r="7"/>',
+'compass':'<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+'luggage':'<path d="M6 7h12v12H6zM9 7V4h6v3M10 10v6M14 10v6M8 19v2M16 19v2"/>',
+'train':'<path d="M6 3h12v13H6zM6 10h12M8 16l-2 5M16 16l2 5M9 3v7M15 3v7"/>',
 }
 FILL={'star-filled':'<path d="M12 2.4l3 6.5 7.1.8-5.3 4.9 1.4 7L12 18.2l-6.2 3.4 1.4-7-5.3-4.9 7.1-.8z" fill="#000000"/>',
 'dot':'<circle cx="12" cy="12" r="6" fill="#000000"/>'}

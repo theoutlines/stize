@@ -29,7 +29,12 @@ fb.setupGlyphOrder(order); fb.setupCharacterMap(cmap)
 empty=TTGlyphPen(None).glyph()
 glyphs['.notdef']=empty
 fb.setupGlyf(glyphs)
-fb.setupHorizontalMetrics({g:(UPM,0) for g in order})
+glyf=fb.font['glyf']
+def lsb(g):
+    gl=glyf[g]; gl.recalcBounds(glyf)
+    return getattr(gl,'xMin',0) if gl.numberOfContours else 0
+# lsb must equal each glyph's xMin, or renderers shift the drawing left.
+fb.setupHorizontalMetrics({g:(UPM,lsb(g)) for g in order})
 fb.setupHorizontalHeader(ascent=UPM,descent=0)
 fb.setupNameTable({'familyName':'StizeIcons','styleName':'Regular'})
 fb.setupOS2(sTypoAscender=UPM,sTypoDescender=0,usWinAscent=UPM,usWinDescent=0)

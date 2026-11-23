@@ -57,19 +57,26 @@ class LevelHeader extends StatelessWidget {
           Row(
             children: [
               const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.3,
-                  ),
+              // Title + star take all the room up to the close button (a
+              // Flexible + Spacer pair split it in half and cut long names).
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    ?trailing,
+                  ],
                 ),
               ),
-              ?trailing,
-              const Spacer(),
               if (!hasBack && onClose != null)
                 // Compact round close: a 32px circle on the title's centre
                 // line (the old 48px filled square sat off the baseline),

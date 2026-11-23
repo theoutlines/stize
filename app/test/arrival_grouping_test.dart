@@ -304,4 +304,28 @@ void main() {
       expect(entries.whereType<ScheduledGroupCell>().length, 1);
     });
   });
+
+  group('turnaround at a terminus', () {
+    test('a departure before the arriving bus of the same line is hidden', () {
+      final entries = groupArrivals(
+        [
+          _live('72', 23, route: 'in'),
+          _scheduled('72', 8, route: 'out'),
+          _scheduled('72', 33, route: 'out'),
+        ],
+        terminatingDirections: {'in'},
+      );
+      final cells = entries.whereType<ScheduledGroupCell>().toList();
+      expect(cells, hasLength(1));
+      expect(cells.single.etaMinutes, [33]);
+    });
+
+    test('without a terminating live bus the timetable stays', () {
+      final entries = groupArrivals([
+        _live('72', 23, route: 'in'),
+        _scheduled('72', 30, route: 'out'),
+      ]);
+      expect(entries.whereType<ScheduledGroupCell>().single.etaMinutes, [30]);
+    });
+  });
 }

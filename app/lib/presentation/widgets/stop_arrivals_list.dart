@@ -223,7 +223,16 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
     } else {
       // Time order: one card per line×direction, later vehicles folded in,
       // covered non-live rows dropped, surviving Scheduled folded into a cell.
-      for (final entry in foldLiveByDirection(groupArrivals(visibleArrivals))) {
+      // Directions whose headsign is this stop: those vehicles end here.
+      const marker = '\u0000';
+      final terminating = {
+        for (final e in destinations.entries)
+          if (displayDestination(e.value, board.stopName, marker) == marker)
+            e.key,
+      };
+      for (final entry in foldLiveByDirection(
+        groupArrivals(visibleArrivals, terminatingDirections: terminating),
+      )) {
         switch (entry) {
           case ArrivalRow(:final arrival, :final index, :final laterEtaMinutes):
             addTile(arrival, fleetByIndex[index], laterEtaMinutes);

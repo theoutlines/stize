@@ -13,7 +13,9 @@ enum GuidePage { home, readStop, places }
 /// Transport hubs: the guide links to them, and the Nearby strip appears when
 /// the user is within [GuideHub.radiusM] of one. Stop ids are GTFS stops.
 enum GuideHub {
-  airport('22303', 44.8204, 20.29031),
+  // Departures (polasci): where city-bound buses leave. Arrivals (dolasci,
+  // 22303) is where they terminate.
+  airport('21045', 44.81995, 20.29105),
   busStation('21062', 44.80395, 20.41700),
   railStation('21041', 44.79274, 20.45429);
 
@@ -38,7 +40,7 @@ const kGuidePlaces = <GuidePlace>[
   GuidePlace('Trg Republike', 'Knez Mihailova, old town', '20193'),
   GuidePlace('Slavija', 'Vračar, Saint Sava temple', '20200'),
   GuidePlace('Ada Ciganlija', 'Lake and beaches', '20503'),
-  GuidePlace('Nikola Tesla Airport', 'Arrivals', '22303'),
+  GuidePlace('Nikola Tesla Airport', 'Buses into the city', '21045'),
   GuidePlace('Beogradska autobuska stanica', 'Main bus station', '21062'),
   GuidePlace('Beograd Centar', 'Railway station (Prokop)', '21041'),
 ];
@@ -309,7 +311,10 @@ class _ExpoCard extends StatelessWidget {
     // Whole calendar days, in UTC so a DST change in between can't eat one.
     final today = DateTime.utc(now.year, now.month, now.day);
     final open = DateTime.utc(
-        kExpoOpening.year, kExpoOpening.month, kExpoOpening.day);
+      kExpoOpening.year,
+      kExpoOpening.month,
+      kExpoOpening.day,
+    );
     final days = open.difference(today).inDays;
     if (days < 0) return const SizedBox.shrink();
     return Container(
