@@ -145,6 +145,120 @@
    "page": "https://commons.wikimedia.org/wiki/File:Mercedes_Benz_Citaro_C2_na_liniji_602_u_Beogradu.jpg",
    "author": "Lazar144000",
    "license": "CC0"
+  },
+  "akia12": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Akia_Ultra_LF_BG.JPG/500px-Akia_Ultra_LF_BG.JPG",
+   "page": "https://commons.wikimedia.org/wiki/File:Akia_Ultra_LF_BG.JPG",
+   "author": "Srđan Popović",
+   "license": "CC BY-SA 4.0"
+  },
+  "guleryuz12": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Cobra_GD-272LF_BG.jpg/500px-Cobra_GD-272LF_BG.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Cobra_GD-272LF_BG.jpg",
+   "author": "Srđan Popović",
+   "license": "CC BY-SA 4.0"
+  },
+  "bmc12cng": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/BMC_Procity_CNG.jpg/500px-BMC_Procity_CNG.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:BMC_Procity_CNG.jpg",
+   "author": "Ekalev",
+   "license": "CC BY-SA 4.0"
+  },
+  "conecto3": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/150B_busz_%28AA-DI-591%29.jpg/500px-150B_busz_%28AA-DI-591%29.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:150B_busz_(AA-DI-591).jpg",
+   "author": "PMilán",
+   "license": "CC0"
+  },
+  "conecto3g": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Mercedes_Benz_Conecto_G_na_liniji_601.jpg/500px-Mercedes_Benz_Conecto_G_na_liniji_601.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Mercedes_Benz_Conecto_G_na_liniji_601.jpg",
+   "author": "Lazar144000",
+   "license": "CC0"
+  },
+  "citaro2g_h": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/2024-12-04_Chemnitz_CVAG_Mercedes-Benz_Citaro_2_III_G_Hybrid.jpg/500px-2024-12-04_Chemnitz_CVAG_Mercedes-Benz_Citaro_2_III_G_Hybrid.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:2024-12-04_Chemnitz_CVAG_Mercedes-Benz_Citaro_2_III_G_Hybrid.jpg",
+   "author": "Mkkagain",
+   "license": "CC BY 4.0"
+  },
+  "crossway_h": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Iveco_Crossway_LE_City.jpg/500px-Iveco_Crossway_LE_City.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Iveco_Crossway_LE_City.jpg",
+   "author": "Actuell37",
+   "license": "CC BY-SA 4.0"
+  },
+  "intouro2": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Mercedes_Benz_Intouro_%282019%29_na_liniji_860MV_u_Beogradu_02.jpg/500px-Mercedes_Benz_Intouro_%282019%29_na_liniji_860MV_u_Beogradu_02.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Mercedes_Benz_Intouro_(2019)_na_liniji_860MV_u_Beogradu_02.jpg",
+   "author": "Lazar144000",
+   "license": "CC0"
+  },
+  "intouro3": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Mercedes-Benz_Intouro_hybrid_%28LRM_20240430_153131%29.jpg/500px-Mercedes-Benz_Intouro_hybrid_%28LRM_20240430_153131%29.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Mercedes-Benz_Intouro_hybrid_(LRM_20240430_153131).jpg",
+   "author": "Matti Blume",
+   "license": "CC BY-SA 4.0"
+  },
+  "liaz5292": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/LiAZ-5292.65_SPB_%28img1%29.jpg/500px-LiAZ-5292.65_SPB_%28img1%29.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:LiAZ-5292.65_SPB_(img1).jpg",
+   "author": "Florstein",
+   "license": "CC BY-SA 4.0"
+  },
+  "urbanway12cng": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Iveco_Urbanway_12M_CNG_ev.%C4%8D._531%2C_Liberec.jpg/500px-Iveco_Urbanway_12M_CNG_ev.%C4%8D._531%2C_Liberec.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Iveco_Urbanway_12M_CNG_ev.%C4%8D._531,_Liberec.jpg",
+   "author": "Jiří Beneš",
+   "license": "CC BY 4.0"
+  },
+  "yutong_u12": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Yutong_U12%2C_bus_line_B%2C_Szczecin%2C_July_2025.jpg/500px-Yutong_U12%2C_bus_line_B%2C_Szczecin%2C_July_2025.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Yutong_U12,_bus_line_B,_Szczecin,_July_2025.jpg",
+   "author": "Szczecinolog",
+   "license": "CC BY-SA 4.0"
+  },
+  "navigo_midi": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Otokar_Navigo_U_%281%29.jpg/500px-Otokar_Navigo_U_%281%29.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Otokar_Navigo_U_(1).jpg",
+   "author": "Cjp24",
+   "license": "CC BY-SA 4.0"
+  },
+  "sprinter_mini": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Mercedes-Benz_Sprinter_City_65_414.jpg/500px-Mercedes-Benz_Sprinter_City_65_414.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Mercedes-Benz_Sprinter_City_65_414.jpg",
+   "author": "AdamSlabik",
+   "license": "CC BY-SA 4.0"
+  },
+  "isuzu_citiport": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Isuzu_Citiport_12_nr._V7073%2C_Vilnius.jpg/500px-Isuzu_Citiport_12_nr._V7073%2C_Vilnius.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Isuzu_Citiport_12_nr._V7073,_Vilnius.jpg",
+   "author": "Lanxtot",
+   "license": "CC BY-SA 4.0"
+  },
+  "conecto3_h": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/150B_busz_%28AA-DI-591%29.jpg/500px-150B_busz_%28AA-DI-591%29.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:150B_busz_(AA-DI-591).jpg",
+   "author": "PMilán",
+   "license": "CC0"
+  },
+  "conecto3g_h": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Mercedes_Benz_Conecto_G_na_liniji_601.jpg/500px-Mercedes_Benz_Conecto_G_na_liniji_601.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Mercedes_Benz_Conecto_G_na_liniji_601.jpg",
+   "author": "Lazar144000",
+   "license": "CC0"
+  },
+  "intouro3_h": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Mercedes-Benz_Intouro_hybrid_%28LRM_20240430_153131%29.jpg/500px-Mercedes-Benz_Intouro_hybrid_%28LRM_20240430_153131%29.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Mercedes-Benz_Intouro_hybrid_(LRM_20240430_153131).jpg",
+   "author": "Matti Blume",
+   "license": "CC BY-SA 4.0"
+  },
+  "yutong_strela": {
+   "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Yutong_U12%2C_bus_line_B%2C_Szczecin%2C_July_2025.jpg/500px-Yutong_U12%2C_bus_line_B%2C_Szczecin%2C_July_2025.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Yutong_U12,_bus_line_B,_Szczecin,_July_2025.jpg",
+   "author": "Szczecinolog",
+   "license": "CC BY-SA 4.0"
   }
  }
 }

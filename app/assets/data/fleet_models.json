@@ -752,7 +752,7 @@
      97599
     ]
    ],
-   "model": "Rayan (minibus)",
+   "model": "Rayan",
    "manufacturer": "Rayan",
    "country": "RS",
    "years_built": [
@@ -1494,7 +1494,7 @@
    "note_ru": ""
   },
   "maz203": {
-   "name": "МАЗ-203",
+   "name": "MAZ-203",
    "ac": true,
    "low_floor": true,
    "articulated": false,
@@ -1508,7 +1508,7 @@
    "note_ru": ""
   },
   "maz215": {
-   "name": "МАЗ-215",
+   "name": "MAZ-215",
    "ac": true,
    "low_floor": true,
    "articulated": true,
@@ -1690,7 +1690,7 @@
    "note_sr": "prigradski, visok pod"
   },
   "liaz5292": {
-   "name": "ЛиАЗ-5292",
+   "name": "LiAZ-5292",
    "ac": true,
    "low_floor": true,
    "articulated": false,
@@ -1746,7 +1746,7 @@
    "note_ru": ""
   },
   "rayan_mini": {
-   "name": "Rayan (минибус)",
+   "name": "Rayan",
    "ac": true,
    "low_floor": false,
    "articulated": false,
@@ -1762,7 +1762,7 @@
    "note_sr": "minibus"
   },
   "navigo_midi": {
-   "name": "Otokar Navigo (миди)",
+   "name": "Otokar Navigo",
    "ac": true,
    "low_floor": false,
    "articulated": false,
@@ -1773,7 +1773,9 @@
    ],
    "capacity": 45,
    "comfort_score": 3,
-   "note_ru": ""
+   "note_ru": "мидибус",
+   "note_en": "midibus",
+   "note_sr": "midibus"
   },
   "sprinter_mini": {
    "name": "Mercedes Sprinter City",
@@ -1820,7 +1822,7 @@
    "note_ru": ""
   },
   "generic_city": {
-   "name": "городской автобус (модель уточняется)",
+   "name": null,
    "ac": true,
    "low_floor": true,
    "articulated": false,
