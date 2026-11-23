@@ -364,6 +364,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   final _pillFocus = FocusNode();
   bool _pillActive = false;
   final _topButtonsKey = GlobalKey();
+  double _topButtonsH = 120; // measured after layout
 
   // ---- Adaptive context slot (context_panel) -------------------------------
   // With the flag ON the three views (nearby → stop → vehicle) share ONE

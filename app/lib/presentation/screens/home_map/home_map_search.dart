@@ -521,29 +521,28 @@ extension _MapSearch on _HomeMapScreenState {
   /// The round map buttons, pushed up past the top edge as the rising pill
   /// reaches them (owner, 2026-11-23). Desktop and level views: unmoved.
   Widget _pushedTopButtons(ThemeData theme, Size size) {
-    final buttons = KeyedSubtree(
-      key: _topButtonsKey,
-      child: _topButtons(theme),
-    );
-    final pillShown =
-        !_panelActive &&
-        _focus == null &&
-        _selectedVehicleKey == null &&
-        _levels.isEmpty &&
-        _slotModel == null;
-    if (!pillShown) return buttons;
+    final buttons = _topButtons(theme);
+    if (!_oneScrollRoot) return buttons;
     return AnimatedBuilder(
       animation: _sheetCtl,
       child: buttons,
       builder: (context, child) {
         // The measured bottom of the button stack (zoom control included on
         // web); the pill pushes once it is within 12px of that edge.
-        final box =
-            _topButtonsKey.currentContext?.findRenderObject() as RenderBox?;
+        // Measured after layout, never during build (a render object can be
+        // inactive mid-build).
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final ctx = _topButtonsKey.currentContext;
+          if (ctx == null || !ctx.mounted) return;
+          final box = ctx.findRenderObject();
+          if (box is RenderBox && box.attached && box.hasSize) {
+            _topButtonsH = box.size.height;
+          }
+        });
         // The right-hand button column (keyed in _topButtons) sits below the
         // status-bar inset and a 12px margin.
-        final rowH = box != null && box.hasSize ? box.size.height : 120.0;
-        final buttonsBottom = MediaQuery.paddingOf(context).top + 12 + rowH;
+        final buttonsBottom =
+            MediaQuery.paddingOf(context).top + 12 + _topButtonsH;
         final gap = _pillTopFor(size) - StizeSpace.space3 - buttonsBottom;
         return Transform.translate(
           offset: Offset(0, gap < 0 ? gap : 0),

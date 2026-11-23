@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stize/core/nearby_focus.dart';
+import 'package:stize/presentation/widgets/nearby_list.dart';
 import 'package:stize/domain/models/nearby_arrival.dart';
 import 'package:stize/domain/models/vehicle_type.dart';
 
@@ -62,5 +63,15 @@ void main() {
       _g('26', 's', [_live(5), _sch(4), _sch(5), _sch(30)]),
     ]);
     expect(out.single.arrivals.map((a) => a.etaMinutes).toList(), [5, 30]);
+  });
+
+  test('carousel: one card per line, directions kept in order', () {
+    final lines = carouselByLine([
+      _g('6', 'a', [_live(2)], route: 'x'),
+      _g('79', 'b', [_live(3)]),
+      _g('6', 'c', [_live(4)], route: 'y'),
+    ]);
+    expect(lines.map((l) => l.first.line).toList(), ['6', '79']);
+    expect(lines.first.map((g) => g.routeId).toList(), ['6x', '6y']);
   });
 }
