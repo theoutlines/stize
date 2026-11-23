@@ -81,4 +81,9 @@ if [ "${BRANCH}" = "main" ]; then
 else
   grep -qF "${API_URL#https://}" build/web/main.dart.js
 fi
+# Static, indexable stop and line pages + sitemap (the Flutter canvas is
+# invisible to search engines). Plain HTML, no live requests.
+node "${ROOT}/app/tool/gen_seo_pages.mjs" "${ROOT}/backend/public/gtfs" "${ROOT}/app/build/web"
+test -f build/web/sitemap.xml
+
 echo "OK: build/web ready"
