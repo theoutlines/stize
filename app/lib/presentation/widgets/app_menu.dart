@@ -154,6 +154,14 @@ class AppMenuCard extends ConsumerWidget {
           ref.read(myStopsRequestProvider.notifier).state++;
         },
       ),
+      _MenuRow(
+        icon: StizeIcons.compass,
+        label: l10n.guideTitle,
+        onTap: () {
+          Navigator.of(context).pop();
+          ref.read(guideRequestProvider.notifier).state++;
+        },
+      ),
       if (analytics)
         _MenuRow(
           icon: Icons.query_stats_outlined,

@@ -31,6 +31,7 @@ class NearbySheet extends StatelessWidget {
     this.onSelectLine,
     this.onHeightChanged,
     this.controller,
+    this.banner,
     this.levelHeader,
     this.levelBody,
   });
@@ -39,6 +40,9 @@ class NearbySheet extends StatelessWidget {
   /// to peek). The sheet itself is never rebuilt between levels, so its height
   /// stays continuous: one sheet, only its content changes.
   final DraggableScrollableController? controller;
+
+  /// Contextual guide strip under the search (see NearbyView.banner).
+  final Widget? banner;
 
   /// Sheet size before search focus raised it, so Cancel returns "as it was".
   static final _preSearch = Expando<double>();
@@ -142,6 +146,7 @@ class NearbySheet extends StatelessWidget {
                         onSelectStop: onSelectStop,
                         onSelectLine: onSelectLine,
                         scrollController: scrollController,
+                        banner: banner,
                         onSearchFocus: () => _toDetent(kSheetLarge),
                         onSearchCancel: _restoreDetent,
                       ),

@@ -62,6 +62,7 @@ class NearbyView extends ConsumerStatefulWidget {
     this.onSelectLine,
     this.scrollController,
     this.showLocalSearch = true,
+    this.banner,
     this.onSearchFocus,
     this.onSearchCancel,
     this.hugContent = false,
@@ -99,6 +100,10 @@ class NearbyView extends ConsumerStatefulWidget {
   /// Desktop panel: lay out to the content's height (short states make a short
   /// card); lists still fill the available height and scroll.
   final bool hugContent;
+
+  /// One contextual line under the search (guide strip: night, first launch,
+  /// at a hub). Null = none.
+  final Widget? banner;
 
   @override
   ConsumerState<NearbyView> createState() => NearbyViewState();
@@ -261,6 +266,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       mainAxisSize: widget.hugContent ? MainAxisSize.min : MainAxisSize.max,
       children: [
         if (widget.showLocalSearch) _localSearch(Theme.of(context)),
+        if (widget.banner != null && _query.isEmpty) widget.banner!,
         if (contextLines.isNotEmpty) JamNearbyStrip(contextLines: contextLines),
         Flexible(
           fit: widget.hugContent ? FlexFit.loose : FlexFit.tight,

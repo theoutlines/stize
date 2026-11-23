@@ -696,4 +696,109 @@ class AppLocalizationsEn extends AppLocalizations {
   String stopBackTo(String name) {
     return 'Back to $name';
   }
+
+  @override
+  String get guideTitle => 'Belgrade guide';
+
+  @override
+  String get guideFree => 'City transport is free: buses, trams, trolleybuses';
+
+  @override
+  String get guideGettingAround => 'Getting around';
+
+  @override
+  String get guideFromAirport => 'From the airport';
+
+  @override
+  String get guideFromAirportSub => 'Lines 72, A1, 600, 607 · 72N at night';
+
+  @override
+  String get guideFromBusStation => 'From the bus station';
+
+  @override
+  String get guideFromBusStationSub =>
+      'Beogradska autobuska stanica, New Belgrade';
+
+  @override
+  String get guideFromRailStation => 'From the railway station';
+
+  @override
+  String get guideFromRailStationSub => 'Beograd Centar (Prokop)';
+
+  @override
+  String get guideReadStop => 'How to read a stop';
+
+  @override
+  String get guideReadStopSub => 'Live minutes and timetable times';
+
+  @override
+  String get guideReadStopLive =>
+      'Big minutes are live: the vehicle is on its way and we see it on GPS.';
+
+  @override
+  String get guideReadStopScheduled =>
+      'A time of day is from the timetable: no live signal for that trip yet.';
+
+  @override
+  String get guideReadStopStar => 'Tap the star to keep a stop in My stops.';
+
+  @override
+  String get guideReadStopNight => 'Lines ending in N run at night.';
+
+  @override
+  String get guidePlaces => 'Places people ask for';
+
+  @override
+  String get guidePlacesSub => 'Fortress, squares, stations, Ada';
+
+  @override
+  String get guideNowLabel => 'Right now';
+
+  @override
+  String get guideExpoTitle => 'Expo 2027 in Belgrade';
+
+  @override
+  String get guideExpoDays => 'days to opening';
+
+  @override
+  String get guideExpoSub =>
+      '15 May to 15 August 2027. We add the Expo lines as soon as the city announces them.';
+
+  @override
+  String get guideNightTitle => 'Night lines are running';
+
+  @override
+  String get guideNightSub =>
+      'After midnight the night lines take over. Their numbers end in N.';
+
+  @override
+  String get guideStripNight => 'Night lines are running';
+
+  @override
+  String get guideStripNightSub => 'What runs after midnight';
+
+  @override
+  String get guideStripNew => 'New to Belgrade? Open the guide';
+
+  @override
+  String get guideStripNewSub => 'Free rides, airport, night lines';
+
+  @override
+  String get guideStripAirport => 'You\'re at the airport';
+
+  @override
+  String get guideStripAirportSub => 'Into the city: 72, A1, 600';
+
+  @override
+  String get guideStripBusStation => 'You\'re at the bus station';
+
+  @override
+  String get guideStripBusStationSub =>
+      'City lines leave from the stops by the exit';
+
+  @override
+  String get guideStripRailStation => 'You\'re at Beograd Centar station';
+
+  @override
+  String get guideStripRailStationSub => 'City lines: 34, 36, 600';
 }

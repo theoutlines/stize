@@ -172,9 +172,11 @@ extension _MapContext on _HomeMapScreenState {
     if (_selectedVehicleKey != null || _focus != null)
       return ContextView.vehicle;
     if (_levels.isEmpty) return ContextView.nearby;
-    return _levels.last is _MyStopsLevel
-        ? ContextView.myStops
-        : ContextView.stop;
+    return switch (_levels.last) {
+      _MyStopsLevel() => ContextView.myStops,
+      _GuideLevel() => ContextView.guide,
+      _StopLevel() => ContextView.stop,
+    };
   }
 
   /// Follow is interrupted: a vehicle context is up but we're not tracking (the
@@ -205,6 +207,7 @@ extension _MapContext on _HomeMapScreenState {
         _closeVehicleContext();
       case ContextView.stop:
       case ContextView.myStops:
+      case ContextView.guide:
         _popLevel();
       case ContextView.nearby:
         break;

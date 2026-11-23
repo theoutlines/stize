@@ -84,6 +84,11 @@ extension _MapPanels on _HomeMapScreenState {
         _StopLevel(:final id, :final name) =>
           ref.watch(stopLocationProvider(id)).valueOrNull?.name ?? name ?? '',
         _MyStopsLevel() => l10n.navMyStops,
+        _GuideLevel(:final page) => switch (page) {
+          GuidePage.home => l10n.guideTitle,
+          GuidePage.readStop => l10n.guideReadStop,
+          GuidePage.places => l10n.guidePlaces,
+        },
       };
 
   /// The header of the current level; null on Nearby (root). One control per
@@ -106,6 +111,7 @@ extension _MapPanels on _HomeMapScreenState {
         return null;
       case ContextView.stop:
       case ContextView.myStops:
+      case ContextView.guide:
         final top = _levels.last;
         final title = _levelTitle(top, l10n);
         return LevelHeader(
@@ -162,7 +168,26 @@ extension _MapPanels on _HomeMapScreenState {
           // "filter lines nearby" field (decision #6).
           showLocalSearch: false,
           hugContent: true,
+          banner: _guideBanner(l10n),
         );
+      case ContextView.guide:
+        final page = (_levels.last as _GuideLevel).page;
+        void openStop(String id, String name) =>
+            _openStopById(id, stopName: name, source: Ev.srcGuide);
+        return switch (page) {
+          GuidePage.home => GuideHome(
+            scrollController: scrollController,
+            onOpenPage: _openGuideLevel,
+            onOpenStop: openStop,
+          ),
+          GuidePage.readStop => GuideReadStop(
+            scrollController: scrollController,
+          ),
+          GuidePage.places => GuidePlaces(
+            scrollController: scrollController,
+            onOpenStop: openStop,
+          ),
+        };
       case ContextView.myStops:
         return MyStopsList(
           scrollController: scrollController,

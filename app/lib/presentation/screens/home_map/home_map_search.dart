@@ -178,6 +178,21 @@ extension _MapSearch on _HomeMapScreenState {
     _raiseSheetToHalf();
   }
 
+  /// Opens a page of the Belgrade guide as the next level.
+  void _openGuideLevel(GuidePage page) {
+    _expandPanelIfCollapsed();
+    final top = _levels.isEmpty ? null : _levels.last;
+    if (top is! _GuideLevel || top.page != page) {
+      _levels.add(_GuideLevel(page));
+    }
+    _setState(() {
+      _slotModel = null;
+      _guideSeen = true;
+    });
+    _raiseSheetToHalf();
+    markGuideOpened();
+  }
+
   /// On mobile, a newly opened level shows at least at the half detent (from
   /// peek the board would barely be visible); a taller sheet keeps its height.
   void _raiseSheetToHalf() {
@@ -359,6 +374,64 @@ extension _MapSearch on _HomeMapScreenState {
       final stop = await ref.read(stopLocationProvider(stopId).future);
       if (stop != null) return ll.LatLng(stop.lat, stop.lon);
     } catch (_) {}
+    return null;
+  }
+
+  /// The guide strip under the search, by priority: at a hub (always while
+  /// there), at night, on a first launch in a non-Serbian locale until the
+  /// guide is opened once. Null = no strip.
+  Widget? _guideBanner(AppLocalizations l10n) {
+    final me = _meTo;
+    final hub = me == null ? null : hubNear(me.latitude, me.longitude);
+    if (hub != null) {
+      final (icon, title, sub, name) = switch (hub) {
+        GuideHub.airport => (
+          StizeIcons.luggage,
+          l10n.guideStripAirport,
+          l10n.guideStripAirportSub,
+          'Aerodrom Nikola Tesla',
+        ),
+        GuideHub.busStation => (
+          StizeIcons.bus,
+          l10n.guideStripBusStation,
+          l10n.guideStripBusStationSub,
+          'Beogradska autobuska stanica',
+        ),
+        GuideHub.railStation => (
+          StizeIcons.train,
+          l10n.guideStripRailStation,
+          l10n.guideStripRailStationSub,
+          'Železnička stanica BGD centar',
+        ),
+      };
+      return GuideStrip(
+        icon: icon,
+        title: title,
+        subtitle: sub,
+        onTap: () =>
+            _openStopById(hub.stopId, stopName: name, source: Ev.srcGuide),
+      );
+    }
+    if (isNightHour(DateTime.now())) {
+      return GuideStrip(
+        icon: StizeIcons.moon,
+        title: l10n.guideStripNight,
+        subtitle: l10n.guideStripNightSub,
+        onTap: () => _openGuideLevel(GuidePage.home),
+      );
+    }
+    final lang = Localizations.localeOf(context).languageCode;
+    if (!_guideSeen && lang != 'sr') {
+      return GuideStrip(
+        icon: StizeIcons.compass,
+        title: l10n.guideStripNew,
+        subtitle: l10n.guideStripNewSub,
+        onTap: () {
+          _setState(() => _guideSeen = true);
+          _openGuideLevel(GuidePage.home);
+        },
+      );
+    }
     return null;
   }
 }
