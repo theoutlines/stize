@@ -1270,7 +1270,7 @@ extension _MapPanels on _HomeMapScreenState {
           longitudeEast: maxLon + pad,
           latitudeNorth: maxLat + pad,
         ),
-        nativeDuration: const Duration(milliseconds: 600),
+        nativeDuration: StizeMotion.camera,
         padding: _mapInsets,
       );
     });

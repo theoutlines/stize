@@ -29,4 +29,23 @@ abstract final class StizeMotion {
 
   /// Pre-scale of a dropdown / popover opening.
   static const double scaleDropdown = 0.97;
+
+  /// Close of a surface that opens on [fast]: its reverse curve finishes in the
+  /// first 60% of the run, so a 250 ms open closes in 150 ms ([quick]).
+  static const Curve closeQuick = Interval(0.4, 1, curve: smoothOut);
+
+  /// The map camera easing to a stop, a route or me. Map motion is longer
+  /// than UI motion: the eye has to follow a place, not a surface.
+  static const Duration camera = Duration(milliseconds: 700);
+
+  /// The longest a web camera flight may take (MapLibre web flies by speed).
+  static const Duration cameraMax = Duration(milliseconds: 800);
+
+  /// One beat of a looping signal (the live pulse on a vehicle marker).
+  static const Duration loop = Duration(milliseconds: 1500);
+
+  /// The desktop panel sliding to its edge tab and back: short and plain by
+  /// the owner's call (decision A#2, ~200 ms, no physics), quicker than [slow]
+  /// because it is a reveal the user asked for, not a surface opening.
+  static const Duration panelSlide = Duration(milliseconds: 200);
 }

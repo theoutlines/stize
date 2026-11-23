@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
 import '../../core/design/stize_icons.dart';
+import '../../core/design/stize_tokens.dart';
 import '../../core/vehicle_map_mode.dart';
 import '../../data/analytics/event_logger.dart';
 import '../../l10n/app_localizations.dart';
@@ -107,7 +108,8 @@ class _VehicleModeToggleState extends ConsumerState<VehicleModeToggle> {
         mainAxisSize: MainAxisSize.min,
         children: [
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
+            duration: StizeMotion.fast,
+            reverseDuration: StizeMotion.quick,
             child: _hint
                 ? Padding(
                     key: const ValueKey('hint'),

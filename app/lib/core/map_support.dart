@@ -538,10 +538,7 @@ class _VehicleMarkerState extends State<VehicleMarker>
   @override
   void initState() {
     super.initState();
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
+    _pulse = AnimationController(vsync: this, duration: StizeMotion.loop);
     if (_shouldPulse) _pulse.repeat();
   }
 
