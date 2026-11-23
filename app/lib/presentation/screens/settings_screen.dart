@@ -1,3 +1,5 @@
+import 'package:stize/presentation/widgets/page_app_bar.dart';
+import 'package:stize/core/design/components/stize_page_column.dart';
 import 'package:flutter/material.dart';
 import 'package:stize/core/design/stize_text.dart';
 
@@ -8,7 +10,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/context_slot.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
-import '../widgets/back_to_button.dart';
 import '../../core/design/stize_icons.dart';
 
 // Serbian first — the app's home city is Belgrade. `null` (follow the system)
@@ -25,15 +26,13 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: const BackToButton(),
-        leadingWidth: BackToButton.leadingWidth,
-        title: Text(l10n.settingsTitle),
-      ),
-      body: const SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: SettingsPanel(),
+    return StizePageColumn(
+      child: Scaffold(
+        appBar: pageAppBar(context, l10n.settingsTitle),
+        body: const SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: SettingsPanel(),
+        ),
       ),
     );
   }

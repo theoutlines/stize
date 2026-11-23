@@ -1,3 +1,5 @@
+import 'package:stize/presentation/widgets/page_app_bar.dart';
+import 'package:stize/core/design/components/stize_page_column.dart';
 import 'package:flutter/material.dart';
 import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,85 +26,78 @@ class AboutScreen extends ConsumerWidget {
     );
     final version = ref.watch(appVersionProvider).valueOrNull;
 
-    return Scaffold(
-      // Plain back arrow + left-aligned title (owner, 2026-11-23): the wide
-      // "back to stop" slot pushed the centred title off to the right, and the
-      // map keeps the open stop as a level anyway.
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(StizeIcons.back),
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
-        ),
-        centerTitle: false,
-        titleSpacing: 4,
-        title: Text(l10n.aboutTitle),
-      ),
-      body: ListView(
-        // One 16px left edge for every block, like the map's levels.
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
+    return StizePageColumn(
+      child: Scaffold(
+        // Plain back arrow + left-aligned title (owner, 2026-11-23): the wide
+        // "back to stop" slot pushed the centred title off to the right, and the
+        // map keeps the open stop as a level anyway.
+        appBar: pageAppBar(context, l10n.aboutTitle),
+        body: ListView(
+          // One 16px left edge for every block, like the map's levels.
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                l10n.aboutDisclaimer,
+                style: StizeText.of(context).body,
+              ),
             ),
-            child: Text(
-              l10n.aboutDisclaimer,
-              style: StizeText.of(context).body,
-            ),
-          ),
-          // Reference-data freshness. Only shown once /gtfs-meta resolves with a
-          // date; if it's unavailable the row is simply absent (silent fallback).
-          // Open-data attribution (the licence requires naming the source).
-          const SizedBox(height: 16),
-          Text(
-            l10n.aboutDataSource,
-            style: StizeText.of(
-              context,
-            ).caption.copyWith(color: theme.colorScheme.outline),
-          ),
-          if (routeDataLabel != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              routeDataLabel,
-              style: StizeText.of(
-                context,
-              ).caption.copyWith(color: theme.colorScheme.outline),
-            ),
-          ],
-          // Licences and privacy live here, as full-height rows: in the menu
-          // they were small adjacent links, too easy to mis-tap on a phone.
-          const SizedBox(height: 24),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            minLeadingWidth: 24,
-            horizontalTitleGap: 12,
-            leading: const Icon(StizeIcons.document),
-            title: Text(l10n.drawerLicenses),
-            trailing: const Icon(StizeIcons.chevronRight),
-            onTap: () => openLicensesPage(context, l10n, version),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            minLeadingWidth: 24,
-            horizontalTitleGap: 12,
-            leading: const Icon(StizeIcons.shield),
-            title: Text(l10n.drawerPrivacy),
-            trailing: const Icon(StizeIcons.chevronRight),
-            onTap: () => context.push('/privacy'),
-          ),
-          if (version != null) ...[
+            // Reference-data freshness. Only shown once /gtfs-meta resolves with a
+            // date; if it's unavailable the row is simply absent (silent fallback).
+            // Open-data attribution (the licence requires naming the source).
             const SizedBox(height: 16),
             Text(
-              version,
+              l10n.aboutDataSource,
               style: StizeText.of(
                 context,
               ).caption.copyWith(color: theme.colorScheme.outline),
             ),
+            if (routeDataLabel != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                routeDataLabel,
+                style: StizeText.of(
+                  context,
+                ).caption.copyWith(color: theme.colorScheme.outline),
+              ),
+            ],
+            // Licences and privacy live here, as full-height rows: in the menu
+            // they were small adjacent links, too easy to mis-tap on a phone.
+            const SizedBox(height: 24),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              minLeadingWidth: 24,
+              horizontalTitleGap: 12,
+              leading: const Icon(StizeIcons.document),
+              title: Text(l10n.drawerLicenses),
+              trailing: const Icon(StizeIcons.chevronRight),
+              onTap: () => openLicensesPage(context, l10n, version),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              minLeadingWidth: 24,
+              horizontalTitleGap: 12,
+              leading: const Icon(StizeIcons.shield),
+              title: Text(l10n.drawerPrivacy),
+              trailing: const Icon(StizeIcons.chevronRight),
+              onTap: () => context.push('/privacy'),
+            ),
+            if (version != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                version,
+                style: StizeText.of(
+                  context,
+                ).caption.copyWith(color: theme.colorScheme.outline),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
