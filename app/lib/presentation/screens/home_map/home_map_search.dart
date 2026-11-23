@@ -465,14 +465,21 @@ extension _MapSearch on _HomeMapScreenState {
   /// The sheet rises to just under the pinned pill, then its list scrolls.
   double _oneScrollMax(Size size) {
     final top = _pillPinnedTop() + MapSearchPill.height + StizeSpace.space4;
-    return ((size.height - top) / size.height).clamp(0.5, 0.95);
+    final h = _bodyH(size);
+    return ((h - top) / h).clamp(0.5, 0.95);
   }
+
+  /// The sheet lives in the Scaffold body, which shrinks by the keyboard.
+  double _bodyH(Size size) =>
+      size.height - MediaQuery.viewInsetsOf(context).bottom;
 
   /// The pill's top for the current sheet height: it rides on the map just
   /// above the sheet, and stops under the status bar.
   double _pillTopFor(Size size) {
+    // While searching the pill stays pinned at the top (keyboard open).
+    if (_pillActive) return _pillPinnedTop();
     final s = _sheetCtl.isAttached ? _sheetCtl.size : NearbySheet.oneScrollRest;
-    final sheetTop = size.height * (1 - s);
+    final sheetTop = _bodyH(size) * (1 - s);
     final riding = sheetTop - MapSearchPill.height - StizeSpace.space4;
     return riding < _pillPinnedTop() ? _pillPinnedTop() : riding;
   }
@@ -483,8 +490,8 @@ extension _MapSearch on _HomeMapScreenState {
       builder: (context, child) => Positioned(
         left: StizeSpace.space4,
         right: StizeSpace.space4,
-        top: _pillTopFor(size),
-        child: child!,
+        top: _oneScrollRoot ? _pillTopFor(size) : -400,
+        child: IgnorePointer(ignoring: !_oneScrollRoot, child: child!),
       ),
       child: MapSearchPill(
         controller: _pillCtl,
@@ -522,7 +529,8 @@ extension _MapSearch on _HomeMapScreenState {
   /// reaches them (owner, 2026-11-23). Desktop and level views: unmoved.
   Widget _pushedTopButtons(ThemeData theme, Size size) {
     final buttons = _topButtons(theme);
-    if (!_oneScrollRoot) return buttons;
+    // The builder stays in the tree in every state, so the buttons (and their
+    // pointer interceptors) are never re-mounted when a level opens.
     return AnimatedBuilder(
       animation: _sheetCtl,
       child: buttons,
@@ -543,7 +551,9 @@ extension _MapSearch on _HomeMapScreenState {
         // status-bar inset and a 12px margin.
         final buttonsBottom =
             MediaQuery.paddingOf(context).top + 12 + _topButtonsH;
-        final gap = _pillTopFor(size) - StizeSpace.space3 - buttonsBottom;
+        final gap = _oneScrollRoot
+            ? _pillTopFor(size) - StizeSpace.space3 - buttonsBottom
+            : 0.0;
         return Transform.translate(
           offset: Offset(0, gap < 0 ? gap : 0),
           child: child,

@@ -1062,8 +1062,10 @@ extension _MapPanels on _HomeMapScreenState {
                 // Hides itself — gap and all — while the flag is off, so the
                 // killswitch leaves this stack exactly as production has it.
                 const VehicleModeToggle(),
-                // On the mobile Nearby root "where am I" lives in the pill.
-                if (!_oneScrollRoot)
+                // On mobile "where am I" lives in the search pill only; a level
+                // no longer brings a second round button back (owner,
+                // 2026-11-23). Desktop keeps it.
+                if (_panelActive)
                   _roundButton(
                     theme,
                     icon: StizeIcons.locate,

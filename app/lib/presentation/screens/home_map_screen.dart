@@ -893,7 +893,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
             else
               NearbySheet(
                 controller: _sheetCtl,
-                oneScroll: true,
+                // One scroll is the Nearby root only; a level (Settings, a
+                // stop, ...) is a regular draggable sheet again.
+                oneScroll: _levels.isEmpty && _slotModel == null,
                 maxSize: _oneScrollMax(size),
                 searchController: _pillCtl,
                 searchActive: _pillActive,
@@ -917,7 +919,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                 // vehicle is kept above the sheet as it's dragged (R2 #2).
                 onHeightChanged: _onMobileSheetHeight,
               ),
-            if (_oneScrollRoot) _searchPill(l10n, size),
+            // Always mounted (parked off-screen outside the Nearby root): adding
+            // and removing its PointerInterceptor platform view left stale
+            // copies of the sheet painted on iOS Safari (owner, 2026-11-23).
+            if (!_panelActive) _searchPill(l10n, size),
             // On-device FPS meter — diagnostic only, off in the normal app; on a
             // staging preview the owner enables it with `?fps=1` to compare the
             // symbol layer against the widget path at different vehicle counts.
