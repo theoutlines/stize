@@ -138,7 +138,7 @@ class AppMenuCard extends ConsumerWidget {
     final rows = <Widget>[
       if (coverage)
         _MenuRow(
-          icon: currentIndex == 1 ? StizeIcons.map : Icons.hub_outlined,
+          icon: currentIndex == 1 ? StizeIcons.map : StizeIcons.hub,
           label: currentIndex == 1 ? l10n.navHome : l10n.navCoverage,
           onTap: () {
             Navigator.of(context).pop();
@@ -164,7 +164,7 @@ class AppMenuCard extends ConsumerWidget {
       ),
       if (analytics)
         _MenuRow(
-          icon: Icons.query_stats_outlined,
+          icon: StizeIcons.stats,
           label: 'Аналитика',
           onTap: () => go((_, router) => router.push('/analytics')),
         ),

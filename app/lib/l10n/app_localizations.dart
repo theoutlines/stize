@@ -1495,6 +1495,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'City lines: 34, 36, 600'**
   String get guideStripRailStationSub;
+
+  /// Card subtitle for a vehicle that ends its trip at this stop and then starts back: where it goes next.
+  ///
+  /// In en, this message translates to:
+  /// **'Then to {place}'**
+  String arrivalThenTo(String place);
 }
 
 class _AppLocalizationsDelegate

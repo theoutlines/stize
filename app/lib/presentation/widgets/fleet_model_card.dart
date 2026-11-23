@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -30,10 +31,12 @@ Future<void> showFleetModelCard(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (context) => FleetModelView(
-      fleet: fleet,
-      fallbackType: fallbackType,
-      garageNo: garageNo,
+    builder: (ctx) => PointerInterceptor(
+      child: ((context) => FleetModelView(
+        fleet: fleet,
+        fallbackType: fallbackType,
+        garageNo: garageNo,
+      ))(ctx),
     ),
   );
 }
@@ -262,7 +265,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          fleet.lowFloor! ? StizeIcons.accessible : Icons.stairs_outlined,
+          fleet.lowFloor! ? StizeIcons.accessible : StizeIcons.stairs,
           fleet.lowFloor! ? l10n.fleetLowFloor : l10n.fleetHighFloor,
           positive: fleet.lowFloor!,
           assumed: fleet.isAssumed('low_floor'),
@@ -319,7 +322,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          Icons.straighten,
+          StizeIcons.ruler,
           l10n.fleetLength(_trimMeters(fleet.lengthM!)),
           assumed: fleet.approximate,
         ),
@@ -332,9 +335,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          fleet.powertrain.isElectric
-              ? StizeIcons.leaf
-              : Icons.local_gas_station_outlined,
+          fleet.powertrain.isElectric ? StizeIcons.leaf : StizeIcons.fuel,
           power,
           positive: fleet.powertrain.isElectric,
           assumed: fleet.approximate,
@@ -345,7 +346,12 @@ class FleetModelView extends ConsumerWidget {
     // 7) USB.
     if (fleet.usb == true) {
       rows.add(
-        _row(theme, Icons.usb, l10n.fleetUsb, assumed: fleet.isAssumed('usb')),
+        _row(
+          theme,
+          StizeIcons.usb,
+          l10n.fleetUsb,
+          assumed: fleet.isAssumed('usb'),
+        ),
       );
     }
 
@@ -360,7 +366,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          Icons.factory_outlined,
+          StizeIcons.factory,
           l10n.fleetManufacturer(value),
           muted: true,
         ),
@@ -372,7 +378,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          Icons.business_outlined,
+          StizeIcons.building,
           l10n.fleetOperator(fleet.operatorName!),
           muted: true,
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/context_slot.dart';
@@ -44,75 +45,79 @@ Future<void> showSettingsSheet(BuildContext context) {
   if (isWideLayout(MediaQuery.sizeOf(context).width)) {
     return showDialog<void>(
       context: context,
-      builder: (dialogContext) {
-        final l10n = AppLocalizations.of(dialogContext);
-        return Dialog(
-          insetPadding: const EdgeInsets.all(24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 12, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          l10n.settingsTitle,
-                          style: Theme.of(dialogContext).textTheme.titleLarge,
+      builder: (ctx) => PointerInterceptor(
+        child: ((dialogContext) {
+          final l10n = AppLocalizations.of(dialogContext);
+          return Dialog(
+            insetPadding: const EdgeInsets.all(24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 12, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.settingsTitle,
+                            style: Theme.of(dialogContext).textTheme.titleLarge,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        tooltip: MaterialLocalizations.of(
-                          dialogContext,
-                        ).closeButtonTooltip,
-                        icon: const Icon(StizeIcons.close, size: 20),
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: SettingsPanel(),
-                  ),
-                ],
+                        IconButton(
+                          tooltip: MaterialLocalizations.of(
+                            dialogContext,
+                          ).closeButtonTooltip,
+                          icon: const Icon(StizeIcons.close, size: 20),
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: SettingsPanel(),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        })(ctx),
+      ),
     );
   }
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (sheetContext) {
-      final l10n = AppLocalizations.of(sheetContext);
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l10n.settingsTitle,
-                style: Theme.of(sheetContext).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
-              const SettingsPanel(),
-            ],
+    builder: (ctx) => PointerInterceptor(
+      child: ((sheetContext) {
+        final l10n = AppLocalizations.of(sheetContext);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  l10n.settingsTitle,
+                  style: Theme.of(sheetContext).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 16),
+                const SettingsPanel(),
+              ],
+            ),
           ),
-        ),
-      );
-    },
+        );
+      })(ctx),
+    ),
   );
 }
 

@@ -801,4 +801,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guideStripRailStationSub => 'City lines: 34, 36, 600';
+
+  @override
+  String arrivalThenTo(String place) {
+    return 'Then to $place';
+  }
 }

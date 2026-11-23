@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import '../../core/design/stize_icons.dart';
 
 /// Shared bottom-sheet chrome, so every mobile sheet (nearby / stop / vehicle /
@@ -25,7 +26,7 @@ Future<T?> showAppSheet<T>(
     barrierColor: barrierColor,
     // Full width on every viewport (override Material's 640px max on wide ones).
     constraints: const BoxConstraints(maxWidth: double.infinity),
-    builder: builder,
+    builder: (ctx) => PointerInterceptor(child: (builder)(ctx)),
   );
 }
 

@@ -294,5 +294,6 @@
   "guideStripBusStation": "Na autobuskoj stanici ste",
   "guideStripBusStationSub": "Gradske linije polaze sa stajališta kod izlaza",
   "guideStripRailStation": "Na stanici Beograd Centar ste",
-  "guideStripRailStationSub": "Gradske linije: 34, 36, 600"
+  "guideStripRailStationSub": "Gradske linije: 34, 36, 600",
+  "arrivalThenTo": "Zatim do {place}"
 }

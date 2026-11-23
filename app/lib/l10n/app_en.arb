@@ -498,5 +498,14 @@
   "guideStripBusStation": "You're at the bus station",
   "guideStripBusStationSub": "City lines leave from the stops by the exit",
   "guideStripRailStation": "You're at Beograd Centar station",
-  "guideStripRailStationSub": "City lines: 34, 36, 600"
+  "guideStripRailStationSub": "City lines: 34, 36, 600",
+  "arrivalThenTo": "Then to {place}",
+  "@arrivalThenTo": {
+    "description": "Card subtitle for a vehicle that ends its trip at this stop and then starts back: where it goes next.",
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  }
 }

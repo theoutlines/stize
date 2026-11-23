@@ -35,7 +35,9 @@ class LevelHeader extends StatelessWidget {
     // One left edge for everything in a level (owner, 2026-11-23): back
     // link, title, the board's update time, chips and cards all start 16px in.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 2, 0),
+      // Right: 10 + the 44px tap box's 6px inset puts the 32px close circle on
+      // the same 16px edge as the cards below.
+      padding: const EdgeInsets.fromLTRB(16, 10, 10, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

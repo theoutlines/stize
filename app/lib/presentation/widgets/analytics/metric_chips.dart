@@ -34,13 +34,13 @@ class MetricChips extends StatelessWidget {
     final meanSpeed = avg(speeds);
 
     final chips = <_Chip>[
-      _Chip('Наблюдений', '${a.totalSamples}', Icons.dataset),
+      _Chip('Наблюдений', '${a.totalSamples}', StizeIcons.dataset),
       _Chip(
         'Средний интервал',
         meanHeadway == null
             ? '—'
             : '${(meanHeadway / 60).toStringAsFixed(1)} мин',
-        Icons.timelapse,
+        StizeIcons.timelapse,
       ),
       _Chip(
         'Скорость',
@@ -50,7 +50,7 @@ class MetricChips extends StatelessWidget {
       _Chip('Активных часов', '$activeHours/24', StizeIcons.clock),
       if (peak != null && peak.samples > 0)
         _Chip('Пик активности', '${peak.key}:00', StizeIcons.trendingUp),
-      const _Chip('Пунктуальность', '—', Icons.query_stats),
+      const _Chip('Пунктуальность', '—', StizeIcons.stats),
     ];
 
     return Wrap(

@@ -171,10 +171,12 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
           etaDeltaMinutes: _etaDelta[arrival.garageNo],
           fleet: fleet,
           emphasis: firstCard,
-          destination: displayDestination(
-            destinations[dir],
+          destination: _cardDestination(
+            arrival,
+            dir,
+            destinations,
             board.stopName,
-            l10n.arrivalTerminus,
+            l10n,
           ),
           // Folded card: later trips sit under the big ETA, so no "next in".
           nextEtaMinutes: later != null
@@ -330,6 +332,34 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
         const SizedBox(height: 12),
       ],
     );
+  }
+
+  /// A vehicle that ends its trip at this stop turns around here: instead of
+  /// "→ Terminus" say where it goes next, taken from the line's other
+  /// direction on this board ("Then to Zeleni venac" at the airport, owner
+  /// 2026-11-23). Falls back to "Terminus" when the board has no other
+  /// direction of the line.
+  String? _cardDestination(
+    Arrival arrival,
+    String dir,
+    Map<String, String> destinations,
+    String stopName,
+    AppLocalizations l10n,
+  ) {
+    const marker = '\u0000';
+    final shown = displayDestination(destinations[dir], stopName, marker);
+    if (shown != marker) return shown;
+    final board = widget.board;
+    for (final a in board.arrivals) {
+      if (a.line != arrival.line) continue;
+      final other = a.directionRouteId ?? a.routeId;
+      if (other == dir) continue;
+      final next = displayDestination(destinations[other], stopName, marker);
+      if (next != null && next != marker && next.trim().isNotEmpty) {
+        return l10n.arrivalThenTo(next);
+      }
+    }
+    return l10n.arrivalTerminus;
   }
 
   String _freshnessLabel(AppLocalizations l10n, DateTime updatedAt) {

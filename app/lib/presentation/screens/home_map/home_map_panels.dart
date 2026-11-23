@@ -815,7 +815,7 @@ extension _MapPanels on _HomeMapScreenState {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.zoom_in,
+                      StizeIcons.zoomIn,
                       size: 18,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

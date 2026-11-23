@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
-import '../widgets/back_to_button.dart';
 import '../widgets/drawer_footer.dart';
 import '../../core/design/stize_icons.dart';
 
@@ -25,16 +24,23 @@ class AboutScreen extends ConsumerWidget {
     final version = ref.watch(appVersionProvider).valueOrNull;
 
     return Scaffold(
+      // Plain back arrow + left-aligned title (owner, 2026-11-23): the wide
+      // "back to stop" slot pushed the centred title off to the right, and the
+      // map keeps the open stop as a level anyway.
       appBar: AppBar(
-        leading: const BackToButton(),
-        leadingWidth: BackToButton.leadingWidth,
+        leading: IconButton(
+          icon: const Icon(StizeIcons.back),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+        ),
+        centerTitle: false,
+        titleSpacing: 4,
         title: Text(l10n.aboutTitle),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        // One 16px left edge for every block, like the map's levels.
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          Text(l10n.appTitle, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -70,6 +76,8 @@ class AboutScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           ListTile(
             contentPadding: EdgeInsets.zero,
+            minLeadingWidth: 24,
+            horizontalTitleGap: 12,
             leading: const Icon(StizeIcons.document),
             title: Text(l10n.drawerLicenses),
             trailing: const Icon(StizeIcons.chevronRight),
@@ -77,6 +85,8 @@ class AboutScreen extends ConsumerWidget {
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
+            minLeadingWidth: 24,
+            horizontalTitleGap: 12,
             leading: const Icon(StizeIcons.shield),
             title: Text(l10n.drawerPrivacy),
             trailing: const Icon(StizeIcons.chevronRight),

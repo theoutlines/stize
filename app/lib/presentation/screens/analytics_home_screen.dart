@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/design/stize_icons.dart';
 
 /// Draft entry to the transport-analytics feature: pick a line number, then see
 /// its charts. Kept minimal — the picker will grow (favourites, recents) later.
@@ -55,7 +56,7 @@ class _AnalyticsHomeScreenState extends State<AnalyticsHomeScreen> {
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _open,
-              icon: const Icon(Icons.query_stats),
+              icon: const Icon(StizeIcons.stats),
               label: const Text('Показать графики'),
             ),
             const SizedBox(height: 24),

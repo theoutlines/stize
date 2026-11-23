@@ -116,7 +116,10 @@ class NearbySheet extends StatelessWidget {
         minChildSize: 0.12,
         maxChildSize: kSheetLarge,
         snap: true,
-        snapSizes: const [kSheetPeek, kSheetHalf, kSheetLarge],
+        // Two resting places for a drag (owner, 2026-11-23): stopping halfway
+        // and then pulling again felt like friction. Half is still used when
+        // a level opens programmatically, so the stop stays visible on the map.
+        snapSizes: const [kSheetPeek, kSheetLarge],
         builder: (context, scrollController) {
           // PointerInterceptor stops scroll/drag/taps on the sheet from falling
           // through to the MapLibre platform view underneath on web. No-op on
@@ -129,34 +132,93 @@ class NearbySheet extends StatelessWidget {
                 // Stiže: the system sheet shadow; OFF keeps the prior soft one.
                 boxShadow: StizeShadow.shadowSheet,
               ),
-              child: Column(
-                children: [
-                  const SheetDragHandle(),
-                  if (levelBody != null) ...[
-                    ?levelHeader,
-                    Expanded(child: levelBody!(scrollController)),
-                  ] else
-                    Expanded(
-                      child: NearbyView(
-                        userLocation: userLocation,
-                        locationDenied: locationDenied,
-                        active: active,
-                        onEnableLocation: onEnableLocation,
-                        onTapGroup: onTapGroup,
-                        onSelectStop: onSelectStop,
-                        onSelectLine: onSelectLine,
-                        scrollController: scrollController,
-                        banner: banner,
-                        onSearchFocus: () => _toDetent(kSheetLarge),
-                        onSearchCancel: _restoreDetent,
+              // Everything outside the list (handle, search, guide strip,
+              // level header) drags the sheet too: only the list's own
+              // scrollable used to, so a drag on the search or the strip did
+              // nothing.
+              child: _SheetDragArea(
+                controller: controller,
+                viewport: viewport,
+                child: Column(
+                  children: [
+                    const SheetDragHandle(),
+                    if (levelBody != null) ...[
+                      ?levelHeader,
+                      Expanded(child: levelBody!(scrollController)),
+                    ] else
+                      Expanded(
+                        child: NearbyView(
+                          userLocation: userLocation,
+                          locationDenied: locationDenied,
+                          active: active,
+                          onEnableLocation: onEnableLocation,
+                          onTapGroup: onTapGroup,
+                          onSelectStop: onSelectStop,
+                          onSelectLine: onSelectLine,
+                          scrollController: scrollController,
+                          banner: banner,
+                          onSearchFocus: () => _toDetent(kSheetLarge),
+                          onSearchCancel: _restoreDetent,
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
         },
       ),
+    );
+  }
+}
+
+/// Vertical drags that land outside the sheet's scrollable move the sheet,
+/// and a release snaps to peek or large (by flick direction, else nearest).
+class _SheetDragArea extends StatelessWidget {
+  const _SheetDragArea({
+    required this.controller,
+    required this.viewport,
+    required this.child,
+  });
+
+  final DraggableScrollableController? controller;
+  final double viewport;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = controller;
+    if (c == null) return child;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onVerticalDragUpdate: (d) {
+        if (!c.isAttached) return;
+        final next = (c.size - (d.primaryDelta ?? 0) / viewport).clamp(
+          0.12,
+          kSheetLarge,
+        );
+        c.jumpTo(next);
+      },
+      onVerticalDragEnd: (d) {
+        if (!c.isAttached) return;
+        final v = d.primaryVelocity ?? 0;
+        final double target;
+        if (v < -300) {
+          target = kSheetLarge;
+        } else if (v > 300) {
+          target = c.size < kSheetPeek ? 0.12 : kSheetPeek;
+        } else {
+          target = (c.size - kSheetPeek).abs() < (c.size - kSheetLarge).abs()
+              ? kSheetPeek
+              : kSheetLarge;
+        }
+        c.animateTo(
+          target,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        );
+      },
+      child: child,
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/design/stize_tokens.dart';
@@ -74,7 +75,9 @@ Future<void> showStopReportSheet(
     isScrollControlled: true,
     showDragHandle: true,
     constraints: const BoxConstraints(maxWidth: 480),
-    builder: (_) => StopReportSheet(stopId: stopId, stopName: stopName),
+    builder: (ctx) => PointerInterceptor(
+      child: ((_) => StopReportSheet(stopId: stopId, stopName: stopName))(ctx),
+    ),
   );
 }
 
