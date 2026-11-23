@@ -365,6 +365,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   bool _pillActive = false;
   final _topButtonsKey = GlobalKey();
   double _topButtonsH = 120; // measured after layout
+  bool _wasOneScrollRoot = true;
 
   // ---- Adaptive context slot (context_panel) -------------------------------
   // With the flag ON the three views (nearby → stop → vehicle) share ONE
@@ -764,6 +765,20 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // never rebuilds/recreates the map (the IndexedStack/render-cycle gotcha).
     final size = MediaQuery.sizeOf(context);
     _wideNow = isWideLayout(size.width);
+    // Back on the one-scroll root from a level: settle the list at rest
+    // (a level leaves the sheet at its own height).
+    final rootNow = _oneScrollRoot;
+    if (rootNow && !_wasOneScrollRoot) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_sheetCtl.isAttached || !_oneScrollRoot) return;
+        _sheetCtl.animateTo(
+          NearbySheet.oneScrollRest,
+          duration: StizeMotion.medium,
+          curve: StizeMotion.smoothOut,
+        );
+      });
+    }
+    _wasOneScrollRoot = rootNow;
     // Panel is a DESKTOP-ONLY surface: on mobile the app falls through to the
     // legacy bottom cluster, unchanged. The map is ALWAYS the same Positioned.
     // fill widget — crossing the breakpoint only swaps the overlay, never
@@ -809,130 +824,138 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
         _slotBack();
       },
       child: Scaffold(
-        body: Stack(
-          children: [
-            if (kMapRenderingEnabled)
-              Positioned.fill(
-                child: MapResizeNudge(
-                  child: MapLibreMap(
-                    options: MapOptions(
-                      initCenter: _belgradeCenter,
-                      initZoom: 15,
-                      // Fence the camera to the city (B1): no zooming out to a
-                      // country view, no dragging far past the agglomeration.
-                      minZoom: kCityMinZoom,
-                      maxZoom: kCityMaxZoom,
-                      maxBounds: belgradeMaxBounds,
-                      initStyle: MapStyle.forBrightness(brightness),
-                    ),
-                    onMapCreated: _onMapCreated,
-                    onStyleLoaded: _onStyleLoaded,
-                    onEvent: _onEvent,
-                    layers: _buildLayers(),
-                    children: [
-                      const CompactAttribution(),
-                      // "My position" as a widget marker so it survives every zoom
-                      // level (X2), not a cullable GL symbol. Wrapped in an
-                      // AnimatedBuilder so it eases to each fresh fix; the ticker
-                      // is idle between fixes, so this only repaints while moving.
-                      if (_meTo != null)
-                        AnimatedBuilder(
-                          animation: _meAnim,
-                          builder: (context, _) {
-                            final me = _displayedMe ?? _meTo!;
-                            return WidgetLayer(
-                              markers: [
-                                Marker(
-                                  point: Geographic(
-                                    lon: me.longitude,
-                                    lat: me.latitude,
+        // The Stack must always fill the screen. It used to get its height
+        // from the tallest non-positioned child (the top-button column);
+        // once that column hugged its buttons, the desktop map and panel were
+        // cut at ~200px (owner, 2026-11-23).
+        body: SizedBox.expand(
+          child: Stack(
+            children: [
+              if (kMapRenderingEnabled)
+                Positioned.fill(
+                  child: MapResizeNudge(
+                    child: MapLibreMap(
+                      options: MapOptions(
+                        initCenter: _belgradeCenter,
+                        initZoom: 15,
+                        // Fence the camera to the city (B1): no zooming out to a
+                        // country view, no dragging far past the agglomeration.
+                        minZoom: kCityMinZoom,
+                        maxZoom: kCityMaxZoom,
+                        maxBounds: belgradeMaxBounds,
+                        initStyle: MapStyle.forBrightness(brightness),
+                      ),
+                      onMapCreated: _onMapCreated,
+                      onStyleLoaded: _onStyleLoaded,
+                      onEvent: _onEvent,
+                      layers: _buildLayers(),
+                      children: [
+                        const CompactAttribution(),
+                        // "My position" as a widget marker so it survives every zoom
+                        // level (X2), not a cullable GL symbol. Wrapped in an
+                        // AnimatedBuilder so it eases to each fresh fix; the ticker
+                        // is idle between fixes, so this only repaints while moving.
+                        if (_meTo != null)
+                          AnimatedBuilder(
+                            animation: _meAnim,
+                            builder: (context, _) {
+                              final me = _displayedMe ?? _meTo!;
+                              return WidgetLayer(
+                                markers: [
+                                  Marker(
+                                    point: Geographic(
+                                      lon: me.longitude,
+                                      lat: me.latitude,
+                                    ),
+                                    size: MeLocationDot.markerSize,
+                                    child: const MeLocationDot(),
                                   ),
-                                  size: MeLocationDot.markerSize,
-                                  child: const MeLocationDot(),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      // Live vehicles render as the batched GPU symbol layer,
-                      // added imperatively in _addVehicleSymbolLayers — no widget
-                      // layer is built for them here.
-                    ],
+                                ],
+                              );
+                            },
+                          ),
+                        // Live vehicles render as the batched GPU symbol layer,
+                        // added imperatively in _addVehicleSymbolLayers — no widget
+                        // layer is built for them here.
+                      ],
+                    ),
                   ),
+                )
+              else
+                // Positioned like the real map, so tests see the same Stack
+                // sizing as production.
+                const Positioned.fill(child: SizedBox()),
+              // Round action buttons at the top: menu (left), recenter (right).
+              _pushedTopButtons(theme, size),
+              // Staging-only stop-render diagnostics (isStaging; invisible in prod).
+              // The one reliable render-observation channel on Flutter-CanvasKit —
+              // see _stopDiagnosticsOverlay and the map-render gotchas.
+              if (isStaging) _stopDiagnosticsOverlay(theme),
+              // Far-out zoom with no vehicles in the bounded area: nudge the user to
+              // zoom in rather than leaving them staring at a blank map (F5).
+              // On-demand mode has no background vehicle layer, so the "zoom in to
+              // see transport" hint (which is about that empty layer) doesn't apply.
+              if (_focus == null &&
+                  !_onDemand &&
+                  _currentZoom < _minVehiclesZoom &&
+                  !_hasVehicles)
+                _zoomHint(l10n, theme),
+              // Bottom UI. On desktop with the flag ON the three views live in the
+              // persistent left panel. On mobile (and flag OFF) we fall through to
+              // today's independent bottom cluster, UNTOUCHED — the panel is a
+              // desktop-only surface (owner R1 #1).
+              if (_panelActive)
+                ..._contextSlot(l10n, theme, size: size)
+              // While a line is focused, a compact line panel with a close button.
+              // Otherwise the experimental "Nearby" sheet when its flag is on (it
+              // *replaces* the search bar), else the normal search + favourites. A
+              // stop arrivals sheet suppresses the whole cluster (#7).
+              else if (_focus != null || _selectedVehicleKey != null)
+                _focusPanel(theme)
+              else
+                NearbySheet(
+                  controller: _sheetCtl,
+                  // One scroll is the Nearby root only; a level (Settings, a
+                  // stop, ...) is a regular draggable sheet again.
+                  oneScroll: _levels.isEmpty && _slotModel == null,
+                  maxSize: _oneScrollMax(size),
+                  searchController: _pillCtl,
+                  searchActive: _pillActive,
+                  // A level (stop / My stops / model) replaces Nearby inside this
+                  // same sheet; null = Nearby.
+                  levelHeader: _slotNavRow(l10n),
+                  banner: _guideBanner(l10n),
+                  levelBody: (_levels.isEmpty && _slotModel == null)
+                      ? null
+                      : (sc) => _slotContent(l10n, scrollController: sc),
+                  userLocation: _meTo,
+                  locationDenied: _locationDenied,
+                  active: _tabActive && _appResumed,
+                  onEnableLocation: _recenterOnMe,
+                  onTapGroup: _focusNearbyVehicle,
+                  // Unified global search in the nearby sheet: selecting a global
+                  // stop / line opens that context exactly like the desktop search.
+                  onSelectStop: (stop) => _openStop(stop, source: Ev.srcSearch),
+                  onSelectLine: _openLine,
+                  // Feed the mobile sheet height to the geometry owner so a followed
+                  // vehicle is kept above the sheet as it's dragged (R2 #2).
+                  onHeightChanged: _onMobileSheetHeight,
                 ),
-              )
-            else
-              const SizedBox.expand(),
-            // Round action buttons at the top: menu (left), recenter (right).
-            _pushedTopButtons(theme, size),
-            // Staging-only stop-render diagnostics (isStaging; invisible in prod).
-            // The one reliable render-observation channel on Flutter-CanvasKit —
-            // see _stopDiagnosticsOverlay and the map-render gotchas.
-            if (isStaging) _stopDiagnosticsOverlay(theme),
-            // Far-out zoom with no vehicles in the bounded area: nudge the user to
-            // zoom in rather than leaving them staring at a blank map (F5).
-            // On-demand mode has no background vehicle layer, so the "zoom in to
-            // see transport" hint (which is about that empty layer) doesn't apply.
-            if (_focus == null &&
-                !_onDemand &&
-                _currentZoom < _minVehiclesZoom &&
-                !_hasVehicles)
-              _zoomHint(l10n, theme),
-            // Bottom UI. On desktop with the flag ON the three views live in the
-            // persistent left panel. On mobile (and flag OFF) we fall through to
-            // today's independent bottom cluster, UNTOUCHED — the panel is a
-            // desktop-only surface (owner R1 #1).
-            if (_panelActive)
-              ..._contextSlot(l10n, theme, size: size)
-            // While a line is focused, a compact line panel with a close button.
-            // Otherwise the experimental "Nearby" sheet when its flag is on (it
-            // *replaces* the search bar), else the normal search + favourites. A
-            // stop arrivals sheet suppresses the whole cluster (#7).
-            else if (_focus != null || _selectedVehicleKey != null)
-              _focusPanel(theme)
-            else
-              NearbySheet(
-                controller: _sheetCtl,
-                // One scroll is the Nearby root only; a level (Settings, a
-                // stop, ...) is a regular draggable sheet again.
-                oneScroll: _levels.isEmpty && _slotModel == null,
-                maxSize: _oneScrollMax(size),
-                searchController: _pillCtl,
-                searchActive: _pillActive,
-                // A level (stop / My stops / model) replaces Nearby inside this
-                // same sheet; null = Nearby.
-                levelHeader: _slotNavRow(l10n),
-                banner: _guideBanner(l10n),
-                levelBody: (_levels.isEmpty && _slotModel == null)
-                    ? null
-                    : (sc) => _slotContent(l10n, scrollController: sc),
-                userLocation: _meTo,
-                locationDenied: _locationDenied,
-                active: _tabActive && _appResumed,
-                onEnableLocation: _recenterOnMe,
-                onTapGroup: _focusNearbyVehicle,
-                // Unified global search in the nearby sheet: selecting a global
-                // stop / line opens that context exactly like the desktop search.
-                onSelectStop: (stop) => _openStop(stop, source: Ev.srcSearch),
-                onSelectLine: _openLine,
-                // Feed the mobile sheet height to the geometry owner so a followed
-                // vehicle is kept above the sheet as it's dragged (R2 #2).
-                onHeightChanged: _onMobileSheetHeight,
-              ),
-            // Always mounted (parked off-screen outside the Nearby root): adding
-            // and removing its PointerInterceptor platform view left stale
-            // copies of the sheet painted on iOS Safari (owner, 2026-11-23).
-            if (!_panelActive) _searchPill(l10n, size),
-            // On-device FPS meter — diagnostic only, off in the normal app; on a
-            // staging preview the owner enables it with `?fps=1` to compare the
-            // symbol layer against the widget path at different vehicle counts.
-            if (fpsOverlayEnabled())
-              const Positioned(
-                left: 12,
-                bottom: 96,
-                child: SafeArea(child: FpsOverlay()),
-              ),
-          ],
+              // Always mounted (parked off-screen outside the Nearby root): adding
+              // and removing its PointerInterceptor platform view left stale
+              // copies of the sheet painted on iOS Safari (owner, 2026-11-23).
+              if (!_panelActive) _searchPill(l10n, size),
+              // On-device FPS meter — diagnostic only, off in the normal app; on a
+              // staging preview the owner enables it with `?fps=1` to compare the
+              // symbol layer against the widget path at different vehicle counts.
+              if (fpsOverlayEnabled())
+                const Positioned(
+                  left: 12,
+                  bottom: 96,
+                  child: SafeArea(child: FpsOverlay()),
+                ),
+            ],
+          ),
         ),
       ),
     );
