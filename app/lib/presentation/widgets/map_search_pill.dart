@@ -101,66 +101,64 @@ class MapSearchPill extends StatelessWidget {
                     fit: StackFit.expand,
                     alignment: Alignment.centerLeft,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: StizeSpace.space3,
-                        ),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextField(
-                            controller: controller,
-                            focusNode: focusNode,
-                            onTap: active ? null : onActivate,
-                            textInputAction: TextInputAction.search,
-                            textAlignVertical: TextAlignVertical.center,
-                            style: StizeType.body.copyWith(
-                              color: active ? c.ink : Colors.transparent,
-                            ),
-                            cursorColor: active ? c.ink : Colors.transparent,
-                            decoration: InputDecoration(
-                              hintText: active ? l10n.searchHint : null,
-                              hintStyle: StizeType.body.copyWith(
-                                color: c.ink50,
-                              ),
-                              filled: false,
-                              isCollapsed: true,
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                      // The same field in every state, like the sheet's old
+                      // search that opened the keyboard reliably on iPhone:
+                      // nothing about it changes on the tap (style, hint,
+                      // callbacks), and it fills the pill so its text sits on
+                      // the centre line by its own padding.
+                      TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        onTap: onActivate,
+                        textInputAction: TextInputAction.search,
+                        style: StizeType.body.copyWith(color: c.ink),
+                        cursorColor: c.ink,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: l10n.searchHint,
+                          hintStyle: StizeType.body.copyWith(color: c.ink50),
+                          filled: false,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: StizeSpace.space3,
+                            vertical: (height - 24) / 2,
                           ),
                         ),
                       ),
                       if (!active)
                         IgnorePointer(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: StizeSpace.space3,
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    l10n.contextNearbyTitle,
-                                    style: StizeType.caption.copyWith(
-                                      color: c.ink60,
+                          child: ColoredBox(
+                            color: c.sheet,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: StizeSpace.space3,
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      l10n.contextNearbyTitle,
+                                      style: StizeType.caption.copyWith(
+                                        color: c.ink60,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    placeLabel ?? l10n.searchHint,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: StizeType.body.copyWith(
-                                      color: placeLabel == null
-                                          ? c.ink50
-                                          : c.ink,
+                                    Text(
+                                      placeLabel ?? l10n.searchHint,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: StizeType.body.copyWith(
+                                        color: placeLabel == null
+                                            ? c.ink50
+                                            : c.ink,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
