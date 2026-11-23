@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -92,16 +93,16 @@ class FleetModelView extends ConsumerWidget {
         ] else if (fleet.nicknameFor(lang) != null) ...[
           Text(
             fleet.nicknameFor(lang)!,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.outline,
-            ),
+            style: StizeText.of(
+              context,
+            ).body.copyWith(color: theme.colorScheme.outline),
           ),
           const SizedBox(height: 12),
         ],
         _heroSlot(context, theme, l10n, photo),
         if (note != null) ...[
           const SizedBox(height: 16),
-          Text(note, style: theme.textTheme.bodyMedium),
+          Text(note, style: StizeText.of(context).body),
         ],
         const SizedBox(height: 16),
         ..._attributes(context, theme, l10n, lang),
@@ -109,9 +110,9 @@ class FleetModelView extends ConsumerWidget {
           const SizedBox(height: 16),
           Text(
             l10n.fleetApproxNote,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.outline,
-            ),
+            style: StizeText.of(
+              context,
+            ).caption.copyWith(color: theme.colorScheme.outline),
           ),
         ],
       ],
@@ -171,16 +172,16 @@ class FleetModelView extends ConsumerWidget {
             children: [
               Text(
                 model,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+                style: StizeText.of(
+                  context,
+                ).date.copyWith(fontWeight: FontWeight.w500),
               ),
               if (nickname != null)
                 Text(
                   nickname,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.outline,
-                  ),
+                  style: StizeText.of(
+                    context,
+                  ).body.copyWith(color: theme.colorScheme.outline),
                 ),
             ],
           ),
@@ -244,9 +245,9 @@ class FleetModelView extends ConsumerWidget {
               l10n.fleetPhotoCredit(photo.author, photo.license),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
+              style: StizeText.of(
+                context,
+              ).caption.copyWith(color: theme.colorScheme.outline),
             ),
           ),
         ),
@@ -425,7 +426,7 @@ class FleetModelView extends ConsumerWidget {
     bool muted = false,
   }) {
     final baseColor = positive
-        ? const Color(0xFF1E7A46)
+        ? (theme.extension<StizeColors>() ?? StizeColors.dark).fleetEco
         : (muted ? theme.colorScheme.outline : theme.colorScheme.onSurface);
     final color = assumed ? baseColor.withValues(alpha: 0.6) : baseColor;
     return Padding(
@@ -438,7 +439,7 @@ class FleetModelView extends ConsumerWidget {
           Expanded(
             child: Text(
               assumed ? '$label ~' : label,
-              style: theme.textTheme.bodyMedium?.copyWith(color: color),
+              style: StizeText.ofTheme(theme).body.copyWith(color: color),
             ),
           ),
         ],
@@ -464,7 +465,7 @@ class FleetModelView extends ConsumerWidget {
           const SizedBox(width: 12),
           Text(
             '${l10n.fleetSectionComfort}: ',
-            style: theme.textTheme.bodyMedium,
+            style: StizeText.ofTheme(theme).body,
           ),
           for (var i = 1; i <= 5; i++)
             Padding(
@@ -480,9 +481,9 @@ class FleetModelView extends ConsumerWidget {
           const SizedBox(width: 8),
           Text(
             assumed ? '$word ~' : word,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.outline,
-            ),
+            style: StizeText.ofTheme(
+              theme,
+            ).caption.copyWith(color: theme.colorScheme.outline),
           ),
         ],
       ),

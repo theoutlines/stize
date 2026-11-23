@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 
 import 'animated_entries.dart';
 import 'flat_cards.dart';
@@ -279,7 +280,7 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: Text(
             _freshnessLabel(l10n, board.updatedAt),
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: StizeText.of(context).caption.copyWith(
               color: isStale
                   ? theme.colorScheme.error
                   : theme.colorScheme.outline,

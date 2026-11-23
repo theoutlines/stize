@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre/maplibre.dart';
 
@@ -272,9 +273,9 @@ class _DensityLegend extends StatelessWidget {
         children: [
           Text(
             l10n.coverageLegendTitle,
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+            style: StizeText.of(
+              context,
+            ).control.copyWith(fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
           // A flat gradient bar: dim → bright, reading as "rare → dense".
@@ -296,10 +297,10 @@ class _DensityLegend extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(l10n.coverageLegendLow, style: theme.textTheme.labelSmall),
+                Text(l10n.coverageLegendLow, style: StizeText.of(context).note),
                 Text(
                   l10n.coverageLegendHigh,
-                  style: theme.textTheme.labelSmall,
+                  style: StizeText.of(context).note,
                 ),
               ],
             ),

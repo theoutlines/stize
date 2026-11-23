@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 
 import '../../core/design/stize_tokens.dart';
 
@@ -79,7 +80,7 @@ class _RouteAlertsStripState extends State<RouteAlertsStrip> {
                   Expanded(
                     child: Text(
                       '${l10n.alertsBannerTitle} · ${alerts.length}',
-                      style: theme.textTheme.labelLarge?.copyWith(
+                      style: StizeText.of(context).label.copyWith(
                         color: headerFg,
                         fontWeight: FontWeight.w500,
                       ),
@@ -161,17 +162,16 @@ class _AlertRow extends StatelessWidget {
                   alert.isUpcoming
                       ? l10n.alertUpcomingLabel
                       : l10n.alertActiveLabel,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: StizeText.of(
+                    context,
+                  ).control.copyWith(color: fg, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   alert.localizedSummary(
                     Localizations.localeOf(context).languageCode,
                   ),
-                  style: theme.textTheme.bodyMedium?.copyWith(color: fg),
+                  style: StizeText.of(context).body.copyWith(color: fg),
                 ),
                 const SizedBox(height: StizeSpace.space3),
                 // The system tertiary button as is (owner, 2026-11-23: the

@@ -107,9 +107,7 @@ class StizeTransitCard extends StatelessWidget {
       color: scheduled ? c.fill08 : fillFor(c, type),
       // Edge-to-edge in the mobile sheet: square, a hairline below.
       borderRadius: flat ? null : BorderRadius.circular(StizeRadius.radiusCard),
-      shape: flat
-          ? const Border(bottom: BorderSide(color: Color(0x2E000000)))
-          : null,
+      shape: flat ? Border(bottom: BorderSide(color: c.stripeLine)) : null,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,

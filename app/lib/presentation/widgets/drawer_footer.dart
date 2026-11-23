@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
+import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter/material.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -188,7 +189,6 @@ class _FeedbackFormState extends ConsumerState<FeedbackForm> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -202,7 +202,7 @@ class _FeedbackFormState extends ConsumerState<FeedbackForm> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (widget.showTitle) ...[
-            Text(l10n.feedbackFormTitle, style: theme.textTheme.titleLarge),
+            Text(l10n.feedbackFormTitle, style: StizeText.of(context).section),
             const SizedBox(height: 12),
           ],
           TextField(

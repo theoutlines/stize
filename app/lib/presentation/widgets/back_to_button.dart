@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/providers.dart';
@@ -31,7 +32,7 @@ class BackToButton extends ConsumerWidget {
           label: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
           style: TextButton.styleFrom(
             foregroundColor: theme.colorScheme.onSurface,
-            textStyle: theme.textTheme.bodyLarge,
+            textStyle: StizeText.of(context).body,
           ),
         ),
       ),

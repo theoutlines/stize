@@ -1,4 +1,6 @@
+import 'package:stize/core/design/stize_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 
 import 'level_header.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
@@ -119,7 +121,6 @@ class ContextNavRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Row(
       children: [
         IconButton(
@@ -132,7 +133,7 @@ class ContextNavRow extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: theme.textTheme.titleMedium,
+            style: StizeText.of(context).label,
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -168,10 +169,10 @@ class BackToVehiclePill extends StatelessWidget {
     return PointerInterceptor(
       child: Material(
         color: theme.colorScheme.inverseSurface,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(StizeRadius.radiusPill),
         elevation: 4,
         child: InkWell(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(StizeRadius.radiusPill),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -191,7 +192,7 @@ class BackToVehiclePill extends StatelessWidget {
                 ],
                 Text(
                   l10n.backToVehicle,
-                  style: theme.textTheme.labelLarge?.copyWith(
+                  style: StizeText.of(context).label.copyWith(
                     color: theme.colorScheme.onInverseSurface,
                     fontWeight: FontWeight.w500,
                   ),

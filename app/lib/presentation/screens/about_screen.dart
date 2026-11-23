@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -49,7 +50,7 @@ class AboutScreen extends ConsumerWidget {
             ),
             child: Text(
               l10n.aboutDisclaimer,
-              style: theme.textTheme.bodyMedium,
+              style: StizeText.of(context).body,
             ),
           ),
           // Reference-data freshness. Only shown once /gtfs-meta resolves with a
@@ -58,17 +59,17 @@ class AboutScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           Text(
             l10n.aboutDataSource,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.outline,
-            ),
+            style: StizeText.of(
+              context,
+            ).caption.copyWith(color: theme.colorScheme.outline),
           ),
           if (routeDataLabel != null) ...[
             const SizedBox(height: 8),
             Text(
               routeDataLabel,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
+              style: StizeText.of(
+                context,
+              ).caption.copyWith(color: theme.colorScheme.outline),
             ),
           ],
           // Licences and privacy live here, as full-height rows: in the menu
@@ -96,9 +97,9 @@ class AboutScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             Text(
               version,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
+              style: StizeText.of(
+                context,
+              ).caption.copyWith(color: theme.colorScheme.outline),
             ),
           ],
         ],

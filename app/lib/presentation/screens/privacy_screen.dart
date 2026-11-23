@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 
 import '../../l10n/app_localizations.dart';
 
@@ -11,16 +12,15 @@ class PrivacyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
 
     Widget section(String title, String body) => Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: theme.textTheme.titleMedium),
+          Text(title, style: StizeText.of(context).label),
           const SizedBox(height: 8),
-          Text(body, style: theme.textTheme.bodyMedium),
+          Text(body, style: StizeText.of(context).body),
         ],
       ),
     );
@@ -31,7 +31,7 @@ class PrivacyScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           children: [
-            Text(l10n.privacyIntro, style: theme.textTheme.bodyLarge),
+            Text(l10n.privacyIntro, style: StizeText.of(context).body),
             const SizedBox(height: 24),
             section(l10n.privacyLocationTitle, l10n.privacyLocationBody),
             section(l10n.privacyAnalyticsTitle, l10n.privacyAnalyticsBody),

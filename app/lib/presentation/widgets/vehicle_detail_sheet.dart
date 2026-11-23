@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
@@ -93,7 +94,7 @@ class _VehicleDetailSheet extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 '${shape.origin} → ${shape.destination}',
-                                style: theme.textTheme.titleSmall,
+                                style: StizeText.of(context).control,
                               ),
                             ),
                           ],
@@ -116,9 +117,9 @@ class _VehicleDetailSheet extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                         child: Text(
                           l10n.vehicleUpcomingStops,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: theme.colorScheme.outline,
-                          ),
+                          style: StizeText.of(
+                            context,
+                          ).label.copyWith(color: theme.colorScheme.outline),
                         ),
                       ),
                       for (final u in plan.stops) _stopRow(context, l10n, u),
@@ -126,9 +127,9 @@ class _VehicleDetailSheet extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
                         child: Text(
                           l10n.vehicleEtaApprox,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.outline,
-                          ),
+                          style: StizeText.of(
+                            context,
+                          ).caption.copyWith(color: theme.colorScheme.outline),
                         ),
                       ),
                       Padding(
@@ -159,7 +160,7 @@ class _VehicleDetailSheet extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(StizeRadius.radiusPill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -184,7 +185,7 @@ class _VehicleDetailSheet extends StatelessWidget {
   Widget _statusChip(BuildContext context, AppLocalizations l10n) {
     final theme = Theme.of(context);
     final stuckColor = theme.colorScheme.error;
-    final movingColor = const Color(0xFF2E9E5B);
+    final movingColor = StizeColors.of(context).moving;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -196,7 +197,7 @@ class _VehicleDetailSheet extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           stuck ? l10n.vehicleStuck : l10n.vehicleMoving,
-          style: theme.textTheme.bodyMedium?.copyWith(
+          style: StizeText.of(context).body.copyWith(
             color: stuck ? stuckColor : movingColor,
             fontWeight: FontWeight.w500,
           ),
@@ -221,15 +222,15 @@ class _VehicleDetailSheet extends StatelessWidget {
       title: Text(
         u.stop.name,
         style: u.isBoardStop
-            ? theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)
-            : theme.textTheme.bodyMedium,
+            ? StizeText.of(context).body.copyWith(fontWeight: FontWeight.w500)
+            : StizeText.of(context).body,
       ),
       subtitle: u.isBoardStop ? Text(l10n.vehicleYourStop) : null,
       trailing: eta == null
           ? null
           : Text(
               eta <= 0 ? l10n.arrivalEtaNow : l10n.vehicleEtaMinutesApprox(eta),
-              style: theme.textTheme.bodyMedium?.copyWith(
+              style: StizeText.of(context).body.copyWith(
                 fontWeight: u.isBoardStop ? FontWeight.w500 : FontWeight.w500,
               ),
             ),

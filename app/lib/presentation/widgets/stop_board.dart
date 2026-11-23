@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:stize/core/design/stize_text.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -183,7 +184,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
           Expanded(
             child: Text(
               stopName,
-              style: theme.textTheme.titleLarge,
+              style: StizeText.of(context).section,
               overflow: TextOverflow.ellipsis,
             ),
           ),

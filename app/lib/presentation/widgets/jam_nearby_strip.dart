@@ -1,4 +1,6 @@
+import 'package:stize/core/design/stize_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/jam.dart';
@@ -49,7 +51,7 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8A317).withValues(alpha: 0.12),
+        color: StizeColors.of(context).jam.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -73,9 +75,9 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
                   Expanded(
                     child: Text(
                       l10n.jamNearbyDelay(jam.line),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface,
-                      ),
+                      style: StizeText.of(
+                        context,
+                      ).caption.copyWith(color: theme.colorScheme.onSurface),
                     ),
                   ),
                   Icon(
@@ -114,16 +116,16 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
             children: [
               Text(
                 l10n.jamAffectedStopsTitle,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: StizeText.of(
+                  context,
+                ).note.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 4),
               Text(
                 names.join(' · '),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface,
-                ),
+                style: StizeText.of(
+                  context,
+                ).caption.copyWith(color: theme.colorScheme.onSurface),
               ),
             ],
           ),

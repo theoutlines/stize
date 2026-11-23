@@ -1,4 +1,6 @@
+import 'package:stize/core/design/stize_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/fleet_matcher.dart';
@@ -101,7 +103,7 @@ class VehicleView extends ConsumerWidget {
           (origin != null && destination != null)
               ? '$origin → $destination'
               : l10n.followingVehicle,
-          style: theme.textTheme.titleMedium,
+          style: StizeText.of(context).label,
         ),
         const SizedBox(height: 8),
         _statusChip(theme, l10n),
@@ -120,9 +122,9 @@ class VehicleView extends ConsumerWidget {
               Flexible(
                 child: Text(
                   l10n.vehicleScheduled,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  style: StizeText.of(
+                    context,
+                  ).note.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ),
             ],
@@ -145,9 +147,9 @@ class VehicleView extends ConsumerWidget {
               Expanded(
                 child: Text(
                   l10n.routeUnavailable,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  style: StizeText.of(
+                    context,
+                  ).body.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ),
             ],
@@ -180,7 +182,8 @@ class VehicleView extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFE8A317).withValues(alpha: 0.14),
+          color: (theme.extension<StizeColors>() ?? StizeColors.dark).jam
+              .withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -194,9 +197,9 @@ class VehicleView extends ConsumerWidget {
             Expanded(
               child: Text(
                 l10n.jamFollowAhead,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface,
-                ),
+                style: StizeText.ofTheme(
+                  theme,
+                ).caption.copyWith(color: theme.colorScheme.onSurface),
               ),
             ),
           ],
@@ -221,9 +224,9 @@ class VehicleView extends ConsumerWidget {
       children: [
         Text(
           l10n.vehicleUpcomingStops,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: theme.colorScheme.outline,
-          ),
+          style: StizeText.of(
+            context,
+          ).label.copyWith(color: theme.colorScheme.outline),
         ),
         const SizedBox(height: 4),
         for (var i = 0; i < shown.length; i++)
@@ -258,26 +261,26 @@ class VehicleView extends ConsumerWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: isNext
-                  ? theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    )
-                  : theme.textTheme.bodyMedium,
+                  ? StizeText.ofTheme(
+                      theme,
+                    ).body.copyWith(fontWeight: FontWeight.w500)
+                  : StizeText.ofTheme(theme).body,
             ),
           ),
           if (u.isBoardStop) ...[
             const SizedBox(width: 8),
             Text(
               l10n.vehicleYourStop,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
-              ),
+              style: StizeText.ofTheme(
+                theme,
+              ).note.copyWith(color: theme.colorScheme.primary),
             ),
           ],
           if (eta != null) ...[
             const SizedBox(width: 8),
             Text(
               eta <= 0 ? l10n.arrivalEtaNow : l10n.vehicleEtaMinutesApprox(eta),
-              style: theme.textTheme.bodyMedium?.copyWith(
+              style: StizeText.ofTheme(theme).body.copyWith(
                 fontWeight: isNext ? FontWeight.w500 : FontWeight.w500,
               ),
             ),
@@ -289,7 +292,8 @@ class VehicleView extends ConsumerWidget {
 
   Widget _statusChip(ThemeData theme, AppLocalizations l10n) {
     final stuckColor = theme.colorScheme.error;
-    const movingColor = Color(0xFF2E9E5B);
+    final movingColor =
+        (theme.extension<StizeColors>() ?? StizeColors.dark).moving;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -301,7 +305,7 @@ class VehicleView extends ConsumerWidget {
         const SizedBox(width: 8),
         Text(
           stuck ? l10n.vehicleStuck : l10n.vehicleMoving,
-          style: theme.textTheme.bodyMedium?.copyWith(
+          style: StizeText.ofTheme(theme).body.copyWith(
             color: stuck ? stuckColor : movingColor,
             fontWeight: FontWeight.w500,
           ),
@@ -338,9 +342,9 @@ class VehicleView extends ConsumerWidget {
         children: [
           Text(
             l10n.aboutVehicle,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.outline,
-            ),
+            style: StizeText.of(
+              context,
+            ).label.copyWith(color: theme.colorScheme.outline),
           ),
           const SizedBox(height: 8),
           Row(
@@ -360,7 +364,7 @@ class VehicleView extends ConsumerWidget {
                   children: [
                     Text(
                       title,
-                      style: theme.textTheme.titleSmall,
+                      style: StizeText.of(context).control,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (garageNo != null &&
@@ -368,9 +372,9 @@ class VehicleView extends ConsumerWidget {
                         fleet.hasInfo)
                       Text(
                         l10n.fleetVehicleNumber(garageNo!),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
+                        style: StizeText.of(
+                          context,
+                        ).caption.copyWith(color: theme.colorScheme.outline),
                       ),
                   ],
                 ),
@@ -386,9 +390,9 @@ class VehicleView extends ConsumerWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 '${l10n.viewModelDetails} ›',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
+                style: StizeText.of(
+                  context,
+                ).label.copyWith(color: theme.colorScheme.primary),
               ),
             ),
           ],

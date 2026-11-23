@@ -147,7 +147,7 @@ extension _MapJams on _HomeMapScreenState {
             id: _HomeMapScreenState._jamGlowLayerId,
             sourceId: _stopSourceId(_HomeMapScreenState._jamGlowLayerId),
             paint: {
-              'circle-color': _HomeMapScreenState._jamAmber.toHexString(),
+              'circle-color': StizeColors.of(context).jam.toHexString(),
               'circle-radius': 13.0,
               'circle-blur': 0.9,
               'circle-opacity': ['get', 'opacity'],
@@ -167,7 +167,7 @@ extension _MapJams on _HomeMapScreenState {
             sourceId: _stopSourceId(_HomeMapScreenState._jamSegmentLayerId),
             layout: {'line-cap': 'round', 'line-join': 'round'},
             paint: {
-              'line-color': _HomeMapScreenState._jamAmber.toHexString(),
+              'line-color': StizeColors.of(context).jam.toHexString(),
               'line-width': 4.0, // thinner than the route line (5)
               'line-opacity': ['get', 'opacity'],
             },

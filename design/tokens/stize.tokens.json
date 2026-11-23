@@ -337,6 +337,70 @@
      "light": "#D9363C"
     },
     "usage": "Searched place pin."
+   },
+   {
+    "name": "jam",
+    "value": {
+     "dark": "#E8A317",
+     "light": "#E8A317"
+    },
+    "usage": "Traffic jam on a line or ahead of a vehicle: strip and banner tint (at 12-14%), jam markers on the map."
+   },
+   {
+    "name": "moving",
+    "value": {
+     "dark": "#2E9E5B",
+     "light": "#2E9E5B"
+    },
+    "usage": "Vehicle status \"moving\" in the vehicle sheet."
+   },
+   {
+    "name": "fleet-eco",
+    "value": {
+     "dark": "#1E7A46",
+     "light": "#1E7A46"
+    },
+    "usage": "Fleet badge: electric / low-emission vehicle."
+   },
+   {
+    "name": "fleet-hybrid",
+    "value": {
+     "dark": "#B25A00",
+     "light": "#B25A00"
+    },
+    "usage": "Fleet badge: hybrid vehicle."
+   },
+   {
+    "name": "fleet-ac",
+    "value": {
+     "dark": "#2278E6",
+     "light": "#2278E6"
+    },
+    "usage": "Fleet badge: air conditioning."
+   },
+   {
+    "name": "alert-count",
+    "value": {
+     "dark": "#D90429",
+     "light": "#D90429"
+    },
+    "usage": "Count bubble on the route-alerts button."
+   },
+   {
+    "name": "guide-night",
+    "value": {
+     "dark": "#1B2A4A",
+     "light": "#1B2A4A"
+    },
+    "usage": "Belgrade guide night state (00:00 to 04:59) background."
+   },
+   {
+    "name": "stripe-line",
+    "value": {
+     "dark": "#0000002E",
+     "light": "#0000002E"
+    },
+    "usage": "Hairline under a full-width transit stripe in lists."
    }
   ]
  },
@@ -607,6 +671,11 @@
     "name": "radius-hero",
     "value": "24px",
     "usage": "Landing hero, the top of the bottom sheet."
+   },
+   {
+    "name": "radius-pill",
+    "value": "999px",
+    "usage": "Fully rounded: pills, dots, progress tracks."
    }
   ]
  },

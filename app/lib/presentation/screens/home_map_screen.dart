@@ -1,3 +1,4 @@
+import 'package:stize/core/design/stize_text.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -196,7 +197,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   _jamShapeCache = {};
   Timer? _jamPulseTimer; // runs only while a jam is shown
   double _jamPulsePhase = 0; // 0..2π, advanced by the pulse timer
-  static const _jamAmber = Color(0xFFE8A317);
   bool _jamModeOn = false; // the jam-mode map toggle (fit to all active jams)
 
   // Live vehicles in the viewport: eased between refreshes by the animator, so
