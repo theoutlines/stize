@@ -51,6 +51,23 @@ void main() {
   setUp(() => kMapRenderingEnabled = false);
   tearDown(() => kMapRenderingEnabled = true);
 
+  testWidgets('desktop: the home stack fills the whole window height', (
+    tester,
+  ) async {
+    // Regression (owner, 2026-11-23): the body Stack took its height from the
+    // top-button column, so on desktop the map and panel were cut at ~200px.
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_host(size: const Size(1200, 900)));
+    await tester.pump();
+    await tester.pump();
+    final stack = find
+        .descendant(of: find.byType(Scaffold), matching: find.byType(Stack))
+        .first;
+    expect(tester.getSize(stack), const Size(1200, 900));
+  });
+
   testWidgets('desktop (≥840) shows the left panel, not the bottom sheet', (
     tester,
   ) async {

@@ -122,13 +122,16 @@ class NearbySheet extends StatelessWidget {
         // Unified detents (owner R2 #4): large is NOT fullscreen — a strip of map
         // always stays on top.
         initialChildSize: oneScroll ? oneScrollRest : kSheetPeek,
-        minChildSize: 0.12,
+        // One-scroll: the list never sinks below its resting place, so a pull
+        // down at rest overscrolls the list and refreshes it (owner,
+        // 2026-11-23: refresh only showed up after dragging all the way down).
+        minChildSize: oneScroll ? oneScrollRest : 0.12,
         maxChildSize: oneScroll ? (maxSize ?? kSheetLarge) : kSheetLarge,
         snap: !oneScroll,
         // Two resting places for a drag (owner, 2026-11-23): stopping halfway
         // and then pulling again felt like friction. Half is still used when
         // a level opens programmatically, so the stop stays visible on the map.
-        snapSizes: const [kSheetPeek, kSheetLarge],
+        snapSizes: oneScroll ? null : const [kSheetPeek, kSheetLarge],
         builder: (context, scrollController) {
           // PointerInterceptor stops scroll/drag/taps on the sheet from falling
           // through to the MapLibre platform view underneath on web. No-op on
@@ -151,35 +154,37 @@ class NearbySheet extends StatelessWidget {
                 viewport: viewport,
                 child: FlatCards(
                   flat: oneScroll,
-                  child: Column(
-                    children: [
-                      if (oneScroll)
-                        const SizedBox(height: StizeSpace.space2)
-                      else
-                        const SheetDragHandle(),
-                      if (levelBody != null) ...[
-                        ?levelHeader,
-                        Expanded(child: levelBody!(scrollController)),
-                      ] else
-                        Expanded(
-                          child: NearbyView(
-                            userLocation: userLocation,
-                            locationDenied: locationDenied,
-                            active: active,
-                            onEnableLocation: onEnableLocation,
-                            onTapGroup: onTapGroup,
-                            onSelectStop: onSelectStop,
-                            onSelectLine: onSelectLine,
-                            scrollController: scrollController,
-                            banner: banner,
-                            showLocalSearch: !oneScroll,
-                            externalSearch: searchController,
-                            externalSearchActive: searchActive,
-                            onSearchFocus: () => _toDetent(kSheetLarge),
-                            onSearchCancel: _restoreDetent,
+                  // One-scroll: the first card itself carries the sheet's top
+                  // radius, nothing peeks above it.
+                  child: ClipRRect(
+                    borderRadius: oneScroll ? kSheetRadius : BorderRadius.zero,
+                    child: Column(
+                      children: [
+                        if (!oneScroll) const SheetDragHandle(),
+                        if (levelBody != null) ...[
+                          ?levelHeader,
+                          Expanded(child: levelBody!(scrollController)),
+                        ] else
+                          Expanded(
+                            child: NearbyView(
+                              userLocation: userLocation,
+                              locationDenied: locationDenied,
+                              active: active,
+                              onEnableLocation: onEnableLocation,
+                              onTapGroup: onTapGroup,
+                              onSelectStop: onSelectStop,
+                              onSelectLine: onSelectLine,
+                              scrollController: scrollController,
+                              banner: banner,
+                              showLocalSearch: !oneScroll,
+                              externalSearch: searchController,
+                              externalSearchActive: searchActive,
+                              onSearchFocus: () => _toDetent(kSheetLarge),
+                              onSearchCancel: _restoreDetent,
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -215,8 +220,8 @@ class _SheetDragArea extends StatelessWidget {
       onVerticalDragUpdate: (d) {
         if (!c.isAttached) return;
         final next = (c.size - (d.primaryDelta ?? 0) / viewport).clamp(
-          0.12,
-          kSheetLarge,
+          snap ? 0.12 : NearbySheet.oneScrollRest,
+          snap ? kSheetLarge : 1.0,
         );
         c.jumpTo(next);
       },

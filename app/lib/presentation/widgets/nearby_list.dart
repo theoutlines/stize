@@ -177,84 +177,128 @@ class LineDirectionsCarousel extends StatefulWidget {
   State<LineDirectionsCarousel> createState() => _LineDirectionsCarouselState();
 }
 
-class _LineDirectionsCarouselState extends State<LineDirectionsCarousel> {
+class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
+    with SingleTickerProviderStateMixin {
   int _page = 0;
-  int _dir = 1; // slide direction of the last change
+  // Horizontal offset of the current card, follows the finger.
+  double _drag = 0;
+  double _width = 1;
+  late final AnimationController _settle = AnimationController(
+    vsync: this,
+    duration: StizeMotion.fast,
+  );
+  Animation<double>? _to;
 
-  void _go(int delta) {
-    final n = widget.groups.length;
-    final next = (_page + delta).clamp(0, n - 1);
-    if (next == _page) return;
+  @override
+  void dispose() {
+    _settle.dispose();
+    super.dispose();
+  }
+
+  bool _has(int i) => i >= 0 && i < widget.groups.length;
+
+  void _onUpdate(DragUpdateDetails d) {
+    _settle.stop();
     setState(() {
-      _dir = delta;
-      _page = next;
+      final next = _drag + d.delta.dx;
+      // Rubber band at the ends: no neighbour to pull in.
+      final edge = !_has(_page + (next < 0 ? 1 : -1));
+      _drag = edge ? _drag + d.delta.dx * 0.3 : next;
     });
+  }
+
+  void _onEnd(DragEndDetails d) {
+    final v = d.primaryVelocity ?? 0;
+    var target = 0.0;
+    var delta = 0;
+    if ((_drag < -_width * 0.25 || v < -400) && _has(_page + 1)) {
+      target = -_width;
+      delta = 1;
+    } else if ((_drag > _width * 0.25 || v > 400) && _has(_page - 1)) {
+      target = _width;
+      delta = -1;
+    }
+    _to = Tween<double>(begin: _drag, end: target).animate(
+      CurvedAnimation(parent: _settle, curve: StizeMotion.smoothOut),
+    )..addListener(() => setState(() => _drag = _to!.value));
+    _settle.forward(from: 0).whenComplete(() {
+      if (!mounted) return;
+      setState(() {
+        _page += delta;
+        _drag = 0;
+      });
+    });
+  }
+
+  Widget _card(int i) {
+    final g = widget.groups[i];
+    return NearbyCard(
+      key: ValueKey(g.key),
+      group: g,
+      onTap: widget.onTapGroup == null ? null : () => widget.onTapGroup!(g),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final n = widget.groups.length;
-    final page = _page.clamp(0, n - 1);
-    final g = widget.groups[page];
-    return GestureDetector(
-      // Horizontal swipes page the directions; vertical drags still scroll.
-      onHorizontalDragEnd: (d) {
-        final v = d.primaryVelocity ?? 0;
-        if (v < -200) _go(1);
-        if (v > 200) _go(-1);
-      },
-      child: Stack(
-        children: [
-          AnimatedSwitcher(
-            duration: StizeMotion.fast,
-            switchInCurve: StizeMotion.smoothOut,
-            switchOutCurve: StizeMotion.smoothOut,
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: Offset(0.08 * _dir, 0),
-                  end: Offset.zero,
-                ).animate(anim),
-                child: child,
-              ),
-            ),
-            layoutBuilder: (current, previous) =>
-                Stack(children: [...previous, ?current]),
-            child: NearbyCard(
-              key: ValueKey(g.key),
-              group: g,
-              onTap: widget.onTapGroup == null
-                  ? null
-                  : () => widget.onTapGroup!(g),
-            ),
-          ),
-          Positioned(
-            top: StizeSpace.space4,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var i = 0; i < n; i++)
-                    Container(
-                      width: 6,
-                      height: 6,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(
-                          alpha: i == page ? 0.95 : 0.4,
-                        ),
-                      ),
+    _page = _page.clamp(0, n - 1);
+    final side = _drag < 0 ? _page + 1 : _page - 1;
+    // Dots follow the card that is mostly on screen.
+    final shown = _drag.abs() > _width / 2 && _has(side) ? side : _page;
+    return LayoutBuilder(
+      builder: (context, box) {
+        _width = box.maxWidth;
+        return GestureDetector(
+          // Horizontal swipes move the whole card; vertical drags still scroll.
+          onHorizontalDragUpdate: _onUpdate,
+          onHorizontalDragEnd: _onEnd,
+          child: ClipRect(
+            child: Stack(
+              children: [
+                Transform.translate(
+                  offset: Offset(_drag, 0),
+                  child: _card(_page),
+                ),
+                if (_drag != 0 && _has(side))
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Transform.translate(
+                      offset: Offset(_drag + (_drag < 0 ? _width : -_width), 0),
+                      child: _card(side),
                     ),
-                ],
-              ),
+                  ),
+                Positioned(
+                  top: StizeSpace.space4,
+                  left: 0,
+                  right: 0,
+                  child: IgnorePointer(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        for (var i = 0; i < n; i++)
+                          Container(
+                            width: 6,
+                            height: 6,
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(
+                                alpha: i == shown ? 0.95 : 0.4,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
