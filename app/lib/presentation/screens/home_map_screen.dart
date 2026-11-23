@@ -53,7 +53,8 @@ import '../widgets/fleet_model_card.dart';
 import '../widgets/nearby_sheet.dart';
 import '../widgets/nearby_view.dart';
 import '../widgets/stop_board.dart';
-import '../widgets/stop_sheet.dart';
+import '../widgets/level_header.dart';
+import '../widgets/my_stops_list.dart';
 import '../widgets/vehicle_icon.dart';
 import '../widgets/vehicle_mode_toggle.dart';
 import '../widgets/vehicle_view.dart';
@@ -339,7 +340,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   int _pumpCount = 0; // vehicle-driver frames pumped
   // A stop arrivals sheet is currently up. The bottom UI (Nearby panel / search)
   // is hidden while it is, so the two never overlap (#7).
-  bool _stopSheetOpen = false;
+  /// The one mobile sheet: the host drives its height (open a level at half,
+  /// snap back to peek after a swipe-close). It is never swapped for another
+  /// sheet, so its height stays continuous across levels.
+  final _sheetCtl = DraggableScrollableController();
 
   // ---- Adaptive context slot (context_panel) -------------------------------
   // With the flag ON the three views (nearby → stop → vehicle) share ONE
@@ -353,8 +357,19 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // gates on `_panelActive` (wide layout).
   bool _wideNow = false; // last-built breakpoint class (≥840)
   bool get _panelActive => _wideNow;
-  String? _slotStopId;
-  String? _slotStopName;
+  /// The chain of levels open in the context slot — the mobile sheet and the
+  /// desktop panel alike (owner, 2026-11-23: one sheet, levels stack inside it).
+  /// Oldest first; the last is what's shown. Empty = Nearby.
+  final List<_SlotLevel> _levels = [];
+  String? get _slotStopId {
+    final top = _levels.isEmpty ? null : _levels.last;
+    return top is _StopLevel ? top.id : null;
+  }
+
+  String? get _slotStopName {
+    final top = _levels.isEmpty ? null : _levels.last;
+    return top is _StopLevel ? top.name : null;
+  }
   // A tapped Fleet-ID vehicle shown as a leaf sub-view of the vehicle view (the
   // desktop model card lives INSIDE the panel — no second surface). Null = not
   // showing the model. (`(fleet, garageNo, type)`.)
@@ -465,6 +480,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _vehAnim.dispose();
     _searchController.dispose();
     _focusNode.dispose();
+    _sheetCtl.dispose();
     super.dispose();
   }
 
@@ -638,6 +654,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   @override
   Widget build(BuildContext context) {
+    // "My stops" from the menu opens as a level in the same sheet / panel.
+    ref.listen(myStopsRequestProvider, (prev, next) {
+      if (prev == next) return;
+      _openMyStopsLevel();
+    });
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     _scheme = theme.colorScheme;
@@ -707,10 +728,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // drop the stale value so the owner doesn't keep a phantom bottom inset.
     // (Assigned during build, no setState — the value is read just below.)
     final showingNearbySheet = !_panelActive &&
-        !_stopSheetOpen &&
         _focus == null &&
         _selectedVehicleKey == null;
-    final mobileSheetShowing = !_panelActive && (showingNearbySheet || _stopSheetOpen);
+    final mobileSheetShowing = showingNearbySheet;
     if (!mobileSheetShowing && _mobileSheetPx != 0) _mobileSheetPx = 0;
 
     final insets = _mapInsets;
@@ -731,20 +751,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
     // Android back / PopScope: with the panel active, back walks up the chain
     // (model → vehicle → stop → nearby) before leaving the map.
-    final canPopMap = _panelActive
-        ? (_slotModel == null && _activeView == ContextView.nearby)
-        : _focus == null;
+    final canPopMap = _slotModel == null && _activeView == ContextView.nearby;
 
     return PopScope(
       // While a context is open, Android back closes it instead of leaving.
       canPop: canPopMap,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        if (_panelActive) {
-          _slotBack();
-        } else {
-          _closeVehicleContext();
-        }
+        _slotBack();
       },
       child: Scaffold(
       body: Stack(
@@ -828,10 +842,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
           // stop arrivals sheet suppresses the whole cluster (#7).
           else if (_focus != null || _selectedVehicleKey != null)
             _focusPanel(theme)
-          else if (_stopSheetOpen)
-            const SizedBox.shrink()
           else
             NearbySheet(
+              controller: _sheetCtl,
+              // A level (stop / My stops / model) replaces Nearby inside this
+              // same sheet; null = Nearby.
+              levelHeader: _slotNavRow(l10n),
+              levelBody: (_levels.isEmpty && _slotModel == null)
+                  ? null
+                  : (sc) => _slotContent(l10n, scrollController: sc),
               userLocation: _meTo,
               locationDenied: _locationDenied,
               active: _tabActive && _appResumed,
@@ -843,7 +862,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               onSelectLine: _openLine,
               // Feed the mobile sheet height to the geometry owner so a followed
               // vehicle is kept above the sheet as it's dragged (R2 #2).
-              onHeightChanged: _setMobileSheetPx,
+              onHeightChanged: _onMobileSheetHeight,
             ),
           // On-device FPS meter — diagnostic only, off in the normal app; on a
           // staging preview the owner enables it with `?fps=1` to compare the
@@ -903,4 +922,19 @@ class _LineFocus {
 
   /// Opened from a tap on a schedule-predicted object — the panel notes it.
   final bool scheduled;
+}
+
+/// A level in the context slot's chain.
+sealed class _SlotLevel {
+  const _SlotLevel();
+}
+
+class _StopLevel extends _SlotLevel {
+  const _StopLevel(this.id, this.name);
+  final String id;
+  final String? name;
+}
+
+class _MyStopsLevel extends _SlotLevel {
+  const _MyStopsLevel();
 }

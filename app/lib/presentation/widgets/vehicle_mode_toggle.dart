@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/vehicle_map_mode.dart';
@@ -25,10 +26,12 @@ class VehicleModeToggle extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final mode = ref.watch(vehicleMapModeProvider);
-    // Filled = the aquarium is on. The default (on-demand) leaves the button
-    // plain, so a highlighted button always means "you asked for more than the
-    // default", the way a map's layers button reads.
+    // Inverted (light button, dark glyph) = all transport is on. The default
+    // (on-demand) leaves the button plain, so a highlighted button always means
+    // "you asked for more than the default". Same inversion as the menu's close
+    // button.
     final aquarium = mode == VehicleMapMode.aquarium;
+    final fg = aquarium ? theme.colorScheme.surface : theme.colorScheme.onSurface;
 
     // The gap to the button below is ours, so that hiding this widget hides the
     // spacing with it and the control stack reads exactly as it does today.
@@ -36,15 +39,19 @@ class VehicleModeToggle extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: PointerInterceptor(
         child: Material(
-          color: aquarium
-              ? theme.colorScheme.secondaryContainer
-              : theme.colorScheme.surface,
+          color: aquarium ? theme.colorScheme.onSurface : theme.colorScheme.surface,
           elevation: 3,
           shape: const CircleBorder(),
           clipBehavior: Clip.antiAlias,
           child: IconButton(
-            icon: const Icon(Icons.layers_outlined),
-            color: aquarium ? theme.colorScheme.onSecondaryContainer : null,
+            // Bus with signal arcs = live vehicles (owner pick 2026-11-23 after a
+            // blind comprehension panel; replaces the misleading layers glyph).
+            icon: SvgPicture.asset(
+              'assets/icons/live_transport.svg',
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
+            ),
             tooltip: l10n.vehicleModeTooltip,
             onPressed: () => _flip(context, ref, mode, l10n),
           ),

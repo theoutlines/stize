@@ -675,4 +675,22 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aboutDataSource =>
       'Stops, lines and timetables: open data of the City of Belgrade (Secretariat for Public Transport), published on data.gov.rs under the Serbian open data licence. We repackage them for the app. Map: MapTiler, OpenStreetMap contributors.';
+
+  @override
+  String get menuSupport => 'Support Stiže';
+
+  @override
+  String get menuClose => 'Close menu';
+
+  @override
+  String get settingsAuto => 'Auto';
+
+  @override
+  String get settingsAutoHint =>
+      'Auto follows your phone. Transport on the map is switched with the layers button on the map.';
+
+  @override
+  String stopBackTo(String name) {
+    return 'Back to $name';
+  }
 }

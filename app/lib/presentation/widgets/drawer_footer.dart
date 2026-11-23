@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/app_links.dart';
 import '../../core/external_link.dart';
@@ -9,82 +8,8 @@ import '../../data/api/api_exceptions.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 
-/// The drawer's "about & contact" footer (Part D): an optional support banner
-/// (the menu's most emotional slot, now given to donations), a "Share feedback"
-/// entry, the open-source licenses, the privacy policy, and a dimmed version
-/// line pinned at the very bottom. Appended BELOW the existing drawer items —
-/// the rest of the drawer is untouched (Part D non-goals).
-class DrawerFooter extends ConsumerWidget {
-  const DrawerFooter({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final donateUrl = ref.watch(donateUrlProvider);
-    final version = ref.watch(appVersionProvider).valueOrNull;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Support banner, behind the KV `config:donate_url`: hidden while empty,
-        // shown (opening the URL) once the owner sets it. No new flag — the
-        // presence of a non-empty value is the switch. Empty ⇒ the footer starts
-        // straight at "Share feedback".
-        if (donateUrl != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: _DonateBanner(
-              // Fire synchronously in the tap callback with the URL already in
-              // provider state — no await before it, so Arc's user-activation
-              // window isn't lost. openExternalUrl navigates same-tab on web.
-              onTap: () => openExternalUrl(donateUrl),
-            ),
-          ),
-        _FooterTile(
-          icon: Icons.chat_bubble_outline,
-          label: l10n.drawerShareFeedback,
-          onTap: () => showFeedbackSheet(context),
-        ),
-        _FooterTile(
-          icon: Icons.description_outlined,
-          label: l10n.drawerLicenses,
-          onTap: () => _openLicenses(context, l10n, version),
-        ),
-        _FooterTile(
-          icon: Icons.privacy_tip_outlined,
-          label: l10n.drawerPrivacy,
-          onTap: () {
-            Navigator.of(context).pop(); // close the drawer
-            context.push('/privacy');
-          },
-        ),
-        // The unofficial disclaimer + version line close the footer, both in the
-        // same dimmed style (the disclaimer moved here from the old About block).
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-          child: Text(
-            l10n.aboutDisclaimer,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.outline,
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-          child: Text(
-            version ?? '',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.outline,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _openLicenses(
-      BuildContext context, AppLocalizations l10n, String? version) {
+/// Pushes Flutter's licence page with the app's AGPL header + repo link.
+void openLicensesPage(BuildContext context, AppLocalizations l10n, String? version) {
     // Flutter's LicenseRegistry already covers every bundled package; we add the
     // app's own AGPL header + repo link above the list via the legalese slot.
     //
@@ -113,104 +38,6 @@ class DrawerFooter extends ConsumerWidget {
       ),
     );
   }
-}
-
-/// The indie support banner: creator photo + a two-line CTA (an emphasized
-/// "Support Stiže ♥" headline over a dimmed one-liner). Tapping opens
-/// `config:donate_url` externally (same mechanic the old Donate item had). The
-/// heart lives in the headline text, keeping the style calm — no shouty CTA.
-class _DonateBanner extends StatelessWidget {
-  const _DonateBanner({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    return Material(
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              _CreatorAvatar(),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      l10n.drawerDonateBannerTitle,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      l10n.drawerDonateBannerSubtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The creator photo — `assets/images/creator.jpg`, with a neutral placeholder
-/// avatar if it's missing at build time (flagged in the report).
-class _CreatorAvatar extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return ClipOval(
-      child: Image.asset(
-        'assets/images/creator.jpg',
-        width: 44,
-        height: 44,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stack) => Container(
-          width: 44,
-          height: 44,
-          color: theme.colorScheme.secondaryContainer,
-          child: Icon(Icons.person,
-              color: theme.colorScheme.onSecondaryContainer),
-        ),
-      ),
-    );
-  }
-}
-
-class _FooterTile extends StatelessWidget {
-  const _FooterTile({required this.icon, required this.label, required this.onTap});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return ListTile(
-      dense: true,
-      leading: Icon(icon, color: theme.colorScheme.onSurfaceVariant),
-      title: Text(label, style: theme.textTheme.bodyMedium),
-      onTap: onTap,
-    );
-  }
-}
 
 /// The two-action feedback sheet: the in-app form ("Write to me", gated by the
 /// `feedback_form` flag) and a link to the public GitHub issues (technical

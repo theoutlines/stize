@@ -12,7 +12,8 @@ import 'sheet_chrome.dart';
 
 // Re-exported so existing importers keep working after the data logic moved to
 // [NearbyView].
-export 'nearby_view.dart' show shouldRefetchNearby, kNearbyRefetchDistanceMeters;
+export 'nearby_view.dart'
+    show shouldRefetchNearby, kNearbyRefetchDistanceMeters;
 
 /// The "Nearby" surface (the mobile default since `nearby_list` retired): a
 /// draggable bottom sheet over the map. The list, fetch, and empty-state logic
@@ -29,7 +30,46 @@ class NearbySheet extends StatelessWidget {
     this.onSelectStop,
     this.onSelectLine,
     this.onHeightChanged,
+    this.controller,
+    this.levelHeader,
+    this.levelBody,
   });
+
+  /// Drives the sheet's height from the host (open a level at half, close back
+  /// to peek). The sheet itself is never rebuilt between levels, so its height
+  /// stays continuous: one sheet, only its content changes.
+  final DraggableScrollableController? controller;
+
+  /// Sheet size before search focus raised it, so Cancel returns "as it was".
+  static final _preSearch = Expando<double>();
+
+  void _toDetent(double size) {
+    final c = controller;
+    if (c == null || !c.isAttached) return;
+    _preSearch[c] ??= c.size;
+    c.animateTo(
+      size,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _restoreDetent() {
+    final c = controller;
+    if (c == null || !c.isAttached) return;
+    final back = _preSearch[c] ?? kSheetPeek;
+    _preSearch[c] = null;
+    c.animateTo(
+      back,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  /// When a level is open (a stop, My stops, a vehicle model), its header and
+  /// scrollable body replace the Nearby view INSIDE this same sheet.
+  final Widget? levelHeader;
+  final Widget Function(ScrollController scrollController)? levelBody;
 
   /// The user's latest position fix, or null when there's no fix yet.
   final ll.LatLng? userLocation;
@@ -65,45 +105,52 @@ class NearbySheet extends StatelessWidget {
         return false;
       },
       child: DraggableScrollableSheet(
-      // Unified detents (owner R2 #4): large is NOT fullscreen — a strip of map
-      // always stays on top.
-      initialChildSize: kSheetPeek,
-      minChildSize: 0.12,
-      maxChildSize: kSheetLarge,
-      snap: true,
-      snapSizes: const [kSheetPeek, kSheetHalf, kSheetLarge],
-      builder: (context, scrollController) {
-        // PointerInterceptor stops scroll/drag/taps on the sheet from falling
-        // through to the MapLibre platform view underneath on web. No-op on
-        // mobile.
-        return PointerInterceptor(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: kSheetRadius,
-              // Stiže: the system sheet shadow; OFF keeps the prior soft one.
-              boxShadow: StizeShadow.shadowSheet,
+        controller: controller,
+        // Unified detents (owner R2 #4): large is NOT fullscreen — a strip of map
+        // always stays on top.
+        initialChildSize: kSheetPeek,
+        minChildSize: 0.12,
+        maxChildSize: kSheetLarge,
+        snap: true,
+        snapSizes: const [kSheetPeek, kSheetHalf, kSheetLarge],
+        builder: (context, scrollController) {
+          // PointerInterceptor stops scroll/drag/taps on the sheet from falling
+          // through to the MapLibre platform view underneath on web. No-op on
+          // mobile.
+          return PointerInterceptor(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: kSheetRadius,
+                // Stiže: the system sheet shadow; OFF keeps the prior soft one.
+                boxShadow: StizeShadow.shadowSheet,
+              ),
+              child: Column(
+                children: [
+                  const SheetDragHandle(),
+                  if (levelBody != null) ...[
+                    ?levelHeader,
+                    Expanded(child: levelBody!(scrollController)),
+                  ] else
+                    Expanded(
+                      child: NearbyView(
+                        userLocation: userLocation,
+                        locationDenied: locationDenied,
+                        active: active,
+                        onEnableLocation: onEnableLocation,
+                        onTapGroup: onTapGroup,
+                        onSelectStop: onSelectStop,
+                        onSelectLine: onSelectLine,
+                        scrollController: scrollController,
+                        onSearchFocus: () => _toDetent(kSheetLarge),
+                        onSearchCancel: _restoreDetent,
+                      ),
+                    ),
+                ],
+              ),
             ),
-            child: Column(
-              children: [
-                const SheetDragHandle(),
-                Expanded(
-                  child: NearbyView(
-                    userLocation: userLocation,
-                    locationDenied: locationDenied,
-                    active: active,
-                    onEnableLocation: onEnableLocation,
-                    onTapGroup: onTapGroup,
-                    onSelectStop: onSelectStop,
-                    onSelectLine: onSelectLine,
-                    scrollController: scrollController,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+          );
+        },
       ),
     );
   }
