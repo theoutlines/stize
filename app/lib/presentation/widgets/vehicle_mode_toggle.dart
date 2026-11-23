@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
+import '../../core/design/stize_icons.dart';
 import '../../core/vehicle_map_mode.dart';
 import '../../data/analytics/event_logger.dart';
 import '../../l10n/app_localizations.dart';
@@ -92,12 +92,7 @@ class _VehicleModeToggleState extends ConsumerState<VehicleModeToggle> {
         child: IconButton(
           // Bus with signal arcs = live vehicles (owner pick 2026-11-23 after a
           // blind comprehension panel; replaces the misleading layers glyph).
-          icon: SvgPicture.asset(
-            'assets/icons/live_transport.svg',
-            width: 24,
-            height: 24,
-            colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
-          ),
+          icon: Icon(StizeIcons.liveTransport, size: 24, color: fg),
           tooltip: l10n.vehicleModeTooltip,
           onPressed: () {
             _hideHint();

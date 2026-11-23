@@ -44,7 +44,6 @@ dependencies:
   intl: ^0.20.2
   maplibre: ^0.3.5
   latlong2: ^0.9.1
-  flutter_svg: ^2.0.10
   pointer_interceptor: ^0.10.1
   geolocator: ^13.0.2
   # Endorsed web implementation, pulled in transitively already — referenced
@@ -84,7 +83,6 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/icons/
     - assets/data/
     - assets/images/
     - assets/fonts/UncutSans-OFL.txt
