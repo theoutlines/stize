@@ -448,5 +448,9 @@
         "type": "String"
       }
     }
+  },
+  "aboutDataSource": "Stops, lines and timetables: open data of the City of Belgrade (Secretariat for Public Transport), published on data.gov.rs under the Serbian open data licence. We repackage them for the app. Map: MapTiler, OpenStreetMap contributors.",
+  "@aboutDataSource": {
+    "description": "Open-data attribution required by the licence (source body, where published, that the data is modified)."
   }
 }

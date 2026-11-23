@@ -38,8 +38,14 @@ class AboutScreen extends ConsumerWidget {
           ),
           // Reference-data freshness. Only shown once /gtfs-meta resolves with a
           // date; if it's unavailable the row is simply absent (silent fallback).
+          // Open-data attribution (the licence requires naming the source).
+          const SizedBox(height: 16),
+          Text(
+            l10n.aboutDataSource,
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+          ),
           if (routeDataLabel != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Text(
               routeDataLabel,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),

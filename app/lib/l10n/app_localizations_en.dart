@@ -671,4 +671,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get stopReportFailed =>
       'Couldn’t send. Check the connection and try again.';
+
+  @override
+  String get aboutDataSource =>
+      'Stops, lines and timetables: open data of the City of Belgrade (Secretariat for Public Transport), published on data.gov.rs under the Serbian open data licence. We repackage them for the app. Map: MapTiler, OpenStreetMap contributors.';
 }
