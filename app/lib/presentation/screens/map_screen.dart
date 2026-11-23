@@ -81,7 +81,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           orElse: () => widget.stops.first,
         );
         // Overlay arrivals on this same map (A1) rather than pushing a screen.
-        ref.read(eventLoggerProvider).log(Ev.stopOpen, props: {'source': Ev.srcPin});
+        ref
+            .read(eventLoggerProvider)
+            .log(Ev.stopOpen, props: {'source': Ev.srcPin});
         showStopSheet(context, stopId: stop.stopId, stopName: stop.name);
         return;
       }

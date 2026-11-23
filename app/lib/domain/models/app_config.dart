@@ -62,12 +62,10 @@ class AppConfig {
   /// killswitch — the client never calls /jams and draws none of it.
   bool get jamDetectionShow => flag('jam_detection_show');
 
-
   /// Whether the map asks for location on entry when the user hasn't decided
   /// yet (remote `location_autoprompt` flag). OFF (the default): only the
   /// locate button asks.
   bool get locationAutoprompt => flag('location_autoprompt');
-
 
   static const empty = AppConfig(version: '', flags: {}, config: {});
 

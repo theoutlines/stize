@@ -29,7 +29,8 @@ class Stop {
       lat: (json['lat'] as num).toDouble(),
       lon: (json['lon'] as num).toDouble(),
       lines: (json['lines'] as List<dynamic>).cast<String>(),
-      types: (json['types'] as List<dynamic>?)
+      types:
+          (json['types'] as List<dynamic>?)
               ?.map((e) => VehicleType.fromApi(e as String))
               .toList() ??
           const [],

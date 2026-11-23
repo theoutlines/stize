@@ -226,23 +226,27 @@ class VehicleTrackAnimator {
     DateTime? asOf,
     RoutePath? Function(String line)? pathFor,
   }) {
-    syncSamples([
-      for (final a in arrivals)
-        if (a.gps != null)
-          VehicleSample(
-            key: keyFor(a),
-            position: ll.LatLng(a.gps!.lat, a.gps!.lon),
-            line: a.line,
-            type: a.vehicleType,
-            heading: a.heading,
-            // Timed-trajectory playback kicks in only when the caller supplies
-            // the route geometry and the board's as-of time; otherwise these are
-            // null and the marker eases conservatively as before.
-            path: pathFor?.call(a.line),
-            trajectory: a.trajectory,
-            asOf: asOf,
-          ),
-    ], currentT, now: now);
+    syncSamples(
+      [
+        for (final a in arrivals)
+          if (a.gps != null)
+            VehicleSample(
+              key: keyFor(a),
+              position: ll.LatLng(a.gps!.lat, a.gps!.lon),
+              line: a.line,
+              type: a.vehicleType,
+              heading: a.heading,
+              // Timed-trajectory playback kicks in only when the caller supplies
+              // the route geometry and the board's as-of time; otherwise these are
+              // null and the marker eases conservatively as before.
+              path: pathFor?.call(a.line),
+              trajectory: a.trajectory,
+              asOf: asOf,
+            ),
+      ],
+      currentT,
+      now: now,
+    );
   }
 
   /// Generic form of [sync] for any moving-vehicle source (e.g. the map-wide
@@ -283,7 +287,8 @@ class VehicleTrackAnimator {
       existing.missingCount = 0;
       existing.source = s.source;
       // Keep the last known direction if this sample didn't carry one.
-      existing.directionRouteId = s.directionRouteId ?? existing.directionRouteId;
+      existing.directionRouteId =
+          s.directionRouteId ?? existing.directionRouteId;
       _noteFix(existing, s.position, at);
       // Timed-trajectory mode (feature on + a usable plan) supersedes the
       // conservative from/to ease: the marker plays the plan forward by time,
@@ -389,8 +394,11 @@ class VehicleTrackAnimator {
     final plan = s.trajectory;
     if (plan == null || plan.length < 2 || s.asOf == null) return false;
     final realPath = (s.path != null && s.path!.isUsable) ? s.path : null;
-    final path = realPath ??
-        RoutePath.fromLatLon([for (final p in plan) [p.lat, p.lon]]);
+    final path =
+        realPath ??
+        RoutePath.fromLatLon([
+          for (final p in plan) [p.lat, p.lon],
+        ]);
     if (path == null || !path.isUsable) return false;
     final existing = track.timed;
     if (existing == null) {
@@ -570,7 +578,10 @@ class VehicleTrackAnimator {
       // Smoothed bearing so the direction arrow turns continuously through a
       // curve rather than snapping at each ~15 m vertex (zigzag on the symbol
       // layer's offset arrow). Same look-ahead as the timed player.
-      return path.headingAtSmoothed(cur, forward: track.toDist >= track.fromDist);
+      return path.headingAtSmoothed(
+        cur,
+        forward: track.toDist >= track.fromDist,
+      );
     }
     return track.heading;
   }

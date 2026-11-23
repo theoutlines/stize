@@ -71,9 +71,15 @@ class HourlySparkline extends StatelessWidget {
               borderData: FlBorderData(show: false),
               lineTouchData: const LineTouchData(enabled: true),
               titlesData: FlTitlesData(
-                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                leftTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
@@ -81,7 +87,10 @@ class HourlySparkline extends StatelessWidget {
                     reservedSize: 20,
                     getTitlesWidget: (x, meta) => Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text('${x.toInt()}', style: theme.textTheme.labelSmall),
+                      child: Text(
+                        '${x.toInt()}',
+                        style: theme.textTheme.labelSmall,
+                      ),
                     ),
                   ),
                 ),

@@ -13,8 +13,14 @@ class MetricChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = analytics;
-    final headways = a.byHour.map((b) => b.meanHeadwaySecs).whereType<double>().toList();
-    final speeds = a.byHour.map((b) => b.meanSpeedStopsPerMin).whereType<double>().toList();
+    final headways = a.byHour
+        .map((b) => b.meanHeadwaySecs)
+        .whereType<double>()
+        .toList();
+    final speeds = a.byHour
+        .map((b) => b.meanSpeedStopsPerMin)
+        .whereType<double>()
+        .toList();
     final activeHours = a.byHour.where((b) => b.samples > 0).length;
     AnalyticsBucket? peak;
     for (final b in a.byHour) {
@@ -30,7 +36,9 @@ class MetricChips extends StatelessWidget {
       _Chip('Наблюдений', '${a.totalSamples}', Icons.dataset),
       _Chip(
         'Средний интервал',
-        meanHeadway == null ? '—' : '${(meanHeadway / 60).toStringAsFixed(1)} мин',
+        meanHeadway == null
+            ? '—'
+            : '${(meanHeadway / 60).toStringAsFixed(1)} мин',
         Icons.timelapse,
       ),
       _Chip(
@@ -79,7 +87,11 @@ class _ChipCard extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(chip.icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
+              Icon(
+                chip.icon,
+                size: 14,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 6),
               Text(chip.label, style: theme.textTheme.labelSmall),
             ],

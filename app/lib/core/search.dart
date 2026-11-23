@@ -29,10 +29,7 @@ List<NearbyGroup> filterNearbyGroups(List<NearbyGroup> groups, String query) {
 /// The stop/line (and, on desktop, place) results of one global query. Places
 /// are desktop-only in the nearby merge; kept here so both hosts share the type.
 class GlobalSearchResults {
-  const GlobalSearchResults({
-    this.stops = const [],
-    this.lines = const [],
-  });
+  const GlobalSearchResults({this.stops = const [], this.lines = const []});
 
   final List<Stop> stops;
   final List<LineInfo> lines;

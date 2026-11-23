@@ -41,7 +41,15 @@ BelgradeNow belgradeNow(DateTime instant) {
   return BelgradeNow(_iso(local), _iso(yLocal), local.hour * 60 + local.minute);
 }
 
-const _dow = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const _dow = [
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+];
 
 /// Active service ids for a date: weekday base services, then the date's
 /// calendar exceptions (removes first, then adds).
@@ -49,7 +57,8 @@ Set<String> activeServices(String dateISO, Map<String, dynamic> meta) {
   final d = DateTime.parse('${dateISO}T00:00:00Z');
   final dow = _dow[d.weekday % 7];
   final active = <String>{};
-  final services = (meta['services'] as Map?)?.cast<String, dynamic>() ?? const {};
+  final services =
+      (meta['services'] as Map?)?.cast<String, dynamic>() ?? const {};
   services.forEach((id, days) {
     if (((days as Map)[dow] ?? 0) == 1) active.add(id);
   });
@@ -114,12 +123,14 @@ List<PlannedDeparture> upcomingScheduled(
     for (var i = 0; i < etas.length && taken < maxPerLine; i++) {
       if (etas[i] > maxEtaMinutes) break;
       if (i < minTrips || etas[i] <= windowMinutes) {
-        out.add(PlannedDeparture(
-          dep['line'] as String,
-          dep['route_id'] as String,
-          dep['dir'] as String,
-          etas[i],
-        ));
+        out.add(
+          PlannedDeparture(
+            dep['line'] as String,
+            dep['route_id'] as String,
+            dep['dir'] as String,
+            etas[i],
+          ),
+        );
         taken++;
       } else {
         break;

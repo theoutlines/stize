@@ -162,7 +162,8 @@ class MovingObjectImages {
 // read as the same type; the reserved kinds get distinct hues for later.
 
 const String _busHex = '#2278E6'; // transit blue
-const String _trolleyHex = '#EA7000'; // orange (design-system transit-trolleybus)
+const String _trolleyHex =
+    '#EA7000'; // orange (design-system transit-trolleybus)
 const String _tramHex = '#E4312F'; // tram red
 const String _metroHex = '#7A3FB0'; // reserved: metro purple
 const String _trainHex = '#2E7D32'; // reserved: train green
@@ -261,11 +262,16 @@ CircleStyleLayer movingObjectsBadgeLayer() => CircleStyleLayer(
       'interpolate',
       ['linear'],
       ['zoom'],
-      11, 3.5,
-      14, 5.0,
-      kMovingObjectDetailZoom - 0.1, 6.0,
-      kMovingObjectDetailZoom, 12.0,
-      18, 14.0,
+      11,
+      3.5,
+      14,
+      5.0,
+      kMovingObjectDetailZoom - 0.1,
+      6.0,
+      kMovingObjectDetailZoom,
+      12.0,
+      18,
+      14.0,
     ],
     'circle-stroke-width': <Object>[
       'case',
@@ -303,7 +309,9 @@ SymbolStyleLayer movingObjectsArrowLayer() => SymbolStyleLayer(
     'icon-allow-overlap': true,
     'icon-ignore-placement': true,
   },
-  paint: {'icon-opacity': <Object>['get', 'opacity']},
+  paint: {
+    'icon-opacity': <Object>['get', 'opacity'],
+  },
 );
 
 /// The coin's content: the type glyph stacked above the line number, both drawn
@@ -387,7 +395,11 @@ class _ArrowImage extends StatelessWidget {
     width: 24,
     height: 24,
     child: Center(
-      child: SizedBox(width: 18, height: 14, child: CustomPaint(painter: _ArrowPainter())),
+      child: SizedBox(
+        width: 18,
+        height: 14,
+        child: CustomPaint(painter: _ArrowPainter()),
+      ),
     ),
   );
 }

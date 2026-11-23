@@ -56,7 +56,9 @@ extension _MapJams on _HomeMapScreenState {
     if (cached != null) return cached;
     if (_jamShapeCache.containsKey(directionRouteId)) return null;
     try {
-      final shape = await ref.read(linesRepositoryProvider).getShapeByRouteId(directionRouteId);
+      final shape = await ref
+          .read(linesRepositoryProvider)
+          .getShapeByRouteId(directionRouteId);
       final rec = (
         path: RoutePath.fromLatLon(shape.polyline),
         stops: {for (final s in shape.stops) s.stopId: ll.LatLng(s.lat, s.lon)},
@@ -74,7 +76,8 @@ extension _MapJams on _HomeMapScreenState {
   void _updateJamPulse({required bool active}) {
     if (active) {
       _jamPulseTimer ??= Timer.periodic(const Duration(milliseconds: 90), (_) {
-        _jamPulsePhase = (_jamPulsePhase + (2 * math.pi * 0.09 / 1.75)) % (2 * math.pi);
+        _jamPulsePhase =
+            (_jamPulsePhase + (2 * math.pi * 0.09 / 1.75)) % (2 * math.pi);
         _repushJamOpacity();
       });
     } else {
@@ -83,7 +86,8 @@ extension _MapJams on _HomeMapScreenState {
     }
   }
 
-  double get _jamPulseOpacity => 0.5 + 0.5 * (0.5 + 0.5 * math.sin(_jamPulsePhase));
+  double get _jamPulseOpacity =>
+      0.5 + 0.5 * (0.5 + 0.5 * math.sin(_jamPulsePhase));
 
   void _repushJamOpacity() {
     final style = _style;
@@ -91,8 +95,14 @@ extension _MapJams on _HomeMapScreenState {
     // Only the tiny feature collections are re-pushed (a few features carrying an
     // opacity number) — not a geometry rebuild. line-opacity/circle-opacity read
     // the per-feature `opacity` via a data expression.
-    style.updateGeoJsonSource(id: _stopSourceId(_HomeMapScreenState._jamSegmentLayerId), data: _jamSegmentsGeoJson());
-    style.updateGeoJsonSource(id: _stopSourceId(_HomeMapScreenState._jamGlowLayerId), data: _jamGlowGeoJson());
+    style.updateGeoJsonSource(
+      id: _stopSourceId(_HomeMapScreenState._jamSegmentLayerId),
+      data: _jamSegmentsGeoJson(),
+    );
+    style.updateGeoJsonSource(
+      id: _stopSourceId(_HomeMapScreenState._jamGlowLayerId),
+      data: _jamGlowGeoJson(),
+    );
   }
 
   /// (Re)build the amber segment + stop-glow layers imperatively, inserted BELOW
@@ -103,7 +113,10 @@ extension _MapJams on _HomeMapScreenState {
     final hasAnything = _jamSegments.isNotEmpty || _jamGlowStops.isNotEmpty;
     if (!hasAnything) {
       if (_jamLayersAdded) {
-        for (final id in const [_HomeMapScreenState._jamSegmentLayerId, _HomeMapScreenState._jamGlowLayerId]) {
+        for (final id in const [
+          _HomeMapScreenState._jamSegmentLayerId,
+          _HomeMapScreenState._jamGlowLayerId,
+        ]) {
           try {
             await style.removeLayer(id);
           } catch (_) {}
@@ -123,7 +136,12 @@ extension _MapJams on _HomeMapScreenState {
     try {
       if (!_jamLayersAdded) {
         // Glow first (lowest), then the segment on top of it.
-        await style.addSource(GeoJsonSource(id: _stopSourceId(_HomeMapScreenState._jamGlowLayerId), data: _jamGlowGeoJson()));
+        await style.addSource(
+          GeoJsonSource(
+            id: _stopSourceId(_HomeMapScreenState._jamGlowLayerId),
+            data: _jamGlowGeoJson(),
+          ),
+        );
         await style.addLayer(
           CircleStyleLayer(
             id: _HomeMapScreenState._jamGlowLayerId,
@@ -137,7 +155,12 @@ extension _MapJams on _HomeMapScreenState {
           ),
           belowLayerId: below,
         );
-        await style.addSource(GeoJsonSource(id: _stopSourceId(_HomeMapScreenState._jamSegmentLayerId), data: _jamSegmentsGeoJson()));
+        await style.addSource(
+          GeoJsonSource(
+            id: _stopSourceId(_HomeMapScreenState._jamSegmentLayerId),
+            data: _jamSegmentsGeoJson(),
+          ),
+        );
         await style.addLayer(
           LineStyleLayer(
             id: _HomeMapScreenState._jamSegmentLayerId,
@@ -153,8 +176,14 @@ extension _MapJams on _HomeMapScreenState {
         );
         _jamLayersAdded = true;
       } else {
-        await style.updateGeoJsonSource(id: _stopSourceId(_HomeMapScreenState._jamGlowLayerId), data: _jamGlowGeoJson());
-        await style.updateGeoJsonSource(id: _stopSourceId(_HomeMapScreenState._jamSegmentLayerId), data: _jamSegmentsGeoJson());
+        await style.updateGeoJsonSource(
+          id: _stopSourceId(_HomeMapScreenState._jamGlowLayerId),
+          data: _jamGlowGeoJson(),
+        );
+        await style.updateGeoJsonSource(
+          id: _stopSourceId(_HomeMapScreenState._jamSegmentLayerId),
+          data: _jamSegmentsGeoJson(),
+        );
       }
     } catch (_) {
       _jamLayersAdded = false;

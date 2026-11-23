@@ -46,8 +46,7 @@ class NearbyList extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: groups.length + leading,
-      separatorBuilder: (_, _) =>
-          const SizedBox(height: StizeSpace.space1),
+      separatorBuilder: (_, _) => const SizedBox(height: StizeSpace.space1),
       itemBuilder: (context, i) {
         if (i < leading) return header!;
         final g = groups[i - leading];
@@ -115,6 +114,4 @@ class NearbyCard extends StatelessWidget {
       onTap: onTap,
     );
   }
-
 }
-

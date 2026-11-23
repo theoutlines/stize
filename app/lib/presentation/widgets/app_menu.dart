@@ -186,7 +186,10 @@ class AppMenuCard extends ConsumerWidget {
             ...rows,
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-              child: Divider(height: 1, color: theme.colorScheme.outlineVariant),
+              child: Divider(
+                height: 1,
+                color: theme.colorScheme.outlineVariant,
+              ),
             ),
             _MenuRow(
               icon: Icons.chat_bubble_outline,
@@ -241,7 +244,9 @@ class _MenuRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = small ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface;
+    final color = small
+        ? theme.colorScheme.onSurfaceVariant
+        : theme.colorScheme.onSurface;
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
@@ -258,8 +263,11 @@ class _MenuRow extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: (small ? theme.textTheme.bodyMedium : theme.textTheme.bodyLarge)
-                      ?.copyWith(color: color),
+                  style:
+                      (small
+                              ? theme.textTheme.bodyMedium
+                              : theme.textTheme.bodyLarge)
+                          ?.copyWith(color: color),
                 ),
               ),
             ],

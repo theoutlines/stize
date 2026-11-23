@@ -19,7 +19,11 @@ class StagingBadge extends StatelessWidget {
               color: const Color(0xFFE6A817),
               borderRadius: BorderRadius.circular(8),
               boxShadow: const [
-                BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 1)),
+                BoxShadow(
+                  color: Colors.black38,
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                ),
               ],
             ),
             child: const Text(

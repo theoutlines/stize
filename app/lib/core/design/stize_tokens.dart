@@ -54,80 +54,118 @@ class StizeColors extends ThemeExtension<StizeColors> {
 
   /// `bg`: Page ground behind the map chrome, lists and settings.
   final Color bg;
+
   /// `card`: Cards and rows on bg: arrival rows, favourite stops, idea cards.
   final Color card;
+
   /// `sheet`: The bottom sheet over the map (Nearby, stop board, line) and the desktop rail.
   final Color sheet;
+
   /// `raised`: Menus and popovers above a card; in light it is separated by shadow-float, not by tone.
   final Color raised;
+
   /// `frame`: Tile behind an icon, empty-state picture frame.
   final Color frame;
+
   /// `ink`: Titles, values, the big ETA, primary icons. Was `white` in The Outlines: same role, theme-aware.
   final Color ink;
+
   /// `ink-85`: Body copy when ink is too loud: long explanations, privacy text.
   final Color ink85;
+
   /// `ink-80`: Label of the tertiary button (on fill-06).
   final Color ink80;
+
   /// `ink-75`: Control labels, unselected segments, chip labels.
   final Color ink75;
+
   /// `ink-60`: Secondary text: destination under a line, stop distance, row labels, chevrons.
   final Color ink60;
+
   /// `ink-50`: Floor: notes, Updated N s ago, footers, placeholders. Dark 5.3:1 on bg; light 4.6:1 on bg (alpha raised to 0.6 so it holds).
   final Color ink50;
+
   /// `on-ink`: Text on an ink-filled control: the primary (white/black) button, a picked chip.
   final Color onInk;
+
   /// `fill-05`: Rest fill of every 44px control: search field, segmented track.
   final Color fill05;
+
   /// `fill-06`: Tertiary button.
   final Color fill06;
+
   /// `fill-07`: Chips (line filter, vehicle type).
   final Color fill07;
+
   /// `fill-08`: Icon buttons (40px), map controls on the sheet.
   final Color fill08;
+
   /// `fill-10`: Pressed or editing state of a field.
   final Color fill10;
+
   /// `fill-14`: Sliding pill of a segmented control.
   final Color fill14;
+
   /// `fill-16`: Strong fill: picked tile, slider fill.
   final Color fill16;
+
   /// `fill-24`: Progress, scrollbars.
   final Color fill24;
+
   /// `fill-32`: Sheet grabber, ticks.
   final Color fill32;
+
   /// `line`: Hairlines between rows.
   final Color line;
+
   /// `scrim`: Behind a modal; never behind the map sheet (the map stays usable).
   final Color scrim;
+
   /// `accent`: The one accent (owner's pick 2026-11-22: A, signal green), meaning “look here”: the brand mark, the landing CTA, a live indicator on neutral ground, a likely mistake in a field. Never on transit colour (arrival cards), body text, focus rings or large areas. Dark 9.4:1 on bg; light 4.6:1 on bg.
   final Color accent;
+
   /// `on-accent`: Text and icons on accent (button label 16px medium or larger).
   final Color onAccent;
+
   /// `accent-14`: Ground of an accent note or a live badge.
   final Color accent14;
+
   /// `transit-bus`: Data layer, not UI accent. Bus: line badge, stop pin, vehicle coin, route line. Aligned 2026-11-23 with tram and trolleybus (same chroma, closer lightness; real Belgrade colours kept). Label on it: on-transit (white, 4.3:1).
   final Color transitBus;
+
   /// `transit-trolleybus`: Data layer. Trolleybus. Aligned 2026-11-23: clean orange without the yellow cast; the white line number is 3.1:1 (large text). Change map_support.dart and moving_object_layer.dart to match.
   final Color transitTrolleybus;
+
   /// `transit-tram`: Data layer. Tram (Belgrade livery red), aligned 2026-11-23 (no brick cast). Label on it: on-transit (white, 4.4:1).
   final Color transitTram;
+
   /// `transit-tram-rail`: Tram rails on the map.
   final Color transitTramRail;
+
   /// `transit-mixed`: Data layer. Stop served by bus + trolleybus (tram always wins).
   final Color transitMixed;
+
   /// `transit-stuck`: Data layer. A vehicle that looks stuck; deep crimson, distinct from tram red by lightness.
   final Color transitStuck;
+
   /// `on-transit`: Line number on bus, tram, mixed and stuck badges.
   final Color onTransit;
+
   /// `on-transit-trolleybus`: Line number on the trolleybus badge: white like every other badge (owner, 2026-11-22). 3.1:1, so the number is semibold (line-number style) in lists and medium 16 in chips; never smaller text on orange.
   final Color onTransitTrolleybus;
+
   /// `favorite`: Favourite star on the map and in rows.
   final Color favorite;
+
   /// `eta-earlier`: ETA delta: arrives earlier than before. Same value as accent.
   final Color etaEarlier;
+
   /// `eta-later`: ETA delta: arrives later. Neutral ink with an up arrow, not a colour: later is information, not an error (open question for the owner).
   final Color etaLater;
+
   /// `scheduled`: Scheduled (not live) arrival text; paired with the word Scheduled, never colour alone.
   final Color scheduled;
+
   /// `place`: Searched place pin.
   final Color place;
 
@@ -221,46 +259,46 @@ class StizeColors extends ThemeExtension<StizeColors> {
 
   /// Token name -> colour, for tests and debugging.
   Map<String, Color> toMap() => {
-        'bg': bg,
-        'card': card,
-        'sheet': sheet,
-        'raised': raised,
-        'frame': frame,
-        'ink': ink,
-        'ink-85': ink85,
-        'ink-80': ink80,
-        'ink-75': ink75,
-        'ink-60': ink60,
-        'ink-50': ink50,
-        'on-ink': onInk,
-        'fill-05': fill05,
-        'fill-06': fill06,
-        'fill-07': fill07,
-        'fill-08': fill08,
-        'fill-10': fill10,
-        'fill-14': fill14,
-        'fill-16': fill16,
-        'fill-24': fill24,
-        'fill-32': fill32,
-        'line': line,
-        'scrim': scrim,
-        'accent': accent,
-        'on-accent': onAccent,
-        'accent-14': accent14,
-        'transit-bus': transitBus,
-        'transit-trolleybus': transitTrolleybus,
-        'transit-tram': transitTram,
-        'transit-tram-rail': transitTramRail,
-        'transit-mixed': transitMixed,
-        'transit-stuck': transitStuck,
-        'on-transit': onTransit,
-        'on-transit-trolleybus': onTransitTrolleybus,
-        'favorite': favorite,
-        'eta-earlier': etaEarlier,
-        'eta-later': etaLater,
-        'scheduled': scheduled,
-        'place': place,
-      };
+    'bg': bg,
+    'card': card,
+    'sheet': sheet,
+    'raised': raised,
+    'frame': frame,
+    'ink': ink,
+    'ink-85': ink85,
+    'ink-80': ink80,
+    'ink-75': ink75,
+    'ink-60': ink60,
+    'ink-50': ink50,
+    'on-ink': onInk,
+    'fill-05': fill05,
+    'fill-06': fill06,
+    'fill-07': fill07,
+    'fill-08': fill08,
+    'fill-10': fill10,
+    'fill-14': fill14,
+    'fill-16': fill16,
+    'fill-24': fill24,
+    'fill-32': fill32,
+    'line': line,
+    'scrim': scrim,
+    'accent': accent,
+    'on-accent': onAccent,
+    'accent-14': accent14,
+    'transit-bus': transitBus,
+    'transit-trolleybus': transitTrolleybus,
+    'transit-tram': transitTram,
+    'transit-tram-rail': transitTramRail,
+    'transit-mixed': transitMixed,
+    'transit-stuck': transitStuck,
+    'on-transit': onTransit,
+    'on-transit-trolleybus': onTransitTrolleybus,
+    'favorite': favorite,
+    'eta-earlier': etaEarlier,
+    'eta-later': etaLater,
+    'scheduled': scheduled,
+    'place': place,
+  };
 
   @override
   StizeColors copyWith({
@@ -303,48 +341,47 @@ class StizeColors extends ThemeExtension<StizeColors> {
     Color? etaLater,
     Color? scheduled,
     Color? place,
-  }) =>
-      StizeColors(
-        bg: bg ?? this.bg,
-        card: card ?? this.card,
-        sheet: sheet ?? this.sheet,
-        raised: raised ?? this.raised,
-        frame: frame ?? this.frame,
-        ink: ink ?? this.ink,
-        ink85: ink85 ?? this.ink85,
-        ink80: ink80 ?? this.ink80,
-        ink75: ink75 ?? this.ink75,
-        ink60: ink60 ?? this.ink60,
-        ink50: ink50 ?? this.ink50,
-        onInk: onInk ?? this.onInk,
-        fill05: fill05 ?? this.fill05,
-        fill06: fill06 ?? this.fill06,
-        fill07: fill07 ?? this.fill07,
-        fill08: fill08 ?? this.fill08,
-        fill10: fill10 ?? this.fill10,
-        fill14: fill14 ?? this.fill14,
-        fill16: fill16 ?? this.fill16,
-        fill24: fill24 ?? this.fill24,
-        fill32: fill32 ?? this.fill32,
-        line: line ?? this.line,
-        scrim: scrim ?? this.scrim,
-        accent: accent ?? this.accent,
-        onAccent: onAccent ?? this.onAccent,
-        accent14: accent14 ?? this.accent14,
-        transitBus: transitBus ?? this.transitBus,
-        transitTrolleybus: transitTrolleybus ?? this.transitTrolleybus,
-        transitTram: transitTram ?? this.transitTram,
-        transitTramRail: transitTramRail ?? this.transitTramRail,
-        transitMixed: transitMixed ?? this.transitMixed,
-        transitStuck: transitStuck ?? this.transitStuck,
-        onTransit: onTransit ?? this.onTransit,
-        onTransitTrolleybus: onTransitTrolleybus ?? this.onTransitTrolleybus,
-        favorite: favorite ?? this.favorite,
-        etaEarlier: etaEarlier ?? this.etaEarlier,
-        etaLater: etaLater ?? this.etaLater,
-        scheduled: scheduled ?? this.scheduled,
-        place: place ?? this.place,
-      );
+  }) => StizeColors(
+    bg: bg ?? this.bg,
+    card: card ?? this.card,
+    sheet: sheet ?? this.sheet,
+    raised: raised ?? this.raised,
+    frame: frame ?? this.frame,
+    ink: ink ?? this.ink,
+    ink85: ink85 ?? this.ink85,
+    ink80: ink80 ?? this.ink80,
+    ink75: ink75 ?? this.ink75,
+    ink60: ink60 ?? this.ink60,
+    ink50: ink50 ?? this.ink50,
+    onInk: onInk ?? this.onInk,
+    fill05: fill05 ?? this.fill05,
+    fill06: fill06 ?? this.fill06,
+    fill07: fill07 ?? this.fill07,
+    fill08: fill08 ?? this.fill08,
+    fill10: fill10 ?? this.fill10,
+    fill14: fill14 ?? this.fill14,
+    fill16: fill16 ?? this.fill16,
+    fill24: fill24 ?? this.fill24,
+    fill32: fill32 ?? this.fill32,
+    line: line ?? this.line,
+    scrim: scrim ?? this.scrim,
+    accent: accent ?? this.accent,
+    onAccent: onAccent ?? this.onAccent,
+    accent14: accent14 ?? this.accent14,
+    transitBus: transitBus ?? this.transitBus,
+    transitTrolleybus: transitTrolleybus ?? this.transitTrolleybus,
+    transitTram: transitTram ?? this.transitTram,
+    transitTramRail: transitTramRail ?? this.transitTramRail,
+    transitMixed: transitMixed ?? this.transitMixed,
+    transitStuck: transitStuck ?? this.transitStuck,
+    onTransit: onTransit ?? this.onTransit,
+    onTransitTrolleybus: onTransitTrolleybus ?? this.onTransitTrolleybus,
+    favorite: favorite ?? this.favorite,
+    etaEarlier: etaEarlier ?? this.etaEarlier,
+    etaLater: etaLater ?? this.etaLater,
+    scheduled: scheduled ?? this.scheduled,
+    place: place ?? this.place,
+  );
 
   @override
   StizeColors lerp(ThemeExtension<StizeColors>? other, double t) {
@@ -377,13 +414,21 @@ class StizeColors extends ThemeExtension<StizeColors> {
       onAccent: Color.lerp(onAccent, other.onAccent, t)!,
       accent14: Color.lerp(accent14, other.accent14, t)!,
       transitBus: Color.lerp(transitBus, other.transitBus, t)!,
-      transitTrolleybus: Color.lerp(transitTrolleybus, other.transitTrolleybus, t)!,
+      transitTrolleybus: Color.lerp(
+        transitTrolleybus,
+        other.transitTrolleybus,
+        t,
+      )!,
       transitTram: Color.lerp(transitTram, other.transitTram, t)!,
       transitTramRail: Color.lerp(transitTramRail, other.transitTramRail, t)!,
       transitMixed: Color.lerp(transitMixed, other.transitMixed, t)!,
       transitStuck: Color.lerp(transitStuck, other.transitStuck, t)!,
       onTransit: Color.lerp(onTransit, other.onTransit, t)!,
-      onTransitTrolleybus: Color.lerp(onTransitTrolleybus, other.onTransitTrolleybus, t)!,
+      onTransitTrolleybus: Color.lerp(
+        onTransitTrolleybus,
+        other.onTransitTrolleybus,
+        t,
+      )!,
       favorite: Color.lerp(favorite, other.favorite, t)!,
       etaEarlier: Color.lerp(etaEarlier, other.etaEarlier, t)!,
       etaLater: Color.lerp(etaLater, other.etaLater, t)!,
@@ -397,20 +442,28 @@ class StizeColors extends ThemeExtension<StizeColors> {
 abstract final class StizeSpace {
   /// `space-1`: Gap inside a label pair (title + subtitle).
   static const double space1 = 4.0;
+
   /// `space-2`: Gap between a label and its control; between chips.
   static const double space2 = 8.0;
+
   /// `space-3`: Gap between rows inside a card.
   static const double space3 = 12.0;
+
   /// `space-4`: Side gutter on mobile; card padding; gap between blocks on a screen.
   static const double space4 = 16.0;
+
   /// `space-5`: Text inset inside the hero and the verdict card.
   static const double space5 = 20.0;
+
   /// `space-6`: Gap between questions in the wizard; between landing sub-blocks.
   static const double space6 = 24.0;
+
   /// `space-8`: Space above the footer; between landing sections on mobile.
   static const double space8 = 32.0;
+
   /// `space-10`: Gap before the next question on a screen that holds two (a count, then which plans).
   static const double space10 = 40.0;
+
   /// `space-12`: Bottom padding of wizard pages on desktop.
   static const double space12 = 48.0;
 }
@@ -419,18 +472,25 @@ abstract final class StizeSpace {
 abstract final class StizeRadius {
   /// `radius-xs`: The pill inside a segmented track.
   static const double radiusXs = 8.0;
+
   /// `radius-sm`: Checks, the editable number box.
   static const double radiusSm = 8.0;
+
   /// `radius-control`: Every 44px control: field, slider, segmented track, dropdown; landing tabs.
   static const double radiusControl = 12.0;
+
   /// `radius-md`: Icon buttons, small buttons (40px), weeks cards.
   static const double radiusMd = 12.0;
+
   /// `radius-button`: All three button levels (52px).
   static const double radiusButton = 16.0;
+
   /// `radius-tile`: Line badge tile (40px), favourite cards.
   static const double radiusTile = 16.0;
+
   /// `radius-card`: Cards and chips (a 36px chip at 20 reads as a pill).
   static const double radiusCard = 20.0;
+
   /// `radius-hero`: Landing hero, the top of the bottom sheet.
   static const double radiusHero = 24.0;
 }
@@ -439,16 +499,22 @@ abstract final class StizeRadius {
 abstract final class StizeSize {
   /// `control-h`: Height of every text field, slider, segmented control and dropdown.
   static const double controlH = 44.0;
+
   /// `button-h`: All three button levels, Back.
   static const double buttonH = 52.0;
+
   /// `button-small-h`: Small buttons in cards (“Get the plugin”), the landing header button, icon buttons.
   static const double buttonSmallH = 40.0;
+
   /// `chip-h`: Quick-fill chips; landing tabs.
   static const double chipH = 36.0;
+
   /// `badge-h`: Line badge height in rows; comfort badges.
   static const double badgeH = 32.0;
+
   /// `chevron-trailing`: Chevron at the end of a row, card, field or accordion.
   static const double chevronTrailing = 16.0;
+
   /// `chevron-inline`: Chevron right after text (idea range, Start date).
   static const double chevronInline = 12.0;
 }
@@ -457,29 +523,74 @@ abstract final class StizeSize {
 abstract final class StizeShadow {
   /// `shadow-sheet`: The mobile sheet and the peek bar.
   static const List<BoxShadow> shadowSheet = [
-    BoxShadow(offset: Offset(0.0, -12.0), blurRadius: 32.0, spreadRadius: 0.0, color: Color(0x73000000)),
+    BoxShadow(
+      offset: Offset(0.0, -12.0),
+      blurRadius: 32.0,
+      spreadRadius: 0.0,
+      color: Color(0x73000000),
+    ),
   ];
+
   /// `shadow-modal`: The desktop modal.
   static const List<BoxShadow> shadowModal = [
-    BoxShadow(offset: Offset(0.0, 32.0), blurRadius: 80.0, spreadRadius: 0.0, color: Color(0x99000000)),
+    BoxShadow(
+      offset: Offset(0.0, 32.0),
+      blurRadius: 80.0,
+      spreadRadius: 0.0,
+      color: Color(0x99000000),
+    ),
   ];
+
   /// `shadow-float`: The floating idea card on desktop.
   static const List<BoxShadow> shadowFloat = [
-    BoxShadow(offset: Offset(0.0, 24.0), blurRadius: 64.0, spreadRadius: 0.0, color: Color(0x8C000000)),
+    BoxShadow(
+      offset: Offset(0.0, 24.0),
+      blurRadius: 64.0,
+      spreadRadius: 0.0,
+      color: Color(0x8C000000),
+    ),
   ];
+
   /// `shadow-map-control`: Floating map buttons (locate me, layers).
   static const List<BoxShadow> shadowMapControl = [
-    BoxShadow(offset: Offset(0.0, 12.0), blurRadius: 32.0, spreadRadius: 0.0, color: Color(0x66000000)),
+    BoxShadow(
+      offset: Offset(0.0, 12.0),
+      blurRadius: 32.0,
+      spreadRadius: 0.0,
+      color: Color(0x66000000),
+    ),
   ];
+
   /// `shadow-handle`: Slider handle over busy grounds.
   static const List<BoxShadow> shadowHandle = [
-    BoxShadow(offset: Offset(0.0, 2.0), blurRadius: 8.0, spreadRadius: 0.0, color: Color(0x99000000)),
-    BoxShadow(offset: Offset(0.0, 0.0), blurRadius: 2.0, spreadRadius: 0.0, color: Color(0x99000000)),
+    BoxShadow(
+      offset: Offset(0.0, 2.0),
+      blurRadius: 8.0,
+      spreadRadius: 0.0,
+      color: Color(0x99000000),
+    ),
+    BoxShadow(
+      offset: Offset(0.0, 0.0),
+      blurRadius: 2.0,
+      spreadRadius: 0.0,
+      color: Color(0x99000000),
+    ),
   ];
+
   /// `shadow-light-card`: Light theme only: cards and raised surfaces that would otherwise sit white on white.
   static const List<BoxShadow> shadowLightCard = [
-    BoxShadow(offset: Offset(0.0, 1.0), blurRadius: 2.0, spreadRadius: 0.0, color: Color(0x0F000000)),
-    BoxShadow(offset: Offset(0.0, 4.0), blurRadius: 16.0, spreadRadius: 0.0, color: Color(0x0F000000)),
+    BoxShadow(
+      offset: Offset(0.0, 1.0),
+      blurRadius: 2.0,
+      spreadRadius: 0.0,
+      color: Color(0x0F000000),
+    ),
+    BoxShadow(
+      offset: Offset(0.0, 4.0),
+      blurRadius: 16.0,
+      spreadRadius: 0.0,
+      color: Color(0x0F000000),
+    ),
   ];
 }
 
@@ -499,6 +610,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w500,
     letterSpacing: -4.16,
   );
+
   /// `eta-hero` 44/44 w500: The big next-arrival ETA on a stop board (“3 min”). Tabular figures.
   static const TextStyle etaHero = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -507,6 +619,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w500,
     letterSpacing: -1.98,
   );
+
   /// `big-number` 40/40 w500: ETA in an arrival row, counts on cards. Tabular figures.
   static const TextStyle bigNumber = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -515,6 +628,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w500,
     letterSpacing: -1.6,
   );
+
   /// `hero-title` 32/36 w500: Landing section titles; empty-state titles.
   static const TextStyle heroTitle = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -523,6 +637,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w500,
     letterSpacing: -1.12,
   );
+
   /// `h1` 28/32 w500: Screen titles: stop name on the stop board, Settings.
   static const TextStyle h1 = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -531,6 +646,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w500,
     letterSpacing: -0.84,
   );
+
   /// `date` 24/28 w500: Departure time in a schedule row (24h).
   static const TextStyle date = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -539,6 +655,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w500,
     letterSpacing: -0.48,
   );
+
   /// `section` 20/24 w500: Section titles in sheets (“Nearby”), line number + destination headers.
   static const TextStyle section = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -547,6 +664,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w500,
     letterSpacing: -0.4,
   );
+
   /// `body` 16/24 w400: Running text, answers, field input (never below 16 in a field or iOS zooms).
   static const TextStyle body = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -555,6 +673,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w400,
     letterSpacing: 0.0,
   );
+
   /// `label` 16/24 w500: Row titles: destination, stop name in lists.
   static const TextStyle label = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -563,6 +682,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w500,
     letterSpacing: 0.0,
   );
+
   /// `subtitle` 16/24 w400: Lines under titles in ink-60: stop + distance.
   static const TextStyle subtitle = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -571,6 +691,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w400,
     letterSpacing: 0.0,
   );
+
   /// `control` 12/16 w500: Chips, segmented options, badges.
   static const TextStyle control = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -579,6 +700,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w500,
     letterSpacing: 0.0,
   );
+
   /// `line-number` 16/24 w600: Line number inside a LineBadge in vertical lists (arrival rows, Nearby, My stops). The one semibold in the system (owner, 2026-11-22). Chips and map coins stay medium.
   static const TextStyle lineNumber = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -587,6 +709,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w600,
     letterSpacing: 0.0,
   );
+
   /// `caption` 12/16 w400: Legends, Updated N s ago.
   static const TextStyle caption = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -595,6 +718,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w400,
     letterSpacing: 0.0,
   );
+
   /// `note` 12/16 w400: Sources and footers, in ink-50.
   static const TextStyle note = TextStyle(
     fontFamily: StizeFonts.sans,
@@ -603,6 +727,7 @@ abstract final class StizeType {
     fontWeight: FontWeight.w400,
     letterSpacing: 0.0,
   );
+
   /// `mono` 12/16 w400: Only chart axis ticks (analytics) and slider ends. Never ETAs, line numbers or labels.
   static const TextStyle mono = TextStyle(
     fontFamily: StizeFonts.mono,

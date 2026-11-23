@@ -29,18 +29,27 @@ class EmptyState extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: theme.colorScheme.outline),
             const SizedBox(height: 16),
-            Text(title, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
+            Text(
+              title,
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
             if (subtitle != null) ...[
               const SizedBox(height: 8),
               Text(
                 subtitle!,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
             if (onRetry != null) ...[
               const SizedBox(height: 20),
-              FilledButton.tonal(onPressed: onRetry, child: Text(retryLabel ?? '')),
+              FilledButton.tonal(
+                onPressed: onRetry,
+                child: Text(retryLabel ?? ''),
+              ),
             ],
           ],
         ),

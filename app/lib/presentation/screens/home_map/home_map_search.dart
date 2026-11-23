@@ -60,11 +60,11 @@ extension _MapSearch on _HomeMapScreenState {
   }
 
   void _openStop(Stop stop, {String? source}) => _openStopById(
-        stop.stopId,
-        stopName: stop.name,
-        at: ll.LatLng(stop.lat, stop.lon),
-        source: source,
-      );
+    stop.stopId,
+    stopName: stop.name,
+    at: ll.LatLng(stop.lat, stop.lon),
+    source: source,
+  );
 
   /// Tap a "Nearby" row → follow that line+direction's soonest **live** vehicle
   /// (#5, owner variant 3). A NearbyGroup carries no gps/trajectory, so we resolve
@@ -80,14 +80,22 @@ extension _MapSearch on _HomeMapScreenState {
     // A schedule-only row opens the stop without a fetch (its own status says so).
     final hasLiveEta = group.arrivals.any((e) => !e.isScheduled);
     if (!hasLiveEta) {
-      _openStopById(group.stopId, stopName: group.stopName, source: Ev.srcNearby);
+      _openStopById(
+        group.stopId,
+        stopName: group.stopName,
+        source: Ev.srcNearby,
+      );
       return;
     }
     ArrivalsBoard board;
     try {
       board = await ref.read(arrivalsProvider(group.stopId).future);
     } catch (_) {
-      _openStopById(group.stopId, stopName: group.stopName, source: Ev.srcNearby);
+      _openStopById(
+        group.stopId,
+        stopName: group.stopName,
+        source: Ev.srcNearby,
+      );
       return;
     }
     if (!mounted) return;
@@ -96,10 +104,15 @@ extension _MapSearch on _HomeMapScreenState {
     // scheduled/absent vehicle.
     final match = nearbyFollowTarget(group, board.arrivals);
     if (match == null) {
-      _openStopById(group.stopId, stopName: group.stopName, source: Ev.srcNearby);
+      _openStopById(
+        group.stopId,
+        stopName: group.stopName,
+        source: Ev.srcNearby,
+      );
       return;
     }
-    if (_onDemand) _enterStopContext(group.stopId); // keep the vehicle refreshed
+    if (_onDemand)
+      _enterStopContext(group.stopId); // keep the vehicle refreshed
     _focusVehicleFromArrival(match, board.updatedAt, source: Ev.srcNearby);
     _returnToStopId = null; // came from Nearby → close returns to the viewport
   }
@@ -235,7 +248,6 @@ extension _MapSearch on _HomeMapScreenState {
     }
   }
 
-
   /// Ease the camera back to where it sat before the stop sheet panned it up —
   /// symmetric to the open (same glide), and resetting the sheet's bottom padding
   /// so it doesn't land offset.
@@ -334,7 +346,10 @@ extension _MapSearch on _HomeMapScreenState {
     final zoom = math.max(controller.getCamera().zoom, _individualZoom);
     // The geometry padding ([_mapInsets]) centres the stop in the visible area —
     // right of the panel on desktop, above the sheet on mobile.
-    _camEase(Geographic(lon: pos.longitude, lat: pos.latitude), zoom: zoom);
+    _camEase(
+      Geographic(lon: pos.longitude, lat: pos.latitude),
+      zoom: zoom,
+    );
   }
 
   Future<ll.LatLng?> _resolveStopLatLng(String stopId) async {

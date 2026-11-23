@@ -4,8 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// same report is not sent twice within [window]: the sheet shows "Already
 /// sent today" instead. Reports from different devices still all arrive.
 class StopReportDedup {
-  StopReportDedup({this.window = const Duration(hours: 24), DateTime Function()? now})
-      : _now = now ?? DateTime.now;
+  StopReportDedup({
+    this.window = const Duration(hours: 24),
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   final Duration window;
   final DateTime Function() _now;

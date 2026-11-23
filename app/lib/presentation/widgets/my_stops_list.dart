@@ -27,7 +27,8 @@ class MyStopsList extends ConsumerWidget {
         const <String, String>{};
     return favorites.when(
       loading: () => const Center(child: CircularProgressIndicator.adaptive()),
-      error: (err, st) => EmptyState(icon: Icons.error_outline, title: err.toString()),
+      error: (err, st) =>
+          EmptyState(icon: Icons.error_outline, title: err.toString()),
       data: (stops) {
         if (stops.isEmpty) {
           return ListView(

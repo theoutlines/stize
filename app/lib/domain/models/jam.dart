@@ -21,12 +21,15 @@ class JamVehicle {
   final bool isSubstitute;
 
   factory JamVehicle.fromJson(Map<String, dynamic> j) => JamVehicle(
-        garageNo: j['garage_no'] as String,
-        position: ll.LatLng((j['lat'] as num).toDouble(), (j['lon'] as num).toDouble()),
-        stopsRemaining: (j['stops_remaining'] as num?)?.toInt(),
-        frozenSecs: (j['frozen_secs'] as num).toInt(),
-        isSubstitute: j['is_substitute'] == true,
-      );
+    garageNo: j['garage_no'] as String,
+    position: ll.LatLng(
+      (j['lat'] as num).toDouble(),
+      (j['lon'] as num).toDouble(),
+    ),
+    stopsRemaining: (j['stops_remaining'] as num?)?.toInt(),
+    frozenSecs: (j['frozen_secs'] as num).toInt(),
+    isSubstitute: j['is_substitute'] == true,
+  );
 }
 
 class Jam {
@@ -66,7 +69,10 @@ class Jam {
     ll.LatLng? coord(Object? o) {
       final m = o as Map<String, dynamic>?;
       if (m == null) return null;
-      return ll.LatLng((m['lat'] as num).toDouble(), (m['lon'] as num).toDouble());
+      return ll.LatLng(
+        (m['lat'] as num).toDouble(),
+        (m['lon'] as num).toDouble(),
+      );
     }
 
     return Jam(
@@ -79,8 +85,9 @@ class Jam {
       hasSubstitute: j['has_substitute'] == true,
       segmentRear: coord(seg?['rear']),
       segmentFront: coord(seg?['front']),
-      affectedStopIds:
-          ((j['affected_stop_ids'] as List<dynamic>?) ?? const []).map((e) => e.toString()).toSet(),
+      affectedStopIds: ((j['affected_stop_ids'] as List<dynamic>?) ?? const [])
+          .map((e) => e.toString())
+          .toSet(),
       simulated: j['simulated'] == true,
     );
   }
@@ -102,12 +109,13 @@ class Substitution {
   final bool simulated;
 
   factory Substitution.fromJson(Map<String, dynamic> j) => Substitution(
-        line: j['line'] as String,
-        directionRouteId: j['direction_route_id'] as String?,
-        garageNos:
-            ((j['garage_nos'] as List<dynamic>?) ?? const []).map((e) => e.toString()).toList(),
-        simulated: j['simulated'] == true,
-      );
+    line: j['line'] as String,
+    directionRouteId: j['direction_route_id'] as String?,
+    garageNos: ((j['garage_nos'] as List<dynamic>?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    simulated: j['simulated'] == true,
+  );
 }
 
 class JamsBoard {
@@ -121,15 +129,20 @@ class JamsBoard {
   final List<Jam> jams;
   final List<Substitution> substitutions;
 
-  static const empty = JamsBoard(feedHealthy: true, jams: [], substitutions: []);
+  static const empty = JamsBoard(
+    feedHealthy: true,
+    jams: [],
+    substitutions: [],
+  );
 
   /// Active jams shown to the user: only when the feed is healthy (starvation =
   /// nothing). Drives the jam-mode toggle's visibility and count.
   List<Jam> get activeJams => feedHealthy ? jams : const [];
 
   /// Jams affecting a given line number (any direction).
-  List<Jam> jamsForLine(String line) =>
-      activeJams.where((j) => j.line.toLowerCase() == line.toLowerCase()).toList();
+  List<Jam> jamsForLine(String line) => activeJams
+      .where((j) => j.line.toLowerCase() == line.toLowerCase())
+      .toList();
 
   /// The jam affecting a given stop (within its stalled span or downstream), if
   /// any — drives the stop-board delay banner and the stop glow.
@@ -143,16 +156,16 @@ class JamsBoard {
 
   /// Every stop id touched by an active jam (for the map glow).
   Set<String> get allAffectedStopIds => {
-        for (final j in activeJams) ...j.affectedStopIds,
-      };
+    for (final j in activeJams) ...j.affectedStopIds,
+  };
 
   factory JamsBoard.fromJson(Map<String, dynamic> j) => JamsBoard(
-        feedHealthy: j['feed_healthy'] != false,
-        jams: ((j['jams'] as List<dynamic>?) ?? const [])
-            .map((e) => Jam.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        substitutions: ((j['substitutions'] as List<dynamic>?) ?? const [])
-            .map((e) => Substitution.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    feedHealthy: j['feed_healthy'] != false,
+    jams: ((j['jams'] as List<dynamic>?) ?? const [])
+        .map((e) => Jam.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    substitutions: ((j['substitutions'] as List<dynamic>?) ?? const [])
+        .map((e) => Substitution.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }

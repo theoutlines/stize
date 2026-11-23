@@ -26,7 +26,9 @@ class NearbyArrivalsRepositoryImpl implements NearbyArrivalsRepository {
         .toList();
     return NearbyResult(
       groups: groups,
-      serviceStatus: ServiceStatus.fromApi(json['service_status'] as String? ?? 'ok'),
+      serviceStatus: ServiceStatus.fromApi(
+        json['service_status'] as String? ?? 'ok',
+      ),
     );
   }
 }

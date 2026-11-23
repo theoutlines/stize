@@ -37,13 +37,17 @@ class LinesRepositoryImpl implements LinesRepository {
 
   @override
   Future<RouteShape> getShapeByLineNumber(String line) async {
-    final json = await _client.getJson('/api/v1/lines/by-number/${Uri.encodeComponent(line)}/shape');
+    final json = await _client.getJson(
+      '/api/v1/lines/by-number/${Uri.encodeComponent(line)}/shape',
+    );
     return RouteShape.fromJson(json);
   }
 
   @override
   Future<RouteShape> getShapeByRouteId(String routeId) async {
-    final json = await _client.getJson('/api/v1/lines/${Uri.encodeComponent(routeId)}/shape');
+    final json = await _client.getJson(
+      '/api/v1/lines/${Uri.encodeComponent(routeId)}/shape',
+    );
     return RouteShape.fromJson(json);
   }
 }

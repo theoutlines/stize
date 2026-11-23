@@ -20,6 +20,7 @@ class ContextPanel extends StatelessWidget {
     required this.child,
     this.navRow,
     this.borderRadius,
+    this.hug = false,
   });
 
   /// Resolved rubber-band width (see `panelWidthFor`).
@@ -41,6 +42,11 @@ class ContextPanel extends StatelessWidget {
   /// The active view's content.
   final Widget child;
 
+  /// Desktop: size to the content (a short empty state is a short card, a long
+  /// list still grows to the full height and scrolls) instead of always
+  /// stretching to the bottom of the screen.
+  final bool hug;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -56,10 +62,11 @@ class ContextPanel extends StatelessWidget {
         clipBehavior: borderRadius != null ? Clip.antiAlias : Clip.none,
         child: SizedBox(
           width: width,
-          height: double.infinity,
+          height: hug ? null : double.infinity,
           child: SafeArea(
             right: false,
             child: Column(
+              mainAxisSize: hug ? MainAxisSize.min : MainAxisSize.max,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (searchField != null)
@@ -73,7 +80,10 @@ class ContextPanel extends StatelessWidget {
                     child: navRow!,
                   ),
                 if (hasHeader) const Divider(height: 1),
-                Expanded(child: child),
+                Flexible(
+                  fit: hug ? FlexFit.loose : FlexFit.tight,
+                  child: child,
+                ),
               ],
             ),
           ),
@@ -228,8 +238,11 @@ class BackToVehiclePill extends StatelessWidget {
                 if (arrowTurns != null) ...[
                   Transform.rotate(
                     angle: arrowTurns! * 2 * 3.1415926,
-                    child: Icon(Icons.navigation,
-                        size: 18, color: theme.colorScheme.onInverseSurface),
+                    child: Icon(
+                      Icons.navigation,
+                      size: 18,
+                      color: theme.colorScheme.onInverseSurface,
+                    ),
                   ),
                   const SizedBox(width: 8),
                 ],

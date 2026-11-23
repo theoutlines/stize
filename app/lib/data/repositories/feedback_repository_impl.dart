@@ -44,7 +44,8 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
       '/api/v1/stops/${Uri.encodeComponent(stopId)}/report',
       body: {
         'category': category,
-        if (comment != null && comment.trim().isNotEmpty) 'comment': comment.trim(),
+        if (comment != null && comment.trim().isNotEmpty)
+          'comment': comment.trim(),
         'app_version': appVersion,
         'platform': platform,
         'locale': locale,

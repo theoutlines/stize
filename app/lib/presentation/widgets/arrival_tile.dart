@@ -65,7 +65,6 @@ class ArrivalTile extends StatelessWidget {
   /// into this card (one card per direction), shown small under the big ETA.
   final List<int> laterEtaMinutes;
 
-
   @override
   Widget build(BuildContext context) {
     return _card(context, StizeColors.of(context));
@@ -83,13 +82,14 @@ class ArrivalTile extends StatelessWidget {
       line: arrival.line,
       destination: destination,
       caption: _caption(
-          context,
-          c,
-          StizeTransitCard.onFor(c, status == ArrivalRowStatus.scheduled),
-          status,
-          live,
-          l10n,
-          localeName),
+        context,
+        c,
+        StizeTransitCard.onFor(c, status == ArrivalRowStatus.scheduled),
+        status,
+        live,
+        l10n,
+        localeName,
+      ),
       etaMinutes: arrival.etaMinutes,
       scheduled: status == ArrivalRowStatus.scheduled,
       etaFooter: _cardFooter(c, status, l10n, localeName),
@@ -111,8 +111,10 @@ class ArrivalTile extends StatelessWidget {
     AppLocalizations l10n,
     String localeName,
   ) {
-    final style = StizeTransitCard.captionStyle(c,
-        scheduled: status == ArrivalRowStatus.scheduled);
+    final style = StizeTransitCard.captionStyle(
+      c,
+      scheduled: status == ArrivalRowStatus.scheduled,
+    );
 
     // Primary descriptor: stops-away for a live row, the honest status word for
     // the rest. `arrivalProximity` guards the junk `stops_remaining = 0`.
@@ -123,7 +125,9 @@ class ArrivalTile extends StatelessWidget {
         etaMinutes: arrival.etaMinutes,
       )) {
         ArrivalProximity.here => l10n.arrivalStopsAway(0),
-        ArrivalProximity.stopsAway => l10n.arrivalStopsAway(arrival.stopsRemaining!),
+        ArrivalProximity.stopsAway => l10n.arrivalStopsAway(
+          arrival.stopsRemaining!,
+        ),
         ArrivalProximity.unknown => null,
       };
     } else {
@@ -186,7 +190,8 @@ class ArrivalTile extends StatelessWidget {
     AppLocalizations l10n,
     String localeName,
   ) {
-    final delta = status != ArrivalRowStatus.scheduled &&
+    final delta =
+        status != ArrivalRowStatus.scheduled &&
             etaDeltaMinutes != null &&
             etaDeltaMinutes != 0
         ? _cardEtaDelta(c.onTransit)
@@ -235,6 +240,4 @@ class ArrivalTile extends StatelessWidget {
   }
 
   // ───────────────────────── Legacy ListTile (flag OFF) ───────────────────
-
 }
-

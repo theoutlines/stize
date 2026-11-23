@@ -30,7 +30,9 @@ void main() {
       ('Uncut Sans', 'assets/fonts/UncutSans-OFL.txt'),
       ('Geist Mono', 'assets/fonts/GeistMono-OFL.txt'),
     ]) {
-      yield LicenseEntryWithLineBreaks([family], await rootBundle.loadString(asset));
+      yield LicenseEntryWithLineBreaks([
+        family,
+      ], await rootBundle.loadString(asset));
     }
   });
 

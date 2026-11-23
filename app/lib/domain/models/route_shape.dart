@@ -1,7 +1,13 @@
 import 'vehicle_type.dart';
 
 class RouteShapeStop {
-  const RouteShapeStop({required this.stopId, required this.name, required this.lat, required this.lon, required this.seq});
+  const RouteShapeStop({
+    required this.stopId,
+    required this.name,
+    required this.lat,
+    required this.lon,
+    required this.seq,
+  });
 
   final String stopId;
   final String name;
@@ -44,7 +50,10 @@ class RouteShape {
       origin: json['origin'] as String,
       destination: json['destination'] as String,
       polyline: (json['polyline'] as List<dynamic>)
-          .map((p) => (p as List<dynamic>).map((v) => (v as num).toDouble()).toList())
+          .map(
+            (p) =>
+                (p as List<dynamic>).map((v) => (v as num).toDouble()).toList(),
+          )
           .toList(),
       stops: (json['stops'] as List<dynamic>)
           .map((e) => RouteShapeStop.fromJson(e as Map<String, dynamic>))

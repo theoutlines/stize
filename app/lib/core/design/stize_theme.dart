@@ -70,7 +70,8 @@ abstract final class StizeTheme {
       onInverseSurface: c.onInk,
     );
 
-    TextStyle ink(TextStyle s, [Color? color]) => s.copyWith(color: color ?? c.ink);
+    TextStyle ink(TextStyle s, [Color? color]) =>
+        s.copyWith(color: color ?? c.ink);
 
     final textTheme = TextTheme(
       displayLarge: ink(StizeType.etaHero),
@@ -91,7 +92,9 @@ abstract final class StizeTheme {
     );
 
     const controlShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(StizeRadius.radiusControl)),
+      borderRadius: BorderRadius.all(
+        Radius.circular(StizeRadius.radiusControl),
+      ),
     );
     const buttonShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(StizeRadius.radiusButton)),
@@ -126,7 +129,9 @@ abstract final class StizeTheme {
           vertical: StizeSpace.space1,
         ),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(StizeRadius.radiusCard)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(StizeRadius.radiusCard),
+          ),
         ),
       ),
       // Button secondary: the screen's main action.
@@ -149,7 +154,9 @@ abstract final class StizeTheme {
           minimumSize: const Size(0, StizeSize.buttonSmallH),
           padding: const EdgeInsets.symmetric(horizontal: StizeSpace.space4),
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(StizeRadius.radiusMd)),
+            borderRadius: BorderRadius.all(
+              Radius.circular(StizeRadius.radiusMd),
+            ),
           ),
           textStyle: StizeType.label,
         ),
@@ -177,9 +184,14 @@ abstract final class StizeTheme {
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           foregroundColor: c.ink,
-          minimumSize: const Size(StizeSize.buttonSmallH, StizeSize.buttonSmallH),
+          minimumSize: const Size(
+            StizeSize.buttonSmallH,
+            StizeSize.buttonSmallH,
+          ),
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(StizeRadius.radiusMd)),
+            borderRadius: BorderRadius.all(
+              Radius.circular(StizeRadius.radiusMd),
+            ),
           ),
         ),
       ),
@@ -198,19 +210,27 @@ abstract final class StizeTheme {
         floatingLabelBehavior: FloatingLabelBehavior.never,
         border: const OutlineInputBorder(
           borderSide: BorderSide.none,
-          borderRadius: BorderRadius.all(Radius.circular(StizeRadius.radiusControl)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(StizeRadius.radiusControl),
+          ),
         ),
         enabledBorder: const OutlineInputBorder(
           borderSide: BorderSide.none,
-          borderRadius: BorderRadius.all(Radius.circular(StizeRadius.radiusControl)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(StizeRadius.radiusControl),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderSide: focusRing,
-          borderRadius: const BorderRadius.all(Radius.circular(StizeRadius.radiusControl)),
+          borderRadius: const BorderRadius.all(
+            Radius.circular(StizeRadius.radiusControl),
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: c.accent, width: 2),
-          borderRadius: const BorderRadius.all(Radius.circular(StizeRadius.radiusControl)),
+          borderRadius: const BorderRadius.all(
+            Radius.circular(StizeRadius.radiusControl),
+          ),
         ),
         counterStyle: StizeType.caption.copyWith(color: c.ink50),
       ),
@@ -233,7 +253,9 @@ abstract final class StizeTheme {
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
-          minimumSize: const WidgetStatePropertyAll(Size(0, StizeSize.controlH)),
+          minimumSize: const WidgetStatePropertyAll(
+            Size(0, StizeSize.controlH),
+          ),
           shape: const WidgetStatePropertyAll(controlShape),
           side: const WidgetStatePropertyAll(BorderSide.none),
           textStyle: const WidgetStatePropertyAll(StizeType.control),
@@ -267,7 +289,9 @@ abstract final class StizeTheme {
         checkColor: WidgetStatePropertyAll(c.onInk),
         side: BorderSide(color: c.ink60, width: 2),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(StizeRadius.radiusXs / 2)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(StizeRadius.radiusXs / 2),
+          ),
         ),
       ),
       sliderTheme: SliderThemeData(
@@ -288,7 +312,9 @@ abstract final class StizeTheme {
         titleTextStyle: StizeType.label.copyWith(color: c.ink),
         subtitleTextStyle: StizeType.caption.copyWith(color: c.ink60),
         minTileHeight: StizeSize.controlH,
-        contentPadding: const EdgeInsets.symmetric(horizontal: StizeSpace.space4),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: StizeSpace.space4,
+        ),
       ),
       dividerTheme: DividerThemeData(color: c.line, thickness: 1, space: 1),
       bottomSheetTheme: BottomSheetThemeData(
@@ -299,7 +325,9 @@ abstract final class StizeTheme {
         modalElevation: 0,
         showDragHandle: false,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(StizeRadius.radiusHero)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(StizeRadius.radiusHero),
+          ),
         ),
       ),
       dialogTheme: DialogThemeData(
@@ -309,7 +337,9 @@ abstract final class StizeTheme {
         titleTextStyle: StizeType.section.copyWith(color: c.ink),
         contentTextStyle: StizeType.body.copyWith(color: c.ink85),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(StizeRadius.radiusCard)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(StizeRadius.radiusCard),
+          ),
         ),
       ),
       drawerTheme: DrawerThemeData(
@@ -324,13 +354,17 @@ abstract final class StizeTheme {
         behavior: SnackBarBehavior.floating,
         elevation: 0,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(StizeRadius.radiusControl)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(StizeRadius.radiusControl),
+          ),
         ),
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
           color: c.raised,
-          borderRadius: const BorderRadius.all(Radius.circular(StizeRadius.radiusSm)),
+          borderRadius: const BorderRadius.all(
+            Radius.circular(StizeRadius.radiusSm),
+          ),
         ),
         textStyle: StizeType.caption.copyWith(color: c.ink),
       ),
@@ -340,7 +374,9 @@ abstract final class StizeTheme {
         elevation: 0,
         textStyle: StizeType.body.copyWith(color: c.ink),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(StizeRadius.radiusControl)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(StizeRadius.radiusControl),
+          ),
         ),
       ),
     );

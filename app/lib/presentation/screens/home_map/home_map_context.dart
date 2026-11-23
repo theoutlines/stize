@@ -59,8 +59,10 @@ extension _MapContext on _HomeMapScreenState {
     // Diagnostics (staging overlay): board freshness + how many of this stop's
     // rows carried a timing plan, so a "frozen markers" report can be read off
     // the screen without a console (debugPrint is stripped in release web).
-    _lastCtxBoardAgeSec =
-        DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
+    _lastCtxBoardAgeSec = DateTime.now()
+        .toUtc()
+        .difference(board.updatedAt.toUtc())
+        .inSeconds;
     _boardAgePolls.add(_lastCtxBoardAgeSec!);
     if (_boardAgePolls.length > 12) _boardAgePolls.removeAt(0);
     _lastCtxLive = samples.length;
@@ -148,7 +150,9 @@ extension _MapContext on _HomeMapScreenState {
     // reopening (so we land back at the original browse position, not the panned
     // stop), else the pre-follow viewport (a follow straight from Nearby).
     final center = _preStopCameraCenter ?? _preFollowCenter;
-    final zoom = _preStopCameraCenter != null ? _preStopCameraZoom : _preFollowZoom;
+    final zoom = _preStopCameraCenter != null
+        ? _preStopCameraZoom
+        : _preFollowZoom;
     if (center != null) {
       _camEase(center, zoom: zoom);
     }
@@ -165,9 +169,12 @@ extension _MapContext on _HomeMapScreenState {
   /// a tapped Fleet model (leaf) → model; a followed vehicle → vehicle; a slot
   /// stop → stop; else nearby. Desktop-only (the panel).
   ContextView get _activeView {
-    if (_selectedVehicleKey != null || _focus != null) return ContextView.vehicle;
+    if (_selectedVehicleKey != null || _focus != null)
+      return ContextView.vehicle;
     if (_levels.isEmpty) return ContextView.nearby;
-    return _levels.last is _MyStopsLevel ? ContextView.myStops : ContextView.stop;
+    return _levels.last is _MyStopsLevel
+        ? ContextView.myStops
+        : ContextView.stop;
   }
 
   /// Follow is interrupted: a vehicle context is up but we're not tracking (the
@@ -207,8 +214,14 @@ extension _MapContext on _HomeMapScreenState {
   /// Open the Fleet model as a leaf sub-view INSIDE the panel (desktop) — never
   /// a second surface over it (owner R1 #3). On mobile this isn't used (the
   /// legacy modal card runs instead).
-  void _openSlotModel(FleetVehicle fleet, {String? garageNo, required VehicleType type}) {
-    _setState(() => _slotModel = (fleet: fleet, garageNo: garageNo, type: type));
+  void _openSlotModel(
+    FleetVehicle fleet, {
+    String? garageNo,
+    required VehicleType type,
+  }) {
+    _setState(
+      () => _slotModel = (fleet: fleet, garageNo: garageNo, type: type),
+    );
   }
 
   /// The "Back to vehicle" pill: recenter on the vehicle (in the visible strip)
@@ -226,7 +239,11 @@ extension _MapContext on _HomeMapScreenState {
   /// vehicle appears immediately — never waiting on a viewport fan-out, which was
   /// the root of the old bug — highlights its direction's route, flies to it and
   /// follows. Works at both flag values.
-  void _focusVehicleFromArrival(Arrival a, DateTime asOf, {required String source}) {
+  void _focusVehicleFromArrival(
+    Arrival a,
+    DateTime asOf, {
+    required String source,
+  }) {
     final gps = a.gps;
     // No live fix → no marker → don't enter follow (it would be a follow over an
     // empty map). Surface "vehicle lost" instead.
@@ -314,15 +331,16 @@ extension _MapContext on _HomeMapScreenState {
           final key = f.properties['key'];
           final keyStr = key is String ? key : null;
           // Honestly mark a schedule-predicted object when its line opens.
-          final scheduled = keyStr != null &&
+          final scheduled =
+              keyStr != null &&
               _vehAnimator.trackFor(keyStr)?.source == VehicleSource.scheduled;
           // §C.2: highlight the route + line panel and start following — but the
           // camera does NOT jump or zoom (don't regress F2). Same single entry
           // as the list-row paths, so all three end in identical state.
           // Slot ON: return up the chain to the slot's stop view (works in aquarium
-    // mode too, where there's no on-demand `_stopContextId`). Legacy: only the
-    // on-demand stop context.
-    _returnToStopId = _slotStopId ?? (_onDemand ? _stopContextId : null);
+          // mode too, where there's no on-demand `_stopContextId`). Legacy: only the
+          // on-demand stop context.
+          _returnToStopId = _slotStopId ?? (_onDemand ? _stopContextId : null);
           if (keyStr != null) {
             _enterFollow(
               key: keyStr,
@@ -357,7 +375,10 @@ extension _MapContext on _HomeMapScreenState {
             );
             stopCandidates.add((stop, at));
           } catch (_) {
-            stopCandidates.add((stop, screen)); // projection failed — treat as at the tap
+            stopCandidates.add((
+              stop,
+              screen,
+            )); // projection failed — treat as at the tap
           }
         }
       }

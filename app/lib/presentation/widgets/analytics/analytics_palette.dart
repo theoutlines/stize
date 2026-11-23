@@ -29,8 +29,9 @@ class AnalyticsPalette {
   }
 
   /// Colour for an empty cell (no observations in that slot).
-  static Color empty(BuildContext context) =>
-      Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4);
+  static Color empty(BuildContext context) => Theme.of(
+    context,
+  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4);
 
   static const seriesA = Color(0xFF3B6FD4);
   static const seriesB = Color(0xFFE6612C);

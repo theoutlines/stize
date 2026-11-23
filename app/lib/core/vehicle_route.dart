@@ -63,7 +63,9 @@ VehicleRoutePlan planVehicleRoute({
 }) {
   final poly = shape.polyline;
   final splitIdx = poly.isEmpty ? 0 : _nearestPolylineIndex(poly, vehicle);
-  final traveled = poly.isEmpty ? <List<double>>[] : poly.sublist(0, splitIdx + 1);
+  final traveled = poly.isEmpty
+      ? <List<double>>[]
+      : poly.sublist(0, splitIdx + 1);
   final upcoming = poly.isEmpty ? <List<double>>[] : poly.sublist(splitIdx);
 
   final stops = shape.stops;
@@ -91,8 +93,10 @@ VehicleRoutePlan planVehicleRoute({
   final vehicleAlong = _alongTrackMeters(poly, vehicle);
   int nextIdx = stops.length;
   for (var i = 0; i < stops.length; i++) {
-    final stopAlong =
-        _alongTrackMeters(poly, ll.LatLng(stops[i].lat, stops[i].lon));
+    final stopAlong = _alongTrackMeters(
+      poly,
+      ll.LatLng(stops[i].lat, stops[i].lon),
+    );
     if (stopAlong >= vehicleAlong - 15) {
       nextIdx = i;
       break;
@@ -102,7 +106,8 @@ VehicleRoutePlan planVehicleRoute({
 
   // Average per-stop minutes for the ETA extrapolation (approximate). Anchored
   // to the feed's stops_remaining/ETA-to-board when available.
-  final avgPerStop = (stopsRemaining != null &&
+  final avgPerStop =
+      (stopsRemaining != null &&
           stopsRemaining > 0 &&
           etaToBoardMinutes != null)
       ? etaToBoardMinutes / stopsRemaining
@@ -150,9 +155,10 @@ double _alongTrackMeters(List<List<double>> poly, ll.LatLng p) {
     final len2 = dLat * dLat + dLon * dLon;
     final t = len2 == 0
         ? 0.0
-        : (((p.latitude - a.latitude) * dLat + (p.longitude - a.longitude) * dLon) /
-                len2)
-            .clamp(0.0, 1.0);
+        : (((p.latitude - a.latitude) * dLat +
+                      (p.longitude - a.longitude) * dLon) /
+                  len2)
+              .clamp(0.0, 1.0);
     final proj = ll.LatLng(a.latitude + dLat * t, a.longitude + dLon * t);
     final d = _dist.as(ll.LengthUnit.Meter, p, proj);
     if (d < bestDist) {

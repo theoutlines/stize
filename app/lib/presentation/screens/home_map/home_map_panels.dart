@@ -1,5 +1,8 @@
 part of '../home_map_screen.dart';
 
+/// Height of the desktop search island (burger + pill row).
+const double _kSearchIslandH = 48;
+
 extension _MapPanels on _HomeMapScreenState {
   // ---- Context panel (desktop-only) rendering ------------------------------
 
@@ -29,6 +32,7 @@ extension _MapPanels on _HomeMapScreenState {
       searchField: null, // search is hoisted above (searchCard); see above
       navRow: _slotNavRow(l10n),
       borderRadius: BorderRadius.circular(16), // island corners
+      hug: true,
       child: _searching ? _searchResultsList(l10n) : _slotContent(l10n),
     );
 
@@ -38,7 +42,11 @@ extension _MapPanels on _HomeMapScreenState {
       Positioned.fill(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.only(left: inset, top: inset, bottom: inset),
+            padding: const EdgeInsets.only(
+              left: inset,
+              top: inset,
+              bottom: inset,
+            ),
             child: Align(
               alignment: Alignment.topLeft,
               child: SizedBox(
@@ -52,7 +60,7 @@ extension _MapPanels on _HomeMapScreenState {
                     // collapsed (offset > 1 ⇒ entirely past x=0 ⇒ "fully hidden",
                     // A#2), leaving only the search island. No ClipRect, so the
                     // island keeps its drop shadow toward the map.
-                    Expanded(
+                    Flexible(
                       child: AnimatedSlide(
                         duration: _HomeMapScreenState._panelCollapseDuration,
                         curve: _HomeMapScreenState._panelCollapseCurve,
@@ -73,7 +81,14 @@ extension _MapPanels on _HomeMapScreenState {
         duration: _HomeMapScreenState._panelCollapseDuration,
         curve: _HomeMapScreenState._panelCollapseCurve,
         left: collapsed ? 0 : inset + panelW,
-        top: (size.height - PanelCollapseTab.height) / 2,
+        // Docked near the panel's top edge: the panel hugs its content, so a
+        // screen-centred tab could float beside the map below a short panel.
+        top:
+            MediaQuery.paddingOf(context).top +
+            inset +
+            _kSearchIslandH +
+            searchToPanelGap +
+            16,
         child: PanelCollapseTab(
           collapsed: collapsed,
           tooltip: collapsed ? l10n.panelExpand : l10n.panelCollapse,
@@ -87,7 +102,8 @@ extension _MapPanels on _HomeMapScreenState {
 
   /// Title of a level, for its own header and for the back link of the level
   /// above it.
-  String _levelTitle(_SlotLevel level, AppLocalizations l10n) => switch (level) {
+  String _levelTitle(_SlotLevel level, AppLocalizations l10n) =>
+      switch (level) {
         _StopLevel(:final id, :final name) =>
           ref.watch(stopLocationProvider(id)).valueOrNull?.name ?? name ?? '',
         _MyStopsLevel() => l10n.navMyStops,
@@ -144,7 +160,10 @@ extension _MapPanels on _HomeMapScreenState {
   /// The active level's content (no header — the level header owns the title).
   /// [scrollController] is the mobile sheet's, so dragging the content drags
   /// the sheet; null on the desktop panel.
-  Widget _slotContent(AppLocalizations l10n, {ScrollController? scrollController}) {
+  Widget _slotContent(
+    AppLocalizations l10n, {
+    ScrollController? scrollController,
+  }) {
     final model = _slotModel;
     if (model != null) {
       return FleetModelView(
@@ -165,6 +184,7 @@ extension _MapPanels on _HomeMapScreenState {
           // The persistent global search above the panel replaces the local
           // "filter lines nearby" field (decision #6).
           showLocalSearch: false,
+          hugContent: true,
         );
       case ContextView.myStops:
         return MyStopsList(
@@ -192,7 +212,8 @@ extension _MapPanels on _HomeMapScreenState {
             : _vehAnimator.trackFor(_selectedVehicleKey!);
         final line = _focus?.line ?? track?.line ?? '';
         final type = _focus?.type ?? track?.type ?? VehicleType.bus;
-        final stuck = _selectedVehicleKey != null &&
+        final stuck =
+            _selectedVehicleKey != null &&
             _vehAnimator.isStuck(_selectedVehicleKey!);
         return VehicleView(
           line: line,
@@ -200,7 +221,8 @@ extension _MapPanels on _HomeMapScreenState {
           origin: _focus?.origin,
           destination: _focus?.destination,
           stuck: stuck,
-          scheduled: _focus?.scheduled ?? (track?.source == VehicleSource.scheduled),
+          scheduled:
+              _focus?.scheduled ?? (track?.source == VehicleSource.scheduled),
           garageNo: _selectedVehicleKey,
           upcomingStops: _buildUpcomingStops(),
           // A line with no route geometry in our GTFS (e.g. "Ada 4"): show an
@@ -212,8 +234,8 @@ extension _MapPanels on _HomeMapScreenState {
           // The route is drawn on the panel-side map, so no "show route" button.
           showRouteButton: false,
           // Tapping the "About" card opens the model as a leaf IN the panel.
-          onOpenModel: (fleet) => _openSlotModel(fleet,
-              garageNo: _selectedVehicleKey, type: type),
+          onOpenModel: (fleet) =>
+              _openSlotModel(fleet, garageNo: _selectedVehicleKey, type: type),
         );
     }
   }
@@ -221,7 +243,9 @@ extension _MapPanels on _HomeMapScreenState {
   /// The favourite star for the stop nav row (host-owned so the board can be
   /// body-only). Watches + toggles the favourites controller.
   Widget _slotStarButton(String stopId, String stopName) {
-    final isFav = ref.watch(favoritesControllerProvider).maybeWhen(
+    final isFav = ref
+        .watch(favoritesControllerProvider)
+        .maybeWhen(
           data: (favs) => favs.any((f) => f.stopId == stopId),
           orElse: () => false,
         );
@@ -294,18 +318,28 @@ extension _MapPanels on _HomeMapScreenState {
     final color = vehicleColor(type);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration:
-          BoxDecoration(color: color, borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          vehicleGlyph(type, size: 16, color: StizeColors.of(context).onTransit),
+          vehicleGlyph(
+            type,
+            size: 16,
+            color: StizeColors.of(context).onTransit,
+          ),
           const SizedBox(width: 6),
-          Builder(builder: (context) {
-            final stize = StizeColors.of(context);
-            return Text(line,
-                style: StizeType.lineNumber.copyWith(color: stize.onTransit));
-          }),
+          Builder(
+            builder: (context) {
+              final stize = StizeColors.of(context);
+              return Text(
+                line,
+                style: StizeType.lineNumber.copyWith(color: stize.onTransit),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -320,7 +354,8 @@ extension _MapPanels on _HomeMapScreenState {
     // collapsed, in EVERY view: the context nav row (its usual back/drawer
     // chrome) is slid away, so the persistent search is the only place left to
     // reach the drawer (owner A#2: burger reachable in both states).
-    final showBurger = _panelCollapsed ||
+    final showBurger =
+        _panelCollapsed ||
         (_slotModel == null && _activeView == ContextView.nearby);
     // Owner R2 #1: no shared container behind the row — the burger is its OWN
     // round button with its own backdrop, the search is its OWN floating pill.
@@ -362,7 +397,9 @@ extension _MapPanels on _HomeMapScreenState {
                       // The pill around it is the ground; no second fill.
                       filled: false,
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 12),
+                        horizontal: 8,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -405,8 +442,10 @@ extension _MapPanels on _HomeMapScreenState {
               if (line.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface.withValues(alpha: 0.92),
                     borderRadius: BorderRadius.circular(20),
@@ -437,8 +476,9 @@ extension _MapPanels on _HomeMapScreenState {
     if (_vehAnimator.trackFor(key) == null) return null;
     try {
       final pos = _vehAnimator.positionOf(key, _vehAnim.value);
-      final screen =
-          controller.toScreenLocation(Geographic(lon: pos.longitude, lat: pos.latitude));
+      final screen = controller.toScreenLocation(
+        Geographic(lon: pos.longitude, lat: pos.latitude),
+      );
       final dx = screen.dx - size.width / 2;
       final dy = screen.dy - size.height / 2;
       if (dx.abs() < size.width / 2 && dy.abs() < size.height / 2) return null;
@@ -506,9 +546,11 @@ extension _MapPanels on _HomeMapScreenState {
     if (timed == null) return 'VEH dwell -';
     final stops = timed.upcomingStopDiag();
     if (stops.isEmpty) return 'VEH dwell (no stops ahead)';
-    final parts = stops.map((s) =>
-        '+${s.aheadM.toStringAsFixed(0)}m off${s.offShapeM.toStringAsFixed(0)}m '
-        '${s.onShape ? "on" : "OFF"}→${s.dwells ? "DWELL" : "glide"}');
+    final parts = stops.map(
+      (s) =>
+          '+${s.aheadM.toStringAsFixed(0)}m off${s.offShapeM.toStringAsFixed(0)}m '
+          '${s.onShape ? "on" : "OFF"}→${s.dwells ? "DWELL" : "glide"}',
+    );
     return 'VEH dwell ${parts.join("  ")}';
   }
 
@@ -531,7 +573,8 @@ extension _MapPanels on _HomeMapScreenState {
     final now = DateTime.now();
     final vel = timed.displaySpeed;
     final pos = timed.position;
-    final at = '@${pos.latitude.toStringAsFixed(5)},'
+    final at =
+        '@${pos.latitude.toStringAsFixed(5)},'
         '${pos.longitude.toStringAsFixed(5)}';
     if (vel >= 0.5) return 'VEH stopWhy moving ${vel.toStringAsFixed(2)}m/s';
     final plan = timed.planSpeed(now);
@@ -540,10 +583,12 @@ extension _MapPanels on _HomeMapScreenState {
     final near = ahead.isEmpty ? null : ahead.first;
     final String cause;
     if (timed.isStale(now)) {
-      cause = 'HOLD stale board '
+      cause =
+          'HOLD stale board '
           '(age ${timed.boardAgeSeconds(now).toStringAsFixed(0)}s>45) — pinned to fix';
     } else if (timed.isGliding(now)) {
-      cause = 'GLIDE-END coasting to rest at plan end '
+      cause =
+          'GLIDE-END coasting to rest at plan end '
           '(vel ${vel.toStringAsFixed(2)}m/s, buffering a late board)';
     } else if (!timed.isPlaying(now)) {
       cause = 'plan spent (end/horizon reached)';
@@ -554,7 +599,8 @@ extension _MapPanels on _HomeMapScreenState {
                 'off${near.offShapeM.toStringAsFixed(0)}m '
                 '${near.dwells ? "dwell" : "glide?!"}';
     } else {
-      cause = 'CONTOUR: plan ${plan.toStringAsFixed(2)}m/s but vel '
+      cause =
+          'CONTOUR: plan ${plan.toStringAsFixed(2)}m/s but vel '
           '${vel.toStringAsFixed(2)}, gap ${gap.toStringAsFixed(1)}m — parked off-plan';
     }
     return 'VEH stopWhy $cause $at';
@@ -609,7 +655,10 @@ extension _MapPanels on _HomeMapScreenState {
           final o = controller.toScreenLocation(
             Geographic(lon: p.lon, lat: p.lat),
           );
-          if (o.dx < 0 || o.dy < 0 || o.dx > screen.width || o.dy > screen.height) {
+          if (o.dx < 0 ||
+              o.dy < 0 ||
+              o.dx > screen.width ||
+              o.dy > screen.height) {
             continue; // off the visible map — a query there is meaningless
           }
           onscreen++;
@@ -711,8 +760,8 @@ extension _MapPanels on _HomeMapScreenState {
               top: 72,
               left: _panelActive
                   ? kPanelIslandInset +
-                      panelWidthFor(MediaQuery.sizeOf(context).width) +
-                      _HomeMapScreenState._kIslandGap
+                        panelWidthFor(MediaQuery.sizeOf(context).width) +
+                        _HomeMapScreenState._kIslandGap
                   : _HomeMapScreenState._kIslandGap,
               right: 8,
             ),
@@ -758,7 +807,10 @@ extension _MapPanels on _HomeMapScreenState {
               borderRadius: BorderRadius.circular(20),
               color: theme.colorScheme.surface.withValues(alpha: 0.92),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -794,8 +846,9 @@ extension _MapPanels on _HomeMapScreenState {
     final track = key == null ? null : _vehAnimator.trackFor(key);
     final line = focus?.line ?? track?.line ?? '';
     final type = focus?.type ?? track?.type ?? VehicleType.bus;
-    final subtitle =
-        focus != null ? '${focus.origin} → ${focus.destination}' : null;
+    final subtitle = focus != null
+        ? '${focus.origin} → ${focus.destination}'
+        : null;
     final scheduled = focus?.scheduled ?? false;
     final color = vehicleColor(type);
     return SafeArea(
@@ -826,18 +879,23 @@ extension _MapPanels on _HomeMapScreenState {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      vehicleGlyph(type,
-                          size: 16, color: StizeColors.of(context).onTransit),
+                      vehicleGlyph(
+                        type,
+                        size: 16,
+                        color: StizeColors.of(context).onTransit,
+                      ),
                       const SizedBox(width: 6),
-                      Builder(builder: (context) {
-                        final stize =
-                            StizeColors.of(context);
-                        return Text(
-                          line,
-                          style: StizeType.lineNumber
-                                  .copyWith(color: stize.onTransit),
-                        );
-                      }),
+                      Builder(
+                        builder: (context) {
+                          final stize = StizeColors.of(context);
+                          return Text(
+                            line,
+                            style: StizeType.lineNumber.copyWith(
+                              color: stize.onTransit,
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -851,7 +909,8 @@ extension _MapPanels on _HomeMapScreenState {
                         // Route terminals once the shape is loaded; until then
                         // (or on a shape that failed to load) a neutral label so
                         // the bar is still complete and exitable.
-                        subtitle ?? AppLocalizations.of(context).followingVehicle,
+                        subtitle ??
+                            AppLocalizations.of(context).followingVehicle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium,
@@ -973,21 +1032,24 @@ extension _MapPanels on _HomeMapScreenState {
   Widget _zoomControl(ThemeData theme) {
     return PointerInterceptor(
       child: Material(
-      color: theme.colorScheme.surface,
-      elevation: 3,
-      borderRadius: BorderRadius.circular(24),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(icon: const Icon(Icons.add), onPressed: () => _zoomBy(1)),
-          Divider(height: 1, thickness: 1, color: theme.dividerColor),
-          IconButton(
-            icon: const Icon(Icons.remove),
-            onPressed: () => _zoomBy(-1),
-          ),
-        ],
-      ),
+        color: theme.colorScheme.surface,
+        elevation: 3,
+        borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () => _zoomBy(1),
+            ),
+            Divider(height: 1, thickness: 1, color: theme.dividerColor),
+            IconButton(
+              icon: const Icon(Icons.remove),
+              onPressed: () => _zoomBy(-1),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1015,18 +1077,22 @@ extension _MapPanels on _HomeMapScreenState {
         : _vehAnimator.trackFor(_selectedVehicleKey!)?.line;
     final openStopId = _slotStopId ?? _stopContextId;
     final relevant = jams
-        .where((j) => isJamRelevant(
-              j,
-              followedLine: followedLine,
-              openStopId: openStopId,
-              userLocation: _meTo,
-            ))
+        .where(
+          (j) => isJamRelevant(
+            j,
+            followedLine: followedLine,
+            openStopId: openStopId,
+            userLocation: _meTo,
+          ),
+        )
         .length;
     final loud = relevant > 0;
     final l10n = AppLocalizations.of(context);
     final iconColor = _jamModeOn
         ? Colors.white
-        : (loud ? _HomeMapScreenState._jamAmber : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.55));
+        : (loud
+              ? _HomeMapScreenState._jamAmber
+              : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.55));
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: PointerInterceptor(
@@ -1034,7 +1100,9 @@ extension _MapPanels on _HomeMapScreenState {
           clipBehavior: Clip.none,
           children: [
             Material(
-              color: _jamModeOn ? _HomeMapScreenState._jamAmber : theme.colorScheme.surface,
+              color: _jamModeOn
+                  ? _HomeMapScreenState._jamAmber
+                  : theme.colorScheme.surface,
               elevation: 3,
               shape: const CircleBorder(),
               clipBehavior: Clip.antiAlias,
@@ -1053,7 +1121,10 @@ extension _MapPanels on _HomeMapScreenState {
                 child: IgnorePointer(
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
                     decoration: const BoxDecoration(
                       color: Color(0xFFD90429),
                       shape: BoxShape.circle,
@@ -1062,7 +1133,11 @@ extension _MapPanels on _HomeMapScreenState {
                       '$relevant',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                          color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, height: 1.0),
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        height: 1.0,
+                      ),
                     ),
                   ),
                 ),
@@ -1177,7 +1252,10 @@ extension _MapPanels on _HomeMapScreenState {
     if (style == null) return;
     // Tear down any previous focus layers first (colour/route may have changed).
     if (_focusLayersAdded) {
-      for (final id in const [_HomeMapScreenState._focusRouteLayerId, _HomeMapScreenState._focusStopsLayerId]) {
+      for (final id in const [
+        _HomeMapScreenState._focusRouteLayerId,
+        _HomeMapScreenState._focusStopsLayerId,
+      ]) {
         try {
           await style.removeLayer(id);
         } catch (_) {}

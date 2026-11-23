@@ -99,7 +99,10 @@ class EventLogger {
     // The server takes at most [maxBatch] events per request (D1 write budget),
     // so a backlog goes out in chunks, one after another.
     for (var i = 0; i < all.length; i += maxBatch) {
-      final batch = all.sublist(i, i + maxBatch > all.length ? all.length : i + maxBatch);
+      final batch = all.sublist(
+        i,
+        i + maxBatch > all.length ? all.length : i + maxBatch,
+      );
       try {
         await _client.postJson('/api/v1/events', body: {'events': batch});
       } catch (_) {

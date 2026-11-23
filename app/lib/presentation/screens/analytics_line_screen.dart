@@ -21,7 +21,8 @@ class AnalyticsLineScreen extends ConsumerStatefulWidget {
   final String line;
 
   @override
-  ConsumerState<AnalyticsLineScreen> createState() => _AnalyticsLineScreenState();
+  ConsumerState<AnalyticsLineScreen> createState() =>
+      _AnalyticsLineScreenState();
 }
 
 class _AnalyticsLineScreenState extends ConsumerState<AnalyticsLineScreen> {
@@ -124,7 +125,9 @@ class _AnalyticsLineScreenState extends ConsumerState<AnalyticsLineScreen> {
         Text(
           'Черновой экран. Каждая метрика показана подходящим типом графика; '
           'данные реальные и уточняются по мере накопления истории.',
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.outline,
+          ),
         ),
       ],
     );
@@ -163,7 +166,10 @@ class _AnalyticsLineScreenState extends ConsumerState<AnalyticsLineScreen> {
           onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Отмена')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Отмена'),
+          ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
             child: const Text('Ок'),
@@ -189,7 +195,11 @@ class _AnalyticsLineScreenState extends ConsumerState<AnalyticsLineScreen> {
         Center(
           child: Column(
             children: [
-              Icon(Icons.hourglass_bottom, size: 40, color: theme.colorScheme.outline),
+              Icon(
+                Icons.hourglass_bottom,
+                size: 40,
+                color: theme.colorScheme.outline,
+              ),
               const SizedBox(height: 12),
               Text('Данных пока мало', style: theme.textTheme.titleMedium),
               const SizedBox(height: 6),
@@ -309,9 +319,17 @@ class _Message extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: theme.colorScheme.outline),
             const SizedBox(height: 16),
-            Text(title, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
+            Text(
+              title,
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 8),
-            Text(body, style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
+            Text(
+              body,
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

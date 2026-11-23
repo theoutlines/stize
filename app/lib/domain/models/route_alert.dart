@@ -83,7 +83,10 @@ class RouteAlert {
   bool matchesStopName(String stopName) {
     if (confidence != 'stop') return false;
     final needle = stopName.toLowerCase();
-    return stops.any((s) => s.toLowerCase().contains(needle) || needle.contains(s.toLowerCase()));
+    return stops.any(
+      (s) =>
+          s.toLowerCase().contains(needle) || needle.contains(s.toLowerCase()),
+    );
   }
 
   factory RouteAlert.fromJson(Map<String, dynamic> json) {
@@ -94,8 +97,12 @@ class RouteAlert {
       publishedAt: DateTime.parse(json['publishedAt'] as String),
       lines: (json['lines'] as List<dynamic>).cast<String>(),
       stops: (json['stops'] as List<dynamic>).cast<String>(),
-      validFrom: json['validFrom'] != null ? DateTime.tryParse(json['validFrom'] as String) : null,
-      validUntil: json['validUntil'] != null ? DateTime.tryParse(json['validUntil'] as String) : null,
+      validFrom: json['validFrom'] != null
+          ? DateTime.tryParse(json['validFrom'] as String)
+          : null,
+      validUntil: json['validUntil'] != null
+          ? DateTime.tryParse(json['validUntil'] as String)
+          : null,
       confidence: json['confidence'] as String,
       summary: json['summary'] as String,
       summaryEn: json['summaryEn'] as String?,

@@ -110,14 +110,18 @@ class VehicleView extends ConsumerWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.schedule,
-                  size: 14, color: theme.colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.schedule,
+                size: 14,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
                   l10n.vehicleScheduled,
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -131,14 +135,18 @@ class VehicleView extends ConsumerWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              Icon(Icons.info_outline,
-                  size: 16, color: theme.colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.info_outline,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   l10n.routeUnavailable,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -176,12 +184,18 @@ class VehicleView extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.hourglass_bottom, size: 15, color: theme.colorScheme.onSurface),
+            Icon(
+              Icons.hourglass_bottom,
+              size: 15,
+              color: theme.colorScheme.onSurface,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 l10n.jamFollowAhead,
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
             ),
           ],
@@ -194,7 +208,11 @@ class VehicleView extends ConsumerWidget {
   /// like a running timetable, so you can tell where it's going without staring
   /// at the map. The next (nearest) stop is highlighted. ETAs are approximate
   /// (only the board stop's is a real prediction — the rest are extrapolated).
-  Widget _routeList(BuildContext context, ThemeData theme, AppLocalizations l10n) {
+  Widget _routeList(
+    BuildContext context,
+    ThemeData theme,
+    AppLocalizations l10n,
+  ) {
     // Cap the list so the panel stays glanceable; the map shows the full route.
     final shown = upcomingStops.take(6).toList();
     return Column(
@@ -202,8 +220,9 @@ class VehicleView extends ConsumerWidget {
       children: [
         Text(
           l10n.vehicleUpcomingStops,
-          style: theme.textTheme.labelLarge
-              ?.copyWith(color: theme.colorScheme.outline),
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.outline,
+          ),
         ),
         const SizedBox(height: 4),
         for (var i = 0; i < shown.length; i++)
@@ -213,15 +232,24 @@ class VehicleView extends ConsumerWidget {
   }
 
   Widget _routeRow(
-      ThemeData theme, AppLocalizations l10n, UpcomingStop u, {required bool isNext}) {
+    ThemeData theme,
+    AppLocalizations l10n,
+    UpcomingStop u, {
+    required bool isNext,
+  }) {
     final eta = u.etaMinutes;
-    final color = isNext ? theme.colorScheme.primary : theme.colorScheme.outline;
+    final color = isNext
+        ? theme.colorScheme.primary
+        : theme.colorScheme.outline;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
-          Icon(isNext ? Icons.my_location : Icons.circle,
-              size: isNext ? 15 : 7, color: color),
+          Icon(
+            isNext ? Icons.my_location : Icons.circle,
+            size: isNext ? 15 : 7,
+            color: color,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -229,23 +257,28 @@ class VehicleView extends ConsumerWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: isNext
-                  ? theme.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w700)
+                  ? theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    )
                   : theme.textTheme.bodyMedium,
             ),
           ),
           if (u.isBoardStop) ...[
             const SizedBox(width: 6),
-            Text(l10n.vehicleYourStop,
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.primary)),
+            Text(
+              l10n.vehicleYourStop,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+              ),
+            ),
           ],
           if (eta != null) ...[
             const SizedBox(width: 8),
             Text(
               eta <= 0 ? l10n.arrivalEtaNow : l10n.vehicleEtaMinutesApprox(eta),
               style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: isNext ? FontWeight.w700 : FontWeight.w500),
+                fontWeight: isNext ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
           ],
         ],
@@ -259,8 +292,11 @@ class VehicleView extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(stuck ? Icons.warning_amber_rounded : Icons.directions_run,
-            size: 16, color: stuck ? stuckColor : movingColor),
+        Icon(
+          stuck ? Icons.warning_amber_rounded : Icons.directions_run,
+          size: 16,
+          color: stuck ? stuckColor : movingColor,
+        ),
         const SizedBox(width: 6),
         Text(
           stuck ? l10n.vehicleStuck : l10n.vehicleMoving,
@@ -286,8 +322,8 @@ class VehicleView extends ConsumerWidget {
     final title = fleet.hasInfo && fleet.modelName != null
         ? fleet.modelName!
         : (garageNo == null || garageNo!.trim().isEmpty
-            ? l10n.followingVehicle
-            : l10n.fleetVehicleNumber(garageNo!));
+              ? l10n.followingVehicle
+              : l10n.fleetVehicleNumber(garageNo!));
     final tappable = fleet.hasInfo;
 
     final card = Container(
@@ -301,8 +337,9 @@ class VehicleView extends ConsumerWidget {
         children: [
           Text(
             l10n.aboutVehicle,
-            style: theme.textTheme.labelLarge
-                ?.copyWith(color: theme.colorScheme.outline),
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -320,16 +357,19 @@ class VehicleView extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: theme.textTheme.titleSmall,
-                        overflow: TextOverflow.ellipsis),
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     if (garageNo != null &&
                         garageNo!.trim().isNotEmpty &&
                         fleet.hasInfo)
                       Text(
                         l10n.fleetVehicleNumber(garageNo!),
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.colorScheme.outline),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
                       ),
                   ],
                 ),
@@ -345,8 +385,9 @@ class VehicleView extends ConsumerWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 '${l10n.viewModelDetails} ›',
-                style: theme.textTheme.labelLarge
-                    ?.copyWith(color: theme.colorScheme.primary),
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
               ),
             ),
           ],

@@ -53,13 +53,15 @@ class FleetBadgeStrip extends StatelessWidget {
     if (!fleet.hasInfo) {
       // Junk placeholder ids are hidden entirely; a real-but-unmatched number
       // is shown muted so the passenger still has *something* to identify it by.
-      if (fleet.kind == FleetMatchKind.unknownJunk) return const SizedBox.shrink();
+      if (fleet.kind == FleetMatchKind.unknownJunk)
+        return const SizedBox.shrink();
       final n = garageNo;
       if (n == null || n.trim().isEmpty) return const SizedBox.shrink();
       return Text(
         l10n.fleetVehicleNumber(n),
-        style: theme.textTheme.bodySmall
-            ?.copyWith(color: onColor ?? theme.colorScheme.outline),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: onColor ?? theme.colorScheme.outline,
+        ),
       );
     }
 
@@ -75,18 +77,35 @@ class FleetBadgeStrip extends StatelessWidget {
 
     // Air conditioning (positive only — "no AC" is left for the card).
     if (fleet.ac == true) {
-      badges.add(_icon(Icons.ac_unit, onColor ?? _acColor, assumed: approx || fleet.isAssumed('ac')));
+      badges.add(
+        _icon(
+          Icons.ac_unit,
+          onColor ?? _acColor,
+          assumed: approx || fleet.isAssumed('ac'),
+        ),
+      );
     }
 
     // Low floor / accessibility.
     if (fleet.lowFloor == true) {
-      badges.add(_icon(Icons.accessible, onColor ?? theme.colorScheme.onSurfaceVariant,
-          assumed: approx || fleet.isAssumed('low_floor')));
+      badges.add(
+        _icon(
+          Icons.accessible,
+          onColor ?? theme.colorScheme.onSurfaceVariant,
+          assumed: approx || fleet.isAssumed('low_floor'),
+        ),
+      );
     }
 
     final age = fleetAgeYears(fleet);
     if (age != null) {
-      badges.add(_ageChip(context, age, assumed: approx || fleet.isAssumed('years_built')));
+      badges.add(
+        _ageChip(
+          context,
+          age,
+          assumed: approx || fleet.isAssumed('years_built'),
+        ),
+      );
     }
 
     if (badges.isEmpty) return const SizedBox.shrink();
@@ -99,9 +118,12 @@ class FleetBadgeStrip extends StatelessWidget {
         if (approx && onColor == null)
           Padding(
             padding: const EdgeInsets.only(right: 2),
-            child: Text('~',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: onColor ?? theme.colorScheme.outline)),
+            child: Text(
+              '~',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: onColor ?? theme.colorScheme.outline,
+              ),
+            ),
           ),
         for (var i = 0; i < badges.length; i++) ...[
           if (i > 0) const SizedBox(width: 6),
@@ -123,7 +145,11 @@ class FleetBadgeStrip extends StatelessWidget {
   }
 
   Widget _icon(IconData icon, Color color, {required bool assumed}) {
-    return Icon(icon, size: 15, color: assumed ? color.withValues(alpha: 0.5) : color);
+    return Icon(
+      icon,
+      size: 15,
+      color: assumed ? color.withValues(alpha: 0.5) : color,
+    );
   }
 
   Widget _ageChip(BuildContext context, int age, {required bool assumed}) {

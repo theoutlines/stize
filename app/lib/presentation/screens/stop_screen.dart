@@ -133,8 +133,9 @@ class _StopScreenState extends ConsumerState<StopScreen> {
               data: (b) {
                 // Schedule-derived placeholder rows (GPS pinned to this stop)
                 // stay off the mini map, or they'd stack on the stop pin.
-                final mapVehicles =
-                    b.arrivals.where(arrivalHasLivePosition).toList();
+                final mapVehicles = b.arrivals
+                    .where(arrivalHasLivePosition)
+                    .toList();
                 return StopArrivalsList(
                   stopId: widget.stopId,
                   board: b,
@@ -143,16 +144,18 @@ class _StopScreenState extends ConsumerState<StopScreen> {
                   aboveFreshness: stopLocation == null
                       ? null
                       : mapVehicles.isNotEmpty
-                          ? SizedBox(
-                              height: 220,
-                              child: LiveVehiclesMap(
-                                arrivals: mapVehicles,
-                                stopLocation: ll.LatLng(
-                                    stopLocation.lat, stopLocation.lon),
-                              ),
-                            )
-                          // Nothing live to draw: explain the empty map.
-                          : _noLiveVehiclesHint(context, l10n),
+                      ? SizedBox(
+                          height: 220,
+                          child: LiveVehiclesMap(
+                            arrivals: mapVehicles,
+                            stopLocation: ll.LatLng(
+                              stopLocation.lat,
+                              stopLocation.lon,
+                            ),
+                          ),
+                        )
+                      // Nothing live to draw: explain the empty map.
+                      : _noLiveVehiclesHint(context, l10n),
                 );
               },
             ),
