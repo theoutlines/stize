@@ -114,7 +114,6 @@ extension _MapSearch on _HomeMapScreenState {
     String? stopName,
     ll.LatLng? at,
     String? source,
-    ({String id, String? name})? backTo,
   }) {
     // Entering a stop context while collapsed re-expands the panel (A#4).
     _expandPanelIfCollapsed();
@@ -140,127 +139,102 @@ extension _MapSearch on _HomeMapScreenState {
     // Shift the stop up into the visible strip ABOVE the sheet, so it isn't
     // hidden under it (and so returning from a follow lands on a visible stop).
     _bringStopIntoView(stopId, at);
-    // Desktop panel active: the stop view lives in the persistent panel, NOT a
-    // modal — advance the shared state machine instead. On mobile / flag OFF we
-    // fall through to the legacy modal (prod behaviour, untouched).
-    if (_panelActive) {
-      ref.read(openStopNameProvider.notifier).state = stopName;
-      _setState(() {
-        _slotStopId = stopId;
-        _slotStopName = stopName;
-        _slotModel = null; // opening a fresh stop clears any leaf model view
-      });
-      return;
+    // One surface for both layouts (owner, 2026-11-23): the stop opens as the
+    // next level in the context slot — the persistent panel on desktop, the
+    // one bottom sheet on mobile. Re-opening the stop already on top (e.g. the
+    // return from a vehicle follow) doesn't push it twice.
+    final top = _levels.isEmpty ? null : _levels.last;
+    if (!(top is _StopLevel && top.id == stopId)) {
+      _levels.add(_StopLevel(stopId, stopName));
+      // Keep the chain short: tapping pin after pin shouldn't build a long trail.
+      if (_levels.length > 8) _levels.removeAt(0);
     }
-    // Hide the bottom UI (Nearby panel / search) while the sheet is up so they
-    // don't overlap (#7).
-    _setState(() => _stopSheetOpen = true);
-    final seq = ++_stopSheetSeq;
-    _currentStop = (id: stopId, name: stopName);
     ref.read(openStopNameProvider.notifier).state = stopName;
-    showStopSheet(
-      context,
-      stopId: stopId,
-      stopName: stopName,
-      // Redraw the menu button over the scrim so the menu opens over the open
-      // stop in one tap (the stop stays underneath).
-      onOpenMenu: widget.onOpenDrawer,
-      backToName: backTo == null ? null : (backTo.name ?? ''),
-      onBack: backTo == null
-          ? null
-          : () => _switchToStop(backTo.id, backTo.name, withBack: false),
-      // Open at the nearby sheet's current height so nearby → stop is a
-      // continuous detent, not a jump (owner acceptance #3). `_mobileSheetPx`
-      // still holds the nearby height here (reset on the next build).
-      initialSize: _mobileSheetPx > 0
-          ? _mobileSheetPx / MediaQuery.sizeOf(context).height
-          : null,
-      // Feed the stop sheet's live height to the geometry owner so the map
-      // shifts up to keep the stop above the sheet — same wiring as the nearby
-      // sheet (owner R2 #3, regression fix). Without this the geometry owner
-      // treats the stop modal as a zero bottom inset and the stop lands under it.
-      onHeightChanged: _setMobileSheetPx,
-      // Tapping a vehicle row hands the whole arrival to the map so it builds a
-      // guaranteed marker, highlights the route and follows (§C).
-      onFocusVehicle: (a, asOf) => _focusVehicleFromArrival(a, asOf, source: Ev.srcSheet),
-    ).then((_) {
-      // Swapped for another stop: the newer sheet owns the state now.
-      if (seq != _stopSheetSeq) return;
-      _currentStop = null;
-      if (mounted) ref.read(openStopNameProvider.notifier).state = null;
-      // The stop modal is gone — clear its bottom inset so the geometry owner
-      // doesn't keep a phantom one (the nearby sheet re-feeds its own on return).
-      _setMobileSheetPx(0);
-      if (mounted) _setState(() => _stopSheetOpen = false);
-      _onStopSheetClosed(stopId);
+    _setState(() => _slotModel = null); // a fresh stop clears any model leaf
+    _raiseSheetToHalf();
+  }
+
+  /// The menu's "My stops": open the saved stops as a level (desktop panel /
+  /// mobile sheet), on top of whatever is open, so back returns there.
+  void _openMyStopsLevel() {
+    _expandPanelIfCollapsed();
+    if (_levels.isEmpty || _levels.last is! _MyStopsLevel) {
+      _levels.add(const _MyStopsLevel());
+    }
+    _setState(() => _slotModel = null);
+    _raiseSheetToHalf();
+  }
+
+  /// On mobile, a newly opened level shows at least at the half detent (from
+  /// peek the board would barely be visible); a taller sheet keeps its height.
+  void _raiseSheetToHalf() {
+    if (_panelActive) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_sheetCtl.isAttached) return;
+      if (_sheetCtl.size < kSheetHalf - 0.01) {
+        _sheetCtl.animateTo(
+          kSheetHalf,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        );
+      }
     });
   }
 
-  /// Pan [stopId] into the strip of map visible above the arrivals sheet (the
-  /// sheet covers the lower ~half), zooming in to at least the individual-stop
-  /// level. Resolves the coordinate from the tap ([at]) or the GTFS mirror.
-  Future<void> _bringStopIntoView(String stopId, ll.LatLng? at) async {
-    final pos = at ?? await _resolveStopLatLng(stopId);
-    if (pos == null || !mounted) return;
-    final controller = _controller;
-    if (controller == null) return;
-    final zoom = math.max(controller.getCamera().zoom, _individualZoom);
-    // The geometry padding ([_mapInsets]) centres the stop in the visible area —
-    // right of the panel on desktop, above the sheet on mobile.
-    _camEase(Geographic(lon: pos.longitude, lat: pos.latitude), zoom: zoom);
-  }
-
-  /// Synchronous stop → coords from whatever is already loaded (area stops /
-  /// focus stops); null if not in hand. Used to anchor the worded route's
-  /// "your stop" without an await.
-  ll.LatLng? _resolveStopLatLngSync(String stopId) {
-    final s = _stopById(stopId);
-    return s == null ? null : ll.LatLng(s.lat, s.lon);
-  }
-
-  Future<ll.LatLng?> _resolveStopLatLng(String stopId) async {
-    final known = _stopById(stopId);
-    if (known != null) return ll.LatLng(known.lat, known.lon);
-    try {
-      final stop = await ref.read(stopLocationProvider(stopId).future);
-      if (stop != null) return ll.LatLng(stop.lat, stop.lon);
-    } catch (_) {}
-    return null;
-  }
-
-  /// The stop sheet was dismissed. If a vehicle from this stop is now being
-  /// followed, keep the stop context alive so closing the line panel can return
-  /// to it; otherwise leave state B for A.
-  /// Open [stopId] in place of the stop that's open now (My stops, "Back to …"):
-  /// the current sheet is dismissed without its close cleanup and the new stop
-  /// opens on the same map, at the same sheet height. With [withBack] the new
-  /// sheet offers a one-step link back to the stop that was open.
-  void _switchToStop(String stopId, String? stopName, {bool withBack = true}) {
-    final previous = _currentStop;
-    if (_stopSheetOpen && !_panelActive) {
-      Navigator.of(context).pop();
-    }
-    _openStopById(
-      stopId,
-      stopName: stopName,
-      source: withBack ? Ev.srcFavorites : null,
-      backTo: withBack && previous != null && previous.id != stopId ? previous : null,
-    );
-  }
-
-  void _onStopSheetClosed(String stopId) {
-    // A vehicle context is now active (a row was tapped): it owns the camera and
-    // will return to the origin later — don't restore here, and keep the stop
-    // context alive if we'll come back to it.
-    final vehicleContextActive = _following || _focus != null;
-    if (_onDemand &&
-        _stopContextId == stopId &&
-        !(vehicleContextActive && _returnToStopId == stopId)) {
+  /// Back one level: the level below shows again (its stop context and camera
+  /// restored), or Nearby when the chain is empty.
+  void _popLevel() {
+    if (_levels.isEmpty) return;
+    final popped = _levels.removeLast();
+    if (popped is _StopLevel && _onDemand && _stopContextId == popped.id) {
       _exitStopContext();
     }
-    if (vehicleContextActive) return;
-    _restorePreStopCamera();
+    final top = _levels.isEmpty ? null : _levels.last;
+    if (top is _StopLevel) {
+      if (_onDemand) _enterStopContext(top.id);
+      _bringStopIntoView(top.id, null);
+      ref.read(openStopNameProvider.notifier).state = top.name;
+    } else {
+      ref.read(openStopNameProvider.notifier).state = null;
+      if (top == null) _restorePreStopCamera();
+    }
+    _setState(() => _slotModel = null);
   }
+
+  /// Close every level (the × on the first level, or a swipe below peek):
+  /// back to Nearby, camera where the user was before the first stop.
+  void _closeAllLevels() {
+    final top = _levels.isEmpty ? null : _levels.last;
+    if (top is _StopLevel && _onDemand && _stopContextId == top.id) {
+      _exitStopContext();
+    }
+    _levels.clear();
+    ref.read(openStopNameProvider.notifier).state = null;
+    _restorePreStopCamera();
+    _setState(() => _slotModel = null);
+  }
+
+  /// Mobile sheet height feed: the geometry owner gets it as before; dragging
+  /// an open level below the peek detent closes all levels (swipe-to-close) and
+  /// the sheet settles back at peek showing Nearby.
+  void _onMobileSheetHeight(double px) {
+    _setMobileSheetPx(px);
+    final h = MediaQuery.sizeOf(context).height;
+    if (h <= 0) return;
+    final hasLevel = _levels.isNotEmpty || _slotModel != null;
+    if (hasLevel && px / h < kSheetPeek - 0.1) {
+      _closeAllLevels();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_sheetCtl.isAttached) return;
+        _sheetCtl.animateTo(
+          kSheetPeek,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        );
+      });
+    }
+  }
+
 
   /// Ease the camera back to where it sat before the stop sheet panned it up —
   /// symmetric to the open (same glide), and resetting the sheet's bottom padding
@@ -339,5 +313,37 @@ extension _MapSearch on _HomeMapScreenState {
     });
     _pushStopSources(); // show the pinned-place marker
     _camEase(center, zoom: 16); // centre in the visible area (geometry-aware)
+  }
+
+  /// Synchronous stop → coords from whatever is already loaded (area stops /
+  /// focus stops); null if not in hand. Used to anchor the worded route's
+  /// "your stop" without an await.
+  ll.LatLng? _resolveStopLatLngSync(String stopId) {
+    final s = _stopById(stopId);
+    return s == null ? null : ll.LatLng(s.lat, s.lon);
+  }
+
+  /// Pan [stopId] into the strip of map visible above the arrivals sheet (the
+  /// sheet covers the lower ~half), zooming in to at least the individual-stop
+  /// level. Resolves the coordinate from the tap ([at]) or the GTFS mirror.
+  Future<void> _bringStopIntoView(String stopId, ll.LatLng? at) async {
+    final pos = at ?? await _resolveStopLatLng(stopId);
+    if (pos == null || !mounted) return;
+    final controller = _controller;
+    if (controller == null) return;
+    final zoom = math.max(controller.getCamera().zoom, _individualZoom);
+    // The geometry padding ([_mapInsets]) centres the stop in the visible area —
+    // right of the panel on desktop, above the sheet on mobile.
+    _camEase(Geographic(lon: pos.longitude, lat: pos.latitude), zoom: zoom);
+  }
+
+  Future<ll.LatLng?> _resolveStopLatLng(String stopId) async {
+    final known = _stopById(stopId);
+    if (known != null) return ll.LatLng(known.lat, known.lon);
+    try {
+      final stop = await ref.read(stopLocationProvider(stopId).future);
+      if (stop != null) return ll.LatLng(stop.lat, stop.lon);
+    } catch (_) {}
+    return null;
   }
 }

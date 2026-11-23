@@ -61,6 +61,8 @@ class NearbyView extends ConsumerStatefulWidget {
     this.onSelectLine,
     this.scrollController,
     this.showLocalSearch = true,
+    this.onSearchFocus,
+    this.onSearchCancel,
   });
 
   final ll.LatLng? userLocation;
@@ -87,6 +89,11 @@ class NearbyView extends ConsumerStatefulWidget {
   /// search above the panel already covers it — decision #6).
   final bool showLocalSearch;
 
+  /// Mobile V3 search: called when the search row gains focus (the sheet
+  /// rises to its large detent) and when the user taps Cancel (it returns).
+  final VoidCallback? onSearchFocus;
+  final VoidCallback? onSearchCancel;
+
   @override
   ConsumerState<NearbyView> createState() => NearbyViewState();
 }
@@ -99,8 +106,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   bool _liveUnavailable = false;
   String _query = '';
   Timer? _timer;
-  late final ForegroundResumeListener _resume =
-      ForegroundResumeListener(() {
+  late final ForegroundResumeListener _resume = ForegroundResumeListener(() {
     if (mounted && widget.active) _fetch();
   });
   ll.LatLng? _lastFetchLoc;
@@ -114,10 +120,17 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   int _searchSeq = 0;
 
   final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
+  bool _searchFocused = false;
 
   @override
   void initState() {
     super.initState();
+    _searchFocus.addListener(() {
+      if (_searchFocus.hasFocus == _searchFocused) return;
+      setState(() => _searchFocused = _searchFocus.hasFocus);
+      if (_searchFocus.hasFocus) widget.onSearchFocus?.call();
+    });
     if (widget.userLocation != null) _fetch();
     _startTimer();
     _resume; // start listening for foreground returns
@@ -149,6 +162,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     _resume.dispose();
     _searchDebounce?.cancel();
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -161,8 +175,10 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       return;
     }
     // Debounce the network half; the local nearby filter narrows synchronously.
-    _searchDebounce =
-        Timer(const Duration(milliseconds: 300), () => _runGlobal(q));
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 300),
+      () => _runGlobal(q),
+    );
   }
 
   Future<void> _runGlobal(String query) async {
@@ -232,7 +248,9 @@ class NearbyViewState extends ConsumerState<NearbyView> {
 
   @override
   Widget build(BuildContext context) {
-    final contextLines = {for (final g in _groups ?? const <NearbyGroup>[]) g.line};
+    final contextLines = {
+      for (final g in _groups ?? const <NearbyGroup>[]) g.line,
+    };
     return Column(
       children: [
         if (widget.showLocalSearch) _localSearch(Theme.of(context)),
@@ -242,45 +260,65 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     );
   }
 
+  void _cancelSearch() {
+    _searchController.clear();
+    _onQueryChanged('');
+    _searchFocus.unfocus();
+    widget.onSearchCancel?.call();
+  }
+
+  /// V3 search row (owner-approved): a light pill as the first row of the
+  /// sheet, under the thumb. Focus raises the sheet to its large detent with
+  /// results inside it; Cancel clears, drops the keyboard and lowers it back.
   Widget _localSearch(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
     final stize = StizeColors.of(context);
-    final clearButton = _query.isEmpty
-        ? null
-        : IconButton(
-            icon: Icon(Icons.close, size: 20),
-            onPressed: () {
-              _searchController.clear();
-              _onQueryChanged('');
-            },
-          );
-    // Stiže: the search field sits on its own fill-05 backing inside the sheet,
-    // a 20px search glyph at the left and the text inset to 40px. OFF keeps the
-    // previous rounded surfaceContainerHighest field (killswitch).
+    final active = _searchFocused || _query.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      child: TextField(
-        controller: _searchController,
-        onChanged: _onQueryChanged,
-        textInputAction: TextInputAction.search,
-        style: StizeType.body.copyWith(color: stize.ink),
-        decoration: InputDecoration(
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocus,
+              onChanged: _onQueryChanged,
+              textInputAction: TextInputAction.search,
+              style: StizeType.body.copyWith(color: stize.ink),
+              decoration: InputDecoration(
                 isDense: true,
-                prefixIcon: Icon(Icons.search, size: 20, color: stize.ink60),
-                prefixIconConstraints:
-                    const BoxConstraints(minWidth: 40, minHeight: 40),
+                prefixIcon: Icon(Icons.search, size: 20, color: stize.ink50),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 44,
+                ),
                 hintText: l10n.searchHint,
                 hintStyle: StizeType.body.copyWith(color: stize.ink50),
                 filled: true,
-                fillColor: stize.fill05,
+                fillColor: active
+                    ? stize.fill05
+                    : stize.fill05.withValues(alpha: stize.fill05.a * 0.6),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(StizeRadius.radiusControl),
+                  borderRadius: BorderRadius.circular(22),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                suffixIcon: clearButton,
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
+                ),
               ),
+            ),
+          ),
+          if (active)
+            TextButton(
+              onPressed: _cancelSearch,
+              style: TextButton.styleFrom(
+                foregroundColor: stize.ink60,
+                minimumSize: const Size(44, 44),
+              ),
+              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+            ),
+        ],
       ),
     );
   }
@@ -415,8 +453,9 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       padding: const EdgeInsets.fromLTRB(4, 12, 4, 4),
       child: Text(
         text,
-        style: theme.textTheme.labelMedium
-            ?.copyWith(color: theme.colorScheme.outline),
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: theme.colorScheme.outline,
+        ),
       ),
     );
   }
@@ -425,14 +464,21 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     final theme = Theme.of(context);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: Icon(Icons.location_on_outlined,
-          color: theme.colorScheme.onSurfaceVariant),
+      leading: Icon(
+        Icons.location_on_outlined,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
       title: Text(stop.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: stop.lines.isEmpty
           ? null
-          : Text(stop.lines.join(' · '),
-              maxLines: 1, overflow: TextOverflow.ellipsis),
-      onTap: widget.onSelectStop == null ? null : () => widget.onSelectStop!(stop),
+          : Text(
+              stop.lines.join(' · '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+      onTap: widget.onSelectStop == null
+          ? null
+          : () => widget.onSelectStop!(stop),
     );
   }
 
@@ -444,27 +490,42 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       leading: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         constraints: const BoxConstraints(minWidth: 52),
-        decoration:
-            BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            vehicleGlyph(type, size: 16, color: StizeColors.of(context).onTransit),
+            vehicleGlyph(
+              type,
+              size: 16,
+              color: StizeColors.of(context).onTransit,
+            ),
             const SizedBox(width: 6),
-            Builder(builder: (context) {
-              // Stiže: line number = the one semibold, white on every type.
-              // OFF keeps the prior bold 15 (killswitch).
-              final stize = StizeColors.of(context);
-              return Text(line.line,
-                  style: StizeType.lineNumber.copyWith(color: stize.onTransit));
-            }),
+            Builder(
+              builder: (context) {
+                // Stiže: line number = the one semibold, white on every type.
+                // OFF keeps the prior bold 15 (killswitch).
+                final stize = StizeColors.of(context);
+                return Text(
+                  line.line,
+                  style: StizeType.lineNumber.copyWith(color: stize.onTransit),
+                );
+              },
+            ),
           ],
         ),
       ),
-      title: Text('${line.origin} → ${line.destination}',
-          maxLines: 1, overflow: TextOverflow.ellipsis),
-      onTap: widget.onSelectLine == null ? null : () => widget.onSelectLine!(line),
+      title: Text(
+        '${line.origin} → ${line.destination}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      onTap: widget.onSelectLine == null
+          ? null
+          : () => widget.onSelectLine!(line),
     );
   }
 

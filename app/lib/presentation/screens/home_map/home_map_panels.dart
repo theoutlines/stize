@@ -85,27 +85,44 @@ extension _MapPanels on _HomeMapScreenState {
     return widgets;
   }
 
-  /// The single `[← back] [title]` nav row for the current context view; null on
-  /// nearby (root). Model leaf takes precedence (owner R1 #3/#4).
+  /// Title of a level, for its own header and for the back link of the level
+  /// above it.
+  String _levelTitle(_SlotLevel level, AppLocalizations l10n) => switch (level) {
+        _StopLevel(:final id, :final name) =>
+          ref.watch(stopLocationProvider(id)).valueOrNull?.name ?? name ?? '',
+        _MyStopsLevel() => l10n.navMyStops,
+      };
+
+  /// The header of the current level; null on Nearby (root). One control per
+  /// level: a "← `previous`" back link when there is a previous level, else a ×
+  /// that closes back to Nearby. Same on the mobile sheet and the desktop panel.
+  /// The model leaf takes precedence; the vehicle view keeps its line row.
   Widget? _slotNavRow(AppLocalizations l10n) {
     final model = _slotModel;
     if (model != null) {
-      return ContextNavRow(
-        onBack: _slotBack,
+      return LevelHeader(
         title: model.fleet.modelName ?? l10n.fleetUnknownModel,
+        backLabel: _levels.isEmpty
+            ? l10n.followingVehicle
+            : _levelTitle(_levels.last, l10n),
+        onBack: _slotBack,
       );
     }
     switch (_activeView) {
       case ContextView.nearby:
         return null;
       case ContextView.stop:
-        final name = ref.watch(stopLocationProvider(_slotStopId!)).valueOrNull?.name ??
-            _slotStopName ??
-            '';
-        return ContextNavRow(
+      case ContextView.myStops:
+        final top = _levels.last;
+        final title = _levelTitle(top, l10n);
+        return LevelHeader(
+          title: title,
+          backLabel: _levels.length > 1
+              ? _levelTitle(_levels[_levels.length - 2], l10n)
+              : null,
           onBack: _slotBack,
-          title: name,
-          trailing: _slotStarButton(_slotStopId!, name),
+          onClose: _closeAllLevels,
+          trailing: top is _StopLevel ? _slotStarButton(top.id, title) : null,
         );
       case ContextView.vehicle:
         final track = _selectedVehicleKey == null
@@ -124,14 +141,17 @@ extension _MapPanels on _HomeMapScreenState {
     }
   }
 
-  /// The active view's content (no header — the nav row above owns the title).
-  Widget _slotContent(AppLocalizations l10n) {
+  /// The active level's content (no header — the level header owns the title).
+  /// [scrollController] is the mobile sheet's, so dragging the content drags
+  /// the sheet; null on the desktop panel.
+  Widget _slotContent(AppLocalizations l10n, {ScrollController? scrollController}) {
     final model = _slotModel;
     if (model != null) {
       return FleetModelView(
         fleet: model.fleet,
         fallbackType: model.type,
         garageNo: model.garageNo,
+        scrollController: scrollController,
       );
     }
     switch (_activeView) {
@@ -146,16 +166,23 @@ extension _MapPanels on _HomeMapScreenState {
           // "filter lines nearby" field (decision #6).
           showLocalSearch: false,
         );
+      case ContextView.myStops:
+        return MyStopsList(
+          scrollController: scrollController,
+          onTapStop: (id, name) =>
+              _openStopById(id, stopName: name, source: Ev.srcFavorites),
+        );
       case ContextView.stop:
         return StopBoard(
           key: ValueKey('slot-stop-$_slotStopId'),
           stopId: _slotStopId!,
           initialStopName: _slotStopName,
-          // The nav row above owns the title + star; the board is body-only.
+          scrollController: scrollController,
+          // The level header above owns the title + star; the board is body-only.
           showHeader: false,
           onFocusVehicle: (a, asOf) =>
               _focusVehicleFromArrival(a, asOf, source: Ev.srcSheet),
-          // A row's Fleet badge opens the model INSIDE the panel (no modal).
+          // A row's Fleet badge opens the model INSIDE the slot (no modal).
           onOpenFleetCard: (fleet, garageNo, type) =>
               _openSlotModel(fleet, garageNo: garageNo, type: type),
         );

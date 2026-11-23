@@ -166,8 +166,8 @@ extension _MapContext on _HomeMapScreenState {
   /// stop → stop; else nearby. Desktop-only (the panel).
   ContextView get _activeView {
     if (_selectedVehicleKey != null || _focus != null) return ContextView.vehicle;
-    if (_slotStopId != null) return ContextView.stop;
-    return ContextView.nearby;
+    if (_levels.isEmpty) return ContextView.nearby;
+    return _levels.last is _MyStopsLevel ? ContextView.myStops : ContextView.stop;
   }
 
   /// Follow is interrupted: a vehicle context is up but we're not tracking (the
@@ -197,26 +197,11 @@ extension _MapContext on _HomeMapScreenState {
       case ContextView.vehicle:
         _closeVehicleContext();
       case ContextView.stop:
-        _closeSlotStop();
+      case ContextView.myStops:
+        _popLevel();
       case ContextView.nearby:
         break;
     }
-  }
-
-  /// Leave the stop view → nearby. Mirrors the legacy sheet-close: clears the
-  /// on-demand markers and restores the pre-stop camera.
-  void _closeSlotStop() {
-    if (_slotStopId == null) {
-      if (mounted) _setState(() {});
-      return;
-    }
-    final stopId = _slotStopId;
-    _setState(() {
-      _slotStopId = null;
-      _slotStopName = null;
-    });
-    if (_onDemand && _stopContextId == stopId) _exitStopContext();
-    _restorePreStopCamera();
   }
 
   /// Open the Fleet model as a leaf sub-view INSIDE the panel (desktop) — never

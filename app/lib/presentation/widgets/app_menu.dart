@@ -3,11 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
-import '../../core/adaptive.dart';
 import '../../core/external_link.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
-import '../screens/my_stops_screen.dart';
 import '../screens/settings_screen.dart';
 import 'drawer_footer.dart';
 
@@ -149,8 +147,11 @@ class AppMenuCard extends ConsumerWidget {
       _MenuRow(
         icon: Icons.star_outline,
         label: l10n.navMyStops,
-        onTap: () => go((nav, _) =>
-            nav.push(adaptiveRoute((_) => const MyStopsScreen()))),
+        // A level in the map's sheet / panel, not a separate screen.
+        onTap: () {
+          Navigator.of(context).pop();
+          ref.read(myStopsRequestProvider.notifier).state++;
+        },
       ),
       if (analytics)
         _MenuRow(
