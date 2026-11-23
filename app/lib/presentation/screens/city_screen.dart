@@ -483,7 +483,7 @@ class _DelayHeatmapState extends State<DelayHeatmap> {
                 border: enough
                     ? (picked ? Border.all(color: c.ink, width: 2) : null)
                     : Border.all(color: picked ? c.ink : c.fill10),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
           );
@@ -664,7 +664,7 @@ class LinesTreemap extends StatelessWidget {
             borderRadius: BorderRadius.circular(2),
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
         Text(label, style: StizeType.caption.copyWith(color: c.ink60)),
       ],
     );
@@ -753,7 +753,7 @@ class _Tile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Flexible(
                     child: Text(
                       line.line,
@@ -837,7 +837,7 @@ class _Intervals extends StatelessWidget {
                           (box.maxWidth - 160) * l.eveningMeanHeadwaySecs! / mx,
                       height: 36,
                       alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.only(left: 8),
                       decoration: BoxDecoration(
                         color: c.fill08,
                         borderRadius: BorderRadius.circular(
@@ -849,10 +849,7 @@ class _Intervals extends StatelessWidget {
                     const Spacer(),
                     Text(
                       l10n.cityMin((l.eveningMeanHeadwaySecs! / 60).round()),
-                      style: StizeType.mono.copyWith(
-                        color: c.ink,
-                        fontSize: 14,
-                      ),
+                      style: StizeType.mono.copyWith(color: c.ink),
                     ),
                   ],
                 ),

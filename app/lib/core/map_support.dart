@@ -180,7 +180,7 @@ class CompactAttribution extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final style = StizeText.of(context).note.copyWith(
       color: scheme.onSurface.withValues(alpha: 0.7),
-      fontSize: 9.5,
+      fontSize: 10,
       height: 1.0,
     );
 
@@ -195,10 +195,10 @@ class CompactAttribution extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(4),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
               color: scheme.surface.withValues(alpha: 0.68),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(StizeRadius.radiusSm),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -644,10 +644,10 @@ class _VehicleMarkerState extends State<VehicleMarker>
         : (widget.selected ? scheme.onSurface : Colors.white);
     final fill = widget.stuck ? _stuckColor : widget.color;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: fill,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(StizeRadius.radiusTile),
         border: Border.all(
           color: borderColor,
           width: widget.selected || widget.stuck ? 2.5 : 1.5,
@@ -663,14 +663,13 @@ class _VehicleMarkerState extends State<VehicleMarker>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          vehicleGlyph(widget.type, size: 13, color: Colors.white),
+          vehicleGlyph(widget.type, size: 12, color: Colors.white),
           Text(
             widget.line,
-            style: const TextStyle(
+            style: StizeType.lineNumber.copyWith(
               color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              height: 1.05,
+              fontSize: 12,
+              height: 1.0,
             ),
           ),
         ],
