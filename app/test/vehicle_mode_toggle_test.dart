@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:stize/core/design/stize_icons.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -48,7 +48,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // The live-transport glyph (bus with signal arcs), not a layers icon.
-    expect(find.byType(SvgPicture), findsOneWidget);
+    expect(find.byIcon(StizeIcons.liveTransport), findsOneWidget);
     expect(find.byIcon(Icons.layers_outlined), findsNothing);
     expect(
       containerOf(tester).read(vehicleMapModeProvider),
