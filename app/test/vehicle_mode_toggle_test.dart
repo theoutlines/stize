@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,7 +46,9 @@ void main() {
     await tester.pumpWidget(_wrap(flagOn: true));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.layers_outlined), findsOneWidget);
+    // The live-transport glyph (bus with signal arcs), not a layers icon.
+    expect(find.byType(SvgPicture), findsOneWidget);
+    expect(find.byIcon(Icons.layers_outlined), findsNothing);
     expect(containerOf(tester).read(vehicleMapModeProvider),
         VehicleMapMode.onDemand);
 
@@ -74,12 +77,12 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('settings_vehicle_map_mode'), 'aquarium');
 
-    // Filled while the aquarium is on.
+    // Inverted (light button) while the aquarium is on.
     final theme = Theme.of(tester.element(find.byType(IconButton)));
     final material = tester.widget<Material>(
       find.ancestor(of: find.byType(IconButton), matching: find.byType(Material)).first,
     );
-    expect(material.color, theme.colorScheme.secondaryContainer);
+    expect(material.color, theme.colorScheme.onSurface);
 
     // Tapping back returns to on-demand.
     await tester.tap(find.byType(IconButton));
