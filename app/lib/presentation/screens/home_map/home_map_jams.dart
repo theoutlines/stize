@@ -262,8 +262,8 @@ extension _MapJams on _HomeMapScreenState {
             trailing: IconButton(
               icon: Icon(
                 _isLinePinned(line.line)
-                    ? Icons.push_pin
-                    : Icons.push_pin_outlined,
+                    ? StizeIcons.pinPushFilled
+                    : StizeIcons.pinPush,
               ),
               tooltip: l10n.pinLineTooltip,
               onPressed: () => _togglePinLine(line),

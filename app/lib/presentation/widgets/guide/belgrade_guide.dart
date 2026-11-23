@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/design/stize_icons.dart';
+import '../../../core/design/stize_tokens.dart';
 import '../../../l10n/app_localizations.dart';
 
 /// Pages of the Belgrade guide, each shown as a level in the map's sheet /
@@ -52,7 +53,6 @@ final DateTime kExpoOpening = DateTime(2027, 5, 15);
 /// Night hours for the guide's night state (00:00 to 04:59 local).
 bool isNightHour(DateTime now) => now.hour < 5;
 
-const _expoGreen = Color(0xFF2BD47D);
 const _nightNavy = Color(0xFF1B2A4A);
 
 /// The guide's root page.
@@ -147,7 +147,7 @@ class GuideReadStop extends StatelessWidget {
       children: [
         for (final (icon, text) in items)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -218,7 +218,7 @@ class GuideRow extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
                 Container(
@@ -241,7 +241,7 @@ class GuideRow extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Text(
                         subtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -319,9 +319,9 @@ class _ExpoCard extends StatelessWidget {
     final days = open.difference(today).inDays;
     if (days < 0) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
-        color: _expoGreen.withValues(alpha: 0.14),
+        color: StizeColors.of(context).accent14,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -329,9 +329,11 @@ class _ExpoCard extends StatelessWidget {
         children: [
           Text(
             '${l10n.guideNowLabel} · ${l10n.guideExpoTitle}',
-            style: theme.textTheme.labelLarge?.copyWith(color: _expoGreen),
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: StizeColors.of(context).accent,
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
@@ -339,8 +341,8 @@ class _ExpoCard extends StatelessWidget {
               Text(
                 '$days',
                 style: theme.textTheme.displaySmall?.copyWith(
-                  color: _expoGreen,
-                  fontWeight: FontWeight.w600,
+                  color: StizeColors.of(context).accent,
+                  fontWeight: FontWeight.w500,
                   letterSpacing: -1,
                 ),
               ),
@@ -348,7 +350,7 @@ class _ExpoCard extends StatelessWidget {
               Text(l10n.guideExpoDays, style: theme.textTheme.titleMedium),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             l10n.guideExpoSub,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -371,7 +373,7 @@ class _NightCard extends StatelessWidget {
     final theme = Theme.of(context);
     const fg = Colors.white;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
         color: _nightNavy,
         borderRadius: BorderRadius.circular(20),
@@ -382,7 +384,7 @@ class _NightCard extends StatelessWidget {
           Row(
             children: [
               const Icon(StizeIcons.moon, size: 16, color: fg),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Text(
                 l10n.guideNowLabel,
                 style: theme.textTheme.labelLarge?.copyWith(
@@ -391,7 +393,7 @@ class _NightCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             l10n.guideNightTitle,
             style: theme.textTheme.titleLarge?.copyWith(

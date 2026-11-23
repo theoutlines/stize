@@ -156,7 +156,7 @@ class _VehicleDetailSheet extends StatelessWidget {
   Widget _pill(BuildContext context) {
     final stize = StizeColors.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(999),
@@ -193,12 +193,12 @@ class _VehicleDetailSheet extends StatelessWidget {
           size: 16,
           color: stuck ? stuckColor : movingColor,
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
         Text(
           stuck ? l10n.vehicleStuck : l10n.vehicleMoving,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: stuck ? stuckColor : movingColor,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -221,7 +221,7 @@ class _VehicleDetailSheet extends StatelessWidget {
       title: Text(
         u.stop.name,
         style: u.isBoardStop
-            ? theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)
+            ? theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)
             : theme.textTheme.bodyMedium,
       ),
       subtitle: u.isBoardStop ? Text(l10n.vehicleYourStop) : null,
@@ -230,7 +230,7 @@ class _VehicleDetailSheet extends StatelessWidget {
           : Text(
               eta <= 0 ? l10n.arrivalEtaNow : l10n.vehicleEtaMinutesApprox(eta),
               style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: u.isBoardStop ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: u.isBoardStop ? FontWeight.w500 : FontWeight.w500,
               ),
             ),
     );

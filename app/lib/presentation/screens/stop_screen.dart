@@ -178,7 +178,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerHighest.withValues(
             alpha: 0.5,
@@ -192,7 +192,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
               size: 18,
               color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 l10n.noLiveVehiclesOnMap,

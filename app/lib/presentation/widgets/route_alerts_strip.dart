@@ -61,7 +61,7 @@ class _RouteAlertsStripState extends State<RouteAlertsStrip> {
             borderRadius: BorderRadius.circular(12),
             onTap: () => setState(() => _expanded = !_expanded),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
                 color: headerColor,
                 borderRadius: BorderRadius.circular(12),
@@ -79,7 +79,7 @@ class _RouteAlertsStripState extends State<RouteAlertsStrip> {
                       '${l10n.alertsBannerTitle} · ${alerts.length}',
                       style: theme.textTheme.labelLarge?.copyWith(
                         color: headerFg,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -93,13 +93,13 @@ class _RouteAlertsStripState extends State<RouteAlertsStrip> {
           ),
           if (_expanded)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: 8),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   for (final alert in alerts)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.only(bottom: 8),
                       child: _AlertRow(alert: alert),
                     ),
                 ],
@@ -150,7 +150,7 @@ class _AlertRow extends StatelessWidget {
             color: fg,
             size: 18,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,10 +161,10 @@ class _AlertRow extends StatelessWidget {
                       : l10n.alertActiveLabel,
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: fg,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   alert.localizedSummary(
                     Localizations.localeOf(context).languageCode,

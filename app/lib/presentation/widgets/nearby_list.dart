@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'animated_entries.dart';
+
 import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
 import '../../core/nearby_focus.dart';
@@ -37,24 +39,29 @@ class NearbyList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final leading = header == null ? 0 : 1;
     // Stiže: colour cards 4px apart (owner spec, same as the stop board).
-    final list = ListView.separated(
+    // Cards animate in and out on a refresh instead of popping (owner,
+    // 2026-11-23); the list is short, so one animated column is fine.
+    final list = ListView(
       controller: scrollController,
       // Top padding matches the horizontal (side) padding so the first card is
       // inset equally from the island's top and sides (owner desktop request).
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: groups.length + leading,
-      separatorBuilder: (_, _) => const SizedBox(height: StizeSpace.space1),
-      itemBuilder: (context, i) {
-        if (i < leading) return header!;
-        final g = groups[i - leading];
-        return NearbyCard(
-          group: g,
-          onTap: onTapGroup == null ? null : () => onTapGroup!(g),
-        );
-      },
+      children: [
+        ?header,
+        AnimatedEntries(
+          gap: StizeSpace.space1,
+          children: [
+            for (final g in groups)
+              NearbyCard(
+                key: ValueKey(g.key),
+                group: g,
+                onTap: onTapGroup == null ? null : () => onTapGroup!(g),
+              ),
+          ],
+        ),
+      ],
     );
     if (onRefresh == null) return list;
     return RefreshIndicator(onRefresh: onRefresh!, child: list);
@@ -87,7 +94,9 @@ class NearbyCard extends StatelessWidget {
 
     // The next time of this line, with its unit attached (same as the board).
     String? next;
-    if (etas.length > 1) {
+    // "next in 0 min" said nothing: a second vehicle also arriving now gets
+    // no caption (owner, 2026-11-23).
+    if (etas.length > 1 && etas[1].etaMinutes > 0) {
       final m = etas[1].etaMinutes;
       next = m >= kFarEtaMinutes
           ? l10n.arrivalNextAt(clockAt(localeName, m))

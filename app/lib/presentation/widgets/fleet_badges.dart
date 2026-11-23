@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/fleet_matcher.dart';
 import '../../l10n/app_localizations.dart';
 import '../../core/design/stize_icons.dart';
+import '../../core/design/stize_tokens.dart';
 
 /// Shared Fleet-ID visual vocabulary (task B2/B3). Small, glanceable badges the
 /// arrivals list and the model card both draw from, so a "❄️" or the eco green
@@ -120,7 +121,7 @@ class FleetBadgeStrip extends StatelessWidget {
         // "~" there read as a stray character (audit round 2, D7).
         if (approx && onColor == null)
           Padding(
-            padding: const EdgeInsets.only(right: 2),
+            padding: const EdgeInsets.only(right: 4),
             child: Text(
               '~',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -129,8 +130,19 @@ class FleetBadgeStrip extends StatelessWidget {
             ),
           ),
         for (var i = 0; i < badges.length; i++) ...[
-          if (i > 0) const SizedBox(width: 6),
+          if (i > 0) const SizedBox(width: 8),
           badges[i],
+        ],
+        // A tappable strip says so: the system's inline chevron (12px) after
+        // the badges opens the model card (owner, 2026-11-23: nobody guessed
+        // the icons were a button).
+        if (onTap != null) ...[
+          const SizedBox(width: 4),
+          Icon(
+            StizeIcons.chevronRight,
+            size: StizeSize.chevronInline,
+            color: onColor ?? theme.colorScheme.onSurfaceVariant,
+          ),
         ],
       ],
     );
@@ -141,7 +153,7 @@ class FleetBadgeStrip extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       // No horizontal padding: the strip lines up with the caption text.
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: row,
       ),
     );

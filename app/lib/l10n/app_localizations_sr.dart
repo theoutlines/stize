@@ -479,7 +479,7 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get feedbackWriteToMeSubtitle =>
-      'Pošalji poruku — greške, ideje, bilo šta.';
+      'Pošalji poruku: greške, ideje, bilo šta.';
 
   @override
   String get feedbackGithubIssues => 'GitHub Issues';
@@ -804,4 +804,9 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get guideStripRailStationSub => 'Gradske linije: 34, 36, 600';
+
+  @override
+  String arrivalThenTo(String place) {
+    return 'Zatim do $place';
+  }
 }

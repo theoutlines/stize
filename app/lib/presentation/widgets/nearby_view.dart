@@ -254,7 +254,8 @@ class NearbyViewState extends ConsumerState<NearbyView> {
                 g,
           ];
     // Global two-section order: live cards first, schedule-only after.
-    return orderNearbyGroups(matched);
+    // Timetable rows that can't physically happen are dropped first.
+    return orderNearbyGroups(pruneImpossibleScheduled(matched));
   }
 
   @override
@@ -290,55 +291,54 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     final l10n = AppLocalizations.of(context);
     final stize = StizeColors.of(context);
     final active = _searchFocused || _query.isNotEmpty;
+    const noBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.all(
+        Radius.circular(StizeRadius.radiusControl),
+      ),
+      borderSide: BorderSide.none,
+    );
+    // The system's field (44px, radius-control, fill-05 at rest, fill-10
+    // while editing, no ring), with a clear-and-close × inside it instead of
+    // a separate Cancel button (owner, 2026-11-23).
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              focusNode: _searchFocus,
-              onChanged: _onQueryChanged,
-              textInputAction: TextInputAction.search,
-              style: StizeType.body.copyWith(color: stize.ink),
-              decoration: InputDecoration(
-                isDense: true,
-                prefixIcon: Icon(
-                  StizeIcons.search,
-                  size: 20,
-                  color: stize.ink50,
-                ),
-                prefixIconConstraints: const BoxConstraints(
-                  minWidth: 40,
-                  minHeight: 44,
-                ),
-                hintText: l10n.searchHint,
-                hintStyle: StizeType.body.copyWith(color: stize.ink50),
-                filled: true,
-                fillColor: active
-                    ? stize.fill05
-                    : stize.fill05.withValues(alpha: stize.fill05.a * 0.6),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 8,
-                ),
-              ),
-            ),
+      padding: const EdgeInsets.fromLTRB(
+        StizeSpace.space4,
+        StizeSpace.space1,
+        StizeSpace.space4,
+        StizeSpace.space2,
+      ),
+      child: TextField(
+        controller: _searchController,
+        focusNode: _searchFocus,
+        onChanged: _onQueryChanged,
+        textInputAction: TextInputAction.search,
+        style: StizeType.body.copyWith(color: stize.ink),
+        decoration: InputDecoration(
+          isDense: true,
+          prefixIcon: Icon(StizeIcons.search, size: 20, color: stize.ink50),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: StizeSize.controlH,
+            minHeight: StizeSize.controlH,
           ),
-          if (active)
-            TextButton(
-              onPressed: _cancelSearch,
-              style: TextButton.styleFrom(
-                foregroundColor: stize.ink60,
-                minimumSize: const Size(44, 44),
-              ),
-              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
-            ),
-        ],
+          suffixIcon: active
+              ? IconButton(
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  style: IconButton.styleFrom(shape: const CircleBorder()),
+                  icon: Icon(StizeIcons.close, size: 16, color: stize.ink60),
+                  onPressed: _cancelSearch,
+                )
+              : null,
+          hintText: l10n.searchHint,
+          hintStyle: StizeType.body.copyWith(color: stize.ink50),
+          filled: true,
+          fillColor: active ? stize.fill10 : stize.fill05,
+          border: noBorder,
+          enabledBorder: noBorder,
+          focusedBorder: noBorder,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: StizeSpace.space3,
+          ),
+        ),
       ),
     );
   }
@@ -400,6 +400,12 @@ class NearbyViewState extends ConsumerState<NearbyView> {
           retryLabel: l10n.retry,
         ),
       );
+    }
+
+    // Focused search with nothing typed yet: the nearby cards step aside so
+    // the sheet is the search (owner, 2026-11-23).
+    if (_searchFocused && _query.isEmpty) {
+      return _scrollable(controller, const SizedBox.shrink());
     }
 
     final groups = _filtered;
@@ -505,11 +511,11 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
       leading: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         constraints: const BoxConstraints(minWidth: 52),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -520,7 +526,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
               size: 16,
               color: StizeColors.of(context).onTransit,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Builder(
               builder: (context) {
                 // Stiže: line number = the one semibold, white on every type.

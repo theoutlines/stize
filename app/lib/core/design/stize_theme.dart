@@ -203,7 +203,7 @@ abstract final class StizeTheme {
         constraints: const BoxConstraints(minHeight: StizeSize.controlH),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: StizeSpace.space3,
-          vertical: StizeSpace.space2 + 2,
+          vertical: StizeSpace.space2 + 4,
         ),
         hintStyle: StizeType.body.copyWith(color: c.ink50),
         labelStyle: StizeType.control.copyWith(color: c.ink60),

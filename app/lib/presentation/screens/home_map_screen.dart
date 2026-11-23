@@ -54,6 +54,10 @@ import '../widgets/fleet_model_card.dart';
 import '../widgets/nearby_sheet.dart';
 import '../widgets/nearby_view.dart';
 import '../widgets/stop_board.dart';
+import '../../core/app_links.dart';
+import '../../core/external_link.dart';
+import 'settings_screen.dart';
+import '../widgets/drawer_footer.dart';
 import '../widgets/guide/belgrade_guide.dart';
 import '../widgets/level_header.dart';
 import '../widgets/my_stops_list.dart';
@@ -680,6 +684,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       if (prev == next) return;
       _openMyStopsLevel();
     });
+    ref.listen(settingsRequestProvider, (prev, next) {
+      if (prev == next) return;
+      _pushLevel(const _SettingsLevel());
+    });
+    ref.listen(feedbackRequestProvider, (prev, next) {
+      if (prev == next) return;
+      _pushLevel(const _FeedbackLevel());
+    });
     ref.listen(guideRequestProvider, (prev, next) {
       if (prev == next) return;
       _openGuideLevel(GuidePage.home);
@@ -963,6 +975,15 @@ class _StopLevel extends _SlotLevel {
 
 class _MyStopsLevel extends _SlotLevel {
   const _MyStopsLevel();
+}
+
+class _SettingsLevel extends _SlotLevel {
+  const _SettingsLevel();
+}
+
+class _FeedbackLevel extends _SlotLevel {
+  const _FeedbackLevel({this.form = false});
+  final bool form;
 }
 
 class _GuideLevel extends _SlotLevel {

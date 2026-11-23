@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -30,10 +31,12 @@ Future<void> showFleetModelCard(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (context) => FleetModelView(
-      fleet: fleet,
-      fallbackType: fallbackType,
-      garageNo: garageNo,
+    builder: (ctx) => PointerInterceptor(
+      child: ((context) => FleetModelView(
+        fleet: fleet,
+        fallbackType: fallbackType,
+        garageNo: garageNo,
+      ))(ctx),
     ),
   );
 }
@@ -82,13 +85,13 @@ class FleetModelView extends ConsumerWidget {
         const SizedBox(height: 12),
         _heroSlot(context, theme, l10n, photo),
         if (note != null) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Text(note, style: theme.textTheme.bodyMedium),
         ],
         const SizedBox(height: 16),
         ..._attributes(context, theme, l10n, lang),
         if (fleet.approximate) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Text(
             l10n.fleetApproxNote,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -146,7 +149,7 @@ class FleetModelView extends ConsumerWidget {
             color: StizeColors.of(context).onTransit,
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,7 +157,7 @@ class FleetModelView extends ConsumerWidget {
               Text(
                 model,
                 style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               if (nickname != null)
@@ -213,7 +216,7 @@ class FleetModelView extends ConsumerWidget {
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         InkWell(
           borderRadius: BorderRadius.circular(4),
           onTap: () => launchUrl(
@@ -221,7 +224,7 @@ class FleetModelView extends ConsumerWidget {
             mode: LaunchMode.externalApplication,
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(vertical: 4),
             child: Text(
               l10n.fleetPhotoCredit(photo.author, photo.license),
               maxLines: 2,
@@ -262,7 +265,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          fleet.lowFloor! ? StizeIcons.accessible : Icons.stairs_outlined,
+          fleet.lowFloor! ? StizeIcons.accessible : StizeIcons.stairs,
           fleet.lowFloor! ? l10n.fleetLowFloor : l10n.fleetHighFloor,
           positive: fleet.lowFloor!,
           assumed: fleet.isAssumed('low_floor'),
@@ -319,7 +322,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          Icons.straighten,
+          StizeIcons.ruler,
           l10n.fleetLength(_trimMeters(fleet.lengthM!)),
           assumed: fleet.approximate,
         ),
@@ -332,9 +335,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          fleet.powertrain.isElectric
-              ? StizeIcons.leaf
-              : Icons.local_gas_station_outlined,
+          fleet.powertrain.isElectric ? StizeIcons.leaf : StizeIcons.fuel,
           power,
           positive: fleet.powertrain.isElectric,
           assumed: fleet.approximate,
@@ -345,7 +346,12 @@ class FleetModelView extends ConsumerWidget {
     // 7) USB.
     if (fleet.usb == true) {
       rows.add(
-        _row(theme, Icons.usb, l10n.fleetUsb, assumed: fleet.isAssumed('usb')),
+        _row(
+          theme,
+          StizeIcons.usb,
+          l10n.fleetUsb,
+          assumed: fleet.isAssumed('usb'),
+        ),
       );
     }
 
@@ -360,7 +366,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          Icons.factory_outlined,
+          StizeIcons.factory,
           l10n.fleetManufacturer(value),
           muted: true,
         ),
@@ -372,7 +378,7 @@ class FleetModelView extends ConsumerWidget {
       rows.add(
         _row(
           theme,
-          Icons.business_outlined,
+          StizeIcons.building,
           l10n.fleetOperator(fleet.operatorName!),
           muted: true,
         ),
@@ -408,7 +414,7 @@ class FleetModelView extends ConsumerWidget {
         : (muted ? theme.colorScheme.outline : theme.colorScheme.onSurface);
     final color = assumed ? baseColor.withValues(alpha: 0.6) : baseColor;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -436,7 +442,7 @@ class FleetModelView extends ConsumerWidget {
         : (score == 3 ? l10n.fleetComfortOk : l10n.fleetComfortComfy);
     final dotColor = theme.colorScheme.primary;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           Icon(StizeIcons.seat, size: 20, color: theme.colorScheme.onSurface),
@@ -447,7 +453,7 @@ class FleetModelView extends ConsumerWidget {
           ),
           for (var i = 1; i <= 5; i++)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Icon(
                 i <= score ? StizeIcons.dot : StizeIcons.circle,
                 size: 10,

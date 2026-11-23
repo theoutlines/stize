@@ -19,7 +19,7 @@ class PrivacyScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(body, style: theme.textTheme.bodyMedium),
         ],
       ),

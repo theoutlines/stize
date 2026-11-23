@@ -204,6 +204,16 @@ List<ArrivalListEntry> groupArrivals(
   liveRows.sort(byEtaThenIndex);
   nonLive.sort(byEtaThenIndex);
 
+  // One timetable cell per line and set of times: on a loop (the airport) the
+  // same trips come through as two directions and showed twice (owner,
+  // 2026-11-23).
+  final seenCells = <String>{};
+  nonLive.removeWhere((r) {
+    final e = r.$3;
+    if (e is! ScheduledGroupCell) return false;
+    return !seenCells.add('${e.line}|${e.etaMinutes.join(',')}');
+  });
+
   return [for (final r in liveRows) r.$3, for (final r in nonLive) r.$3];
 }
 

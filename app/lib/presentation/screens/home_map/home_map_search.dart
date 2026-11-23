@@ -178,6 +178,19 @@ extension _MapSearch on _HomeMapScreenState {
     _raiseSheetToHalf();
   }
 
+  /// Pushes a non-stop level (Settings, Feedback) onto the one sheet/panel.
+  void _pushLevel(_SlotLevel level) {
+    _expandPanelIfCollapsed();
+    final top = _levels.isEmpty ? null : _levels.last;
+    if (top.runtimeType != level.runtimeType ||
+        (level is _FeedbackLevel &&
+            (top as _FeedbackLevel).form != level.form)) {
+      _levels.add(level);
+    }
+    _setState(() => _slotModel = null);
+    _raiseSheetToHalf();
+  }
+
   /// Opens a page of the Belgrade guide as the next level.
   void _openGuideLevel(GuidePage page) {
     _expandPanelIfCollapsed();
@@ -202,8 +215,8 @@ extension _MapSearch on _HomeMapScreenState {
       if (_sheetCtl.size < kSheetHalf - 0.01) {
         _sheetCtl.animateTo(
           kSheetHalf,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOutCubic,
+          duration: StizeMotion.slow,
+          curve: StizeMotion.smoothOut,
         );
       }
     });
@@ -256,8 +269,8 @@ extension _MapSearch on _HomeMapScreenState {
         if (!mounted || !_sheetCtl.isAttached) return;
         _sheetCtl.animateTo(
           kSheetPeek,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOutCubic,
+          duration: StizeMotion.slow,
+          curve: StizeMotion.smoothOut,
         );
       });
     }

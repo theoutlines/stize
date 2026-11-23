@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_links.dart';
@@ -51,39 +52,41 @@ void showFeedbackSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
-    builder: (sheetContext) => Consumer(
-      builder: (context, ref, _) {
-        final l10n = AppLocalizations.of(context);
-        final formEnabled = ref.watch(feedbackFormEnabledProvider);
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // The form action disappears entirely when the killswitch is off.
-              if (formEnabled)
+    builder: (ctx) => PointerInterceptor(
+      child: ((sheetContext) => Consumer(
+        builder: (context, ref, _) {
+          final l10n = AppLocalizations.of(context);
+          final formEnabled = ref.watch(feedbackFormEnabledProvider);
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // The form action disappears entirely when the killswitch is off.
+                if (formEnabled)
+                  ListTile(
+                    leading: const Icon(StizeIcons.edit),
+                    title: Text(l10n.feedbackWriteToMe),
+                    subtitle: Text(l10n.feedbackWriteToMeSubtitle),
+                    onTap: () {
+                      Navigator.of(sheetContext).pop();
+                      showFeedbackForm(context);
+                    },
+                  ),
                 ListTile(
-                  leading: const Icon(StizeIcons.edit),
-                  title: Text(l10n.feedbackWriteToMe),
-                  subtitle: Text(l10n.feedbackWriteToMeSubtitle),
+                  leading: const Icon(StizeIcons.bug),
+                  title: Text(l10n.feedbackGithubIssues),
+                  subtitle: Text(l10n.feedbackGithubIssuesSubtitle),
                   onTap: () {
                     Navigator.of(sheetContext).pop();
-                    showFeedbackForm(context);
+                    openExternalUrl(kRepoIssuesUrl);
                   },
                 ),
-              ListTile(
-                leading: const Icon(StizeIcons.bug),
-                title: Text(l10n.feedbackGithubIssues),
-                subtitle: Text(l10n.feedbackGithubIssuesSubtitle),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  openExternalUrl(kRepoIssuesUrl);
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
+                const SizedBox(height: 8),
+              ],
+            ),
+          );
+        },
+      ))(ctx),
     ),
   );
 }
@@ -96,22 +99,31 @@ void showFeedbackForm(BuildContext context) {
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => const Padding(
-      // Lift above the keyboard.
-      padding: EdgeInsets.only(bottom: 0),
-      child: _FeedbackForm(),
+    builder: (ctx) => PointerInterceptor(
+      child: ((_) => const Padding(
+        // Lift above the keyboard.
+        padding: EdgeInsets.only(bottom: 0),
+        child: FeedbackForm(),
+      ))(ctx),
     ),
   );
 }
 
-class _FeedbackForm extends ConsumerStatefulWidget {
-  const _FeedbackForm();
+class FeedbackForm extends ConsumerStatefulWidget {
+  const FeedbackForm({super.key, this.onSent, this.showTitle = true});
+
+  /// Called after a successful send instead of popping a route (the form as a
+  /// level in the map's sheet/panel).
+  final VoidCallback? onSent;
+
+  /// The sheet shows its own title; as a level the header carries it.
+  final bool showTitle;
 
   @override
-  ConsumerState<_FeedbackForm> createState() => _FeedbackFormState();
+  ConsumerState<FeedbackForm> createState() => _FeedbackFormState();
 }
 
-class _FeedbackFormState extends ConsumerState<_FeedbackForm> {
+class _FeedbackFormState extends ConsumerState<FeedbackForm> {
   final _messageController = TextEditingController();
   final _contactController = TextEditingController();
   bool _sending = false;
@@ -153,7 +165,11 @@ class _FeedbackFormState extends ConsumerState<_FeedbackForm> {
             locale: locale,
           );
       if (!mounted) return;
-      navigator.pop();
+      if (widget.onSent != null) {
+        widget.onSent!();
+      } else {
+        navigator.pop();
+      }
       messenger.showSnackBar(SnackBar(content: Text(l10n.feedbackSent)));
     } on RateLimitedException {
       if (!mounted) return;
@@ -176,17 +192,19 @@ class _FeedbackFormState extends ConsumerState<_FeedbackForm> {
     final l10n = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        20,
+        16,
         0,
-        20,
-        20 + MediaQuery.viewInsetsOf(context).bottom,
+        16,
+        16 + MediaQuery.viewInsetsOf(context).bottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l10n.feedbackFormTitle, style: theme.textTheme.titleLarge),
-          const SizedBox(height: 12),
+          if (widget.showTitle) ...[
+            Text(l10n.feedbackFormTitle, style: theme.textTheme.titleLarge),
+            const SizedBox(height: 12),
+          ],
           TextField(
             controller: _messageController,
             minLines: 3,

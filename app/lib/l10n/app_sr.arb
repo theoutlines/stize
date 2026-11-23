@@ -198,7 +198,7 @@
   "drawerShareFeedback": "Pošaljite utisak",
   "drawerFeedbackSheetTitle": "Utisci",
   "feedbackWriteToMe": "Piši mi",
-  "feedbackWriteToMeSubtitle": "Pošalji poruku — greške, ideje, bilo šta.",
+  "feedbackWriteToMeSubtitle": "Pošalji poruku: greške, ideje, bilo šta.",
   "feedbackGithubIssues": "GitHub Issues",
   "feedbackGithubIssuesSubtitle": "Za tehničke prijave (javno).",
   "feedbackFormTitle": "Piši mi",
@@ -294,5 +294,6 @@
   "guideStripBusStation": "Na autobuskoj stanici ste",
   "guideStripBusStationSub": "Gradske linije polaze sa stajališta kod izlaza",
   "guideStripRailStation": "Na stanici Beograd Centar ste",
-  "guideStripRailStationSub": "Gradske linije: 34, 36, 600"
+  "guideStripRailStationSub": "Gradske linije: 34, 36, 600",
+  "arrivalThenTo": "Zatim do {place}"
 }

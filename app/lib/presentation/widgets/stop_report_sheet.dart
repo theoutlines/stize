@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/design/stize_tokens.dart';
@@ -48,16 +49,24 @@ class StopReportEntry extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return Align(
       alignment: Alignment.centerLeft,
+      // The system's tertiary button: 40px, fill-06, radius-md, label 16/500,
+      // 16px icon on the text's centre line.
       child: TextButton.icon(
         style: TextButton.styleFrom(
-          foregroundColor: c.ink60,
-          minimumSize: const Size(0, 44),
-          padding: const EdgeInsets.symmetric(horizontal: StizeSpace.space1),
+          foregroundColor: c.ink80,
+          backgroundColor: c.fill06,
+          minimumSize: const Size(0, StizeSize.buttonSmallH),
+          padding: const EdgeInsets.symmetric(horizontal: StizeSpace.space4),
           textStyle: StizeType.label,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(StizeRadius.radiusMd),
+            ),
+          ),
         ),
         onPressed: () =>
             showStopReportSheet(context, stopId: stopId, stopName: stopName),
-        icon: const Icon(StizeIcons.flag, size: 18),
+        icon: const Icon(StizeIcons.flag, size: 16),
         label: Text(l10n.stopReportEntry),
       ),
     );
@@ -74,7 +83,9 @@ Future<void> showStopReportSheet(
     isScrollControlled: true,
     showDragHandle: true,
     constraints: const BoxConstraints(maxWidth: 480),
-    builder: (_) => StopReportSheet(stopId: stopId, stopName: stopName),
+    builder: (ctx) => PointerInterceptor(
+      child: ((_) => StopReportSheet(stopId: stopId, stopName: stopName))(ctx),
+    ),
   );
 }
 
@@ -189,7 +200,7 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
             l10n.stopReportTitle,
             style: StizeType.heroTitle.copyWith(color: c.ink),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             widget.stopName,
             style: StizeType.label.copyWith(color: c.ink60),
@@ -205,7 +216,7 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
               children: [
                 for (final cat in kStopReportCategories)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
+                    padding: const EdgeInsets.only(bottom: 4),
                     child: Material(
                       color: _category == cat ? c.fill08 : Colors.transparent,
                       borderRadius: BorderRadius.circular(

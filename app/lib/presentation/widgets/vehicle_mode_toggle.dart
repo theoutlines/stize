@@ -106,7 +106,7 @@ class _VehicleModeToggleState extends ConsumerState<VehicleModeToggle> {
       ),
     );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -116,22 +116,35 @@ class _VehicleModeToggleState extends ConsumerState<VehicleModeToggle> {
                 ? Padding(
                     key: const ValueKey('hint'),
                     padding: const EdgeInsets.only(right: 8),
-                    child: Material(
-                      color: theme.colorScheme.inverseSurface,
-                      borderRadius: BorderRadius.circular(16),
-                      elevation: 3,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        child: Text(
-                          l10n.vehicleModeHint,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: theme.colorScheme.onInverseSurface,
+                    // A speech-bubble tail pointing at the button, so the
+                    // label reads as "this button is Live transport".
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Material(
+                          color: theme.colorScheme.inverseSurface,
+                          borderRadius: BorderRadius.circular(16),
+                          elevation: 3,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Text(
+                              l10n.vehicleModeHint,
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: theme.colorScheme.onInverseSurface,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        CustomPaint(
+                          size: const Size(7, 14),
+                          painter: _TailPainter(
+                            theme.colorScheme.inverseSurface,
+                          ),
+                        ),
+                      ],
                     ),
                   )
                 : const SizedBox.shrink(key: ValueKey('none')),
@@ -185,3 +198,22 @@ String vehicleModeLabel(VehicleMapMode mode, AppLocalizations l10n) =>
       VehicleMapMode.onDemand => l10n.vehicleModeOnDemand,
       VehicleMapMode.aquarium => l10n.vehicleModeAll,
     };
+
+/// Right-pointing triangle: the label's tail towards the button.
+class _TailPainter extends CustomPainter {
+  const _TailPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, size.height / 2)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_TailPainter old) => old.color != color;
+}

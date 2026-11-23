@@ -89,6 +89,9 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'The pole is gone');
     await tester.pump();
+    // System spacing made the sheet taller: bring Send into view first.
+    await tester.ensureVisible(find.text('Send'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Send'));
     await tester.pumpAndSettle();
     expect(repo.reports.single['comment'], 'The pole is gone');

@@ -47,21 +47,21 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
     final key = '${jam.line}|${jam.directionRouteId}';
     final open = _expanded.contains(key);
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       decoration: BoxDecoration(
         color: const Color(0xFFE8A317).withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InkWell(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
             onTap: () => setState(() {
               open ? _expanded.remove(key) : _expanded.add(key);
             }),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
                   Icon(
@@ -69,7 +69,7 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
                     size: 16,
                     color: theme.colorScheme.onSurface,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       l10n.jamNearbyDelay(jam.line),
@@ -108,7 +108,7 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
         ];
         if (names.isEmpty) return const SizedBox.shrink();
         return Padding(
-          padding: const EdgeInsets.fromLTRB(38, 0, 12, 10),
+          padding: const EdgeInsets.fromLTRB(40, 0, 12, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -118,7 +118,7 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 names.join(' · '),
                 style: theme.textTheme.bodySmall?.copyWith(
