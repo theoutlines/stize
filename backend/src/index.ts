@@ -27,12 +27,13 @@ import {
   nearbyStops,
   searchLines,
   searchStops,
+  getStopById,
 } from "./lib/gtfsData";
 import { GeocodeRateLimited, geocodeSearch } from "./lib/geocode";
 import { listAlerts, refreshAlerts } from "./lib/alerts";
 import { computeJams, journalJams, type JamsResponse } from "./lib/jamDetector";
 import { RateLimitedError, ValidationError, adminTokenOk } from "./lib/errors";
-import { createFeedback, createFeedbackIssue } from "./lib/feedback";
+import { createFeedback, createFeedbackIssue, stopReportToFeedback } from "./lib/feedback";
 import {
   fetchUsageToday,
   forgetGovernedFlag,
@@ -458,6 +459,43 @@ app.post("/api/v1/events", async (c) => {
     );
   }
   return c.json({ accepted: events.length }, 202);
+});
+
+// Stop data report (a rider flags wrong data at one stop). Same receiver and
+// killswitch as feedback; the stop must exist in our reference data.
+app.post("/api/v1/stops/:id/report", async (c) => {
+  c.header("cache-control", "no-store");
+  if (!(await getFlagMemoized(c.env, c.executionCtx, "feedback_form"))) {
+    return c.json({ error: "feedback form disabled" }, 403);
+  }
+  const stop = await getStopById(c.env, c.req.param("id"));
+  if (!stop) return c.json({ error: "unknown stop" }, 404);
+  const body = await c.req
+    .json<Record<string, string | undefined>>()
+    .catch(() => ({}) as Record<string, string | undefined>);
+  const ip = c.req.header("CF-Connecting-IP") ?? "unknown";
+  try {
+    const { feedback, title } = stopReportToFeedback(stop, {
+      stopId: stop.stop_id,
+      category: body.category ?? "",
+      comment: body.comment,
+      honeypot: body.website,
+      appVersion: body.app_version,
+      platform: body.platform,
+      locale: body.locale,
+    });
+    const row = await createFeedback(c.env, ip, feedback);
+    c.executionCtx.waitUntil(
+      createFeedbackIssue(c.env, feedback, { title, labels: ["stop-report"] }).catch(
+        (err) => console.error("stop report issue create failed", err),
+      ),
+    );
+    return c.json({ id: row.id, created_at: row.created_at }, 201);
+  } catch (err) {
+    if (err instanceof RateLimitedError) return c.json({ error: err.message }, 429);
+    if (err instanceof ValidationError) return c.json({ error: err.message }, 400);
+    throw err;
+  }
 });
 
 // In-app feedback (drawer footer). D1 is the durable primary store; a GitHub

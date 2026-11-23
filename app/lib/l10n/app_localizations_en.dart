@@ -607,4 +607,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get arrivalTerminus => 'Terminus';
+
+  @override
+  String get stopReportEntry => 'Something wrong with this stop?';
+
+  @override
+  String get stopReportTitle => 'What’s wrong?';
+
+  @override
+  String get stopReportNotHere => 'The stop isn’t here or it’s elsewhere';
+
+  @override
+  String get stopReportWrongType => 'Wrong type (bus, tram, trolleybus)';
+
+  @override
+  String get stopReportWrongLines => 'Wrong lines';
+
+  @override
+  String get stopReportArrivalsWrong => 'Arrivals don’t match reality';
+
+  @override
+  String get stopReportWrongName => 'Wrong name';
+
+  @override
+  String get stopReportOther => 'Something else';
+
+  @override
+  String get stopReportOtherLabel => 'Tell us what’s wrong';
+
+  @override
+  String get stopReportOtherHint => 'Needed for “Something else”';
+
+  @override
+  String get stopReportPrivacy =>
+      'We get the stop and its lines. Not your location.';
+
+  @override
+  String get stopReportSend => 'Send';
+
+  @override
+  String get stopReportSentTitle => 'Thanks, got it';
+
+  @override
+  String stopReportSentBody(String what, String stop) {
+    return 'We’ll check “$what” at $stop and fix the data. You don’t need to do anything else.';
+  }
+
+  @override
+  String get stopReportAlreadyTitle => 'Already sent today';
+
+  @override
+  String stopReportAlreadyBody(String what) {
+    return 'You told us about “$what” at this stop today. One report is enough: we’ll check it.';
+  }
+
+  @override
+  String get stopReportBack => 'Back to the stop';
+
+  @override
+  String get stopReportTooFast =>
+      'Please wait a minute before sending another report.';
+
+  @override
+  String get stopReportFailed =>
+      'Couldn’t send. Check the connection and try again.';
 }

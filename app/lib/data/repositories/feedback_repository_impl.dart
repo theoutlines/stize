@@ -30,4 +30,25 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
       headers: headers,
     );
   }
+
+  @override
+  Future<void> submitStopReport({
+    required String stopId,
+    required String category,
+    String? comment,
+    required String appVersion,
+    required String platform,
+    required String locale,
+  }) async {
+    await _client.postJson(
+      '/api/v1/stops/${Uri.encodeComponent(stopId)}/report',
+      body: {
+        'category': category,
+        if (comment != null && comment.trim().isNotEmpty) 'comment': comment.trim(),
+        'app_version': appVersion,
+        'platform': platform,
+        'locale': locale,
+      },
+    );
+  }
 }
