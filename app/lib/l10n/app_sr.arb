@@ -332,5 +332,6 @@
   "cityLineEvery": "na svakih {n} min",
   "cityLineHeatSubtitle": "Ova linija, po danu i satu",
   "cityLineThinBody": "Videli smo {n} dolazaka ove linije. Statistika se pojavljuje posle {min}.",
-  "cityLineNoHour": "nema podataka za ovaj sat"
+  "cityLineNoHour": "nema podataka za ovaj sat",
+  "cityLinesBestOnly": "{best} je najtačnija linija; nijedna od prometnih linija ne kasni primetno."
 }

@@ -100,7 +100,13 @@ class _CityBody extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, box) {
         final wide = box.maxWidth >= 840;
-        final kpis = _Kpis(summary: summary, columns: wide ? 4 : 2);
+        final kpis = LayoutBuilder(
+          builder: (context, b) => _Kpis(
+            summary: summary,
+            // Four in a row only when each cell has room for its number.
+            columns: b.maxWidth >= 640 ? 4 : 2,
+          ),
+        );
         final heat = _Section(
           title: l10n.cityHeatTitle,
           subtitle: l10n.cityHeatSubtitle,
@@ -191,8 +197,9 @@ class _CityBody extends StatelessWidget {
   }
 
   String? _linesSentence(AppLocalizations l10n) {
-    final r = judgeLines(summary.lines);
-    if (r.best == null || r.worst == null || r.best == r.worst) return null;
+    final r = judgeLines(summary.lines.take(17).toList());
+    if (r.best == null) return null;
+    if (r.worst == null) return l10n.cityLinesBestOnly(r.best!);
     return l10n.cityLinesSummary(r.best!, r.worst!);
   }
 }
@@ -212,7 +219,11 @@ class _CityBody extends StatelessWidget {
   final worst = judged.reduce(
     (a, b) => a.meanDelaySecs! >= b.meanDelaySecs! ? a : b,
   );
-  return (best: best.line, worst: worst.line);
+  // A "latest" line that is still on time is not a finding: no worst then.
+  return (
+    best: best.line,
+    worst: worst.meanDelaySecs! >= 60 && worst != best ? worst.line : null,
+  );
 }
 
 class _Header extends StatelessWidget {
@@ -603,7 +614,8 @@ class LinesTreemap extends StatelessWidget {
     final c = StizeColors.of(context);
     final l10n = AppLocalizations.of(context);
     final top = lines.take(17).toList();
-    final judged = judgeLines(lines);
+    // Best/worst among the tiles on screen, so the sentence names what you see.
+    final judged = judgeLines(top);
     const counts = [3, 4, 5, 5];
     final heights = tall
         ? [200.0, 150.0, 116.0, 84.0]
@@ -621,7 +633,9 @@ class LinesTreemap extends StatelessWidget {
             children: [
               for (var k = 0; k < chunk.length; k++) ...[
                 Expanded(
-                  flex: math.max(1, chunk[k].arrivals),
+                  // Square root: one very busy line must not squeeze the
+                  // rest of its row into unreadable slivers.
+                  flex: math.max(1, math.sqrt(chunk[k].arrivals).round()),
                   child: _Tile(
                     line: chunk[k],
                     best: chunk[k].line == judged.best,
@@ -754,13 +768,17 @@ class _Tile extends StatelessWidget {
               ),
               Align(
                 alignment: Alignment.bottomRight,
-                child: Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
-                  style: StizeType.mono.copyWith(
-                    color: fg,
-                    fontSize: small ? 11 : 13,
+                // Narrow tiles shrink the number instead of cutting it.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    style: StizeType.mono.copyWith(
+                      color: fg,
+                      fontSize: small ? 11 : 13,
+                    ),
                   ),
                 ),
               ),

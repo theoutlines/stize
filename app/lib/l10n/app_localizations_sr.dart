@@ -942,4 +942,9 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get cityLineNoHour => 'nema podataka za ovaj sat';
+
+  @override
+  String cityLinesBestOnly(String best) {
+    return '$best je najtačnija linija; nijedna od prometnih linija ne kasni primetno.';
+  }
 }
