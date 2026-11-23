@@ -49,14 +49,23 @@ void main() {
       );
     });
 
-    test('crossing desktop→mobile drops the left inset (R3 #2 resize drift)', () {
-      final desktop =
-          mapInsetsFor(panelActive: true, panelWidth: 384, mobileSheetPx: 0);
-      final mobile =
-          mapInsetsFor(panelActive: false, panelWidth: 384, mobileSheetPx: 0);
-      expect(desktop.left, kPanelIslandInset + 384);
-      expect(mobile.left, 0); // the panel padding is gone on mobile
-    });
+    test(
+      'crossing desktop→mobile drops the left inset (R3 #2 resize drift)',
+      () {
+        final desktop = mapInsetsFor(
+          panelActive: true,
+          panelWidth: 384,
+          mobileSheetPx: 0,
+        );
+        final mobile = mapInsetsFor(
+          panelActive: false,
+          panelWidth: 384,
+          mobileSheetPx: 0,
+        );
+        expect(desktop.left, kPanelIslandInset + 384);
+        expect(mobile.left, 0); // the panel padding is gone on mobile
+      },
+    );
   });
 
   group('mobile sheet detents (large is not fullscreen)', () {
@@ -69,14 +78,16 @@ void main() {
   });
 
   group('breakpoint (panel is desktop-only)', () {
-    test('840 is the desktop cutoff; below is mobile (portrait tablet = mobile)',
-        () {
-      expect(isWideLayout(839.9), isFalse);
-      expect(isWideLayout(840.0), isTrue);
-      expect(isWideLayout(1440), isTrue);
-      // A portrait tablet (e.g. iPad 810 logical px) is mobile layout.
-      expect(isWideLayout(810), isFalse);
-    });
+    test(
+      '840 is the desktop cutoff; below is mobile (portrait tablet = mobile)',
+      () {
+        expect(isWideLayout(839.9), isFalse);
+        expect(isWideLayout(840.0), isTrue);
+        expect(isWideLayout(1440), isTrue);
+        // A portrait tablet (e.g. iPad 810 logical px) is mobile layout.
+        expect(isWideLayout(810), isFalse);
+      },
+    );
   });
 
   group('panel width (rubber-band: min 360 / ~28% / max 400)', () {

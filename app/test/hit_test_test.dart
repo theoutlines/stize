@@ -18,7 +18,10 @@ void main() {
 
     test('keeps the first on an exact tie', () {
       final a = ('a', const Offset(110, 100));
-      final b = ('b', const Offset(90, 100)); // same distance (10px) the other side
+      final b = (
+        'b',
+        const Offset(90, 100),
+      ); // same distance (10px) the other side
       expect(pickNearest(const Offset(100, 100), [a, b]), 'a');
     });
   });

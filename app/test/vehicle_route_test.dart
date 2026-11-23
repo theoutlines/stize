@@ -17,7 +17,9 @@ RouteShape _shape() {
         seq: i,
       ),
   ];
-  final poly = [for (var i = 0; i < 5; i++) [44.80 + i * 0.01, 20.0]];
+  final poly = [
+    for (var i = 0; i < 5; i++) [44.80 + i * 0.01, 20.0],
+  ];
   return RouteShape(
     routeId: '00079',
     vehicleType: VehicleType.bus,
@@ -60,12 +62,12 @@ void main() {
     final shape = _shape();
     // Same fixed feed anchor for both samples (as captured at follow entry).
     List<String> upcomingAt(double lat) => planVehicleRoute(
-          shape: shape,
-          vehicle: ll.LatLng(lat, 20.0),
-          boardStop: const ll.LatLng(44.83, 20.0),
-          stopsRemaining: 2,
-          etaToBoardMinutes: 10,
-        ).stops.map((u) => u.stop.stopId).toList();
+      shape: shape,
+      vehicle: ll.LatLng(lat, 20.0),
+      boardStop: const ll.LatLng(44.83, 20.0),
+      stopsRemaining: 2,
+      etaToBoardMinutes: 10,
+    ).stops.map((u) => u.stop.stopId).toList();
 
     // Between stop 1 and 2 → next is s2.
     expect(upcomingAt(44.815), ['s2', 's3', 's4']);

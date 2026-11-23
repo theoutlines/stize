@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/context_slot.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/back_to_button.dart';
+import '../../core/design/stize_icons.dart';
 
 // Serbian first — the app's home city is Belgrade. `null` (follow the system)
 // stays on top: it's the default, not a language. Russian was removed on
@@ -37,6 +39,56 @@ class SettingsScreen extends StatelessWidget {
 /// entry point): two controls don't warrant a full-screen page, and the map and
 /// any open stop stay where they are underneath.
 Future<void> showSettingsSheet(BuildContext context) {
+  // Desktop: a compact centred card (owner, 2026-11-23); a bottom sheet
+  // stretched across a wide window reads as a stray strip.
+  if (isWideLayout(MediaQuery.sizeOf(context).width)) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final l10n = AppLocalizations.of(dialogContext);
+        return Dialog(
+          insetPadding: const EdgeInsets.all(24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 12, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l10n.settingsTitle,
+                          style: Theme.of(dialogContext).textTheme.titleLarge,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: MaterialLocalizations.of(
+                          dialogContext,
+                        ).closeButtonTooltip,
+                        icon: const Icon(StizeIcons.close, size: 20),
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: SettingsPanel(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,

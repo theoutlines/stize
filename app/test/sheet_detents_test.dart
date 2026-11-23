@@ -26,8 +26,7 @@ class _EmptyNearby implements NearbyArrivalsRepository {
     required double lat,
     required double lon,
     double radiusMeters = 500,
-  }) async =>
-      const NearbyResult(groups: [], serviceStatus: ServiceStatus.ok);
+  }) async => const NearbyResult(groups: [], serviceStatus: ServiceStatus.ok);
 }
 
 class _FakeArrivals implements ArrivalsRepository {
@@ -54,7 +53,8 @@ class _FakeFavorites implements FavoritesRepository {
   Future<void> remove(String id) async => _s.removeWhere((s) => s.stopId == id);
 }
 
-Widget _app(Widget home, {List<Override> overrides = const []}) => ProviderScope(
+Widget _app(Widget home, {List<Override> overrides = const []}) =>
+    ProviderScope(
       overrides: overrides,
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -63,9 +63,8 @@ Widget _app(Widget home, {List<Override> overrides = const []}) => ProviderScope
       ),
     );
 
-DraggableScrollableSheet _theSheet(WidgetTester tester) =>
-    tester.widget<DraggableScrollableSheet>(
-        find.byType(DraggableScrollableSheet));
+DraggableScrollableSheet _theSheet(WidgetTester tester) => tester
+    .widget<DraggableScrollableSheet>(find.byType(DraggableScrollableSheet));
 
 void main() {
   testWidgets('detent constants: large is not fullscreen', (_) async {
@@ -73,18 +72,22 @@ void main() {
     expect(kSheetDetents.last, kSheetLarge);
   });
 
-  testWidgets('Nearby sheet caps at large (maxChildSize + snap)', (tester) async {
-    await tester.pumpWidget(_app(
-      NearbySheet(
-        userLocation: ll.LatLng(44.8, 20.5),
-        locationDenied: false,
-        active: true,
-        onEnableLocation: () {},
+  testWidgets('Nearby sheet caps at large (maxChildSize + snap)', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        NearbySheet(
+          userLocation: ll.LatLng(44.8, 20.5),
+          locationDenied: false,
+          active: true,
+          onEnableLocation: () {},
+        ),
+        overrides: [
+          nearbyArrivalsRepositoryProvider.overrideWithValue(_EmptyNearby()),
+        ],
       ),
-      overrides: [
-        nearbyArrivalsRepositoryProvider.overrideWithValue(_EmptyNearby()),
-      ],
-    ));
+    );
     await tester.pump();
     final sheet = _theSheet(tester);
     expect(sheet.maxChildSize, kSheetLarge);
@@ -95,21 +98,30 @@ void main() {
 
   testWidgets('Stop sheet caps at large', (tester) async {
     const stop = Stop(
-        stopId: '20091', name: 'Batutova', lat: 44.79, lon: 20.49, lines: ['79']);
+      stopId: '20091',
+      name: 'Batutova',
+      lat: 44.79,
+      lon: 20.49,
+      lines: ['79'],
+    );
     late BuildContext ctx;
-    await tester.pumpWidget(_app(
-      Builder(builder: (c) {
-        ctx = c;
-        return const SizedBox();
-      }),
-      overrides: [
-        arrivalsRepositoryProvider.overrideWithValue(_FakeArrivals()),
-        favoritesRepositoryProvider.overrideWithValue(_FakeFavorites()),
-        alertsProvider.overrideWith((ref) async => const []),
-        stopLocationProvider('20091').overrideWith((ref) async => stop),
-        fleetCatalogProvider.overrideWith((ref) async => null),
-      ],
-    ));
+    await tester.pumpWidget(
+      _app(
+        Builder(
+          builder: (c) {
+            ctx = c;
+            return const SizedBox();
+          },
+        ),
+        overrides: [
+          arrivalsRepositoryProvider.overrideWithValue(_FakeArrivals()),
+          favoritesRepositoryProvider.overrideWithValue(_FakeFavorites()),
+          alertsProvider.overrideWith((ref) async => const []),
+          stopLocationProvider('20091').overrideWith((ref) async => stop),
+          fleetCatalogProvider.overrideWith((ref) async => null),
+        ],
+      ),
+    );
     showStopSheet(ctx, stopId: '20091', stopName: 'Batutova');
     await tester.pump();
     await tester.pump();

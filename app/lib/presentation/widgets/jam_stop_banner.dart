@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/route_alert.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import '../../core/design/stize_icons.dart';
 
 /// The soft delay banner shown on a stop board that is *downstream* of a detected
 /// tram jam, plus the neutral bus-substitution notice. Tone is deliberately an
@@ -45,7 +46,7 @@ class JamStopBanner extends ConsumerWidget {
       widgets.add(
         _banner(
           context,
-          icon: Icons.hourglass_bottom,
+          icon: StizeIcons.hourglass,
           text: alert != null
               ? alert.localizedSummary(locale)
               : l10n.jamStopBannerTitle(jam.line),
@@ -68,7 +69,7 @@ class JamStopBanner extends ConsumerWidget {
       widgets.add(
         _banner(
           context,
-          icon: Icons.directions_bus_filled_outlined,
+          icon: StizeIcons.bus,
           text: l10n.jamSubstitutionNotice(line),
         ),
       );

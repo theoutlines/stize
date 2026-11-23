@@ -8,6 +8,7 @@ import '../widgets/analytics/distribution_dots.dart';
 import '../widgets/analytics/hourly_sparkline.dart';
 import '../widgets/analytics/metric_chips.dart';
 import '../widgets/analytics/time_heatmap.dart';
+import '../../core/design/stize_icons.dart';
 
 /// Draft analytics screen for one line. Each metric gets the visualisation type
 /// that fits it: heatmaps for time-of-day reliability, a sparkline for hourly
@@ -36,7 +37,7 @@ class _AnalyticsLineScreenState extends ConsumerState<AnalyticsLineScreen> {
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => const _Message(
-          icon: Icons.cloud_off,
+          icon: StizeIcons.offline,
           title: 'Не удалось загрузить',
           body: 'Попробуй позже.',
         ),
@@ -136,13 +137,13 @@ class _AnalyticsLineScreenState extends ConsumerState<AnalyticsLineScreen> {
   Widget _compareControl(BuildContext context) {
     if (_compare != null) {
       return ActionChip(
-        avatar: const Icon(Icons.close, size: 16),
+        avatar: const Icon(StizeIcons.close, size: 16),
         label: Text('линия $_compare'),
         onPressed: () => setState(() => _compare = null),
       );
     }
     return TextButton.icon(
-      icon: const Icon(Icons.compare_arrows, size: 18),
+      icon: const Icon(StizeIcons.compare, size: 18),
       label: const Text('Сравнить'),
       onPressed: () async {
         final other = await _askLine(context);
@@ -196,7 +197,7 @@ class _AnalyticsLineScreenState extends ConsumerState<AnalyticsLineScreen> {
           child: Column(
             children: [
               Icon(
-                Icons.hourglass_bottom,
+                StizeIcons.hourglass,
                 size: 40,
                 color: theme.colorScheme.outline,
               ),

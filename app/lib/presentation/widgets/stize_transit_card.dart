@@ -4,6 +4,7 @@ import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
+import '../../core/design/stize_icons.dart';
 
 /// The one Stiže transit card: a card filled with the line's
 /// transit colour, white content. Every list that shows "a line arriving"
@@ -135,11 +136,7 @@ class StizeTransitCard extends StatelessWidget {
                       const SizedBox(height: StizeSpace.space1),
                       Row(
                         children: [
-                          Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 16,
-                            color: on,
-                          ),
+                          Icon(StizeIcons.forward, size: 16, color: on),
                           const SizedBox(width: StizeSpace.space1),
                           Flexible(
                             child: Text(

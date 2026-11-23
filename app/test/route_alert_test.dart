@@ -33,27 +33,34 @@ void main() {
     });
 
     test('a future validFrom makes it upcoming, not active', () {
-      final alert = _alert(validFrom: DateTime.now().add(const Duration(days: 5)));
+      final alert = _alert(
+        validFrom: DateTime.now().add(const Duration(days: 5)),
+      );
       expect(alert.isUpcoming, isTrue);
       expect(alert.isActiveNow, isFalse);
       expect(alert.isExpired, isFalse);
     });
 
     test('a past validUntil makes it expired', () {
-      final alert = _alert(validUntil: DateTime.now().subtract(const Duration(days: 1)));
+      final alert = _alert(
+        validUntil: DateTime.now().subtract(const Duration(days: 1)),
+      );
       expect(alert.isExpired, isTrue);
       expect(alert.isActiveNow, isFalse);
     });
 
-    test('validFrom in the past and validUntil in the future is active now', () {
-      final alert = _alert(
-        validFrom: DateTime.now().subtract(const Duration(days: 1)),
-        validUntil: DateTime.now().add(const Duration(days: 1)),
-      );
-      expect(alert.isActiveNow, isTrue);
-      expect(alert.isUpcoming, isFalse);
-      expect(alert.isExpired, isFalse);
-    });
+    test(
+      'validFrom in the past and validUntil in the future is active now',
+      () {
+        final alert = _alert(
+          validFrom: DateTime.now().subtract(const Duration(days: 1)),
+          validUntil: DateTime.now().add(const Duration(days: 1)),
+        );
+        expect(alert.isActiveNow, isTrue);
+        expect(alert.isUpcoming, isFalse);
+        expect(alert.isExpired, isFalse);
+      },
+    );
   });
 
   group('matching', () {

@@ -57,18 +57,21 @@ void main() {
       );
     });
 
-    test('an active subscription past the threshold with no fix is recreated', () {
-      expect(
-        shouldResubscribe(
-          active: true,
-          lastFixAt: null,
-          subscribedAt: subscribedAt,
-          now: subscribedAt.add(const Duration(seconds: 20)),
-          staleThreshold: threshold,
-        ),
-        isTrue,
-      );
-    });
+    test(
+      'an active subscription past the threshold with no fix is recreated',
+      () {
+        expect(
+          shouldResubscribe(
+            active: true,
+            lastFixAt: null,
+            subscribedAt: subscribedAt,
+            now: subscribedAt.add(const Duration(seconds: 20)),
+            staleThreshold: threshold,
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('a recent fix keeps the subscription even if it is old', () {
       final lastFix = subscribedAt.add(const Duration(minutes: 4));

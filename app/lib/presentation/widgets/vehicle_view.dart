@@ -10,6 +10,7 @@ import '../providers/providers.dart';
 import 'fleet_badges.dart';
 import 'fleet_model_card.dart';
 import 'vehicle_icon.dart';
+import '../../core/design/stize_icons.dart';
 
 /// The reusable "vehicle" view — the content of the followed-vehicle context,
 /// hosted identically by the desktop context panel and the mobile follow sheet.
@@ -111,7 +112,7 @@ class VehicleView extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.schedule,
+                StizeIcons.clock,
                 size: 14,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -136,7 +137,7 @@ class VehicleView extends ConsumerWidget {
           Row(
             children: [
               Icon(
-                Icons.info_outline,
+                StizeIcons.info,
                 size: 16,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -160,7 +161,7 @@ class VehicleView extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              icon: const Icon(Icons.map_outlined),
+              icon: const Icon(StizeIcons.map),
               label: Text(l10n.vehicleShowRoute),
               onPressed: onShowRoute,
             ),
@@ -185,7 +186,7 @@ class VehicleView extends ConsumerWidget {
         child: Row(
           children: [
             Icon(
-              Icons.hourglass_bottom,
+              StizeIcons.hourglass,
               size: 15,
               color: theme.colorScheme.onSurface,
             ),
@@ -246,7 +247,7 @@ class VehicleView extends ConsumerWidget {
       child: Row(
         children: [
           Icon(
-            isNext ? Icons.my_location : Icons.circle,
+            isNext ? StizeIcons.locate : StizeIcons.dot,
             size: isNext ? 15 : 7,
             color: color,
           ),
@@ -293,7 +294,7 @@ class VehicleView extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
-          stuck ? Icons.warning_amber_rounded : Icons.directions_run,
+          stuck ? StizeIcons.warning : StizeIcons.walk,
           size: 16,
           color: stuck ? stuckColor : movingColor,
         ),

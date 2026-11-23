@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:stize/core/map_support.dart';
 import 'package:stize/presentation/app.dart';
+import 'package:stize/core/design/stize_icons.dart';
 
 void main() {
   // MapLibre has no platform implementation under `flutter test`; render the
@@ -20,6 +21,6 @@ void main() {
     // Navigation moved from a bottom tab bar to a left drawer opened via a
     // hamburger in the search bar.
     expect(find.byType(NavigationBar), findsNothing);
-    expect(find.byIcon(Icons.menu), findsWidgets);
+    expect(find.byIcon(StizeIcons.menu), findsWidgets);
   });
 }

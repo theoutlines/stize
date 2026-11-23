@@ -584,6 +584,12 @@ abstract class AppLocalizations {
   /// **'All transport'**
   String get vehicleModeAll;
 
+  /// No description provided for @vehicleModeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Live transport'**
+  String get vehicleModeHint;
+
   /// Tooltip of the map's vehicle-mode toggle button
   ///
   /// In en, this message translates to:
@@ -1291,6 +1297,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Back to {name}'**
   String stopBackTo(String name);
+
+  /// No description provided for @guideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Belgrade guide'**
+  String get guideTitle;
+
+  /// No description provided for @guideFree.
+  ///
+  /// In en, this message translates to:
+  /// **'City transport is free: buses, trams, trolleybuses'**
+  String get guideFree;
+
+  /// No description provided for @guideGettingAround.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting around'**
+  String get guideGettingAround;
+
+  /// No description provided for @guideFromAirport.
+  ///
+  /// In en, this message translates to:
+  /// **'From the airport'**
+  String get guideFromAirport;
+
+  /// No description provided for @guideFromAirportSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines 72, A1, 600, 607 · 72N at night'**
+  String get guideFromAirportSub;
+
+  /// No description provided for @guideFromBusStation.
+  ///
+  /// In en, this message translates to:
+  /// **'From the bus station'**
+  String get guideFromBusStation;
+
+  /// No description provided for @guideFromBusStationSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Beogradska autobuska stanica, New Belgrade'**
+  String get guideFromBusStationSub;
+
+  /// No description provided for @guideFromRailStation.
+  ///
+  /// In en, this message translates to:
+  /// **'From the railway station'**
+  String get guideFromRailStation;
+
+  /// No description provided for @guideFromRailStationSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Beograd Centar (Prokop)'**
+  String get guideFromRailStationSub;
+
+  /// No description provided for @guideReadStop.
+  ///
+  /// In en, this message translates to:
+  /// **'How to read a stop'**
+  String get guideReadStop;
+
+  /// No description provided for @guideReadStopSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Live minutes and timetable times'**
+  String get guideReadStopSub;
+
+  /// No description provided for @guideReadStopLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Big minutes are live: the vehicle is on its way and we see it on GPS.'**
+  String get guideReadStopLive;
+
+  /// No description provided for @guideReadStopScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'A time of day is from the timetable: no live signal for that trip yet.'**
+  String get guideReadStopScheduled;
+
+  /// No description provided for @guideReadStopStar.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the star to keep a stop in My stops.'**
+  String get guideReadStopStar;
+
+  /// No description provided for @guideReadStopNight.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines ending in N run at night.'**
+  String get guideReadStopNight;
+
+  /// No description provided for @guidePlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Places people ask for'**
+  String get guidePlaces;
+
+  /// No description provided for @guidePlacesSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Fortress, squares, stations, Ada'**
+  String get guidePlacesSub;
+
+  /// No description provided for @guideNowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Right now'**
+  String get guideNowLabel;
+
+  /// No description provided for @guideExpoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expo 2027 in Belgrade'**
+  String get guideExpoTitle;
+
+  /// No description provided for @guideExpoDays.
+  ///
+  /// In en, this message translates to:
+  /// **'days to opening'**
+  String get guideExpoDays;
+
+  /// No description provided for @guideExpoSub.
+  ///
+  /// In en, this message translates to:
+  /// **'15 May to 15 August 2027. We add the Expo lines as soon as the city announces them.'**
+  String get guideExpoSub;
+
+  /// No description provided for @guideNightTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Night lines are running'**
+  String get guideNightTitle;
+
+  /// No description provided for @guideNightSub.
+  ///
+  /// In en, this message translates to:
+  /// **'After midnight the night lines take over. Their numbers end in N.'**
+  String get guideNightSub;
+
+  /// No description provided for @guideStripNight.
+  ///
+  /// In en, this message translates to:
+  /// **'Night lines are running'**
+  String get guideStripNight;
+
+  /// No description provided for @guideStripNightSub.
+  ///
+  /// In en, this message translates to:
+  /// **'What runs after midnight'**
+  String get guideStripNightSub;
+
+  /// No description provided for @guideStripNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New to Belgrade? Open the guide'**
+  String get guideStripNew;
+
+  /// No description provided for @guideStripNewSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Free rides, airport, night lines'**
+  String get guideStripNewSub;
+
+  /// No description provided for @guideStripAirport.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re at the airport'**
+  String get guideStripAirport;
+
+  /// No description provided for @guideStripAirportSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Into the city: 72, A1, 600'**
+  String get guideStripAirportSub;
+
+  /// No description provided for @guideStripBusStation.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re at the bus station'**
+  String get guideStripBusStation;
+
+  /// No description provided for @guideStripBusStationSub.
+  ///
+  /// In en, this message translates to:
+  /// **'City lines leave from the stops by the exit'**
+  String get guideStripBusStationSub;
+
+  /// No description provided for @guideStripRailStation.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re at Beograd Centar station'**
+  String get guideStripRailStation;
+
+  /// No description provided for @guideStripRailStationSub.
+  ///
+  /// In en, this message translates to:
+  /// **'City lines: 34, 36, 600'**
+  String get guideStripRailStationSub;
 }
 
 class _AppLocalizationsDelegate

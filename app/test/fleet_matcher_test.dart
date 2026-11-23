@@ -102,8 +102,10 @@ void main() {
 
   group('resolve is memoised', () {
     test('the same number returns the identical cached instance', () {
-      expect(identical(catalog.resolve('P70259'), catalog.resolve('P70259')),
-          isTrue);
+      expect(
+        identical(catalog.resolve('P70259'), catalog.resolve('P70259')),
+        isTrue,
+      );
     });
   });
 
@@ -132,39 +134,48 @@ void main() {
     });
   });
 
-  group('localized content (notes + nicknames) picks by language, never ru', () {
-    test('nickname: sr Serbian-Latin, en ASCII, never Cyrillic', () {
-      final v = catalog.resolve('P80210'); // KT4 — "Ката"/"Kata"
-      expect(v.nicknameSr, 'Ката');
-      expect(v.nicknameFor('ru'), 'Kata'); // unsupported → ASCII, not Cyrillic
-      expect(v.nicknameFor('sr'), 'Kata');
-      expect(v.nicknameFor('en'), 'Kata');
+  group(
+    'localized content (notes + nicknames) picks by language, never ru',
+    () {
+      test('nickname: sr Serbian-Latin, en ASCII, never Cyrillic', () {
+        final v = catalog.resolve('P80210'); // KT4 — "Ката"/"Kata"
+        expect(v.nicknameSr, 'Ката');
+        expect(
+          v.nicknameFor('ru'),
+          'Kata',
+        ); // unsupported → ASCII, not Cyrillic
+        expect(v.nicknameFor('sr'), 'Kata');
+        expect(v.nicknameFor('en'), 'Kata');
 
-      // A nickname with diacritics diverges: sr keeps them, en strips them.
-      final b = catalog.resolve('P81540'); // Bozankaya — "Турчин"
-      expect(b.nicknameFor('ru'), 'Turcin');
-      expect(b.nicknameFor('sr'), 'Turčin');
-      expect(b.nicknameFor('en'), 'Turcin');
-    });
+        // A nickname with diacritics diverges: sr keeps them, en strips them.
+        final b = catalog.resolve('P81540'); // Bozankaya — "Турчин"
+        expect(b.nicknameFor('ru'), 'Turcin');
+        expect(b.nicknameFor('sr'), 'Turčin');
+        expect(b.nicknameFor('en'), 'Turcin');
+      });
 
-    test('note is translated per locale', () {
-      final v = catalog.resolve('P80210'); // KT4
-      expect(v.humanNoteFor('en'), startsWith('The legendary'));
-      expect(v.humanNoteFor('sr'), startsWith('Legendarna'));
-    });
+      test('note is translated per locale', () {
+        final v = catalog.resolve('P80210'); // KT4
+        expect(v.humanNoteFor('en'), startsWith('The legendary'));
+        expect(v.humanNoteFor('sr'), startsWith('Legendarna'));
+      });
 
-    test('unknown language falls back to the en note and the ASCII nickname', () {
-      final v = catalog.resolve('P80210');
-      expect(v.humanNoteFor('de'), startsWith('The legendary'));
-      expect(v.nicknameFor('de'), 'Kata');
-    });
+      test(
+        'unknown language falls back to the en note and the ASCII nickname',
+        () {
+          final v = catalog.resolve('P80210');
+          expect(v.humanNoteFor('de'), startsWith('The legendary'));
+          expect(v.nicknameFor('de'), 'Kata');
+        },
+      );
 
-    test('operator class note is translated too', () {
-      final v = catalog.resolve('P23200'); // banbus
-      expect(v.humanNoteFor('en'), contains('Private operator'));
-      expect(v.humanNoteFor('sr'), contains('Privatni prevoznik'));
-    });
-  });
+      test('operator class note is translated too', () {
+        final v = catalog.resolve('P23200'); // banbus
+        expect(v.humanNoteFor('en'), contains('Private operator'));
+        expect(v.humanNoteFor('sr'), contains('Privatni prevoznik'));
+      });
+    },
+  );
 
   group('B5 — degradation seam: tryParse returns null on bad data', () {
     test('invalid JSON', () {
@@ -175,9 +186,14 @@ void main() {
     test('valid JSON but wrong shape', () {
       expect(FleetCatalog.tryParse('[]'), isNull);
       expect(FleetCatalog.tryParse('"a string"'), isNull);
-      expect(FleetCatalog.tryParse('{"classes": {}}'), isNull); // classes not a list
       expect(
-        FleetCatalog.tryParse('{"classes": [], "models_catalog": [], "vehicles": {}}'),
+        FleetCatalog.tryParse('{"classes": {}}'),
+        isNull,
+      ); // classes not a list
+      expect(
+        FleetCatalog.tryParse(
+          '{"classes": [], "models_catalog": [], "vehicles": {}}',
+        ),
         isNull, // models_catalog not a map
       );
     });

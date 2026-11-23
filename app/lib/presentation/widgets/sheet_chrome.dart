@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/design/stize_icons.dart';
 
 /// Shared bottom-sheet chrome, so every mobile sheet (nearby / stop / vehicle /
 /// the in-sheet fleet-card subview) uses ONE width + handle + surface treatment
@@ -74,7 +75,7 @@ class SheetBackHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(StizeIcons.back),
             onPressed: onBack,
             tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           ),

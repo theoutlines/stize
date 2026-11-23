@@ -13,9 +13,9 @@ import 'package:stize/domain/models/vehicle_type.dart';
 // distance-along grows monotonically with longitude, so tests reason about
 // forward motion simply as "longitude increases".
 RoutePath _eastRoute() => RoutePath.fromLatLon([
-      [44.80, 20.50],
-      [44.80, 20.60],
-    ])!;
+  [44.80, 20.50],
+  [44.80, 20.60],
+])!;
 
 // A realistic plan (all on the east route): ~237 m station steps. The marker
 // plays this forward by wall-clock *continuously while the fix is fresh* (up to
@@ -24,10 +24,10 @@ RoutePath _eastRoute() => RoutePath.fromLatLon([
 // gate the target collapses back to the fix and it holds (never flies to the
 // plan's far end).
 List<TrajectoryPoint> _eastPlan() => const [
-      TrajectoryPoint(44.80, 20.500, 0),
-      TrajectoryPoint(44.80, 20.503, 28),
-      TrajectoryPoint(44.80, 20.506, 55),
-    ];
+  TrajectoryPoint(44.80, 20.500, 0),
+  TrajectoryPoint(44.80, 20.503, 28),
+  TrajectoryPoint(44.80, 20.506, 55),
+];
 
 final _t0 = DateTime(2026, 1, 1, 12, 0, 0);
 
@@ -53,8 +53,10 @@ void main() {
         now: _t0.add(const Duration(seconds: 90)),
       )!;
       expect(stale.position.longitude, closeTo(20.500, 1e-4));
-      expect(stale.hasForwardMotion(_t0.add(const Duration(seconds: 90))),
-          isFalse);
+      expect(
+        stale.hasForwardMotion(_t0.add(const Duration(seconds: 90))),
+        isFalse,
+      );
     });
 
     test('appears mid-interval at the predicted-now spot, not the stale fix', () {
@@ -104,7 +106,10 @@ void main() {
       // Board goes stale (no fresh fix) — must NOT coast on toward the plan end.
       tt.advance(_t0.add(const Duration(seconds: 300)));
       expect(tt.position.longitude, closeTo(led, 2e-3));
-      expect(tt.hasForwardMotion(_t0.add(const Duration(seconds: 300))), isFalse);
+      expect(
+        tt.hasForwardMotion(_t0.add(const Duration(seconds: 300))),
+        isFalse,
+      );
       // It certainly never flew to the plan's far end.
       expect(tt.position.longitude, lessThan(20.505));
     });
@@ -138,8 +143,11 @@ void main() {
       }
       // Monotonic non-decreasing (no snap-back) and it progressed forward.
       for (var i = 1; i < lons.length; i++) {
-        expect(lons[i], greaterThanOrEqualTo(lons[i - 1] - 1e-9),
-            reason: 'moved backward: $lons');
+        expect(
+          lons[i],
+          greaterThanOrEqualTo(lons[i - 1] - 1e-9),
+          reason: 'moved backward: $lons',
+        );
       }
       expect(lons.last, greaterThan(before));
     });
@@ -164,52 +172,58 @@ void main() {
       }
     });
 
-    test('catch-up is acceleration-limited: velocity never steps between frames', () {
-      // A fresh fix ~79 m ahead (≈ one lon-milli at this latitude) — a realistic
-      // poll gap, well within the closing-speed cap.
-      final route = _eastRoute();
-      final tt = TimedTrajectory.build(
-        path: route,
-        plan: const [
-          TrajectoryPoint(44.80, 20.500, 0),
-          TrajectoryPoint(44.80, 20.510, 120),
-        ],
-        asOf: _t0,
-        now: _t0,
-      )!;
-      tt.updatePlan(
-        path: route,
-        plan: const [
-          TrajectoryPoint(44.80, 20.501, 0),
-          TrajectoryPoint(44.80, 20.511, 120),
-        ],
-        asOf: _t0,
-        now: _t0,
-      );
+    test(
+      'catch-up is acceleration-limited: velocity never steps between frames',
+      () {
+        // A fresh fix ~79 m ahead (≈ one lon-milli at this latitude) — a realistic
+        // poll gap, well within the closing-speed cap.
+        final route = _eastRoute();
+        final tt = TimedTrajectory.build(
+          path: route,
+          plan: const [
+            TrajectoryPoint(44.80, 20.500, 0),
+            TrajectoryPoint(44.80, 20.510, 120),
+          ],
+          asOf: _t0,
+          now: _t0,
+        )!;
+        tt.updatePlan(
+          path: route,
+          plan: const [
+            TrajectoryPoint(44.80, 20.501, 0),
+            TrajectoryPoint(44.80, 20.511, 120),
+          ],
+          asOf: _t0,
+          now: _t0,
+        );
 
-      // Step at a realistic frame cadence and watch the speed: it must ramp,
-      // never jump — |Δv| ≤ a_max·dt (+ a hair for float error) every frame.
-      const frame = Duration(milliseconds: 16);
-      const dt = 16 / 1000;
-      const aMax = 3.0;
-      var prevV = tt.displaySpeed;
-      var t = _t0;
-      var maxV = 0.0;
-      for (var i = 0; i < 1250; i++) {
-        t = t.add(frame);
-        tt.advance(t);
-        final v = tt.displaySpeed;
-        expect((v - prevV).abs(), lessThanOrEqualTo(aMax * dt + 1e-6),
-            reason: 'velocity stepped at frame $i: $prevV → $v');
-        maxV = math.max(maxV, v);
-        prevV = v;
-      }
-      // It actually did catch up (the gap closed to ~0) within the window.
-      expect(tt.catchUpGap(t), lessThan(2.0));
-      // And it cruised faster than the plan speed (~6.6 m/s) to close the gap —
-      // an "even" catch-up, not a single exponential spike then a crawl.
-      expect(maxV, greaterThan(8.0));
-    });
+        // Step at a realistic frame cadence and watch the speed: it must ramp,
+        // never jump — |Δv| ≤ a_max·dt (+ a hair for float error) every frame.
+        const frame = Duration(milliseconds: 16);
+        const dt = 16 / 1000;
+        const aMax = 3.0;
+        var prevV = tt.displaySpeed;
+        var t = _t0;
+        var maxV = 0.0;
+        for (var i = 0; i < 1250; i++) {
+          t = t.add(frame);
+          tt.advance(t);
+          final v = tt.displaySpeed;
+          expect(
+            (v - prevV).abs(),
+            lessThanOrEqualTo(aMax * dt + 1e-6),
+            reason: 'velocity stepped at frame $i: $prevV → $v',
+          );
+          maxV = math.max(maxV, v);
+          prevV = v;
+        }
+        // It actually did catch up (the gap closed to ~0) within the window.
+        expect(tt.catchUpGap(t), lessThan(2.0));
+        // And it cruised faster than the plan speed (~6.6 m/s) to close the gap —
+        // an "even" catch-up, not a single exponential spike then a crawl.
+        expect(maxV, greaterThan(8.0));
+      },
+    );
 
     test('the first catch-up frame does not lurch (eases in from rest)', () {
       final route = _eastRoute();
@@ -237,7 +251,10 @@ void main() {
       // acceleration limit (½·a·dt²), not a fraction of the whole gap.
       tt.advance(_t0.add(const Duration(milliseconds: 16)));
       final firstStep = tt.displayDistance - d0;
-      expect(firstStep, lessThan(0.05)); // ½·3·0.016² ≈ 0.4 mm, nowhere near a lurch
+      expect(
+        firstStep,
+        lessThan(0.05),
+      ); // ½·3·0.016² ≈ 0.4 mm, nowhere near a lurch
     });
 
     test('build returns null without a usable path or ≥2 forward points', () {
@@ -304,35 +321,38 @@ void main() {
       );
     }
 
-    test('appears at the fix, predicts continuously, idles stale near the lead', () {
-      var now = _t0;
-      final animator = VehicleTrackAnimator(clock: () => now);
-      animator.syncSamples([sample('P1', asOf: _t0)], 0, now: now);
-      // Built fresh at asOf (age 0): appears on the GPS point, not flown ahead.
-      expect(animator.positionOf('P1', 0).longitude, closeTo(20.500, 1e-4));
+    test(
+      'appears at the fix, predicts continuously, idles stale near the lead',
+      () {
+        var now = _t0;
+        final animator = VehicleTrackAnimator(clock: () => now);
+        animator.syncSamples([sample('P1', asOf: _t0)], 0, now: now);
+        // Built fresh at asOf (age 0): appears on the GPS point, not flown ahead.
+        expect(animator.positionOf('P1', 0).longitude, closeTo(20.500, 1e-4));
 
-      // A few seconds later there's forward motion to render.
-      now = _t0.add(const Duration(seconds: 5));
-      expect(animator.hasPendingMotion, isTrue);
-      animator.advanceTimed(now);
-      final at5 = animator.positionOf('P1', 0).longitude;
-      expect(at5, greaterThan(20.500));
-      expect(animator.headingAt('P1', 0)!, closeTo(90, 5));
+        // A few seconds later there's forward motion to render.
+        now = _t0.add(const Duration(seconds: 5));
+        expect(animator.hasPendingMotion, isTrue);
+        animator.advanceTimed(now);
+        final at5 = animator.positionOf('P1', 0).longitude;
+        expect(at5, greaterThan(20.500));
+        expect(animator.headingAt('P1', 0)!, closeTo(90, 5));
 
-      // Still fresh at 40 s: kept moving the whole interval (continuous), not
-      // stalled at a short bridge.
-      now = _t0.add(const Duration(seconds: 40));
-      animator.advanceTimed(now);
-      final at40 = animator.positionOf('P1', 0).longitude;
-      expect(at40, greaterThan(at5 + 1e-4));
+        // Still fresh at 40 s: kept moving the whole interval (continuous), not
+        // stalled at a short bridge.
+        now = _t0.add(const Duration(seconds: 40));
+        animator.advanceTimed(now);
+        final at40 = animator.positionOf('P1', 0).longitude;
+        expect(at40, greaterThan(at5 + 1e-4));
 
-      // Stale (no fresh fix): parked at the lead, nothing left to animate — and
-      // NOT slid to the plan's far end.
-      now = _t0.add(const Duration(seconds: 300));
-      animator.advanceTimed(now);
-      expect(animator.hasPendingMotion, isFalse);
-      expect(animator.positionOf('P1', 0).longitude, lessThan(20.506));
-    });
+        // Stale (no fresh fix): parked at the lead, nothing left to animate — and
+        // NOT slid to the plan's far end.
+        now = _t0.add(const Duration(seconds: 300));
+        animator.advanceTimed(now);
+        expect(animator.hasPendingMotion, isFalse);
+        expect(animator.positionOf('P1', 0).longitude, lessThan(20.506));
+      },
+    );
 
     test('a fresh fix drives the marker forward without rewinding', () {
       var now = _t0;
@@ -347,8 +367,10 @@ void main() {
       for (var s = 0; s <= 30; s += 10) {
         final t = now.add(Duration(seconds: s));
         animator.advanceTimed(t);
-        expect(animator.positionOf('P1', 0).longitude,
-            greaterThanOrEqualTo(before - 1e-9));
+        expect(
+          animator.positionOf('P1', 0).longitude,
+          greaterThanOrEqualTo(before - 1e-9),
+        );
       }
     });
 
@@ -383,17 +405,21 @@ void main() {
       final animator = VehicleTrackAnimator(clock: () => now);
       // No GTFS shape yet — the plan alone still drives the vehicle (along its own
       // station points) rather than standing at its fix.
-      animator.syncSamples([
-        VehicleSample(
-          key: 'P1',
-          position: const ll.LatLng(44.80, 20.500),
-          line: '2',
-          type: VehicleType.tram,
-          path: null,
-          trajectory: _eastPlan(),
-          asOf: _t0,
-        ),
-      ], 0, now: now);
+      animator.syncSamples(
+        [
+          VehicleSample(
+            key: 'P1',
+            position: const ll.LatLng(44.80, 20.500),
+            line: '2',
+            type: VehicleType.tram,
+            path: null,
+            trajectory: _eastPlan(),
+            asOf: _t0,
+          ),
+        ],
+        0,
+        now: now,
+      );
       expect(animator.trackFor('P1')!.timed, isNotNull);
       // Fresh: there's motion to render, and it moves forward.
       now = _t0.add(const Duration(seconds: 5));
@@ -402,28 +428,35 @@ void main() {
       expect(animator.positionOf('P1', 0).longitude, greaterThan(20.500));
     });
 
-    test('abandons timed mode (without rewinding) if the plan later drops out', () {
-      var now = _t0;
-      final animator = VehicleTrackAnimator(clock: () => now);
-      animator.syncSamples([sample('P1', asOf: _t0)], 0, now: now);
-      now = _t0.add(const Duration(seconds: 15));
-      animator.advanceTimed(now);
-      final before = animator.positionOf('P1', 0).longitude;
+    test(
+      'abandons timed mode (without rewinding) if the plan later drops out',
+      () {
+        var now = _t0;
+        final animator = VehicleTrackAnimator(clock: () => now);
+        animator.syncSamples([sample('P1', asOf: _t0)], 0, now: now);
+        now = _t0.add(const Duration(seconds: 15));
+        animator.advanceTimed(now);
+        final before = animator.positionOf('P1', 0).longitude;
 
-      // Next sync carries no plan (feature flipped off / plan gone).
-      animator.syncSamples([
-        VehicleSample(
-          key: 'P1',
-          position: const ll.LatLng(44.80, 20.506),
-          line: '2',
-          type: VehicleType.tram,
-          path: _eastRoute(),
-        ),
-      ], 0, now: now);
-      expect(animator.trackFor('P1')!.timed, isNull);
-      // Resumes conservative easing from where it visually was — no snap back.
-      expect(animator.positionOf('P1', 0).longitude, closeTo(before, 1e-3));
-    });
+        // Next sync carries no plan (feature flipped off / plan gone).
+        animator.syncSamples(
+          [
+            VehicleSample(
+              key: 'P1',
+              position: const ll.LatLng(44.80, 20.506),
+              line: '2',
+              type: VehicleType.tram,
+              path: _eastRoute(),
+            ),
+          ],
+          0,
+          now: now,
+        );
+        expect(animator.trackFor('P1')!.timed, isNull);
+        // Resumes conservative easing from where it visually was — no snap back.
+        expect(animator.positionOf('P1', 0).longitude, closeTo(before, 1e-3));
+      },
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -438,28 +471,29 @@ void main() {
     // stops sit inside the 45 s staleness gate, which is the only window that
     // ever renders.
     List<TrajectoryPoint> calmPlan() => const [
-          TrajectoryPoint(44.80, 20.50000, 0),
-          TrajectoryPoint(44.80, 20.50126, 20), // stop 1
-          TrajectoryPoint(44.80, 20.50283, 45), // stop 2
-        ];
+      TrajectoryPoint(44.80, 20.50000, 0),
+      TrajectoryPoint(44.80, 20.50126, 20), // stop 1
+      TrajectoryPoint(44.80, 20.50283, 45), // stop 2
+    ];
 
     // The same route at a brisk ~30 km/h (237 m per 28 s). No profile can fit a
     // pause here without an implausible sprint, so it must degrade.
     List<TrajectoryPoint> briskPlan() => const [
-          TrajectoryPoint(44.80, 20.500, 0),
-          TrajectoryPoint(44.80, 20.503, 28),
-          TrajectoryPoint(44.80, 20.506, 55),
-        ];
+      TrajectoryPoint(44.80, 20.500, 0),
+      TrajectoryPoint(44.80, 20.503, 28),
+      TrajectoryPoint(44.80, 20.506, 55),
+    ];
 
     TimedTrajectory build(List<TrajectoryPoint> plan) => TimedTrajectory.build(
-          path: _eastRoute(),
-          plan: plan,
-          asOf: _t0,
-          now: _t0,
-        )!;
+      path: _eastRoute(),
+      plan: plan,
+      asOf: _t0,
+      now: _t0,
+    )!;
 
     double targetAt(TimedTrajectory t, double seconds) => t.targetDistanceAt(
-        _t0.add(Duration(milliseconds: (seconds * 1000).round())));
+      _t0.add(Duration(milliseconds: (seconds * 1000).round())),
+    );
 
     // A plan whose middle station sits OFF the route line (~1 km north) — the
     // signature of a GTFS shape that doesn't cover a route variant. Its
@@ -468,17 +502,20 @@ void main() {
     // Calm timing (dwells clearly) but the MIDDLE stop sits ~1.1 km north of the
     // route line — the signature of a shape that doesn't cover this variant.
     List<TrajectoryPoint> offShapePlan() => const [
-          TrajectoryPoint(44.80, 20.50000, 0),
-          TrajectoryPoint(44.81, 20.50126, 20), // stop 1: ~1.1 km NORTH, off-route
-          TrajectoryPoint(44.80, 20.50283, 45), // stop 2: on the route
-        ];
+      TrajectoryPoint(44.80, 20.50000, 0),
+      TrajectoryPoint(44.81, 20.50126, 20), // stop 1: ~1.1 km NORTH, off-route
+      TrajectoryPoint(44.80, 20.50283, 45), // stop 2: on the route
+    ];
 
     test('no dwell anywhere near a station the shape does not reach', () {
       // Control: the all-on-shape calm plan DOES stand still at its stop.
       final onShape = build(calmPlan());
       final atStop = targetAt(onShape, 20);
-      expect(targetAt(onShape, 21.5), closeTo(atStop, 0.6),
-          reason: 'sanity: an on-shape stop must dwell');
+      expect(
+        targetAt(onShape, 21.5),
+        closeTo(atStop, 0.6),
+        reason: 'sanity: an on-shape stop must dwell',
+      );
 
       // Same timing but stop 1 off-shape: the marker must NOT stand still at its
       // time (~20 s) — a pause there would be ~1 km from any real stop. Sampled
@@ -487,13 +524,19 @@ void main() {
       var minSpeed = double.infinity;
       for (var ms = 17000; ms <= 24000; ms += 250) {
         final a = off.targetDistanceAt(_t0.add(Duration(milliseconds: ms)));
-        final b = off.targetDistanceAt(_t0.add(Duration(milliseconds: ms + 250)));
+        final b = off.targetDistanceAt(
+          _t0.add(Duration(milliseconds: ms + 250)),
+        );
         final v = (b - a) / 0.25;
         if (v < minSpeed) minSpeed = v;
       }
-      expect(minSpeed, greaterThan(0.5),
-          reason: 'marker dwelled at an off-shape station '
-              '(min speed ${minSpeed.toStringAsFixed(2)} m/s near 20 s)');
+      expect(
+        minSpeed,
+        greaterThan(0.5),
+        reason:
+            'marker dwelled at an off-shape station '
+            '(min speed ${minSpeed.toStringAsFixed(2)} m/s near 20 s)',
+      );
     });
 
     // Calibration boundary (2026-07-18, on-shape tolerance = 32 m). A stop whose
@@ -501,10 +544,10 @@ void main() {
     // far off its true position) with otherwise-calm timing. Stop 2 stays on the
     // route. `metres` / 111320 converts to a latitude offset.
     List<TrajectoryPoint> stopOffBy(double metres) => [
-          const TrajectoryPoint(44.80, 20.50000, 0),
-          TrajectoryPoint(44.80 + metres / 111320.0, 20.50126, 20), // stop 1
-          const TrajectoryPoint(44.80, 20.50283, 45), // stop 2, on-route
-        ];
+      const TrajectoryPoint(44.80, 20.50000, 0),
+      TrajectoryPoint(44.80 + metres / 111320.0, 20.50126, 20), // stop 1
+      const TrajectoryPoint(44.80, 20.50283, 45), // stop 2, on-route
+    ];
 
     double minSpeedNear20s(TimedTrajectory t) {
       var minSpeed = double.infinity;
@@ -517,20 +560,34 @@ void main() {
       return minSpeed;
     }
 
-    test('a stop projecting 31 m off-shape still DWELLS (inside the 32 m tolerance)', () {
-      // A real stop on a slightly-off shape (the 26-28 m yellow band + margin) —
-      // it must still pause, or good stops on imperfect geometry lose their dwell.
-      final v = minSpeedNear20s(build(stopOffBy(31)));
-      expect(v, lessThan(0.3),
-          reason: 'a 31 m stop must dwell (min speed ${v.toStringAsFixed(2)} m/s)');
-    });
+    test(
+      'a stop projecting 31 m off-shape still DWELLS (inside the 32 m tolerance)',
+      () {
+        // A real stop on a slightly-off shape (the 26-28 m yellow band + margin) —
+        // it must still pause, or good stops on imperfect geometry lose their dwell.
+        final v = minSpeedNear20s(build(stopOffBy(31)));
+        expect(
+          v,
+          lessThan(0.3),
+          reason:
+              'a 31 m stop must dwell (min speed ${v.toStringAsFixed(2)} m/s)',
+        );
+      },
+    );
 
-    test('a stop projecting 45 m off-shape GLIDES past (beyond the 32 m tolerance)', () {
-      // A genuinely wrong shape variant (50 m+ misses): no pause where no stop is.
-      final v = minSpeedNear20s(build(stopOffBy(45)));
-      expect(v, greaterThan(0.5),
-          reason: 'a 45 m miss must glide (min speed ${v.toStringAsFixed(2)} m/s)');
-    });
+    test(
+      'a stop projecting 45 m off-shape GLIDES past (beyond the 32 m tolerance)',
+      () {
+        // A genuinely wrong shape variant (50 m+ misses): no pause where no stop is.
+        final v = minSpeedNear20s(build(stopOffBy(45)));
+        expect(
+          v,
+          greaterThan(0.5),
+          reason:
+              'a 45 m miss must glide (min speed ${v.toStringAsFixed(2)} m/s)',
+        );
+      },
+    );
 
     test('the plan stands still at a stop, then pulls away', () {
       final t = build(calmPlan());
@@ -540,8 +597,11 @@ void main() {
       // at 20 s and the dwell is 6 s, so it holds through ~26 s (calmPlan's
       // 25 s / 125 m segment leaving the stop has room for a 6 s pause).
       for (final s in [20.5, 22.0, 24.0, 25.5]) {
-        expect(targetAt(t, s), closeTo(atStop, 0.5),
-            reason: 'should still be standing at the stop at ${s}s');
+        expect(
+          targetAt(t, s),
+          closeTo(atStop, 0.5),
+          reason: 'should still be standing at the stop at ${s}s',
+        );
       }
       // ...and then it goes again once the 6 s dwell is over.
       expect(targetAt(t, 29), greaterThan(atStop + 2));
@@ -552,12 +612,18 @@ void main() {
       // Speed over the last four seconds of the approach must fall away, so the
       // marker stops AT the stop rather than sailing past it and reversing up
       // (the marker's own limiter only brakes once it sees the gap).
-      final speeds = [16, 17, 18, 19]
-          .map((s) => targetAt(t, s + 1) - targetAt(t, s.toDouble()))
-          .toList();
+      final speeds = [
+        16,
+        17,
+        18,
+        19,
+      ].map((s) => targetAt(t, s + 1) - targetAt(t, s.toDouble())).toList();
       for (var i = 1; i < speeds.length; i++) {
-        expect(speeds[i], lessThan(speeds[i - 1]),
-            reason: 'approach speed should keep dropping: $speeds');
+        expect(
+          speeds[i],
+          lessThan(speeds[i - 1]),
+          reason: 'approach speed should keep dropping: $speeds',
+        );
       }
       expect(speeds.last, lessThan(1.0), reason: 'should be nearly stopped');
     });
@@ -570,8 +636,11 @@ void main() {
       final path = _eastRoute();
       for (final p in calmPlan()) {
         final planned = path.project(ll.LatLng(p.lat, p.lon));
-        expect(targetAt(t, p.etaSeconds.toDouble()), closeTo(planned, 1.0),
-            reason: 'waypoint at ${p.etaSeconds}s must not move');
+        expect(
+          targetAt(t, p.etaSeconds.toDouble()),
+          closeTo(planned, 1.0),
+          reason: 'waypoint at ${p.etaSeconds}s must not move',
+        );
       }
     });
 
@@ -584,7 +653,11 @@ void main() {
         final v = targetAt(t, s + 1.0) - targetAt(t, s.toDouble());
         if (v > peak) peak = v;
       }
-      expect(peak, lessThan(16.7), reason: 'peak ${peak.toStringAsFixed(1)} m/s');
+      expect(
+        peak,
+        lessThan(16.7),
+        reason: 'peak ${peak.toStringAsFixed(1)} m/s',
+      );
     });
 
     test('a brisk segment keeps the even glide rather than fake a pause', () {
@@ -595,10 +668,14 @@ void main() {
       // to the fix by design, which is a different behaviour entirely.
       final speeds = [
         for (var s = 30; s < 43; s++)
-          targetAt(t, s + 1.0) - targetAt(t, s.toDouble())
+          targetAt(t, s + 1.0) - targetAt(t, s.toDouble()),
       ];
       for (final v in speeds) {
-        expect(v, greaterThan(4.0), reason: 'should never stand still: $speeds');
+        expect(
+          v,
+          greaterThan(4.0),
+          reason: 'should never stand still: $speeds',
+        );
       }
     });
 
@@ -620,8 +697,11 @@ void main() {
         final gap = t.catchUpGap(now);
         if (gap > worstGap) worstGap = gap;
       }
-      expect(worstGap, lessThan(3.0),
-          reason: 'marker fell ${worstGap.toStringAsFixed(1)} m behind the plan');
+      expect(
+        worstGap,
+        lessThan(3.0),
+        reason: 'marker fell ${worstGap.toStringAsFixed(1)} m behind the plan',
+      );
     });
 
     test('the marker follows the dwell without ever jerking or reversing', () {
@@ -636,8 +716,11 @@ void main() {
         expect(t.displayDistance, greaterThanOrEqualTo(prevDist - 1e-6));
         // Bounded acceleration ⇒ no jerk. (3.0 m/s² is the marker's chase limit;
         // allow a hair for floating point.)
-        expect((t.displaySpeed - prevV).abs() * 30, lessThan(3.2),
-            reason: 'velocity stepped at frame $f');
+        expect(
+          (t.displaySpeed - prevV).abs() * 30,
+          lessThan(3.2),
+          reason: 'velocity stepped at frame $f',
+        );
         final elapsed = f / 30;
         if (elapsed > 21 && elapsed < 23 && t.displaySpeed < 0.1) {
           stoodStill = true;
@@ -656,8 +739,11 @@ void main() {
       // vel 0.0, movingNow 0, age 0s).
       final t = build(calmPlan());
       // now == asOf → age 0 → `_targetElapsed` 0, but the plan is live.
-      expect(t.isPlaying(_t0), isTrue,
-          reason: 'a just-landed board must keep the marker playing');
+      expect(
+        t.isPlaying(_t0),
+        isTrue,
+        reason: 'a just-landed board must keep the marker playing',
+      );
       expect(t.hasForwardMotion(_t0), isTrue);
       // A genuinely stale board (90 s) is still held.
       final stale = _t0.add(const Duration(seconds: 90));
@@ -673,10 +759,16 @@ void main() {
       for (var f = 0; f <= 22 * 30; f++) {
         t.advance(_t0.add(Duration(milliseconds: f * 1000 ~/ 30)));
       }
-      expect(t.hasForwardMotion(midDwell), isFalse,
-          reason: 'standing at a stop is genuinely not moving');
-      expect(t.isPlaying(midDwell), isTrue,
-          reason: 'but the plan still has motion to come — keep rendering');
+      expect(
+        t.hasForwardMotion(midDwell),
+        isFalse,
+        reason: 'standing at a stop is genuinely not moving',
+      );
+      expect(
+        t.isPlaying(midDwell),
+        isTrue,
+        reason: 'but the plan still has motion to come — keep rendering',
+      );
 
       // A stale board is the real "nothing left to render": both go quiet.
       final stale = _t0.add(const Duration(seconds: 90));
@@ -691,10 +783,10 @@ void main() {
     // waypoint the marker carries real speed. This is the "plan ran out under a
     // moving marker" case the glide-out smooths (vs the old hard zero at horizon).
     List<TrajectoryPoint> spendingPlan() => const [
-          TrajectoryPoint(44.80, 20.500, 0),
-          TrajectoryPoint(44.80, 20.502, 13),
-          TrajectoryPoint(44.80, 20.504, 25),
-        ];
+      TrajectoryPoint(44.80, 20.500, 0),
+      TrajectoryPoint(44.80, 20.502, 13),
+      TrajectoryPoint(44.80, 20.504, 25),
+    ];
 
     // Steps the marker frame-by-frame, returning the per-frame samples.
     List<({double t, double vel, double dist, bool glide})> replay(
@@ -718,7 +810,11 @@ void main() {
 
     test('eases to rest with a decay, not a hard stop, at the plan end', () {
       final t = TimedTrajectory.build(
-          path: _eastRoute(), plan: spendingPlan(), asOf: _t0, now: _t0)!;
+        path: _eastRoute(),
+        plan: spendingPlan(),
+        asOf: _t0,
+        now: _t0,
+      )!;
       final s = replay(t);
 
       final firstGlide = s.indexWhere((f) => f.glide);
@@ -726,30 +822,46 @@ void main() {
 
       // NOT a cliff: the frame the plan spends still carries real speed — the old
       // behaviour zeroed it in a single step.
-      expect(s[firstGlide].vel, greaterThan(3.0),
-          reason: 'speed at plan end is bled, not slammed to 0');
+      expect(
+        s[firstGlide].vel,
+        greaterThan(3.0),
+        reason: 'speed at plan end is bled, not slammed to 0',
+      );
 
       // The glide window: from first glide frame to the first frame at rest.
-      final restIdx =
-          s.indexWhere((f) => f.vel < 0.2 && f.t > s[firstGlide].t);
+      final restIdx = s.indexWhere((f) => f.vel < 0.2 && f.t > s[firstGlide].t);
       final glideSeconds = s[restIdx].t - s[firstGlide].t;
-      expect(glideSeconds, greaterThan(1.5),
-          reason: 'a glide lasts ~2 s, not the sub-frame of a hard stop '
-              '(measured ${glideSeconds.toStringAsFixed(2)} s)');
+      expect(
+        glideSeconds,
+        greaterThan(1.5),
+        reason:
+            'a glide lasts ~2 s, not the sub-frame of a hard stop '
+            '(measured ${glideSeconds.toStringAsFixed(2)} s)',
+      );
       expect(glideSeconds, lessThan(4.0), reason: 'but it does reach rest');
 
       // Monotone: speed never rises during the glide, position never rewinds.
       for (var i = firstGlide + 1; i <= restIdx; i++) {
-        expect(s[i].vel, lessThanOrEqualTo(s[i - 1].vel + 1e-6),
-            reason: 'speed decays monotonically (frame $i)');
-        expect(s[i].dist, greaterThanOrEqualTo(s[i - 1].dist - 1e-6),
-            reason: 'forward-only: the coast never rewinds (frame $i)');
+        expect(
+          s[i].vel,
+          lessThanOrEqualTo(s[i - 1].vel + 1e-6),
+          reason: 'speed decays monotonically (frame $i)',
+        );
+        expect(
+          s[i].dist,
+          greaterThanOrEqualTo(s[i - 1].dist - 1e-6),
+          reason: 'forward-only: the coast never rewinds (frame $i)',
+        );
       }
     });
 
     test('a fresh board mid-glide resumes the chase without a jerk', () {
       final t = TimedTrajectory.build(
-          path: _eastRoute(), plan: spendingPlan(), asOf: _t0, now: _t0)!;
+        path: _eastRoute(),
+        plan: spendingPlan(),
+        asOf: _t0,
+        now: _t0,
+      )!;
       // Advance into the middle of the glide (well after the 25 s spend).
       var now = _t0;
       for (var ms = 0; ms <= 26000; ms += 250) {
@@ -772,9 +884,13 @@ void main() {
       now = now.add(const Duration(milliseconds: 250));
       t.advance(now);
       final vAfter = t.displaySpeed;
-      expect((vAfter - vBefore).abs(), lessThan(3.0 * 0.25 + 1e-3),
-          reason: 'no jerk across the board swap '
-              '($vBefore → $vAfter m/s in one 0.25 s frame)');
+      expect(
+        (vAfter - vBefore).abs(),
+        lessThan(3.0 * 0.25 + 1e-3),
+        reason:
+            'no jerk across the board swap '
+            '($vBefore → $vAfter m/s in one 0.25 s frame)',
+      );
 
       // And it picks the chase back up rather than staying in the decay.
       expect(t.isGliding(now), isFalse);
@@ -782,13 +898,20 @@ void main() {
         now = _t0.add(Duration(milliseconds: ms - 0)).add(Duration.zero);
         t.advance(now);
       }
-      expect(t.displaySpeed, greaterThan(1.0),
-          reason: 'the marker is moving again on the fresh plan');
+      expect(
+        t.displaySpeed,
+        greaterThan(1.0),
+        reason: 'the marker is moving again on the fresh plan',
+      );
     });
 
     test('no fresh board: the marker reaches rest and holds, bounded', () {
       final t = TimedTrajectory.build(
-          path: _eastRoute(), plan: spendingPlan(), asOf: _t0, now: _t0)!;
+        path: _eastRoute(),
+        plan: spendingPlan(),
+        asOf: _t0,
+        now: _t0,
+      )!;
       final s = replay(t, toSeconds: 40);
       final last = s.last;
       // Honest stop: no motion, not playing, and it did NOT extrapolate the route
@@ -797,36 +920,49 @@ void main() {
       final now = _t0.add(const Duration(seconds: 40));
       expect(t.isPlaying(now), isFalse);
       expect(t.isGliding(now), isFalse);
-      expect(t.displayDistance, lessThanOrEqualTo(t.endDistance + 20.0 + 1e-6),
-          reason: 'coast is bounded (presentation, not free extrapolation)');
+      expect(
+        t.displayDistance,
+        lessThanOrEqualTo(t.endDistance + 20.0 + 1e-6),
+        reason: 'coast is bounded (presentation, not free extrapolation)',
+      );
     });
 
-    test('a marker already at rest at the plan end does not glide (dwell stands)',
-        () {
-      final t = TimedTrajectory.build(
-          path: _eastRoute(), plan: spendingPlan(), asOf: _t0, now: _t0)!;
-      // Let the glide fully play out to rest.
-      var now = _t0;
-      for (var ms = 0; ms <= 30000; ms += 250) {
-        now = _t0.add(Duration(milliseconds: ms));
-        t.advance(now);
-      }
-      expect(t.displaySpeed, 0.0);
-      expect(t.isGliding(now), isFalse);
-      final restDist = t.displayDistance;
-      // Keep ticking (still fresh, no new board): it stays put — no re-glide, no
-      // creeping coast. A stop at the end is a stop, not perpetual motion.
-      for (var ms = 30250; ms <= 40000; ms += 250) {
-        now = _t0.add(Duration(milliseconds: ms));
-        t.advance(now);
+    test(
+      'a marker already at rest at the plan end does not glide (dwell stands)',
+      () {
+        final t = TimedTrajectory.build(
+          path: _eastRoute(),
+          plan: spendingPlan(),
+          asOf: _t0,
+          now: _t0,
+        )!;
+        // Let the glide fully play out to rest.
+        var now = _t0;
+        for (var ms = 0; ms <= 30000; ms += 250) {
+          now = _t0.add(Duration(milliseconds: ms));
+          t.advance(now);
+        }
+        expect(t.displaySpeed, 0.0);
         expect(t.isGliding(now), isFalse);
-      }
-      expect(t.displayDistance, closeTo(restDist, 1e-6));
-    });
+        final restDist = t.displayDistance;
+        // Keep ticking (still fresh, no new board): it stays put — no re-glide, no
+        // creeping coast. A stop at the end is a stop, not perpetual motion.
+        for (var ms = 30250; ms <= 40000; ms += 250) {
+          now = _t0.add(Duration(milliseconds: ms));
+          t.advance(now);
+          expect(t.isGliding(now), isFalse);
+        }
+        expect(t.displayDistance, closeTo(restDist, 1e-6));
+      },
+    );
 
     test('a stale board holds at the fix and never glides', () {
       final t = TimedTrajectory.build(
-          path: _eastRoute(), plan: spendingPlan(), asOf: _t0, now: _t0)!;
+        path: _eastRoute(),
+        plan: spendingPlan(),
+        asOf: _t0,
+        now: _t0,
+      )!;
       // Past the 45 s staleness gate: pinned to the fix, honesty gate untouched.
       final stale = _t0.add(const Duration(seconds: 90));
       t.advance(stale);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../domain/models/vehicle_type.dart';
+import '../../core/design/stize_icons.dart';
 
 /// Plain [IconData] per type — for the few places that only need a glyph code.
 /// Note: Material Icons has no trolleybus, so trolleybus falls back to a bus
@@ -9,11 +10,11 @@ import '../../domain/models/vehicle_type.dart';
 IconData vehicleIconFor(VehicleType type) {
   switch (type) {
     case VehicleType.bus:
-      return Icons.directions_bus_rounded;
+      return StizeIcons.bus;
     case VehicleType.tram:
-      return Icons.tram_rounded;
+      return StizeIcons.tram;
     case VehicleType.trolleybus:
-      return Icons.directions_bus_filled_rounded;
+      return StizeIcons.bus;
   }
 }
 
@@ -28,9 +29,9 @@ Widget vehicleGlyph(
 }) {
   switch (type) {
     case VehicleType.bus:
-      return Icon(Icons.directions_bus_rounded, size: size, color: color);
+      return Icon(StizeIcons.bus, size: size, color: color);
     case VehicleType.tram:
-      return Icon(Icons.tram_rounded, size: size, color: color);
+      return Icon(StizeIcons.tram, size: size, color: color);
     case VehicleType.trolleybus:
       // The trolleybus artwork nearly fills its 24×24 viewBox (the poles reach
       // the top edge), so at 1:1 it reads larger than the Material glyphs and

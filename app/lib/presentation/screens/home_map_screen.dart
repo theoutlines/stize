@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import '../../core/design/stize_icons.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart' as geo show Position;
@@ -53,6 +54,7 @@ import '../widgets/fleet_model_card.dart';
 import '../widgets/nearby_sheet.dart';
 import '../widgets/nearby_view.dart';
 import '../widgets/stop_board.dart';
+import '../widgets/guide/belgrade_guide.dart';
 import '../widgets/level_header.dart';
 import '../widgets/my_stops_list.dart';
 import '../widgets/vehicle_icon.dart';
@@ -248,6 +250,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   late final AnimationController _meAnim;
   ll.LatLng? _meFrom; // where the marker eased from
   ll.LatLng? _meTo; // the latest fix (null = no marker shown)
+
+  /// The guide was opened on this device (ends the first-launch strip).
+  bool _guideSeen = true;
   StreamSubscription<geo.Position>? _positionSub;
   DateTime? _subscribedAt;
   DateTime? _lastFixAt;
@@ -439,6 +444,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    guideOpenedBefore().then((v) {
+      if (mounted && v != _guideSeen) setState(() => _guideSeen = v);
+    });
     _vehAnim = AnimationController(
       vsync: this,
       duration: _vehiclesRefreshInterval,
@@ -672,6 +680,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       if (prev == next) return;
       _openMyStopsLevel();
     });
+    ref.listen(guideRequestProvider, (prev, next) {
+      if (prev == next) return;
+      _openGuideLevel(GuidePage.home);
+    });
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     _scheme = theme.colorScheme;
@@ -862,6 +874,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                 // A level (stop / My stops / model) replaces Nearby inside this
                 // same sheet; null = Nearby.
                 levelHeader: _slotNavRow(l10n),
+                banner: _guideBanner(l10n),
                 levelBody: (_levels.isEmpty && _slotModel == null)
                     ? null
                     : (sc) => _slotContent(l10n, scrollController: sc),
@@ -950,4 +963,9 @@ class _StopLevel extends _SlotLevel {
 
 class _MyStopsLevel extends _SlotLevel {
   const _MyStopsLevel();
+}
+
+class _GuideLevel extends _SlotLevel {
+  const _GuideLevel(this.page);
+  final GuidePage page;
 }

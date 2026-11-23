@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../domain/models/line_analytics.dart';
+import '../../../core/design/stize_icons.dart';
 
 /// Compact summary chips above the charts — the key numbers for a line at a
 /// glance (in the spirit of "Consistency 59%" / streak cards). Punctuality is
@@ -44,11 +45,11 @@ class MetricChips extends StatelessWidget {
       _Chip(
         'Скорость',
         meanSpeed == null ? '—' : '${meanSpeed.toStringAsFixed(2)} ост/мин',
-        Icons.speed,
+        StizeIcons.speed,
       ),
-      _Chip('Активных часов', '$activeHours/24', Icons.schedule),
+      _Chip('Активных часов', '$activeHours/24', StizeIcons.clock),
       if (peak != null && peak.samples > 0)
-        _Chip('Пик активности', '${peak.key}:00', Icons.trending_up),
+        _Chip('Пик активности', '${peak.key}:00', StizeIcons.trendingUp),
       const _Chip('Пунктуальность', '—', Icons.query_stats),
     ];
 

@@ -5,17 +5,11 @@ import 'package:stize/core/coverage_heatmap.dart';
 void main() {
   group('coverageMainHeatmapActive (threshold + hysteresis)', () {
     test('mounts when zoomed out below the fade-end threshold', () {
-      expect(
-        coverageMainHeatmapActive(zoom: 12.0, wasActive: false),
-        isTrue,
-      );
+      expect(coverageMainHeatmapActive(zoom: 12.0, wasActive: false), isTrue);
     });
 
     test('does not mount when zoomed in above the threshold', () {
-      expect(
-        coverageMainHeatmapActive(zoom: 15.0, wasActive: false),
-        isFalse,
-      );
+      expect(coverageMainHeatmapActive(zoom: 15.0, wasActive: false), isFalse);
     });
 
     test('hysteresis: once active it stays active across the sticky band', () {
@@ -70,10 +64,7 @@ void main() {
       expect(expr[4], kCoverageMainMaxOpacity);
       expect(expr[5], kCoverageMainFadeEnd);
       expect(expr[6], 0.0);
-      expect(
-        coverageMainHeatmapOpacity(kCoverageMainFadeStart),
-        expr[4],
-      );
+      expect(coverageMainHeatmapOpacity(kCoverageMainFadeStart), expr[4]);
       expect(coverageMainHeatmapOpacity(kCoverageMainFadeEnd), expr[6]);
     });
   });

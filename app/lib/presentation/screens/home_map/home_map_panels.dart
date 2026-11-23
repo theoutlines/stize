@@ -1,8 +1,5 @@
 part of '../home_map_screen.dart';
 
-/// Height of the desktop search island (burger + pill row).
-const double _kSearchIslandH = 48;
-
 extension _MapPanels on _HomeMapScreenState {
   // ---- Context panel (desktop-only) rendering ------------------------------
 
@@ -75,26 +72,6 @@ extension _MapPanels on _HomeMapScreenState {
           ),
         ),
       ),
-      // The collapse tab: docked to the panel island's right edge when open, to
-      // the screen's left edge when collapsed. Vertically centred, chevron flips.
-      AnimatedPositioned(
-        duration: _HomeMapScreenState._panelCollapseDuration,
-        curve: _HomeMapScreenState._panelCollapseCurve,
-        left: collapsed ? 0 : inset + panelW,
-        // Docked near the panel's top edge: the panel hugs its content, so a
-        // screen-centred tab could float beside the map below a short panel.
-        top:
-            MediaQuery.paddingOf(context).top +
-            inset +
-            _kSearchIslandH +
-            searchToPanelGap +
-            16,
-        child: PanelCollapseTab(
-          collapsed: collapsed,
-          tooltip: collapsed ? l10n.panelExpand : l10n.panelCollapse,
-          onTap: () => _setState(() => _panelCollapsed = !_panelCollapsed),
-        ),
-      ),
     ];
     if (_followLost) widgets.add(_backToVehiclePill(l10n, theme, size: size));
     return widgets;
@@ -107,6 +84,11 @@ extension _MapPanels on _HomeMapScreenState {
         _StopLevel(:final id, :final name) =>
           ref.watch(stopLocationProvider(id)).valueOrNull?.name ?? name ?? '',
         _MyStopsLevel() => l10n.navMyStops,
+        _GuideLevel(:final page) => switch (page) {
+          GuidePage.home => l10n.guideTitle,
+          GuidePage.readStop => l10n.guideReadStop,
+          GuidePage.places => l10n.guidePlaces,
+        },
       };
 
   /// The header of the current level; null on Nearby (root). One control per
@@ -129,6 +111,7 @@ extension _MapPanels on _HomeMapScreenState {
         return null;
       case ContextView.stop:
       case ContextView.myStops:
+      case ContextView.guide:
         final top = _levels.last;
         final title = _levelTitle(top, l10n);
         return LevelHeader(
@@ -185,7 +168,26 @@ extension _MapPanels on _HomeMapScreenState {
           // "filter lines nearby" field (decision #6).
           showLocalSearch: false,
           hugContent: true,
+          banner: _guideBanner(l10n),
         );
+      case ContextView.guide:
+        final page = (_levels.last as _GuideLevel).page;
+        void openStop(String id, String name) =>
+            _openStopById(id, stopName: name, source: Ev.srcGuide);
+        return switch (page) {
+          GuidePage.home => GuideHome(
+            scrollController: scrollController,
+            onOpenPage: _openGuideLevel,
+            onOpenStop: openStop,
+          ),
+          GuidePage.readStop => GuideReadStop(
+            scrollController: scrollController,
+          ),
+          GuidePage.places => GuidePlaces(
+            scrollController: scrollController,
+            onOpenStop: openStop,
+          ),
+        };
       case ContextView.myStops:
         return MyStopsList(
           scrollController: scrollController,
@@ -250,7 +252,7 @@ extension _MapPanels on _HomeMapScreenState {
           orElse: () => false,
         );
     return IconButton(
-      icon: Icon(isFav ? Icons.star : Icons.star_outline),
+      icon: Icon(isFav ? StizeIcons.starFilled : StizeIcons.star),
       color: isFav ? StizeColors.of(context).favorite : null,
       tooltip: isFav
           ? AppLocalizations.of(context).removeFromFavorites
@@ -368,7 +370,7 @@ extension _MapPanels on _HomeMapScreenState {
             shape: const CircleBorder(),
             clipBehavior: Clip.antiAlias,
             child: IconButton(
-              icon: const Icon(Icons.menu),
+              icon: const Icon(StizeIcons.menu),
               tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
               onPressed: widget.onOpenDrawer,
             ),
@@ -384,7 +386,10 @@ extension _MapPanels on _HomeMapScreenState {
             child: Row(
               children: [
                 const SizedBox(width: 12),
-                Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
+                Icon(
+                  StizeIcons.search,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 Expanded(
                   child: TextField(
                     controller: _searchController,
@@ -405,7 +410,7 @@ extension _MapPanels on _HomeMapScreenState {
                 ),
                 if (_searching)
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(StizeIcons.close),
                     onPressed: _clearSearch,
                   )
                 else
@@ -468,7 +473,7 @@ extension _MapPanels on _HomeMapScreenState {
   }
 
   /// Turns (0..1) for the off-screen direction arrow toward the followed marker,
-  /// or null when it's on-screen. [Icons.navigation] points up at 0.
+  /// or null when it's on-screen. [StizeIcons.nearMe] points up at 0.
   double? _offScreenArrowTurns(Size size) {
     final key = _selectedVehicleKey;
     final controller = _controller;
@@ -750,20 +755,15 @@ extension _MapPanels on _HomeMapScreenState {
 
     return SafeArea(
       child: Align(
-        alignment: Alignment.topLeft,
+        // Bottom-right (owner, 2026-11-23): out of the way of the panel, the
+        // search and the top-right controls. On mobile it sits above the sheet.
+        alignment: Alignment.bottomRight,
         child: IgnorePointer(
           child: Container(
-            // Clear of the desktop panel island (block #6): sit right of it with
-            // the same gap the search island leaves above the panel, so it
-            // doesn't stick to the island's edge.
+            constraints: const BoxConstraints(maxWidth: 360),
             margin: EdgeInsets.only(
-              top: 72,
-              left: _panelActive
-                  ? kPanelIslandInset +
-                        panelWidthFor(MediaQuery.sizeOf(context).width) +
-                        _HomeMapScreenState._kIslandGap
-                  : _HomeMapScreenState._kIslandGap,
-              right: 8,
+              right: 12,
+              bottom: _panelActive ? 12 : _mobileSheetPx + 8,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
@@ -922,7 +922,7 @@ extension _MapPanels on _HomeMapScreenState {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.schedule,
+                              StizeIcons.clock,
                               size: 13,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -943,7 +943,7 @@ extension _MapPanels on _HomeMapScreenState {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(StizeIcons.close),
                   onPressed: _closeVehicleContext,
                   tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                 ),
@@ -999,11 +999,14 @@ extension _MapPanels on _HomeMapScreenState {
             else
               _roundButton(
                 theme,
-                icon: Icons.menu,
+                icon: StizeIcons.menu,
                 tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
                 onTap: widget.onOpenDrawer,
               ),
             Column(
+              // Right-aligned so the one-time label beside the transport
+              // toggle grows to the left and the buttons stay in one column.
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 // Jam-mode toggle: shows ONLY while the city has active jams; a
                 // toggle of the same map (fit to all jams / back), with a red count
@@ -1014,7 +1017,7 @@ extension _MapPanels on _HomeMapScreenState {
                 const VehicleModeToggle(),
                 _roundButton(
                   theme,
-                  icon: Icons.my_location,
+                  icon: StizeIcons.locate,
                   onTap: _recenterOnMe,
                 ),
                 if (_showZoomControls) ...[
@@ -1040,12 +1043,12 @@ extension _MapPanels on _HomeMapScreenState {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.add),
+              icon: const Icon(StizeIcons.plus),
               onPressed: () => _zoomBy(1),
             ),
             Divider(height: 1, thickness: 1, color: theme.dividerColor),
             IconButton(
-              icon: const Icon(Icons.remove),
+              icon: const Icon(StizeIcons.minus),
               onPressed: () => _zoomBy(-1),
             ),
           ],
@@ -1107,7 +1110,7 @@ extension _MapPanels on _HomeMapScreenState {
               shape: const CircleBorder(),
               clipBehavior: Clip.antiAlias,
               child: IconButton(
-                icon: Icon(Icons.warning_amber_rounded, color: iconColor),
+                icon: Icon(StizeIcons.warning, color: iconColor),
                 tooltip: l10n.jamModeTooltip,
                 onPressed: () => _setJamMode(!_jamModeOn),
               ),

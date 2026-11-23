@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/external_link.dart';
 import '../../domain/models/route_alert.dart';
 import '../../l10n/app_localizations.dart';
+import '../../core/design/stize_icons.dart';
 
 /// Route-change alerts, shown compactly (H1/H3).
 ///
@@ -68,9 +69,7 @@ class _RouteAlertsStripState extends State<RouteAlertsStrip> {
               child: Row(
                 children: [
                   Icon(
-                    hasHigh
-                        ? Icons.warning_amber_rounded
-                        : Icons.info_outline_rounded,
+                    hasHigh ? StizeIcons.warning : StizeIcons.info,
                     size: 18,
                     color: headerFg,
                   ),
@@ -85,7 +84,7 @@ class _RouteAlertsStripState extends State<RouteAlertsStrip> {
                     ),
                   ),
                   Icon(
-                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    _expanded ? StizeIcons.chevronUp : StizeIcons.chevronDown,
                     color: headerFg,
                   ),
                 ],
@@ -146,10 +145,8 @@ class _AlertRow extends StatelessWidget {
         children: [
           Icon(
             alert.isUpcoming
-                ? Icons.schedule
-                : (high
-                      ? Icons.warning_amber_rounded
-                      : Icons.info_outline_rounded),
+                ? StizeIcons.clock
+                : (high ? StizeIcons.warning : StizeIcons.info),
             color: fg,
             size: 18,
           ),

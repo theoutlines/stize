@@ -12,9 +12,27 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({
       'gtfs_cache_stops_v1': jsonEncode([
-        {'stop_id': '20091', 'name': 'Batutova', 'lat': 44.795374, 'lon': 20.499713, 'lines': ['79']},
-        {'stop_id': '20097', 'name': 'Batutova', 'lat': 44.795946, 'lon': 20.498157, 'lines': ['5', '7L']},
-        {'stop_id': '99999', 'name': 'Far Away Stop', 'lat': 40.0, 'lon': 10.0, 'lines': ['1']},
+        {
+          'stop_id': '20091',
+          'name': 'Batutova',
+          'lat': 44.795374,
+          'lon': 20.499713,
+          'lines': ['79'],
+        },
+        {
+          'stop_id': '20097',
+          'name': 'Batutova',
+          'lat': 44.795946,
+          'lon': 20.498157,
+          'lines': ['5', '7L'],
+        },
+        {
+          'stop_id': '99999',
+          'name': 'Far Away Stop',
+          'lat': 40.0,
+          'lon': 10.0,
+          'lines': ['1'],
+        },
       ]),
       'gtfs_cache_lines_v1': jsonEncode([
         {

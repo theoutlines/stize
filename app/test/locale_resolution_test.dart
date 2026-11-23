@@ -28,18 +28,16 @@ void main() {
   });
 
   test('a Russian system locale resolves to English', () {
-    final resolved = basicLocaleListResolution(
-      const [Locale('ru')],
-      AppLocalizations.supportedLocales,
-    );
+    final resolved = basicLocaleListResolution(const [
+      Locale('ru'),
+    ], AppLocalizations.supportedLocales);
     expect(resolved, const Locale('en'));
   });
 
   test('a Serbian system locale still resolves to Serbian', () {
-    final resolved = basicLocaleListResolution(
-      const [Locale('sr')],
-      AppLocalizations.supportedLocales,
-    );
+    final resolved = basicLocaleListResolution(const [
+      Locale('sr'),
+    ], AppLocalizations.supportedLocales);
     expect(resolved, const Locale('sr'));
   });
 }

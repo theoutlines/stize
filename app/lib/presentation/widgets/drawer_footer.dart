@@ -7,6 +7,7 @@ import '../../core/external_link.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import '../../core/design/stize_icons.dart';
 
 /// Pushes Flutter's licence page with the app's AGPL header + repo link.
 void openLicensesPage(
@@ -61,7 +62,7 @@ void showFeedbackSheet(BuildContext context) {
               // The form action disappears entirely when the killswitch is off.
               if (formEnabled)
                 ListTile(
-                  leading: const Icon(Icons.edit_outlined),
+                  leading: const Icon(StizeIcons.edit),
                   title: Text(l10n.feedbackWriteToMe),
                   subtitle: Text(l10n.feedbackWriteToMeSubtitle),
                   onTap: () {
@@ -70,7 +71,7 @@ void showFeedbackSheet(BuildContext context) {
                   },
                 ),
               ListTile(
-                leading: const Icon(Icons.bug_report_outlined),
+                leading: const Icon(StizeIcons.bug),
                 title: Text(l10n.feedbackGithubIssues),
                 subtitle: Text(l10n.feedbackGithubIssuesSubtitle),
                 onTap: () {

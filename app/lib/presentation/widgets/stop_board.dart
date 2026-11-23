@@ -17,6 +17,7 @@ import 'empty_state.dart';
 import 'stop_arrivals_list.dart';
 import 'jam_stop_banner.dart';
 import 'route_alerts_strip.dart';
+import '../../core/design/stize_icons.dart';
 
 /// The reusable "stop" view — a stop's live arrivals board, with no assumption
 /// about its container. It is hosted BY three shells that only add chrome:
@@ -153,7 +154,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
               ),
               board.when(
                 loading: () => EmptyState(
-                  icon: Icons.directions_transit_outlined,
+                  icon: StizeIcons.transit,
                   title: l10n.loadingArrivals,
                 ),
                 error: (err, _) =>
@@ -187,7 +188,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
             ),
           ),
           IconButton(
-            icon: Icon(isFavorite ? Icons.star : Icons.star_outline),
+            icon: Icon(isFavorite ? StizeIcons.starFilled : StizeIcons.star),
             color: isFavorite ? StizeColors.of(context).favorite : null,
             tooltip: isFavorite
                 ? AppLocalizations.of(context).removeFromFavorites
@@ -196,7 +197,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
           ),
           if (widget.onClose != null)
             IconButton(
-              icon: const Icon(Icons.close),
+              icon: const Icon(StizeIcons.close),
               onPressed: widget.onClose,
             ),
         ],

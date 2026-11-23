@@ -24,12 +24,15 @@ void main() {
 
     test('reserves the roadmap kinds so the layer needn\'t be rewritten', () {
       // These have no VehicleType yet but exist as first-class kinds.
-      expect(MovingObjectKind.values, containsAll([
-        MovingObjectKind.metro,
-        MovingObjectKind.train,
-        MovingObjectKind.scooter,
-        MovingObjectKind.bike,
-      ]));
+      expect(
+        MovingObjectKind.values,
+        containsAll([
+          MovingObjectKind.metro,
+          MovingObjectKind.train,
+          MovingObjectKind.scooter,
+          MovingObjectKind.bike,
+        ]),
+      );
       expect(MovingObjectKind.metro.id, 'metro');
     });
   });
@@ -63,10 +66,11 @@ void main() {
       expect(fc['type'], 'FeatureCollection');
       final features = fc['features'] as List;
       expect(features.length, 3);
-      expect(
-        features.map((f) => (f['properties'] as Map)['key']).toList(),
-        ['A', 'B', 'C'],
-      );
+      expect(features.map((f) => (f['properties'] as Map)['key']).toList(), [
+        'A',
+        'B',
+        'C',
+      ]);
     });
 
     test('writes coordinates as [lon, lat] (GeoJSON order)', () {

@@ -14,10 +14,8 @@ import 'package:stize/presentation/screens/settings_screen.dart';
 Widget _wrap({required bool flagOn}) => ProviderScope(
   overrides: [
     appConfigProvider.overrideWith(
-      (ref) async => AppConfig(
-        version: 'test',
-        flags: {'vehicles_on_demand': flagOn},
-      ),
+      (ref) async =>
+          AppConfig(version: 'test', flags: {'vehicles_on_demand': flagOn}),
     ),
   ],
   child: MaterialApp(
@@ -52,16 +50,18 @@ void main() {
     expect(find.text('Русский'), findsNothing);
   });
 
-  testWidgets('the vehicle mode is NOT a settings item — the map toggle owns it',
-      (tester) async {
-    // Even with the flag on, Settings offers only language + theme.
-    await pumpSettings(tester, flagOn: true);
+  testWidgets(
+    'the vehicle mode is NOT a settings item — the map toggle owns it',
+    (tester) async {
+      // Even with the flag on, Settings offers only language + theme.
+      await pumpSettings(tester, flagOn: true);
 
-    expect(find.text('On demand'), findsNothing);
-    expect(find.text('All transport'), findsNothing);
-    expect(find.text('Language'), findsOneWidget);
-    expect(find.text('Theme'), findsOneWidget);
-  });
+      expect(find.text('On demand'), findsNothing);
+      expect(find.text('All transport'), findsNothing);
+      expect(find.text('Language'), findsOneWidget);
+      expect(find.text('Theme'), findsOneWidget);
+    },
+  );
 
   /// A container wired like the app, with the flag forced and the config
   /// awaited — the mode resolves off `appConfigProvider`, so reading it before
@@ -107,12 +107,15 @@ void main() {
     expect(container.read(vehicleMapModeProvider), VehicleMapMode.aquarium);
   });
 
-  test('flag OFF forces the aquarium whatever is stored (killswitch)', () async {
-    SharedPreferences.setMockInitialValues({
-      'settings_vehicle_map_mode': 'onDemand',
-    });
-    final container = await modeContainer(flagOn: false);
+  test(
+    'flag OFF forces the aquarium whatever is stored (killswitch)',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'settings_vehicle_map_mode': 'onDemand',
+      });
+      final container = await modeContainer(flagOn: false);
 
-    expect(container.read(vehicleMapModeProvider), VehicleMapMode.aquarium);
-  });
+      expect(container.read(vehicleMapModeProvider), VehicleMapMode.aquarium);
+    },
+  );
 }

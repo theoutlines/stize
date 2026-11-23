@@ -13,6 +13,7 @@ import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
 import 'package:stize/presentation/screens/stop_screen.dart';
 import 'package:stize/presentation/widgets/stop_sheet.dart';
+import 'package:stize/core/design/stize_icons.dart';
 
 // A tiny, deterministic catalog: two tram classes with very different comfort,
 // so we exercise badges, the model card and the comfort sort without depending
@@ -38,45 +39,51 @@ const _catalogJson = '''
 }
 ''';
 
-const _stop = Stop(stopId: '20091', name: 'Batutova', lat: 44.79, lon: 20.49, lines: ['12']);
+const _stop = Stop(
+  stopId: '20091',
+  name: 'Batutova',
+  lat: 44.79,
+  lon: 20.49,
+  lines: ['12'],
+);
 
 // Line 12: the real-life case — a comfy Bozankaya vs. an old Kata. Kata arrives
 // sooner (default time order), Bozankaya is far more comfortable.
 ArrivalsBoard _board() => ArrivalsBoard.fromJson({
-      'stop_id': '20091',
-      'stop_name': 'Batutova',
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-      'arrivals': [
-        {
-          'line': '12',
-          'vehicle_type': 'tram',
-          'eta_minutes': 3,
-          'stops_remaining': 2,
-          'route_id': '00012',
-          'gps': null,
-          'garage_no': 'P80210', // Kata, comfort 1
-        },
-        {
-          'line': '12',
-          'vehicle_type': 'tram',
-          'eta_minutes': 9,
-          'stops_remaining': 5,
-          'route_id': '00012',
-          'gps': null,
-          'garage_no': 'P81540', // Bozankaya, comfort 5
-        },
-        {
-          'line': '12',
-          'vehicle_type': 'tram',
-          'eta_minutes': 1,
-          'stops_remaining': 1,
-          'route_id': '00012',
-          'gps': null,
-          'garage_no': 'P5', // junk placeholder — number must never be shown
-        },
-      ],
-      'service_status': 'ok',
-    });
+  'stop_id': '20091',
+  'stop_name': 'Batutova',
+  'updated_at': DateTime.now().toUtc().toIso8601String(),
+  'arrivals': [
+    {
+      'line': '12',
+      'vehicle_type': 'tram',
+      'eta_minutes': 3,
+      'stops_remaining': 2,
+      'route_id': '00012',
+      'gps': null,
+      'garage_no': 'P80210', // Kata, comfort 1
+    },
+    {
+      'line': '12',
+      'vehicle_type': 'tram',
+      'eta_minutes': 9,
+      'stops_remaining': 5,
+      'route_id': '00012',
+      'gps': null,
+      'garage_no': 'P81540', // Bozankaya, comfort 5
+    },
+    {
+      'line': '12',
+      'vehicle_type': 'tram',
+      'eta_minutes': 1,
+      'stops_remaining': 1,
+      'route_id': '00012',
+      'gps': null,
+      'garage_no': 'P5', // junk placeholder — number must never be shown
+    },
+  ],
+  'service_status': 'ok',
+});
 
 class _FakeArrivals implements ArrivalsRepository {
   _FakeArrivals(this.board);
@@ -92,9 +99,11 @@ class _FakeFavorites implements FavoritesRepository {
   @override
   Future<List<FavoriteStop>> getFavorites() async => List.unmodifiable(_s);
   @override
-  Future<bool> isFavorite(String stopId) async => _s.any((s) => s.stopId == stopId);
+  Future<bool> isFavorite(String stopId) async =>
+      _s.any((s) => s.stopId == stopId);
   @override
-  Future<void> remove(String stopId) async => _s.removeWhere((s) => s.stopId == stopId);
+  Future<void> remove(String stopId) async =>
+      _s.removeWhere((s) => s.stopId == stopId);
 }
 
 Widget _wrap({required FleetCatalog? catalog, Locale? locale}) {
@@ -119,41 +128,46 @@ void main() {
   setUp(() => kMapRenderingEnabled = false);
   tearDown(() => kMapRenderingEnabled = true);
 
-  testWidgets('B5: a null catalog silently disables Fleet-ID, transit still works',
-      (tester) async {
-    await tester.pumpWidget(_wrap(catalog: null));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'B5: a null catalog silently disables Fleet-ID, transit still works',
+    (tester) async {
+      await tester.pumpWidget(_wrap(catalog: null));
+      await tester.pumpAndSettle();
 
-    // Arrivals render normally.
-    expect(find.text('12'), findsWidgets);
-    expect(find.text('3'), findsOneWidget);
-    // No fleet badges, no comfort sort, no crash.
-    expect(find.byIcon(Icons.ac_unit), findsNothing);
-    expect(find.text('By comfort'), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      // Arrivals render normally.
+      expect(find.text('12'), findsWidgets);
+      expect(find.text('3'), findsOneWidget);
+      // No fleet badges, no comfort sort, no crash.
+      expect(find.byIcon(StizeIcons.snowflake), findsNothing);
+      expect(find.text('By comfort'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
-  testWidgets('B2/B4: badges show, junk number is hidden, comfort sort appears',
-      (tester) async {
-    final catalog = FleetCatalog.tryParse(_catalogJson)!;
-    await tester.pumpWidget(_wrap(catalog: catalog));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'B2/B4: badges show, junk number is hidden, comfort sort appears',
+    (tester) async {
+      final catalog = FleetCatalog.tryParse(_catalogJson)!;
+      await tester.pumpWidget(_wrap(catalog: catalog));
+      await tester.pumpAndSettle();
 
-    // Bozankaya has AC + low floor → those badges appear.
-    expect(find.byIcon(Icons.ac_unit), findsOneWidget);
-    expect(find.byIcon(Icons.accessible), findsOneWidget);
+      // Bozankaya has AC + low floor → those badges appear.
+      expect(find.byIcon(StizeIcons.snowflake), findsOneWidget);
+      expect(find.byIcon(StizeIcons.accessible), findsOneWidget);
 
-    // Two distinct classes → the comfort sort is offered.
-    expect(find.text('By comfort'), findsOneWidget);
-    expect(find.text('By time'), findsOneWidget);
+      // Two distinct classes → the comfort sort is offered.
+      expect(find.text('By comfort'), findsOneWidget);
+      expect(find.text('By time'), findsOneWidget);
 
-    // The junk placeholder P5 is never shown anywhere.
-    expect(find.textContaining('P5'), findsNothing);
-    expect(find.textContaining('#P5'), findsNothing);
-  });
+      // The junk placeholder P5 is never shown anywhere.
+      expect(find.textContaining('P5'), findsNothing);
+      expect(find.textContaining('#P5'), findsNothing);
+    },
+  );
 
-  testWidgets('B4: sorting by comfort puts the Bozankaya above the Kata',
-      (tester) async {
+  testWidgets('B4: sorting by comfort puts the Bozankaya above the Kata', (
+    tester,
+  ) async {
     final catalog = FleetCatalog.tryParse(_catalogJson)!;
     await tester.pumpWidget(_wrap(catalog: catalog));
     await tester.pumpAndSettle();
@@ -172,14 +186,17 @@ void main() {
     expect(bozaY1, lessThan(kataY1));
   });
 
-  testWidgets('B3: card shows model on top, Latin nickname below (sr locale)',
-      (tester) async {
+  testWidgets('B3: card shows model on top, Latin nickname below (sr locale)', (
+    tester,
+  ) async {
     final catalog = FleetCatalog.tryParse(_catalogJson)!;
-    await tester.pumpWidget(_wrap(catalog: catalog, locale: const Locale('sr')));
+    await tester.pumpWidget(
+      _wrap(catalog: catalog, locale: const Locale('sr')),
+    );
     await tester.pumpAndSettle();
 
     // Tap the AC badge (only the Bozankaya has one).
-    await tester.tap(find.byIcon(Icons.ac_unit));
+    await tester.tap(find.byIcon(StizeIcons.snowflake));
     await tester.pumpAndSettle();
 
     expect(find.text('Bozankaya'), findsOneWidget); // model name, headline
@@ -194,13 +211,16 @@ void main() {
     expect(modelY, lessThan(nickY));
   });
 
-  testWidgets('B3: English card shows model on top, ASCII nickname below',
-      (tester) async {
+  testWidgets('B3: English card shows model on top, ASCII nickname below', (
+    tester,
+  ) async {
     final catalog = FleetCatalog.tryParse(_catalogJson)!;
-    await tester.pumpWidget(_wrap(catalog: catalog, locale: const Locale('en')));
+    await tester.pumpWidget(
+      _wrap(catalog: catalog, locale: const Locale('en')),
+    );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.ac_unit));
+    await tester.tap(find.byIcon(StizeIcons.snowflake));
     await tester.pumpAndSettle();
 
     expect(find.text('Bozankaya'), findsOneWidget); // model headline
@@ -228,7 +248,11 @@ void main() {
             body: Builder(
               builder: (context) => Center(
                 child: ElevatedButton(
-                  onPressed: () => showStopSheet(context, stopId: '20091', stopName: 'Batutova'),
+                  onPressed: () => showStopSheet(
+                    context,
+                    stopId: '20091',
+                    stopName: 'Batutova',
+                  ),
                   child: const Text('open'),
                 ),
               ),
@@ -243,7 +267,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Sheet is open with Fleet-ID surfaced.
-    expect(find.byIcon(Icons.ac_unit), findsOneWidget);
+    expect(find.byIcon(StizeIcons.snowflake), findsOneWidget);
     expect(find.text('By comfort'), findsOneWidget);
     expect(find.textContaining('P5'), findsNothing); // junk hidden
   });

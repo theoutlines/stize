@@ -7,6 +7,7 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/back_to_button.dart';
 import '../widgets/drawer_footer.dart';
+import '../../core/design/stize_icons.dart';
 
 class AboutScreen extends ConsumerWidget {
   const AboutScreen({super.key});
@@ -69,16 +70,16 @@ class AboutScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.description_outlined),
+            leading: const Icon(StizeIcons.document),
             title: Text(l10n.drawerLicenses),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: const Icon(StizeIcons.chevronRight),
             onTap: () => openLicensesPage(context, l10n, version),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.privacy_tip_outlined),
+            leading: const Icon(StizeIcons.shield),
             title: Text(l10n.drawerPrivacy),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: const Icon(StizeIcons.chevronRight),
             onTap: () => context.push('/privacy'),
           ),
           if (version != null) ...[

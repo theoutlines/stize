@@ -10,14 +10,18 @@ import 'package:stize/presentation/widgets/analytics/hourly_sparkline.dart';
 import 'package:stize/presentation/widgets/analytics/metric_chips.dart';
 import 'package:stize/presentation/widgets/analytics/time_heatmap.dart';
 
-AnalyticsBucket _b(int key, {int samples = 0, double? headway, double? speed}) =>
-    AnalyticsBucket(
-      key: key,
-      samples: samples,
-      arrivals: samples ~/ 2,
-      meanHeadwaySecs: headway,
-      meanSpeedStopsPerMin: speed,
-    );
+AnalyticsBucket _b(
+  int key, {
+  int samples = 0,
+  double? headway,
+  double? speed,
+}) => AnalyticsBucket(
+  key: key,
+  samples: samples,
+  arrivals: samples ~/ 2,
+  meanHeadwaySecs: headway,
+  meanSpeedStopsPerMin: speed,
+);
 
 LineAnalytics _seeded() => LineAnalytics(
   line: '79',
@@ -57,14 +61,14 @@ final _empty = LineAnalytics(
 );
 
 Widget _wrap(LineAnalytics data) => ProviderScope(
-  overrides: [
-    lineAnalyticsProvider('79').overrideWith((ref) async => data),
-  ],
+  overrides: [lineAnalyticsProvider('79').overrideWith((ref) async => data)],
   child: const MaterialApp(home: AnalyticsLineScreen(line: '79')),
 );
 
 void main() {
-  testWidgets('renders each metric with its own visualisation type', (tester) async {
+  testWidgets('renders each metric with its own visualisation type', (
+    tester,
+  ) async {
     // Tall viewport so the whole (lazy) ListView builds its cards.
     tester.view.physicalSize = const Size(1200, 4000);
     tester.view.devicePixelRatio = 1.0;
@@ -83,7 +87,9 @@ void main() {
     expect(find.text('Реальный интервал · час × день'), findsOneWidget);
   });
 
-  testWidgets('shows the humane empty state in the same visual language', (tester) async {
+  testWidgets('shows the humane empty state in the same visual language', (
+    tester,
+  ) async {
     await tester.pumpWidget(_wrap(_empty));
     await tester.pumpAndSettle();
 

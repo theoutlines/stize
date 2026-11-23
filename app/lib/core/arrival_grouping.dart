@@ -85,7 +85,16 @@ String _groupKey(Arrival a) => '${a.line}${_directionKey(a)}';
 ///
 /// Pure and independent of widgets so the rule is unit-testable. ETA ties break
 /// on the board's original order (it arrives ETA-sorted).
-List<ArrivalListEntry> groupArrivals(List<Arrival> arrivals) {
+///  5. **Turnaround at a terminus** (owner, 2026-11-23): when a live vehicle of
+///     a line is arriving here to END its trip (its direction is in
+///     [terminatingDirections]), a timetable departure of that line, in any
+///     direction, before that arrival is hidden: the bus that would make it
+///     hasn't arrived yet, so "13:55 by the timetable" under "arrives in 23
+///     min" was a promise the line can't keep.
+List<ArrivalListEntry> groupArrivals(
+  List<Arrival> arrivals, {
+  Set<String> terminatingDirections = const {},
+}) {
   // Preserve first-seen order of groups for a stable tie-break, and remember
   // each arrival's original index for the caller's fleet/delta pairing.
   final order = <String>[];
@@ -107,6 +116,18 @@ List<ArrivalListEntry> groupArrivals(List<Arrival> arrivals) {
   final globalHorizon = allLiveEtas.isEmpty
       ? null
       : allLiveEtas.reduce((a, b) => a < b ? a : b);
+
+  // Per line: the latest live vehicle that ends its trip here. A non-live
+  // departure of that line before it can't run on time (rule 5).
+  final turnaroundHorizon = <String, int>{};
+  for (final a in arrivals) {
+    if (arrivalRowStatus(a) != ArrivalRowStatus.live) continue;
+    if (!terminatingDirections.contains(_directionKey(a))) continue;
+    final prev = turnaroundHorizon[a.line];
+    if (prev == null || a.etaMinutes > prev) {
+      turnaroundHorizon[a.line] = a.etaMinutes;
+    }
+  }
 
   // Two global sections, each sorted by ETA (original board index breaks ties):
   //   liveRows  — every live vehicle of every line;
@@ -142,6 +163,8 @@ List<ArrivalListEntry> groupArrivals(List<Arrival> arrivals) {
     bool beyondHorizon((int, Arrival) m) {
       final eta = m.$2.etaMinutes;
       if (globalHorizon != null && eta < globalHorizon) return false;
+      final turn = turnaroundHorizon[m.$2.line];
+      if (turn != null && eta < turn) return false;
       return ownHorizon == null || eta > ownHorizon;
     }
 

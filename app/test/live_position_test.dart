@@ -4,7 +4,8 @@ import 'package:stize/domain/models/arrival.dart';
 import 'package:stize/domain/models/area_vehicle.dart';
 import 'package:stize/domain/models/vehicle_type.dart';
 
-Arrival _arrival({String? garageNo, LatLon? gps, bool scheduled = false}) => Arrival(
+Arrival _arrival({String? garageNo, LatLon? gps, bool scheduled = false}) =>
+    Arrival(
       line: '71',
       vehicleType: VehicleType.bus,
       etaMinutes: 3,
@@ -16,13 +17,13 @@ Arrival _arrival({String? garageNo, LatLon? gps, bool scheduled = false}) => Arr
     );
 
 AreaVehicle _area({String? garageNo}) => AreaVehicle(
-      line: '71',
-      vehicleType: VehicleType.bus,
-      garageNo: garageNo,
-      lat: 44.81,
-      lon: 20.45,
-      heading: 90,
-    );
+  line: '71',
+  vehicleType: VehicleType.bus,
+  garageNo: garageNo,
+  lat: 44.81,
+  lon: 20.45,
+  heading: 90,
+);
 
 void main() {
   group('isPlaceholderGarage', () {
@@ -38,38 +39,53 @@ void main() {
       }
     });
 
-    test('null / blank / non-P ids are not placeholders (missing id, not junk)', () {
-      expect(isPlaceholderGarage(null), isFalse);
-      expect(isPlaceholderGarage(''), isFalse);
-      expect(isPlaceholderGarage('   '), isFalse);
-      expect(isPlaceholderGarage('12345'), isFalse); // no leading P
-      expect(isPlaceholderGarage('BG123'), isFalse);
-    });
+    test(
+      'null / blank / non-P ids are not placeholders (missing id, not junk)',
+      () {
+        expect(isPlaceholderGarage(null), isFalse);
+        expect(isPlaceholderGarage(''), isFalse);
+        expect(isPlaceholderGarage('   '), isFalse);
+        expect(isPlaceholderGarage('12345'), isFalse); // no leading P
+        expect(isPlaceholderGarage('BG123'), isFalse);
+      },
+    );
   });
 
   group('arrivalHasLivePosition', () {
     test('real vehicle with a GPS fix is live', () {
       expect(
-        arrivalHasLivePosition(_arrival(garageNo: 'P70260', gps: const LatLon(44.82, 20.44))),
+        arrivalHasLivePosition(
+          _arrival(garageNo: 'P70260', gps: const LatLon(44.82, 20.44)),
+        ),
         isTrue,
       );
     });
 
     test('placeholder row (junk garage, GPS on stop) is not live', () {
       expect(
-        arrivalHasLivePosition(_arrival(garageNo: 'P1', gps: const LatLon(44.814, 20.4556))),
+        arrivalHasLivePosition(
+          _arrival(garageNo: 'P1', gps: const LatLon(44.814, 20.4556)),
+        ),
         isFalse,
       );
     });
 
     test('no GPS is never live, whatever the garage', () {
-      expect(arrivalHasLivePosition(_arrival(garageNo: 'P70260', gps: null)), isFalse);
-      expect(arrivalHasLivePosition(_arrival(garageNo: null, gps: null)), isFalse);
+      expect(
+        arrivalHasLivePosition(_arrival(garageNo: 'P70260', gps: null)),
+        isFalse,
+      );
+      expect(
+        arrivalHasLivePosition(_arrival(garageNo: null, gps: null)),
+        isFalse,
+      );
     });
 
     test('real GPS but missing garage id is still trusted as live', () {
       expect(
-        arrivalHasLivePosition(_arrival(garageNo: null, gps: const LatLon(44.82, 20.44))),
+        arrivalHasLivePosition(
+          _arrival(garageNo: null, gps: const LatLon(44.82, 20.44)),
+        ),
         isTrue,
       );
     });
@@ -78,11 +94,13 @@ void main() {
       // The map is live-only: a schedule-predicted departure must not become a
       // marker (or be followable), whatever fields it carries.
       expect(
-        arrivalHasLivePosition(_arrival(
-          garageNo: 'P70260',
-          gps: const LatLon(44.82, 20.44),
-          scheduled: true,
-        )),
+        arrivalHasLivePosition(
+          _arrival(
+            garageNo: 'P70260',
+            gps: const LatLon(44.82, 20.44),
+            scheduled: true,
+          ),
+        ),
         isFalse,
       );
     });

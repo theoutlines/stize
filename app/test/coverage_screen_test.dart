@@ -37,7 +37,9 @@ void main() {
     expect(find.text('busier'), findsOneWidget);
   });
 
-  testWidgets('starts with "All" selected and toggles a type chip', (tester) async {
+  testWidgets('starts with "All" selected and toggles a type chip', (
+    tester,
+  ) async {
     await tester.pumpWidget(_wrap(const CoverageScreen()));
     await tester.pumpAndSettle();
 

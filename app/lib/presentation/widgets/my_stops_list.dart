@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'empty_state.dart';
+import '../../core/design/stize_icons.dart';
 
 /// The saved stops, as a level inside the context slot (mobile sheet / desktop
 /// panel). Tapping a stop opens it as the next level on the same map.
@@ -28,14 +29,14 @@ class MyStopsList extends ConsumerWidget {
     return favorites.when(
       loading: () => const Center(child: CircularProgressIndicator.adaptive()),
       error: (err, st) =>
-          EmptyState(icon: Icons.error_outline, title: err.toString()),
+          EmptyState(icon: StizeIcons.error, title: err.toString()),
       data: (stops) {
         if (stops.isEmpty) {
           return ListView(
             controller: scrollController,
             children: [
               EmptyState(
-                icon: Icons.star_outline,
+                icon: StizeIcons.star,
                 title: l10n.myStopsEmptyTitle,
                 subtitle: l10n.myStopsEmptySubtitle,
               ),
@@ -60,7 +61,7 @@ class MyStopsList extends ConsumerWidget {
                 title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
                 subtitle: custom != null ? Text(stop.name) : null,
                 trailing: IconButton(
-                  icon: const Icon(Icons.close, size: 20),
+                  icon: const Icon(StizeIcons.close, size: 20),
                   tooltip: l10n.removeFromFavorites,
                   onPressed: () => ref
                       .read(favoritesControllerProvider.notifier)

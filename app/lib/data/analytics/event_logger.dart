@@ -136,6 +136,7 @@ abstract final class Ev {
   static const srcNearby = 'nearby';
   static const srcFavorites = 'favorites';
   static const srcSearch = 'search';
+  static const srcGuide = 'guide';
   // vehicle_follow.source
   static const srcSheet = 'sheet';
   static const srcMarker = 'marker';

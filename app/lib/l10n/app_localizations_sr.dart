@@ -292,6 +292,9 @@ class AppLocalizationsSr extends AppLocalizations {
   String get vehicleModeAll => 'Sav prevoz';
 
   @override
+  String get vehicleModeHint => 'Prevoz uživo';
+
+  @override
   String get vehicleModeTooltip => 'Prevoz na mapi';
 
   @override
@@ -694,4 +697,111 @@ class AppLocalizationsSr extends AppLocalizations {
   String stopBackTo(String name) {
     return 'Nazad na $name';
   }
+
+  @override
+  String get guideTitle => 'Vodič kroz Beograd';
+
+  @override
+  String get guideFree =>
+      'Gradski prevoz je besplatan: autobusi, tramvaji, trolejbusi';
+
+  @override
+  String get guideGettingAround => 'Kako se kretati';
+
+  @override
+  String get guideFromAirport => 'Sa aerodroma';
+
+  @override
+  String get guideFromAirportSub => 'Linije 72, A1, 600, 607 · noću 72N';
+
+  @override
+  String get guideFromBusStation => 'Sa autobuske stanice';
+
+  @override
+  String get guideFromBusStationSub =>
+      'Beogradska autobuska stanica, Novi Beograd';
+
+  @override
+  String get guideFromRailStation => 'Sa železničke stanice';
+
+  @override
+  String get guideFromRailStationSub => 'Beograd Centar (Prokop)';
+
+  @override
+  String get guideReadStop => 'Kako čitati stanicu';
+
+  @override
+  String get guideReadStopSub => 'Minuti uživo i vreme po redu vožnje';
+
+  @override
+  String get guideReadStopLive =>
+      'Veliki minuti su uživo: vozilo je na putu i vidimo ga preko GPS-a.';
+
+  @override
+  String get guideReadStopScheduled =>
+      'Vreme u satima je po redu vožnje: za taj polazak još nema signala uživo.';
+
+  @override
+  String get guideReadStopStar =>
+      'Dodirnite zvezdicu da sačuvate stanicu u Moje stanice.';
+
+  @override
+  String get guideReadStopNight => 'Linije sa slovom N saobraćaju noću.';
+
+  @override
+  String get guidePlaces => 'Mesta koja ljudi traže';
+
+  @override
+  String get guidePlacesSub => 'Tvrđava, trgovi, stanice, Ada';
+
+  @override
+  String get guideNowLabel => 'Upravo sada';
+
+  @override
+  String get guideExpoTitle => 'Expo 2027 u Beogradu';
+
+  @override
+  String get guideExpoDays => 'dana do otvaranja';
+
+  @override
+  String get guideExpoSub =>
+      'Od 15. maja do 15. avgusta 2027. Linije za Expo dodajemo čim ih grad objavi.';
+
+  @override
+  String get guideNightTitle => 'Saobraćaju noćne linije';
+
+  @override
+  String get guideNightSub =>
+      'Posle ponoći saobraćaju noćne linije. Njihovi brojevi se završavaju na N.';
+
+  @override
+  String get guideStripNight => 'Saobraćaju noćne linije';
+
+  @override
+  String get guideStripNightSub => 'Šta vozi posle ponoći';
+
+  @override
+  String get guideStripNew => 'Prvi put u Beogradu? Otvorite vodič';
+
+  @override
+  String get guideStripNewSub => 'Besplatan prevoz, aerodrom, noćne linije';
+
+  @override
+  String get guideStripAirport => 'Na aerodromu ste';
+
+  @override
+  String get guideStripAirportSub => 'Do grada: 72, A1, 600';
+
+  @override
+  String get guideStripBusStation => 'Na autobuskoj stanici ste';
+
+  @override
+  String get guideStripBusStationSub =>
+      'Gradske linije polaze sa stajališta kod izlaza';
+
+  @override
+  String get guideStripRailStation => 'Na stanici Beograd Centar ste';
+
+  @override
+  String get guideStripRailStationSub => 'Gradske linije: 34, 36, 600';
 }

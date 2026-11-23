@@ -503,6 +503,9 @@ final customNamesControllerProvider =
 /// level in its sheet / panel (not a separate screen).
 final myStopsRequestProvider = StateProvider<int>((ref) => 0);
 
+/// Bumped by the menu's Belgrade guide row: the map opens the guide as a level.
+final guideRequestProvider = StateProvider<int>((ref) => 0);
+
 /// Name of the stop currently open in the home map's sheet, or null. Screens
 /// pushed over the map label their back button with it, so the user sees the
 /// stop is still there underneath.
