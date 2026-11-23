@@ -7,6 +7,9 @@ class FavoriteStop {
   Map<String, dynamic> toJson() => {'stop_id': stopId, 'name': name};
 
   factory FavoriteStop.fromJson(Map<String, dynamic> json) {
-    return FavoriteStop(stopId: json['stop_id'] as String, name: json['name'] as String);
+    return FavoriteStop(
+      stopId: json['stop_id'] as String,
+      name: json['name'] as String,
+    );
   }
 }

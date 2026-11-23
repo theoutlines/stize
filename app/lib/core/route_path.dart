@@ -127,8 +127,7 @@ class RoutePath {
     final t = segLen == 0 ? 0.0 : (d - _cum[i]) / segLen;
     return ll.LatLng(
       points[i].latitude + (points[i + 1].latitude - points[i].latitude) * t,
-      points[i].longitude +
-          (points[i + 1].longitude - points[i].longitude) * t,
+      points[i].longitude + (points[i + 1].longitude - points[i].longitude) * t,
     );
   }
 
@@ -154,7 +153,11 @@ class RoutePath {
   /// rotates smoothly. Both chord endpoints slide continuously with [dist], so
   /// the result has no discontinuities (only tiny kinks as an endpoint crosses a
   /// vertex, negligible over a 30 m span).
-  double headingAtSmoothed(double dist, {double lookahead = 30, bool forward = true}) {
+  double headingAtSmoothed(
+    double dist, {
+    double lookahead = 30,
+    bool forward = true,
+  }) {
     if (points.length < 2) return 0;
     final d = dist.clamp(0.0, length);
     final ahead = math.min(d + lookahead, length);
@@ -215,7 +218,8 @@ class RoutePath {
     final lat2 = b.latitude * math.pi / 180;
     final dLon = (b.longitude - a.longitude) * math.pi / 180;
     final y = math.sin(dLon) * math.cos(lat2);
-    final x = math.cos(lat1) * math.sin(lat2) -
+    final x =
+        math.cos(lat1) * math.sin(lat2) -
         math.sin(lat1) * math.cos(lat2) * math.cos(dLon);
     return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
   }

@@ -63,6 +63,7 @@ class NearbyView extends ConsumerStatefulWidget {
     this.showLocalSearch = true,
     this.onSearchFocus,
     this.onSearchCancel,
+    this.hugContent = false,
   });
 
   final ll.LatLng? userLocation;
@@ -93,6 +94,10 @@ class NearbyView extends ConsumerStatefulWidget {
   /// rises to its large detent) and when the user taps Cancel (it returns).
   final VoidCallback? onSearchFocus;
   final VoidCallback? onSearchCancel;
+
+  /// Desktop panel: lay out to the content's height (short states make a short
+  /// card); lists still fill the available height and scroll.
+  final bool hugContent;
 
   @override
   ConsumerState<NearbyView> createState() => NearbyViewState();
@@ -252,10 +257,14 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       for (final g in _groups ?? const <NearbyGroup>[]) g.line,
     };
     return Column(
+      mainAxisSize: widget.hugContent ? MainAxisSize.min : MainAxisSize.max,
       children: [
         if (widget.showLocalSearch) _localSearch(Theme.of(context)),
         if (contextLines.isNotEmpty) JamNearbyStrip(contextLines: contextLines),
-        Expanded(child: _content(widget.scrollController)),
+        Flexible(
+          fit: widget.hugContent ? FlexFit.loose : FlexFit.tight,
+          child: _content(widget.scrollController),
+        ),
       ],
     );
   }
@@ -534,10 +543,11 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   Widget _scrollable(ScrollController? controller, Widget child) {
     return ListView(
       controller: controller,
+      shrinkWrap: widget.hugContent,
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 220),
+          constraints: BoxConstraints(minHeight: widget.hugContent ? 0 : 220),
           child: child,
         ),
       ],

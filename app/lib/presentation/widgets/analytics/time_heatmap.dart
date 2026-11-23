@@ -42,15 +42,17 @@ class TimeHeatmap extends StatelessWidget {
       hi = (hi == null || v > hi) ? v : hi;
     }
     final scheme = Theme.of(context).colorScheme;
-    final labelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
-      color: scheme.onSurfaceVariant,
-    );
+    final labelStyle = Theme.of(
+      context,
+    ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         const gutter = 30.0, bottom = 16.0, gap = 2.0;
-        final cell = ((constraints.maxWidth - gutter - 23 * gap) / 24)
-            .clamp(4.0, 24.0);
+        final cell = ((constraints.maxWidth - gutter - 23 * gap) / 24).clamp(
+          4.0,
+          24.0,
+        );
         final height = 7 * cell + 6 * gap + bottom;
         return SizedBox(
           width: double.infinity,
@@ -118,7 +120,13 @@ class _HeatmapPainter extends CustomPainter {
           paint,
         );
       }
-      _text(canvas, dowLabels[row], Offset(0, y + cell / 2 - 6), width: _gutter - 6, right: true);
+      _text(
+        canvas,
+        dowLabels[row],
+        Offset(0, y + cell / 2 - 6),
+        width: _gutter - 6,
+        right: true,
+      );
     }
     // Hour ticks along the bottom.
     for (final h in const [0, 6, 12, 18]) {
@@ -127,7 +135,13 @@ class _HeatmapPainter extends CustomPainter {
     }
   }
 
-  void _text(Canvas canvas, String s, Offset at, {double? width, bool right = false}) {
+  void _text(
+    Canvas canvas,
+    String s,
+    Offset at, {
+    double? width,
+    bool right = false,
+  }) {
     final tp = TextPainter(
       text: TextSpan(text: s, style: labelStyle),
       textDirection: TextDirection.ltr,
@@ -138,5 +152,8 @@ class _HeatmapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_HeatmapPainter old) =>
-      old.matrix != matrix || old.lo != lo || old.hi != hi || old.emptyColor != emptyColor;
+      old.matrix != matrix ||
+      old.lo != lo ||
+      old.hi != hi ||
+      old.emptyColor != emptyColor;
 }

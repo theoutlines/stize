@@ -92,7 +92,8 @@ final vehiclesOnDemandEnabledProvider = Provider<bool>(
 /// Whether the map asks for location on entry (remote `location_autoprompt`
 /// flag). Defaults to false until config resolves.
 final locationAutopromptEnabledProvider = Provider<bool>(
-  (ref) => ref.watch(appConfigProvider).valueOrNull?.locationAutoprompt ?? false,
+  (ref) =>
+      ref.watch(appConfigProvider).valueOrNull?.locationAutoprompt ?? false,
 );
 
 /// Whether the in-app feedback form is available (remote `feedback_form` flag).
@@ -146,13 +147,14 @@ final vehicleMapModeProvider = Provider<VehicleMapMode>(
   ),
 );
 
-
 /// GTFS bundle freshness metadata (feed version + data dates), for the
 /// `Route data: <date>` line in About. Null on any failure — the line is simply
 /// hidden (silent fallback), never an error surface.
 final feedMetaProvider = FutureProvider<FeedMeta?>((ref) async {
   try {
-    final json = await ref.watch(apiClientProvider).getJson('/api/v1/gtfs-meta');
+    final json = await ref
+        .watch(apiClientProvider)
+        .getJson('/api/v1/gtfs-meta');
     return FeedMeta.fromJson(json);
   } catch (_) {
     return null;
@@ -187,7 +189,9 @@ final fleetCatalogProvider = FutureProvider<FleetCatalog?>((ref) async {
 
 /// Openly licensed model photos for the fleet card (bundled asset, no network
 /// until a card is opened). Empty map when the asset is missing or invalid.
-final fleetPhotosProvider = FutureProvider<Map<String, FleetPhoto>>((ref) async {
+final fleetPhotosProvider = FutureProvider<Map<String, FleetPhoto>>((
+  ref,
+) async {
   try {
     final source = await rootBundle.loadString('assets/data/fleet_photos.json');
     return FleetPhoto.parseAll(source);
@@ -196,7 +200,9 @@ final fleetPhotosProvider = FutureProvider<Map<String, FleetPhoto>>((ref) async 
   }
 });
 
-final deviceIdServiceProvider = Provider<DeviceIdService>((ref) => DeviceIdService());
+final deviceIdServiceProvider = Provider<DeviceIdService>(
+  (ref) => DeviceIdService(),
+);
 
 /// Anonymous product-analytics logger (see [EventLogger]). One instance for the
 /// app's lifetime — it holds the ephemeral in-memory session id. Its gate is
@@ -226,8 +232,10 @@ final alertsProvider = FutureProvider.autoDispose<List<RouteAlert>>((ref) {
 });
 
 final feedbackRepositoryProvider = Provider<FeedbackRepository>(
-  (ref) =>
-      FeedbackRepositoryImpl(ref.watch(apiClientProvider), ref.watch(deviceIdServiceProvider)),
+  (ref) => FeedbackRepositoryImpl(
+    ref.watch(apiClientProvider),
+    ref.watch(deviceIdServiceProvider),
+  ),
 );
 
 /// The app's version string — `Stiže <version> (<build>)` — the SINGLE source
@@ -250,7 +258,10 @@ final arrivalsRepositoryProvider = Provider<ArrivalsRepository>(
 );
 
 final stopsRepositoryProvider = Provider<StopsRepository>(
-  (ref) => StopsRepositoryImpl(ref.watch(apiClientProvider), ref.watch(gtfsOfflineCacheProvider)),
+  (ref) => StopsRepositoryImpl(
+    ref.watch(apiClientProvider),
+    ref.watch(gtfsOfflineCacheProvider),
+  ),
 );
 
 final vehiclesRepositoryProvider = Provider<VehiclesRepository>(
@@ -262,7 +273,10 @@ final nearbyArrivalsRepositoryProvider = Provider<NearbyArrivalsRepository>(
 );
 
 final linesRepositoryProvider = Provider<LinesRepository>(
-  (ref) => LinesRepositoryImpl(ref.watch(apiClientProvider), ref.watch(gtfsOfflineCacheProvider)),
+  (ref) => LinesRepositoryImpl(
+    ref.watch(apiClientProvider),
+    ref.watch(gtfsOfflineCacheProvider),
+  ),
 );
 
 final geocodeRepositoryProvider = Provider<GeocodeRepository>(
@@ -276,7 +290,9 @@ final geocodeRepositoryProvider = Provider<GeocodeRepository>(
 /// `arrival.directionRouteId ?? arrival.routeId`. Falls back to the offline GTFS
 /// mirror inside the repository; an error resolves to an empty map (no label,
 /// never a crash).
-final lineDestinationsProvider = FutureProvider<Map<String, String>>((ref) async {
+final lineDestinationsProvider = FutureProvider<Map<String, String>>((
+  ref,
+) async {
   final lines = await ref.watch(linesRepositoryProvider).getAll();
   return {
     for (final l in lines)
@@ -302,41 +318,52 @@ class GlobalSearch {
   }
 }
 
-final locationServiceProvider = Provider<LocationService>((ref) => LocationService());
+final locationServiceProvider = Provider<LocationService>(
+  (ref) => LocationService(),
+);
 
-final favoritesRepositoryProvider = Provider<FavoritesRepository>((ref) => FavoritesRepositoryImpl());
+final favoritesRepositoryProvider = Provider<FavoritesRepository>(
+  (ref) => FavoritesRepositoryImpl(),
+);
 
 final settingsStoreProvider = Provider<SettingsStore>((ref) => SettingsStore());
 
 /// Arrivals for a single stop. Widgets that want auto-refresh should
 /// periodically call `ref.invalidate(arrivalsProvider(stopId))`.
-final arrivalsProvider = FutureProvider.family.autoDispose<ArrivalsBoard, String>((ref, stopId) {
-  return ref.watch(arrivalsRepositoryProvider).getArrivals(stopId);
-});
+final arrivalsProvider = FutureProvider.family
+    .autoDispose<ArrivalsBoard, String>((ref, stopId) {
+      return ref.watch(arrivalsRepositoryProvider).getArrivals(stopId);
+    });
 
 /// Planned interval per direction (`route_id` -> minutes) at a stop for the
 /// current hour, from the stop's static timetable (`/gtfs/schedule/<stop>.json`,
 /// an asset served without the API worker). Feeds the "every ~N min" caption
 /// on arrival cards. Best-effort: any failure yields an empty map.
-final stopPlannedHeadwaysProvider =
-    FutureProvider.family.autoDispose<Map<String, int>, String>((ref, stopId) async {
-  try {
-    final client = ref.watch(apiClientProvider);
-    final meta = await (_scheduleMetaFuture ??= client.getJson('/gtfs/schedule/_meta.json'));
-    final schedule =
-        await client.getJson('/gtfs/schedule/${Uri.encodeComponent(stopId)}.json');
-    return plannedHeadways(schedule, meta, belgradeNow(DateTime.now()));
-  } catch (_) {
-    _scheduleMetaFuture = null;
-    return const {};
-  }
-});
+final stopPlannedHeadwaysProvider = FutureProvider.family
+    .autoDispose<Map<String, int>, String>((ref, stopId) async {
+      try {
+        final client = ref.watch(apiClientProvider);
+        final meta = await (_scheduleMetaFuture ??= client.getJson(
+          '/gtfs/schedule/_meta.json',
+        ));
+        final schedule = await client.getJson(
+          '/gtfs/schedule/${Uri.encodeComponent(stopId)}.json',
+        );
+        return plannedHeadways(schedule, meta, belgradeNow(DateTime.now()));
+      } catch (_) {
+        _scheduleMetaFuture = null;
+        return const {};
+      }
+    });
 Future<Map<String, dynamic>>? _scheduleMetaFuture;
 
 /// Looks up a stop's coordinates from the on-device GTFS mirror, for the
 /// live-tracking mini map — the arrivals contract itself doesn't carry the
 /// stop's own lat/lon, only the vehicles'.
-final stopLocationProvider = FutureProvider.family.autoDispose<Stop?, String>((ref, stopId) async {
+final stopLocationProvider = FutureProvider.family.autoDispose<Stop?, String>((
+  ref,
+  stopId,
+) async {
   final stops = await ref.watch(gtfsOfflineCacheProvider).getStops();
   for (final s in stops) {
     if (s.stopId == stopId) return s;
@@ -352,23 +379,34 @@ class SettingsController extends AsyncNotifier<AppSettings> {
 
   Future<void> setThemeMode(ThemeMode mode) async {
     await ref.read(settingsStoreProvider).saveThemeMode(mode);
-    state = AsyncData((state.valueOrNull ?? AppSettings.defaults).copyWith(themeMode: mode));
+    state = AsyncData(
+      (state.valueOrNull ?? AppSettings.defaults).copyWith(themeMode: mode),
+    );
   }
 
   Future<void> setLocaleCode(String? code) async {
     await ref.read(settingsStoreProvider).saveLocaleCode(code);
-    state = AsyncData((state.valueOrNull ?? AppSettings.defaults).copyWith(localeCode: () => code));
+    state = AsyncData(
+      (state.valueOrNull ?? AppSettings.defaults).copyWith(
+        localeCode: () => code,
+      ),
+    );
   }
 
   Future<void> setVehicleMapMode(VehicleMapMode? mode) async {
     await ref.read(settingsStoreProvider).saveVehicleMapMode(mode);
     state = AsyncData(
-      (state.valueOrNull ?? AppSettings.defaults).copyWith(vehicleMapMode: () => mode),
+      (state.valueOrNull ?? AppSettings.defaults).copyWith(
+        vehicleMapMode: () => mode,
+      ),
     );
   }
 }
 
-final settingsControllerProvider = AsyncNotifierProvider<SettingsController, AppSettings>(SettingsController.new);
+final settingsControllerProvider =
+    AsyncNotifierProvider<SettingsController, AppSettings>(
+      SettingsController.new,
+    );
 
 class FavoritesController extends AsyncNotifier<List<FavoriteStop>> {
   @override
@@ -393,18 +431,24 @@ class FavoritesController extends AsyncNotifier<List<FavoriteStop>> {
   }
 }
 
-final favoritesControllerProvider = AsyncNotifierProvider<FavoritesController, List<FavoriteStop>>(
-  FavoritesController.new,
-);
+final favoritesControllerProvider =
+    AsyncNotifierProvider<FavoritesController, List<FavoriteStop>>(
+      FavoritesController.new,
+    );
 
 /// Favorites resolved against the on-device GTFS mirror to get coordinates
 /// for map markers — `FavoriteStop` itself only stores id+name.
-final favoriteStopLocationsProvider = FutureProvider.autoDispose<List<Stop>>((ref) async {
+final favoriteStopLocationsProvider = FutureProvider.autoDispose<List<Stop>>((
+  ref,
+) async {
   final favorites = await ref.watch(favoritesControllerProvider.future);
   if (favorites.isEmpty) return const [];
   final allStops = await ref.watch(gtfsOfflineCacheProvider).getStops();
   final byId = {for (final s in allStops) s.stopId: s};
-  return [for (final f in favorites) if (byId[f.stopId] != null) byId[f.stopId]!];
+  return [
+    for (final f in favorites)
+      if (byId[f.stopId] != null) byId[f.stopId]!,
+  ];
 });
 
 // ---- Carousel favourites: pinned lines + custom names (P3) -----------------
@@ -454,7 +498,6 @@ final customNamesControllerProvider =
     AsyncNotifierProvider<CustomNamesController, Map<String, String>>(
       CustomNamesController.new,
     );
-
 
 /// Bumped by the menu's "My stops": the home map opens the saved stops as a
 /// level in its sheet / panel (not a separate screen).

@@ -39,5 +39,7 @@ String etaLabel(
   if (etaMinutes >= kFarEtaMinutes) {
     return clockAt(localeName, etaMinutes, now: now);
   }
-  return etaMinutes <= 0 ? l10n.arrivalEtaNow : l10n.arrivalEtaMinutes(etaMinutes);
+  return etaMinutes <= 0
+      ? l10n.arrivalEtaNow
+      : l10n.arrivalEtaMinutes(etaMinutes);
 }

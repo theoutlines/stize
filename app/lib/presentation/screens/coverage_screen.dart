@@ -91,7 +91,11 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
     return [
       'any',
       for (final t in _selected)
-        ['==', ['get', 'type'], t],
+        [
+          '==',
+          ['get', 'type'],
+          t,
+        ],
     ];
   }
 
@@ -161,9 +165,7 @@ class _CoverageScreenState extends ConsumerState<CoverageScreen> {
             )
           else
             Positioned.fill(
-              child: ColoredBox(
-                color: StizeColors.of(context).bg,
-              ),
+              child: ColoredBox(color: StizeColors.of(context).bg),
             ),
           SafeArea(
             child: Column(
@@ -243,8 +245,18 @@ class _DensityLegend extends StatelessWidget {
     // of the base hue over the theme background.
     // Mirror the heatmap-color ramp: dim → hot.
     final ramp = dark
-        ? const [Color(0xFF5A2308), Color(0xFFEF7B22), Color(0xFFFFCE8A), Color(0xFFFFFFFF)]
-        : const [Color(0xFF9ECAE1), Color(0xFF4292C6), Color(0xFF2171B5), Color(0xFF08306B)];
+        ? const [
+            Color(0xFF5A2308),
+            Color(0xFFEF7B22),
+            Color(0xFFFFCE8A),
+            Color(0xFFFFFFFF),
+          ]
+        : const [
+            Color(0xFF9ECAE1),
+            Color(0xFF4292C6),
+            Color(0xFF2171B5),
+            Color(0xFF08306B),
+          ];
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -284,7 +296,10 @@ class _DensityLegend extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(l10n.coverageLegendLow, style: theme.textTheme.labelSmall),
-                Text(l10n.coverageLegendHigh, style: theme.textTheme.labelSmall),
+                Text(
+                  l10n.coverageLegendHigh,
+                  style: theme.textTheme.labelSmall,
+                ),
               ],
             ),
           ),

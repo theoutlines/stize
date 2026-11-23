@@ -58,10 +58,10 @@ class StizeTransitCard extends StatelessWidget {
   static const double heldBackOpacity = 0.82;
 
   static Color fillFor(StizeColors c, VehicleType type) => switch (type) {
-        VehicleType.bus => c.transitBus,
-        VehicleType.tram => c.transitTram,
-        VehicleType.trolleybus => c.transitTrolleybus,
-      };
+    VehicleType.bus => c.transitBus,
+    VehicleType.tram => c.transitTram,
+    VehicleType.trolleybus => c.transitTrolleybus,
+  };
 
   /// Text/icon colour on the card: white on a live colour fill, the theme ink on
   /// a scheduled card (neutral surface, only the line number carries colour).
@@ -69,15 +69,16 @@ class StizeTransitCard extends StatelessWidget {
       scheduled ? c.ink : c.onTransit;
 
   static TextStyle captionStyle(StizeColors c, {bool scheduled = false}) =>
-      StizeType.caption
-          .copyWith(color: onFor(c, scheduled).withValues(alpha: 0.8));
+      StizeType.caption.copyWith(
+        color: onFor(c, scheduled).withValues(alpha: 0.8),
+      );
 
   /// The small white dot marking a genuinely live vehicle in the caption.
   static Widget liveDot(StizeColors c) => Container(
-        width: 6,
-        height: 6,
-        decoration: BoxDecoration(color: c.onTransit, shape: BoxShape.circle),
-      );
+    width: 6,
+    height: 6,
+    decoration: BoxDecoration(color: c.onTransit, shape: BoxShape.circle),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -86,9 +87,13 @@ class StizeTransitCard extends StatelessWidget {
     final pad = emphasis
         ? const EdgeInsets.all(StizeSpace.space4)
         : const EdgeInsets.symmetric(
-            horizontal: StizeSpace.space4, vertical: StizeSpace.space3);
-    final lineStyle = (emphasis ? StizeType.h1 : StizeType.section)
-        .copyWith(fontWeight: FontWeight.w600, color: on);
+            horizontal: StizeSpace.space4,
+            vertical: StizeSpace.space3,
+          );
+    final lineStyle = (emphasis ? StizeType.h1 : StizeType.section).copyWith(
+      fontWeight: FontWeight.w600,
+      color: on,
+    );
     final dest = destination?.trim();
 
     final card = Material(
@@ -112,13 +117,17 @@ class StizeTransitCard extends StatelessWidget {
                     if (scheduled)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: StizeSpace.space2, vertical: 2),
+                          horizontal: StizeSpace.space2,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: fillFor(c, type),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(line,
-                            style: lineStyle.copyWith(color: c.onTransit)),
+                        child: Text(
+                          line,
+                          style: lineStyle.copyWith(color: c.onTransit),
+                        ),
                       )
                     else
                       Text(line, style: lineStyle),
@@ -126,7 +135,11 @@ class StizeTransitCard extends StatelessWidget {
                       const SizedBox(height: StizeSpace.space1),
                       Row(
                         children: [
-                          Icon(Icons.arrow_forward_rounded, size: 16, color: on),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 16,
+                            color: on,
+                          ),
                           const SizedBox(width: StizeSpace.space1),
                           Flexible(
                             child: Text(
@@ -164,17 +177,20 @@ class StizeTransitCard extends StatelessWidget {
   Widget _captionRow() {
     final children = <Widget>[];
     for (final w in caption) {
-      if (children.isNotEmpty) children.add(const SizedBox(width: StizeSpace.space2));
+      if (children.isNotEmpty)
+        children.add(const SizedBox(width: StizeSpace.space2));
       if (w is Text && w.data != null) {
-        children.add(Flexible(
-          child: Text(
-            w.data!,
-            style: w.style,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            softWrap: false,
+        children.add(
+          Flexible(
+            child: Text(
+              w.data!,
+              style: w.style,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+            ),
           ),
-        ));
+        );
       } else {
         children.add(w);
       }
@@ -199,7 +215,9 @@ class StizeTransitCard extends StatelessWidget {
       value = Text(
         clockAt(localeName, m),
         style: StizeType.date.copyWith(
-            fontWeight: FontWeight.w400, color: on.withValues(alpha: 0.7)),
+          fontWeight: FontWeight.w400,
+          color: on.withValues(alpha: 0.7),
+        ),
       );
     } else {
       final String text;
@@ -219,7 +237,8 @@ class StizeTransitCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         value,
-        if (unit != null) Text(unit, style: captionStyle(c, scheduled: scheduled)),
+        if (unit != null)
+          Text(unit, style: captionStyle(c, scheduled: scheduled)),
         ?etaFooter,
       ],
     );

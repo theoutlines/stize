@@ -451,10 +451,14 @@ String vehicleImageFor(VehicleType type) => MapImages.vehicle;
 /// plan. When that lands, pass [tramOverride] to recolour an individual tram;
 /// the rest of the marker pipeline already flows the colour through unchanged.
 const _busColor = Color(0xFF2278E6); // transit blue
-const _trolleyColor = Color(0xFFEA7000); // orange (design-system transit-trolleybus)
+const _trolleyColor = Color(
+  0xFFEA7000,
+); // orange (design-system transit-trolleybus)
 const _tramColor = Color(0xFFE4312F); // tram red (Belgrade livery)
 const _mixedStopColor = Color(0xFF5B6B7A); // multi-type stop, neutral slate
-const _stuckColor = Color(0xFFB00842); // "looks stuck": deep crimson, ≠ tram red
+const _stuckColor = Color(
+  0xFFB00842,
+); // "looks stuck": deep crimson, ≠ tram red
 
 Color vehicleColor(VehicleType type, {Color? tramOverride}) => switch (type) {
   VehicleType.bus => _busColor,
@@ -584,29 +588,29 @@ class _VehicleMarkerState extends State<VehicleMarker>
             onTap: widget.onTap,
             behavior: HitTestBehavior.opaque,
             child: AnimatedBuilder(
-            animation: _pulse,
-            builder: (context, child) {
-              // Breathing glow: spread pulses out while fading. Stuck vehicles
-              // hold a steady soft red glow instead.
-              final t = _pulse.value;
-              final spread = widget.stuck ? 2.5 : 1.0 + t * 6.0;
-              final glowOpacity = widget.stuck ? 0.55 : (1 - t) * 0.5;
-              return DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: [
-                    BoxShadow(
-                      color: haloColor.withValues(alpha: glowOpacity),
-                      blurRadius: widget.stuck ? 6 : 4 + t * 8,
-                      spreadRadius: spread,
-                    ),
-                  ],
-                ),
-                child: child,
-              );
-            },
-            child: widget.compact ? _dot(scheme) : _pill(scheme),
-          ),
+              animation: _pulse,
+              builder: (context, child) {
+                // Breathing glow: spread pulses out while fading. Stuck vehicles
+                // hold a steady soft red glow instead.
+                final t = _pulse.value;
+                final spread = widget.stuck ? 2.5 : 1.0 + t * 6.0;
+                final glowOpacity = widget.stuck ? 0.55 : (1 - t) * 0.5;
+                return DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: [
+                      BoxShadow(
+                        color: haloColor.withValues(alpha: glowOpacity),
+                        blurRadius: widget.stuck ? 6 : 4 + t * 8,
+                        spreadRadius: spread,
+                      ),
+                    ],
+                  ),
+                  child: child,
+                );
+              },
+              child: widget.compact ? _dot(scheme) : _pill(scheme),
+            ),
           ),
         ],
       ),

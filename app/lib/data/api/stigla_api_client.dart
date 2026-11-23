@@ -9,7 +9,8 @@ import 'api_exceptions.dart';
 /// Thin wrapper around the Stigla backend's REST API. The app only ever
 /// talks to this backend — never to the upstream transit source directly.
 class StiglaApiClient {
-  StiglaApiClient({http.Client? httpClient}) : _http = httpClient ?? http.Client();
+  StiglaApiClient({http.Client? httpClient})
+    : _http = httpClient ?? http.Client();
 
   final http.Client _http;
   static const _timeout = Duration(seconds: 10);

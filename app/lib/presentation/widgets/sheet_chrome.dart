@@ -54,8 +54,9 @@ class SheetDragHandle extends StatelessWidget {
 }
 
 /// The shared sheet corner radius (top corners rounded).
-const BorderRadius kSheetRadius =
-    BorderRadius.vertical(top: Radius.circular(20));
+const BorderRadius kSheetRadius = BorderRadius.vertical(
+  top: Radius.circular(20),
+);
 
 /// A `[← back] [title]` header row for an in-sheet subview, matching the sheets'
 /// horizontal padding and title style. Back walks up the sheet's own view chain.

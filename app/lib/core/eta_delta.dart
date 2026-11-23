@@ -65,7 +65,8 @@ EtaDeltaResult diffEtaDeltas(
     final arrivalAt = board.updatedAt.add(Duration(minutes: a.etaMinutes));
     arrivalTimes[key] = arrivalAt;
     final before = previous[key];
-    if (before == null) continue; // first sighting of this vehicle — no baseline.
+    if (before == null)
+      continue; // first sighting of this vehicle — no baseline.
     final shift = arrivalAt.difference(before);
     if (shift.abs() < threshold) continue;
     // Round the shift to whole minutes for the glanceable badge. A change past

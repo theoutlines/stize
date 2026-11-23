@@ -14,16 +14,16 @@ class PrivacyScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     Widget section(String title, String body) => Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 6),
-              Text(body, style: theme.textTheme.bodyMedium),
-            ],
-          ),
-        );
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text(body, style: theme.textTheme.bodyMedium),
+        ],
+      ),
+    );
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.privacyTitle)),

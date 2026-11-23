@@ -37,7 +37,11 @@ class FleetPhoto {
             author is String &&
             license is String) {
           out[key] = FleetPhoto(
-              url: url, page: page, author: author, license: license);
+            url: url,
+            page: page,
+            author: author,
+            license: license,
+          );
         }
       });
       return out;

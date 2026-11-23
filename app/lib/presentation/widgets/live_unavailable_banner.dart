@@ -26,10 +26,9 @@ class LiveUnavailableBanner extends StatelessWidget {
           Expanded(
             child: Text(
               l10n.liveUnavailableBanner,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: scheme.outline),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.outline),
             ),
           ),
         ],

@@ -21,16 +21,16 @@ class ArrivalsRepositoryImpl implements ArrivalsRepository {
       // upstream fetch, so this surface hangs (10s client timeout) the moment the
       // upstream source is slow. Riding SWR serves the last good board as stale
       // during an upstream blip instead of failing. (Prod incident 2026-07-21.)
-      final json = await _client.getJson('/api/v1/arrivals', {
-        'stop': stopId,
-      });
+      final json = await _client.getJson('/api/v1/arrivals', {'stop': stopId});
       return ArrivalsBoard.fromJson(json);
     } on NotFoundException {
       rethrow;
     } catch (e) {
       // The API worker didn't answer (network, quota exhausted, 5xx): fall back
       // to the stop's static timetable, which is served without the worker.
-      if (e is! NetworkException && e is! RateLimitedException && !(e is ApiException && e.statusCode >= 500)) {
+      if (e is! NetworkException &&
+          e is! RateLimitedException &&
+          !(e is ApiException && e.statusCode >= 500)) {
         rethrow;
       }
       final board = await _timetableBoard(stopId);
@@ -41,10 +41,17 @@ class ArrivalsRepositoryImpl implements ArrivalsRepository {
 
   Future<ArrivalsBoard?> _timetableBoard(String stopId) async {
     try {
-      final meta = _scheduleMeta ??= await _client.getJson('/gtfs/schedule/_meta.json');
-      final schedule =
-          await _client.getJson('/gtfs/schedule/${Uri.encodeComponent(stopId)}.json');
-      final planned = upcomingScheduled(schedule, meta, belgradeNow(DateTime.now()));
+      final meta = _scheduleMeta ??= await _client.getJson(
+        '/gtfs/schedule/_meta.json',
+      );
+      final schedule = await _client.getJson(
+        '/gtfs/schedule/${Uri.encodeComponent(stopId)}.json',
+      );
+      final planned = upcomingScheduled(
+        schedule,
+        meta,
+        belgradeNow(DateTime.now()),
+      );
 
       var stopName = stopId;
       final types = <String, VehicleType>{};

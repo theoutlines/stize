@@ -23,7 +23,11 @@ class StopsRepositoryImpl implements StopsRepository {
   }
 
   @override
-  Future<List<Stop>> nearby({required double lat, required double lon, double radiusMeters = 500}) async {
+  Future<List<Stop>> nearby({
+    required double lat,
+    required double lon,
+    double radiusMeters = 500,
+  }) async {
     try {
       final json = await _client.getJson('/api/v1/stops/nearby', {
         'lat': lat.toString(),

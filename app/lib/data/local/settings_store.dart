@@ -32,8 +32,9 @@ class AppSettings {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
       localeCode: localeCode != null ? localeCode() : this.localeCode,
-      vehicleMapMode:
-          vehicleMapMode != null ? vehicleMapMode() : this.vehicleMapMode,
+      vehicleMapMode: vehicleMapMode != null
+          ? vehicleMapMode()
+          : this.vehicleMapMode,
     );
   }
 }

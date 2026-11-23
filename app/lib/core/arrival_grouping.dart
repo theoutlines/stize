@@ -104,8 +104,9 @@ List<ArrivalListEntry> groupArrivals(List<Arrival> arrivals) {
     for (final a in arrivals)
       if (arrivalRowStatus(a) == ArrivalRowStatus.live) a.etaMinutes,
   ];
-  final globalHorizon =
-      allLiveEtas.isEmpty ? null : allLiveEtas.reduce((a, b) => a < b ? a : b);
+  final globalHorizon = allLiveEtas.isEmpty
+      ? null
+      : allLiveEtas.reduce((a, b) => a < b ? a : b);
 
   // Two global sections, each sorted by ETA (original board index breaks ties):
   //   liveRows  — every live vehicle of every line;
@@ -180,12 +181,8 @@ List<ArrivalListEntry> groupArrivals(List<Arrival> arrivals) {
   liveRows.sort(byEtaThenIndex);
   nonLive.sort(byEtaThenIndex);
 
-  return [
-    for (final r in liveRows) r.$3,
-    for (final r in nonLive) r.$3,
-  ];
+  return [for (final r in liveRows) r.$3, for (final r in nonLive) r.$3];
 }
-
 
 /// Most later trips a folded live card lists next to its main ETA.
 const int kMaxLaterLiveTimes = 2;
@@ -199,7 +196,8 @@ List<ArrivalListEntry> foldLiveByDirection(List<ArrivalListEntry> entries) {
   final later = <String, List<int>>{};
   final out = <ArrivalListEntry>[];
   for (final e in entries) {
-    if (e is ArrivalRow && arrivalRowStatus(e.arrival) == ArrivalRowStatus.live) {
+    if (e is ArrivalRow &&
+        arrivalRowStatus(e.arrival) == ArrivalRowStatus.live) {
       final key = _groupKey(e.arrival);
       if (firstAt.containsKey(key)) {
         (later[key] ??= <int>[]).add(e.arrival.etaMinutes);
@@ -221,13 +219,15 @@ List<ArrivalListEntry> foldLiveByDirection(List<ArrivalListEntry> entries) {
   return out;
 }
 
-
 /// The destination shown on an arrival card. A line whose headsign IS this
 /// stop ends here, so an arrow to this very stop would read as nonsense: show
 /// [terminusLabel] ("Konačna") instead. Comparison ignores case, spacing and
 /// Serbian diacritics, since headsigns and stop names are typed separately.
 String? displayDestination(
-    String? destination, String stopName, String terminusLabel) {
+  String? destination,
+  String stopName,
+  String terminusLabel,
+) {
   if (destination == null || destination.trim().isEmpty) return destination;
   String norm(String s) => s
       .toLowerCase()

@@ -63,16 +63,25 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               child: Row(
                 children: [
-                  Icon(Icons.hourglass_bottom, size: 16, color: theme.colorScheme.onSurface),
+                  Icon(
+                    Icons.hourglass_bottom,
+                    size: 16,
+                    color: theme.colorScheme.onSurface,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       l10n.jamNearbyDelay(jam.line),
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                      ),
                     ),
                   ),
-                  Icon(open ? Icons.expand_less : Icons.expand_more,
-                      size: 18, color: theme.colorScheme.onSurfaceVariant),
+                  Icon(
+                    open ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ],
               ),
             ),
@@ -102,11 +111,19 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l10n.jamAffectedStopsTitle,
-                  style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              Text(
+                l10n.jamAffectedStopsTitle,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(names.join(' · '),
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface)),
+              Text(
+                names.join(' · '),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
             ],
           ),
         );

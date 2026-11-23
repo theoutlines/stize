@@ -31,7 +31,9 @@ class VehicleModeToggle extends ConsumerWidget {
     // "you asked for more than the default". Same inversion as the menu's close
     // button.
     final aquarium = mode == VehicleMapMode.aquarium;
-    final fg = aquarium ? theme.colorScheme.surface : theme.colorScheme.onSurface;
+    final fg = aquarium
+        ? theme.colorScheme.surface
+        : theme.colorScheme.onSurface;
 
     // The gap to the button below is ours, so that hiding this widget hides the
     // spacing with it and the control stack reads exactly as it does today.
@@ -39,7 +41,9 @@ class VehicleModeToggle extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: PointerInterceptor(
         child: Material(
-          color: aquarium ? theme.colorScheme.onSurface : theme.colorScheme.surface,
+          color: aquarium
+              ? theme.colorScheme.onSurface
+              : theme.colorScheme.surface,
           elevation: 3,
           shape: const CircleBorder(),
           clipBehavior: Clip.antiAlias,
@@ -72,10 +76,16 @@ class VehicleModeToggle extends ConsumerWidget {
     ref.read(settingsControllerProvider.notifier).setVehicleMapMode(next);
     // User's explicit map-mode switch — logged here (not in the controller,
     // which also fires on programmatic changes) so it reflects a real choice.
-    ref.read(eventLoggerProvider).log(
-      Ev.modeToggle,
-      props: {'to': next == VehicleMapMode.aquarium ? Ev.modeAquarium : Ev.modeOnDemand},
-    );
+    ref
+        .read(eventLoggerProvider)
+        .log(
+          Ev.modeToggle,
+          props: {
+            'to': next == VehicleMapMode.aquarium
+                ? Ev.modeAquarium
+                : Ev.modeOnDemand,
+          },
+        );
     // Name the mode we just switched to — the button state alone is easy to
     // misread, and the map's own change (vehicles appearing/vanishing) can be
     // off-screen behind a sheet.

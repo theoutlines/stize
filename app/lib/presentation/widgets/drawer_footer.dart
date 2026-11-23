@@ -9,35 +9,39 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 
 /// Pushes Flutter's licence page with the app's AGPL header + repo link.
-void openLicensesPage(BuildContext context, AppLocalizations l10n, String? version) {
-    // Flutter's LicenseRegistry already covers every bundled package; we add the
-    // app's own AGPL header + repo link above the list via the legalese slot.
-    //
-    // The app bar must stay OPAQUE and ON TOP of the scrolling list (owner
-    // acceptance #2 — package headers were bleeding through a see-through bar).
-    // Push LicensePage inside a Theme whose AppBar has a solid surface fill +
-    // scrolled-under elevation, so content passes cleanly under it.
-    final base = Theme.of(context);
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => Theme(
-          data: base.copyWith(
-            appBarTheme: base.appBarTheme.copyWith(
-              backgroundColor: base.colorScheme.surface,
-              surfaceTintColor: base.colorScheme.surfaceTint,
-              scrolledUnderElevation: 3,
-              elevation: 0,
-            ),
-          ),
-          child: LicensePage(
-            applicationName: 'Stiže',
-            applicationVersion: version,
-            applicationLegalese: '${l10n.licensesLegalese}\n$kRepoUrl',
+void openLicensesPage(
+  BuildContext context,
+  AppLocalizations l10n,
+  String? version,
+) {
+  // Flutter's LicenseRegistry already covers every bundled package; we add the
+  // app's own AGPL header + repo link above the list via the legalese slot.
+  //
+  // The app bar must stay OPAQUE and ON TOP of the scrolling list (owner
+  // acceptance #2 — package headers were bleeding through a see-through bar).
+  // Push LicensePage inside a Theme whose AppBar has a solid surface fill +
+  // scrolled-under elevation, so content passes cleanly under it.
+  final base = Theme.of(context);
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (context) => Theme(
+        data: base.copyWith(
+          appBarTheme: base.appBarTheme.copyWith(
+            backgroundColor: base.colorScheme.surface,
+            surfaceTintColor: base.colorScheme.surfaceTint,
+            scrolledUnderElevation: 3,
+            elevation: 0,
           ),
         ),
+        child: LicensePage(
+          applicationName: 'Stiže',
+          applicationVersion: version,
+          applicationLegalese: '${l10n.licensesLegalese}\n$kRepoUrl',
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
 /// The two-action feedback sheet: the in-app form ("Write to me", gated by the
 /// `feedback_form` flag) and a link to the public GitHub issues (technical
@@ -138,7 +142,9 @@ class _FeedbackFormState extends ConsumerState<_FeedbackForm> {
     });
     final version = await ref.read(appVersionProvider.future);
     try {
-      await ref.read(feedbackRepositoryProvider).submit(
+      await ref
+          .read(feedbackRepositoryProvider)
+          .submit(
             message: message,
             contact: _contactController.text,
             appVersion: version,

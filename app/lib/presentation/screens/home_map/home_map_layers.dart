@@ -24,7 +24,9 @@ extension _MapLayers on _HomeMapScreenState {
     // Keep ticking while a fan is still easing into place even if nothing is
     // "playing" (choral HOLD): _paintVehicles → _arrangeVehicles advances the
     // ease and clears _fanAnimating once it settles.
-    if (_vehAnim.isAnimating || _vehAnimator.hasPendingMotion || _fanAnimating) {
+    if (_vehAnim.isAnimating ||
+        _vehAnimator.hasPendingMotion ||
+        _fanAnimating) {
       _paintVehicles();
       _refreshFollowPanel();
     } else {
@@ -35,10 +37,12 @@ extension _MapLayers on _HomeMapScreenState {
   }
 
   void _refreshFollowPanel() {
-    if (!_panelActive || _selectedVehicleKey == null || _slotModel != null) return;
+    if (!_panelActive || _selectedVehicleKey == null || _slotModel != null)
+      return;
     final now = DateTime.now();
     final last = _lastFollowPanelRefreshAt;
-    if (last != null && now.difference(last) < const Duration(seconds: 1)) return;
+    if (last != null && now.difference(last) < const Duration(seconds: 1))
+      return;
     _lastFollowPanelRefreshAt = now;
     if (mounted) _setState(() {});
   }
@@ -181,10 +185,13 @@ extension _MapLayers on _HomeMapScreenState {
           // segment was geometry-gated (off-shape line). This reuses the VISUAL,
           // not the animator's stuck SIGNAL — the jam state comes from /jams. The
           // track key is the garage number for a real vehicle.
-          stuck: _vehAnimator.isStuck(entry.key) || _jammedGarages.contains(entry.key),
+          stuck:
+              _vehAnimator.isStuck(entry.key) ||
+              _jammedGarages.contains(entry.key),
           // Fade a vanishing/stale vehicle over its grace period (X6), and dim a
           // schedule-predicted object so it reads as "by schedule, not live".
-          opacity: _vehAnimator.opacityFor(entry.key) *
+          opacity:
+              _vehAnimator.opacityFor(entry.key) *
               (scheduled ? kScheduledBaseOpacity : 1.0),
           moving: _vehAnimator.hasMotion(entry.key),
           source: track.source,
@@ -233,7 +240,8 @@ extension _MapLayers on _HomeMapScreenState {
       return objects;
     }
     final metersPerPixel =
-        156543.03392 * math.cos(_belgradeCenter.lat * math.pi / 180) /
+        156543.03392 *
+        math.cos(_belgradeCenter.lat * math.pi / 180) /
         math.pow(2, zoom);
     final radiusM = 16.0 * metersPerPixel; // fan radius, constant on screen
 
@@ -276,7 +284,7 @@ extension _MapLayers on _HomeMapScreenState {
         for (final i in group)
           if ((crowdedEnter[cellOf(objects[i].position, enterM)] ?? 0) >= 2 ||
               _spiderfyOffset.containsKey(objects[i].key))
-            i
+            i,
       ];
       if (members.length < 2) continue;
       members.sort((a, b) => objects[a].key.compareTo(objects[b].key));
@@ -326,10 +334,12 @@ extension _MapLayers on _HomeMapScreenState {
         placedPos.add(o.position);
       } else {
         _spiderfyOffset[o.key] = applied;
-        placedPos.add(ll.LatLng(
-          o.position.latitude + applied.latitude,
-          o.position.longitude + applied.longitude,
-        ));
+        placedPos.add(
+          ll.LatLng(
+            o.position.latitude + applied.latitude,
+            o.position.longitude + applied.longitude,
+          ),
+        );
       }
     }
 
@@ -601,13 +611,19 @@ extension _MapLayers on _HomeMapScreenState {
       (_HomeMapScreenState._trolleyLayerId, pin(MapImages.trolley)),
       (_HomeMapScreenState._mixedLayerId, pin(MapImages.mixedStop)),
       (_HomeMapScreenState._favLayerId, pin(MapImages.favorite)),
-      (_HomeMapScreenState._placeLayerId, pin(MapImages.place, anchor: IconAnchor.bottom)),
+      (
+        _HomeMapScreenState._placeLayerId,
+        pin(MapImages.place, anchor: IconAnchor.bottom),
+      ),
     ];
     try {
       for (final (id, tmpl) in specs) {
         final srcId = _stopSourceId(id);
         await style.addSource(
-          GeoJsonSource(id: srcId, data: _HomeMapScreenState._emptyFeatureCollection),
+          GeoJsonSource(
+            id: srcId,
+            data: _HomeMapScreenState._emptyFeatureCollection,
+          ),
         );
         final StyleLayer layer = tmpl is PolylineLayer
             ? LineStyleLayer(
@@ -876,17 +892,28 @@ extension _MapLayers on _HomeMapScreenState {
     // degrades pills → dots at low zoom on its own. When even the
     // bounded area is empty, a hint tells the user to zoom in (see _zoomHint).
     final center = ll.LatLng(camera.center.lat, camera.center.lon);
-    final radius = _radiusForVisibleArea(camera).clamp(400.0, _vehiclesMaxRadius);
+    final radius = _radiusForVisibleArea(
+      camera,
+    ).clamp(400.0, _vehiclesMaxRadius);
     if (!force && _lastVehiclesCenter != null) {
-      final moved = _distance.as(ll.LengthUnit.Meter, _lastVehiclesCenter!, center);
-      if (moved < radius * 0.3) return; // viewport barely changed — skip refetch
+      final moved = _distance.as(
+        ll.LengthUnit.Meter,
+        _lastVehiclesCenter!,
+        center,
+      );
+      if (moved < radius * 0.3)
+        return; // viewport barely changed — skip refetch
     }
     final seq = ++_vehiclesRequestSeq;
     _lastVehiclesCenter = center;
     try {
       final fetched = await ref
           .read(vehiclesRepositoryProvider)
-          .nearby(lat: center.latitude, lon: center.longitude, radiusMeters: radius);
+          .nearby(
+            lat: center.latitude,
+            lon: center.longitude,
+            radiusMeters: radius,
+          );
       // Re-check the flag AFTER the await: a fetch kicked off while off-demand
       // (e.g. in the window after a reload, before `/config` resolves the flag to
       // ON) must NOT populate the map once we're on-demand — otherwise the whole
@@ -904,9 +931,11 @@ extension _MapLayers on _HomeMapScreenState {
       // Scheduled objects are schedule-derived by design, so they bypass this
       // junk filter.
       final vehicles = fetched
-          .where((v) =>
-              v.source == VehicleSource.scheduled ||
-              areaVehicleHasLivePosition(v))
+          .where(
+            (v) =>
+                v.source == VehicleSource.scheduled ||
+                areaVehicleHasLivePosition(v),
+          )
           .toList();
       // Hybrid live+schedule: render whatever the backend sends, live and
       // schedule-predicted alike. (The backend de-dups a scheduled trip that has
@@ -944,7 +973,8 @@ extension _MapLayers on _HomeMapScreenState {
         _startVehDriver();
       } else {
         _stopVehDriver();
-        _vehAnim.value = 1; // land straight on the latest fixes, no per-frame ease
+        _vehAnim.value =
+            1; // land straight on the latest fixes, no per-frame ease
       }
       // Always push the fresh set to the render path right away, so newly-entered
       // vehicles appear and departed ones drop this frame (not only on the next

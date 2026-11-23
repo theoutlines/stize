@@ -51,7 +51,11 @@ JamSegment buildJamSegment(
   // Geometry gate: every anchor (bounding stops + each frozen vehicle) must sit
   // close to the shape. One far-off point means the shape doesn't represent where
   // this jam actually is — degrade to badges rather than paint the wrong street.
-  final anchors = <ll.LatLng>[rear, front, for (final v in jam.vehicles) v.position];
+  final anchors = <ll.LatLng>[
+    rear,
+    front,
+    for (final v in jam.vehicles) v.position,
+  ];
   for (final a in anchors) {
     if (path.offsetOf(a) > tolerance) {
       return const JamSegment(polyline: null, gated: true);
@@ -87,10 +91,12 @@ bool isJamRelevant(
   ll.LatLng? userLocation,
   double radiusM = kJamRelevanceRadiusM,
 }) {
-  if (followedLine != null && jam.line.toLowerCase() == followedLine.toLowerCase()) {
+  if (followedLine != null &&
+      jam.line.toLowerCase() == followedLine.toLowerCase()) {
     return true;
   }
-  if (openStopId != null && jam.affectedStopIds.contains(openStopId)) return true;
+  if (openStopId != null && jam.affectedStopIds.contains(openStopId))
+    return true;
   if (userLocation != null) {
     final pts = <ll.LatLng>[
       for (final v in jam.vehicles) v.position,
@@ -117,7 +123,8 @@ bool isJamAhead({
   required RoutePath? path,
   required double vehicleAlong,
 }) {
-  if (jam.directionRouteId == null || vehicleDirectionRouteId == null) return false;
+  if (jam.directionRouteId == null || vehicleDirectionRouteId == null)
+    return false;
   if (jam.directionRouteId != vehicleDirectionRouteId) return false;
   if (path == null || !path.isUsable) return false;
   final anchors = <ll.LatLng>[

@@ -8,11 +8,11 @@ import '../../domain/models/vehicle_type.dart';
 /// colour as that line's card and map marker. A line with no known type (no
 /// live arrival right now) falls back to the neutral mixed colour.
 Color stizeChipColor(StizeColors stize, VehicleType? type) => switch (type) {
-      VehicleType.bus => stize.transitBus,
-      VehicleType.tram => stize.transitTram,
-      VehicleType.trolleybus => stize.transitTrolleybus,
-      null => stize.transitMixed,
-    };
+  VehicleType.bus => stize.transitBus,
+  VehicleType.tram => stize.transitTram,
+  VehicleType.trolleybus => stize.transitTrolleybus,
+  null => stize.transitMixed,
+};
 
 /// A line → its vehicle type, taken from the board's own arrivals (so chip
 /// colour == card colour).
@@ -78,7 +78,10 @@ class StizeLineChip extends StatelessWidget {
             widthFactor: 1,
             child: Text(
               line,
-              style: StizeType.control.copyWith(fontSize: 16, color: c.onTransit),
+              style: StizeType.control.copyWith(
+                fontSize: 16,
+                color: c.onTransit,
+              ),
             ),
           ),
         ),
@@ -116,8 +119,10 @@ class StizeTextChip extends StatelessWidget {
             widthFactor: 1,
             child: Text(
               label,
-              style: StizeType.control
-                  .copyWith(fontSize: 16, color: selected ? c.onInk : c.ink75),
+              style: StizeType.control.copyWith(
+                fontSize: 16,
+                color: selected ? c.onInk : c.ink75,
+              ),
             ),
           ),
         ),
@@ -125,7 +130,6 @@ class StizeTextChip extends StatelessWidget {
     );
   }
 }
-
 
 /// The one line-filter row for both stop render paths (in-app
 /// panel + /stop/:id): "All lines" + a transit-colour chip per line, one
@@ -157,7 +161,9 @@ class StizeLineFilterRow extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(
-          horizontal: StizeSpace.space4, vertical: StizeSpace.space1),
+        horizontal: StizeSpace.space4,
+        vertical: StizeSpace.space1,
+      ),
       child: Row(
         spacing: StizeSpace.space2,
         children: [

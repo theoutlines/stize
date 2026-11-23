@@ -23,8 +23,9 @@ import 'live_position.dart';
 /// pinned to the stop. Schedule-only / placeholder-only groups read dimmed and
 /// their tap opens the stop rather than following a phantom vehicle
 /// ([nearbyFollowTarget] returns null for exactly these).
-bool nearbyGroupHasLive(NearbyGroup group) => group.arrivals
-    .any((e) => !e.isScheduled && !isPlaceholderGarage(e.garageNo));
+bool nearbyGroupHasLive(NearbyGroup group) => group.arrivals.any(
+  (e) => !e.isScheduled && !isPlaceholderGarage(e.garageNo),
+);
 
 /// Whether a single Nearby departure is a genuinely live vehicle (not a
 /// schedule prediction, not a `P1..P999` placeholder) — the per-eta counterpart
@@ -49,7 +50,9 @@ int _nearbySortEta(NearbyGroup group) {
   final live = group.arrivals.where(nearbyEtaIsLive).map((e) => e.etaMinutes);
   if (live.isNotEmpty) return live.reduce((a, b) => a < b ? a : b);
   if (group.arrivals.isEmpty) return 1 << 30;
-  return group.arrivals.map((e) => e.etaMinutes).reduce((a, b) => a < b ? a : b);
+  return group.arrivals
+      .map((e) => e.etaMinutes)
+      .reduce((a, b) => a < b ? a : b);
 }
 
 /// Order Nearby cards by the same global rule as the arrivals list: **every live

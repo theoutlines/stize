@@ -12,11 +12,11 @@ extension _MapGeometry on _HomeMapScreenState {
   }
 
   EdgeInsets get _mapInsets => mapInsetsFor(
-        panelActive: _panelActive,
-        panelWidth: panelWidthFor(MediaQuery.sizeOf(context).width),
-        mobileSheetPx: _mobileSheetPx,
-        panelCollapsed: _panelCollapsed,
-      );
+    panelActive: _panelActive,
+    panelWidth: panelWidthFor(MediaQuery.sizeOf(context).width),
+    mobileSheetPx: _mobileSheetPx,
+    panelCollapsed: _panelCollapsed,
+  );
 
   /// Entering a context (stop / vehicle) while the panel is collapsed re-expands
   /// it so the new view is visible (owner A#4). The collapse is a view-only hide;
@@ -31,7 +31,9 @@ extension _MapGeometry on _HomeMapScreenState {
   void _camMove({Geographic? center, double? zoom}) {
     final c = _controller;
     if (c == null) return;
-    _selfMove(() => c.moveCamera(center: center, zoom: zoom, padding: _mapInsets));
+    _selfMove(
+      () => c.moveCamera(center: center, zoom: zoom, padding: _mapInsets),
+    );
   }
 
   /// Eased camera move (flyTo) carrying the current geometry padding. Returns the
@@ -70,8 +72,11 @@ extension _MapGeometry on _HomeMapScreenState {
       // Free browse: re-easing to the CURRENT centre with the new padding shifts
       // the scene by the geometry delta (maplibre places the centre at the
       // padded centre) — the city slides by the delta, it isn't covered.
-      _camEase(c.getCamera().center,
-          duration: _HomeMapScreenState._geometryEaseDuration, webSpeed: 1.4);
+      _camEase(
+        c.getCamera().center,
+        duration: _HomeMapScreenState._geometryEaseDuration,
+        webSpeed: 1.4,
+      );
     }
   }
 
@@ -114,7 +119,9 @@ extension _MapGeometry on _HomeMapScreenState {
     _expandPanelIfCollapsed();
     // Single funnel for all three follow entries (marker / sheet / nearby), so
     // this one log point captures every "follow started" with its source.
-    ref.read(eventLoggerProvider).log(Ev.vehicleFollow, props: {'source': source});
+    ref
+        .read(eventLoggerProvider)
+        .log(Ev.vehicleFollow, props: {'source': source});
     _setState(() => _selectedVehicleKey = key);
     _writeVehiclesToSource(); // tap highlight on the symbol layer
     if (!_paused && _vehAnimator.hasPendingMotion) _startVehDriver();
@@ -137,7 +144,11 @@ extension _MapGeometry on _HomeMapScreenState {
   /// settles — hands over to the continuous per-frame pan; false (a marker tap)
   /// starts tracking from where the camera already is, no jump, no zoom change
   /// (§C.2, don't regress F2).
-  void _startFollow(String key, {required ll.LatLng target, required bool flyTo}) {
+  void _startFollow(
+    String key, {
+    required ll.LatLng target,
+    required bool flyTo,
+  }) {
     final controller = _controller;
     // Snapshot where the user is before we fly off, so closing the context can
     // bring them back here (the stop, or the pre-focus viewport). Only on a fresh
@@ -151,7 +162,10 @@ extension _MapGeometry on _HomeMapScreenState {
     _selectedVehicleKey = key; // (re)seed on the first follow tick
     _lastFollowMoveAt = null;
     if (flyTo && controller != null) {
-      final zoom = math.max(controller.getCamera().zoom, kMovingObjectDetailZoom);
+      final zoom = math.max(
+        controller.getCamera().zoom,
+        kMovingObjectDetailZoom,
+      );
       _followEngaged = false;
       // Fly the vehicle to the centre of the VISIBLE area — the geometry padding
       // (owned by [_mapInsets]) does the centring, on this and every later tick.
@@ -215,12 +229,15 @@ extension _MapGeometry on _HomeMapScreenState {
     if (_vehAnimator.trackFor(key) == null) {
       // The vehicle dropped out of the feed for good (past the grace period).
       // Surface "vehicle lost" and leave follow rather than chase an empty map.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _onFollowedVehicleLost());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _onFollowedVehicleLost(),
+      );
       return;
     }
     final now = DateTime.now();
     if (_lastFollowMoveAt != null &&
-        now.difference(_lastFollowMoveAt!) < _HomeMapScreenState._followInterval) {
+        now.difference(_lastFollowMoveAt!) <
+            _HomeMapScreenState._followInterval) {
       return;
     }
     _lastFollowMoveAt = now;
@@ -253,7 +270,8 @@ extension _MapGeometry on _HomeMapScreenState {
     // The new camera centre is the geo currently under this screen point; after
     // the move the marker sits exactly on [target].
     final newCentre = c.toLngLat(markerScreen + windowCentre - target);
-    _followCamDiag = 'FOLLOW mk(${markerScreen.dx.toStringAsFixed(0)},'
+    _followCamDiag =
+        'FOLLOW mk(${markerScreen.dx.toStringAsFixed(0)},'
         '${markerScreen.dy.toStringAsFixed(0)}) '
         'tgt(${target.dx.toStringAsFixed(0)},${target.dy.toStringAsFixed(0)}) '
         'padL${insets.left.toStringAsFixed(0)}B${insets.bottom.toStringAsFixed(0)} '

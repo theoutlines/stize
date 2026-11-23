@@ -50,7 +50,10 @@ Future<void> showSettingsSheet(BuildContext context) {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(l10n.settingsTitle, style: Theme.of(sheetContext).textTheme.titleLarge),
+              Text(
+                l10n.settingsTitle,
+                style: Theme.of(sheetContext).textTheme.titleLarge,
+              ),
               const SizedBox(height: 16),
               const SettingsPanel(),
             ],
@@ -103,8 +106,8 @@ class SettingsPanel extends ConsumerWidget {
           Text(
             l10n.settingsAutoHint,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -146,7 +149,9 @@ class _SegmentedSetting<T> extends StatelessWidget {
       children: [
         Text(
           label,
-          style: theme.textTheme.labelLarge?.copyWith(color: scheme.onSurfaceVariant),
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 8),
         Container(
@@ -163,7 +168,9 @@ class _SegmentedSetting<T> extends StatelessWidget {
                     button: true,
                     selected: option == value,
                     child: Material(
-                      color: option == value ? scheme.onSurface : Colors.transparent,
+                      color: option == value
+                          ? scheme.onSurface
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(12),
                       clipBehavior: Clip.antiAlias,
                       child: InkWell(

@@ -16,7 +16,11 @@ class AboutScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final feedMeta = ref.watch(feedMetaProvider).valueOrNull;
-    final routeDataLabel = _routeDataLabel(context, l10n, feedMeta?.feedStartDate);
+    final routeDataLabel = _routeDataLabel(
+      context,
+      l10n,
+      feedMeta?.feedStartDate,
+    );
     final version = ref.watch(appVersionProvider).valueOrNull;
 
     return Scaffold(
@@ -36,7 +40,10 @@ class AboutScreen extends ConsumerWidget {
               color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(l10n.aboutDisclaimer, style: theme.textTheme.bodyMedium),
+            child: Text(
+              l10n.aboutDisclaimer,
+              style: theme.textTheme.bodyMedium,
+            ),
           ),
           // Reference-data freshness. Only shown once /gtfs-meta resolves with a
           // date; if it's unavailable the row is simply absent (silent fallback).
@@ -44,13 +51,17 @@ class AboutScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           Text(
             l10n.aboutDataSource,
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
           ),
           if (routeDataLabel != null) ...[
             const SizedBox(height: 8),
             Text(
               routeDataLabel,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
             ),
           ],
           // Licences and privacy live here, as full-height rows: in the menu
@@ -74,7 +85,9 @@ class AboutScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             Text(
               version,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
             ),
           ],
         ],
@@ -84,7 +97,11 @@ class AboutScreen extends ConsumerWidget {
 
   /// `Route data: <Month Year>`, month localized to the active locale. Returns
   /// null when there's no date to show, so the caller omits the row entirely.
-  String? _routeDataLabel(BuildContext context, AppLocalizations l10n, DateTime? date) {
+  String? _routeDataLabel(
+    BuildContext context,
+    AppLocalizations l10n,
+    DateTime? date,
+  ) {
     if (date == null) return null;
     final locale = Localizations.localeOf(context).toString();
     String formatted;

@@ -1,5 +1,9 @@
 class GeocodeResult {
-  const GeocodeResult({required this.displayName, required this.lat, required this.lon});
+  const GeocodeResult({
+    required this.displayName,
+    required this.lat,
+    required this.lon,
+  });
 
   final String displayName;
   final double lat;

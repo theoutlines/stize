@@ -57,7 +57,7 @@ class StopArrivalsList extends ConsumerStatefulWidget {
 
   /// Host-rendered fleet card (desktop panel / sheet subview). Null → modal.
   final void Function(FleetVehicle fleet, String? garageNo, VehicleType type)?
-      onOpenFleetCard;
+  onOpenFleetCard;
 
   @override
   ConsumerState<StopArrivalsList> createState() => _StopArrivalsListState();
@@ -132,8 +132,8 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
     // state during build.
     final effectiveFilter =
         (_lineFilter != null && arrivingLines.contains(_lineFilter))
-            ? _lineFilter
-            : null;
+        ? _lineFilter
+        : null;
     final visibleArrivals = effectiveFilter == null
         ? board.arrivals
         : board.arrivals.where((a) => a.line == effectiveFilter).toList();
@@ -155,43 +155,53 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
 
     final destinations =
         ref.watch(lineDestinationsProvider).valueOrNull ??
-            const <String, String>{};
-    final headways =
-        ref.watch(stopPlannedHeadwaysProvider(widget.stopId)).valueOrNull;
+        const <String, String>{};
+    final headways = ref
+        .watch(stopPlannedHeadwaysProvider(widget.stopId))
+        .valueOrNull;
 
     final tiles = <Widget>[];
     var firstCard = true; // the nearest arrival reads biggest
     void addTile(Arrival arrival, FleetVehicle? fleet, List<int>? later) {
       final dir = arrival.directionRouteId ?? arrival.routeId;
-      tiles.add(ArrivalTile(
-        arrival: arrival,
-        etaDeltaMinutes: _etaDelta[arrival.garageNo],
-        fleet: fleet,
-        emphasis: firstCard,
-        destination: displayDestination(
-            destinations[dir], board.stopName, l10n.arrivalTerminus),
-        // Folded card: later trips sit under the big ETA, so no "next in".
-        nextEtaMinutes: later != null
-            ? null
-            : stizeNextEtaForLine(visibleArrivals, arrival),
-        laterEtaMinutes: later ?? const [],
-        headwayMinutes: headways?[dir],
-        onOpenFleetCard: fleet != null && fleet.hasInfo
-            ? () => widget.onOpenFleetCard != null
-                ? widget.onOpenFleetCard!(
-                    fleet, arrival.garageNo, arrival.vehicleType)
-                : showFleetModelCard(
-                    context,
-                    fleet: fleet,
-                    fallbackType: arrival.vehicleType,
-                    garageNo: arrival.garageNo,
-                  )
-            : null,
-        onTap: (!arrivalHasLivePosition(arrival) ||
-                widget.onFocusVehicle == null)
-            ? null
-            : () => widget.onFocusVehicle!(arrival, board.updatedAt),
-      ));
+      tiles.add(
+        ArrivalTile(
+          arrival: arrival,
+          etaDeltaMinutes: _etaDelta[arrival.garageNo],
+          fleet: fleet,
+          emphasis: firstCard,
+          destination: displayDestination(
+            destinations[dir],
+            board.stopName,
+            l10n.arrivalTerminus,
+          ),
+          // Folded card: later trips sit under the big ETA, so no "next in".
+          nextEtaMinutes: later != null
+              ? null
+              : stizeNextEtaForLine(visibleArrivals, arrival),
+          laterEtaMinutes: later ?? const [],
+          headwayMinutes: headways?[dir],
+          onOpenFleetCard: fleet != null && fleet.hasInfo
+              ? () => widget.onOpenFleetCard != null
+                    ? widget.onOpenFleetCard!(
+                        fleet,
+                        arrival.garageNo,
+                        arrival.vehicleType,
+                      )
+                    : showFleetModelCard(
+                        context,
+                        fleet: fleet,
+                        fallbackType: arrival.vehicleType,
+                        garageNo: arrival.garageNo,
+                      )
+              : null,
+          onTap:
+              (!arrivalHasLivePosition(arrival) ||
+                  widget.onFocusVehicle == null)
+              ? null
+              : () => widget.onFocusVehicle!(arrival, board.updatedAt),
+        ),
+      );
       firstCard = false;
     }
 
@@ -202,8 +212,9 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
           final ca = fleetByIndex[a]?.comfortScore ?? -1;
           final cb = fleetByIndex[b]?.comfortScore ?? -1;
           if (ca != cb) return cb.compareTo(ca);
-          return visibleArrivals[a].etaMinutes
-              .compareTo(visibleArrivals[b].etaMinutes);
+          return visibleArrivals[a].etaMinutes.compareTo(
+            visibleArrivals[b].etaMinutes,
+          );
         });
       for (final i in order) {
         addTile(visibleArrivals[i], fleetByIndex[i], null);
@@ -211,8 +222,7 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
     } else {
       // Time order: one card per line×direction, later vehicles folded in,
       // covered non-live rows dropped, surviving Scheduled folded into a cell.
-      for (final entry
-          in foldLiveByDirection(groupArrivals(visibleArrivals))) {
+      for (final entry in foldLiveByDirection(groupArrivals(visibleArrivals))) {
         switch (entry) {
           case ArrivalRow(:final arrival, :final index, :final laterEtaMinutes):
             addTile(arrival, fleetByIndex[index], laterEtaMinutes);
@@ -222,8 +232,10 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
       }
     }
 
-    final ageSeconds =
-        DateTime.now().toUtc().difference(board.updatedAt.toUtc()).inSeconds;
+    final ageSeconds = DateTime.now()
+        .toUtc()
+        .difference(board.updatedAt.toUtc())
+        .inSeconds;
     final isStale = ageSeconds > 90; // well past the 30s cadence: stuck cache
 
     return Column(
@@ -286,7 +298,11 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
         // 4px between the colour cards, with a 16px side gutter.
         Padding(
           padding: const EdgeInsets.fromLTRB(
-              StizeSpace.space4, StizeSpace.space1, StizeSpace.space4, 0),
+            StizeSpace.space4,
+            StizeSpace.space1,
+            StizeSpace.space4,
+            0,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -306,8 +322,10 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
   }
 
   String _freshnessLabel(AppLocalizations l10n, DateTime updatedAt) {
-    final seconds =
-        DateTime.now().toUtc().difference(updatedAt.toUtc()).inSeconds;
+    final seconds = DateTime.now()
+        .toUtc()
+        .difference(updatedAt.toUtc())
+        .inSeconds;
     if (seconds < 5) return l10n.stopUpdatedJustNow;
     if (seconds < 60) return l10n.stopUpdatedSecondsAgo(seconds);
     return l10n.stopUpdatedMinutesAgo((seconds / 60).round());
@@ -326,7 +344,10 @@ int compareLineNames(String a, String b) {
 
 /// The board's load-error state, shared by both shutters.
 Widget stopArrivalsErrorState(
-    AppLocalizations l10n, Object err, VoidCallback onRetry) {
+  AppLocalizations l10n,
+  Object err,
+  VoidCallback onRetry,
+) {
   if (err is NotFoundException) {
     return EmptyState(
       icon: Icons.location_off_outlined,

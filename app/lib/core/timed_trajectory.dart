@@ -26,15 +26,22 @@ import 'route_path.dart';
 /// Pure and widget-free so it can be unit-tested without a map. All time comes
 /// in as arguments, so tests drive it with a virtual clock.
 class TimedTrajectory {
-  TimedTrajectory._(this._path, this._waypoints, this._segments, this._asOf,
-      this._dispDist, this._lastAdvance);
+  TimedTrajectory._(
+    this._path,
+    this._waypoints,
+    this._segments,
+    this._asOf,
+    this._dispDist,
+    this._lastAdvance,
+  );
 
   RoutePath _path;
   List<_Waypoint> _waypoints; // distance ↑, eta ↑; the first eta is ~0
   List<_Segment> _segments; // one per waypoint pair; the dwell-aware shape
   DateTime _asOf;
   double _dispDist;
-  double _dispVel = 0; // displayed speed along the path (m/s) — a state variable
+  double _dispVel =
+      0; // displayed speed along the path (m/s) — a state variable
   DateTime _lastAdvance;
 
   // Catch-up dynamics. The marker chases the plan's *predicted-now* spot, which
@@ -107,8 +114,10 @@ class TimedTrajectory {
   // = v·τ, ~7 m for a 10 m/s cruise); [_glideCoastMeters] is only a hard safety cap
   // so a freak speed can't run the marker away past the end.
   static const double _glideTauSeconds = 0.7; // exponential decay time constant
-  static const double _glideRestSpeed = 0.2; // m/s; at/below this the glide is done
-  static const double _glideCoastMeters = 20.0; // hard cap on coast past the plan end
+  static const double _glideRestSpeed =
+      0.2; // m/s; at/below this the glide is done
+  static const double _glideCoastMeters =
+      20.0; // hard cap on coast past the plan end
   // How close to the horizon the marker enters the glide — the "last N metres" of
   // the brief. Must exceed one frame's travel so a fast approach can't leap the
   // horizon in a single step and skip the decay (18 m/s cap × a coarse 0.25 s tick
@@ -236,18 +245,20 @@ class TimedTrajectory {
       // or brake there would stop the marker where no stop exists. Glide it
       // instead: fewer pauses on those lines, but honest. (The track itself is
       // still wrong on those sections — a separate GTFS-shape fix, see BACKLOG.)
-      segs.add(_Segment.solve(
-        t0: a.etaSeconds,
-        t1: b.etaSeconds,
-        d0: a.dist,
-        d1: b.dist,
-        flyingStart: i == 0,
-        dwellSeconds: (a.onShape && b.onShape) ? _dwellSeconds : 0,
-        shape: a.onShape && b.onShape,
-        preferredAccel: _profileAccel,
-        maxAccel: _maxProfileAccel,
-        maxSpeed: _maxProfileSpeed,
-      ));
+      segs.add(
+        _Segment.solve(
+          t0: a.etaSeconds,
+          t1: b.etaSeconds,
+          d0: a.dist,
+          d1: b.dist,
+          flyingStart: i == 0,
+          dwellSeconds: (a.onShape && b.onShape) ? _dwellSeconds : 0,
+          shape: a.onShape && b.onShape,
+          preferredAccel: _profileAccel,
+          maxAccel: _maxProfileAccel,
+          maxSpeed: _maxProfileSpeed,
+        ),
+      );
     }
     // A segment brakes to a standstill at its far end. That's only true if the
     // vehicle actually stands there — i.e. if the next segment starts from rest
@@ -424,8 +435,10 @@ class TimedTrajectory {
         ? -(1 - _crawlFraction) * planVel
         : -planVel;
     final closing = gap > 0
-        ? math.min(_maxCatchUpSpeed,
-            math.min(math.sqrt(2 * _maxCatchUpAccel * gap), _catchUpGain * gap))
+        ? math.min(
+            _maxCatchUpSpeed,
+            math.min(math.sqrt(2 * _maxCatchUpAccel * gap), _catchUpGain * gap),
+          )
         : math.max(_catchUpGain * gap, holdFloor);
     double desiredVel = planVel + closing;
     // Never *command* a speed that would fly past the target in one step. Since
@@ -467,7 +480,8 @@ class TimedTrajectory {
   // feed forward), non-negative otherwise.
   double _targetSpeed(DateTime now) {
     const eps = 0.25; // s
-    final v = (_gatedTarget(now.add(const Duration(milliseconds: 250))) -
+    final v =
+        (_gatedTarget(now.add(const Duration(milliseconds: 250))) -
             _gatedTarget(now)) /
         eps;
     return v > 0 ? v : 0;
@@ -517,7 +531,7 @@ class TimedTrajectory {
   /// leaving it dwells or glides, and how far ahead it is (m). Lets the owner see
   /// on screen exactly what the pause gate decided for a followed vehicle.
   List<({double aheadM, double offShapeM, bool onShape, bool dwells})>
-      upcomingStopDiag({int count = 3}) {
+  upcomingStopDiag({int count = 3}) {
     final out =
         <({double aheadM, double offShapeM, bool onShape, bool dwells})>[];
     for (var i = 0; i < _waypoints.length && out.length < count; i++) {
@@ -577,7 +591,8 @@ class TimedTrajectory {
   // station, so it doesn't count.
   bool _nearStation(double dist) {
     for (var i = 1; i < _waypoints.length; i++) {
-      if ((dist - _waypoints[i].dist).abs() <= _stationRadiusMeters) return true;
+      if ((dist - _waypoints[i].dist).abs() <= _stationRadiusMeters)
+        return true;
     }
     return false;
   }
@@ -614,7 +629,8 @@ class TimedTrajectory {
   /// second, flipping this true often enough to keep the ticker alive and the
   /// fan flickering: markers shoving apart and snapping back as they converge.
   bool hasForwardMotion(DateTime now) {
-    if (_isGliding(now)) return true; // coasting out the plan end IS moving forward
+    if (_isGliding(now))
+      return true; // coasting out the plan end IS moving forward
     if (_dispDist >= _horizonDist - _epsilonMeters) return false;
     return _targetSpeed(now) > _minMotionSpeed;
   }
@@ -640,7 +656,8 @@ class TimedTrajectory {
   /// is simply whether the plan is still live and unfinished. "Idle = zero
   /// frames" is intact — a stale board and a spent plan both still park it.
   bool isPlaying(DateTime now) {
-    if (_isGliding(now)) return true; // keep the ticker alive through the glide-out
+    if (_isGliding(now))
+      return true; // keep the ticker alive through the glide-out
     if (_dispDist >= _horizonDist - _epsilonMeters) return false;
     // Gate on staleness, NOT on `elapsed <= 0`. `_targetElapsed` returns 0 in
     // TWO cases: a stale board (held at the fix — correctly not playing) AND a
@@ -664,8 +681,11 @@ class TimedTrajectory {
       final d = path.project(planPos, near: near);
       near = d;
       // How far the projection had to move the station to land it on the shape.
-      final offShape = const ll.Distance()
-          .as(ll.LengthUnit.Meter, planPos, path.pointAt(d));
+      final offShape = const ll.Distance().as(
+        ll.LengthUnit.Meter,
+        planPos,
+        path.pointAt(d),
+      );
       final onShape = offShape <= _stopOnShapeToleranceMeters;
       final eta = p.etaSeconds.toDouble();
       if (wps.isEmpty) {
@@ -688,7 +708,10 @@ class TimedTrajectory {
   // Distance for an elapsed time, clamped to the plan's ends: the containing
   // segment's own shape (dwell → accelerate → cruise → brake into the stop).
   static double _distAtElapsed(
-      List<_Segment> segs, List<_Waypoint> wps, double elapsed) {
+    List<_Segment> segs,
+    List<_Waypoint> wps,
+    double elapsed,
+  ) {
     if (elapsed <= wps.first.etaSeconds) return wps.first.dist;
     if (elapsed >= wps.last.etaSeconds) return wps.last.dist;
     // Linear scan is fine: plans are short (≤ ~80 points).
@@ -700,7 +723,12 @@ class TimedTrajectory {
 }
 
 class _Waypoint {
-  const _Waypoint(this.dist, this.etaSeconds, this.offShapeMeters, this.onShape);
+  const _Waypoint(
+    this.dist,
+    this.etaSeconds,
+    this.offShapeMeters,
+    this.onShape,
+  );
   final double dist;
   final double etaSeconds;
   // How far projecting this station onto the route shape had to move it (for the
@@ -729,8 +757,16 @@ class _Waypoint {
 enum _SegmentKind { linear, flying, trapezoid }
 
 class _Segment {
-  _Segment._(this.t0, this.t1, this.d0, this.d1, this.kind, this.dwell, this.v,
-      this.accel);
+  _Segment._(
+    this.t0,
+    this.t1,
+    this.d0,
+    this.d1,
+    this.kind,
+    this.dwell,
+    this.v,
+    this.accel,
+  );
 
   final double t0, t1; // plan times of the two waypoints (s, from as-of)
   final double d0, d1; // distances-along of the two waypoints (m)

@@ -8,8 +8,10 @@ import 'api_config.dart';
 /// `kMapRenderingEnabled` in spirit: OFF in a normal build, flipped on with
 /// `--dart-define=SHOW_FPS_OVERLAY=true`. Independent of the runtime URL toggle
 /// below so it can also be forced on for a local run.
-const bool kShowFpsOverlay =
-    bool.fromEnvironment('SHOW_FPS_OVERLAY', defaultValue: false);
+const bool kShowFpsOverlay = bool.fromEnvironment(
+  'SHOW_FPS_OVERLAY',
+  defaultValue: false,
+);
 
 /// Whether the FPS overlay should be shown for this session.
 ///

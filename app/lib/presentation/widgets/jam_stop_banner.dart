@@ -24,7 +24,8 @@ class JamStopBanner extends ConsumerWidget {
     if (board == null || !board.feedHealthy) return const SizedBox.shrink();
 
     final l10n = AppLocalizations.of(context);
-    final alerts = ref.watch(alertsProvider).valueOrNull ?? const <RouteAlert>[];
+    final alerts =
+        ref.watch(alertsProvider).valueOrNull ?? const <RouteAlert>[];
 
     final widgets = <Widget>[];
 
@@ -35,18 +36,22 @@ class JamStopBanner extends ConsumerWidget {
       // line, that's the *cause* (bgprevoz). Show the alert's own text (its tone),
       // not our inference. Without an alert, our signal stays an observation.
       final alert = alerts
-          .where((a) => !a.isExpired && a.isActiveNow && a.matchesLine(jam.line))
+          .where(
+            (a) => !a.isExpired && a.isActiveNow && a.matchesLine(jam.line),
+          )
           .cast<RouteAlert?>()
           .firstWhere((a) => true, orElse: () => null);
       final locale = Localizations.localeOf(context).languageCode;
-      widgets.add(_banner(
-        context,
-        icon: Icons.hourglass_bottom,
-        text: alert != null
-            ? alert.localizedSummary(locale)
-            : l10n.jamStopBannerTitle(jam.line),
-        official: alert != null,
-      ));
+      widgets.add(
+        _banner(
+          context,
+          icon: Icons.hourglass_bottom,
+          text: alert != null
+              ? alert.localizedSummary(locale)
+              : l10n.jamStopBannerTitle(jam.line),
+          official: alert != null,
+        ),
+      );
     }
 
     // Substitution notice: a bus is running one of this stop's tram lines. If a
@@ -60,15 +65,20 @@ class JamStopBanner extends ConsumerWidget {
       // Skip if we already surface it via a route alert to avoid double-telling.
       final announced = alerts.any((a) => !a.isExpired && a.matchesLine(line));
       if (announced) continue;
-      widgets.add(_banner(
-        context,
-        icon: Icons.directions_bus_filled_outlined,
-        text: l10n.jamSubstitutionNotice(line),
-      ));
+      widgets.add(
+        _banner(
+          context,
+          icon: Icons.directions_bus_filled_outlined,
+          text: l10n.jamSubstitutionNotice(line),
+        ),
+      );
     }
 
     if (widgets.isEmpty) return const SizedBox.shrink();
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: widgets);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: widgets,
+    );
   }
 
   Widget _banner(
@@ -81,7 +91,9 @@ class JamStopBanner extends ConsumerWidget {
     final scheme = theme.colorScheme;
     // Amber-tinted, matching the map jam colour; a confirmed alert reads a touch
     // stronger than our soft inference.
-    final tint = const Color(0xFFE8A317).withValues(alpha: official ? 0.20 : 0.13);
+    final tint = const Color(
+      0xFFE8A317,
+    ).withValues(alpha: official ? 0.20 : 0.13);
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -96,7 +108,9 @@ class JamStopBanner extends ConsumerWidget {
           Expanded(
             child: Text(
               text,
-              style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurface),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurface,
+              ),
             ),
           ),
         ],

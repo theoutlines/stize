@@ -53,30 +53,48 @@ class GtfsOfflineCache {
     final raw = prefs.getString(_linesKey);
     if (raw == null) return const [];
     final list = jsonDecode(raw) as List<dynamic>;
-    return list.map((e) => LineInfo.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => LineInfo.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<Stop>> searchStopsOffline(String query) async {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return const [];
     final stops = await getStops();
-    return stops.where((s) => s.name.toLowerCase().contains(q)).take(50).toList();
+    return stops
+        .where((s) => s.name.toLowerCase().contains(q))
+        .take(50)
+        .toList();
   }
 
   Future<List<LineInfo>> searchLinesOffline(String query) async {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return const [];
     final lines = await getLines();
-    return lines.where((l) => l.line.toLowerCase().contains(q)).take(50).toList();
+    return lines
+        .where((l) => l.line.toLowerCase().contains(q))
+        .take(50)
+        .toList();
   }
 
-  Future<List<Stop>> nearbyOffline(double lat, double lon, double radiusMeters) async {
+  Future<List<Stop>> nearbyOffline(
+    double lat,
+    double lon,
+    double radiusMeters,
+  ) async {
     final stops = await getStops();
-    final withDistance = stops
-        .map((s) => (stop: s, distance: haversineDistanceMeters(lat, lon, s.lat, s.lon)))
-        .where((e) => e.distance <= radiusMeters)
-        .toList()
-      ..sort((a, b) => a.distance.compareTo(b.distance));
+    final withDistance =
+        stops
+            .map(
+              (s) => (
+                stop: s,
+                distance: haversineDistanceMeters(lat, lon, s.lat, s.lon),
+              ),
+            )
+            .where((e) => e.distance <= radiusMeters)
+            .toList()
+          ..sort((a, b) => a.distance.compareTo(b.distance));
     return withDistance.take(50).map((e) => e.stop).toList();
   }
 }

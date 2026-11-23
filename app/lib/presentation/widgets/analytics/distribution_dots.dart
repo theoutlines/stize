@@ -21,7 +21,9 @@ class DistributionDots extends StatelessWidget {
     if (cells.isEmpty) {
       return SizedBox(
         height: 140,
-        child: Center(child: Text('пока нет данных', style: theme.textTheme.bodySmall)),
+        child: Center(
+          child: Text('пока нет данных', style: theme.textTheme.bodySmall),
+        ),
       );
     }
 
@@ -62,8 +64,12 @@ class DistributionDots extends StatelessWidget {
           borderData: FlBorderData(show: false),
           scatterSpots: spots,
           titlesData: FlTitlesData(
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
@@ -79,7 +85,10 @@ class DistributionDots extends StatelessWidget {
                 reservedSize: 20,
                 getTitlesWidget: (x, meta) => Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text('${x.toInt()}', style: theme.textTheme.labelSmall),
+                  child: Text(
+                    '${x.toInt()}',
+                    style: theme.textTheme.labelSmall,
+                  ),
                 ),
               ),
             ),

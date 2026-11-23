@@ -106,10 +106,14 @@ class FleetVehicle {
   });
 
   /// UNKNOWN — a real number that matched nothing. UI shows only type + number.
-  static const FleetVehicle unknown = FleetVehicle(kind: FleetMatchKind.unknown);
+  static const FleetVehicle unknown = FleetVehicle(
+    kind: FleetMatchKind.unknown,
+  );
 
   /// UNKNOWN_JUNK — a `P1..P999` placeholder. UI hides the number entirely.
-  static const FleetVehicle junk = FleetVehicle(kind: FleetMatchKind.unknownJunk);
+  static const FleetVehicle junk = FleetVehicle(
+    kind: FleetMatchKind.unknownJunk,
+  );
 
   final FleetMatchKind kind;
 
@@ -463,7 +467,10 @@ class FleetCatalog {
 
   /// Collect localized notes from `{prefix}_{ru,en,sr}` keys into a locale map,
   /// skipping empty/missing values.
-  static Map<String, String> _noteI18n(Map<String, dynamic> src, String prefix) {
+  static Map<String, String> _noteI18n(
+    Map<String, dynamic> src,
+    String prefix,
+  ) {
     final out = <String, String>{};
     for (final lang in const ['ru', 'en', 'sr']) {
       final v = _nonEmpty(src['${prefix}_$lang']);

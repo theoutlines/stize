@@ -32,7 +32,11 @@ String stopReportLabel(AppLocalizations l10n, String category) =>
 /// The quiet entry at the end of a stop board: "Something wrong with this
 /// stop?". Opens [showStopReportSheet].
 class StopReportEntry extends StatelessWidget {
-  const StopReportEntry({super.key, required this.stopId, required this.stopName});
+  const StopReportEntry({
+    super.key,
+    required this.stopId,
+    required this.stopName,
+  });
 
   final String stopId;
   final String stopName;
@@ -123,7 +127,9 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
     });
     try {
       final version = await ref.read(appVersionProvider.future);
-      await ref.read(feedbackRepositoryProvider).submitStopReport(
+      await ref
+          .read(feedbackRepositoryProvider)
+          .submitStopReport(
             stopId: widget.stopId,
             category: category,
             comment: category == 'other' ? _comment.text : null,
@@ -158,7 +164,11 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-            StizeSpace.space4, 0, StizeSpace.space4, StizeSpace.space4 + bottom),
+          StizeSpace.space4,
+          0,
+          StizeSpace.space4,
+          StizeSpace.space4 + bottom,
+        ),
         child: switch (_stage) {
           _Stage.sent || _Stage.already => _done(c, l10n),
           _ => _form(c, l10n),
@@ -174,10 +184,15 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l10n.stopReportTitle,
-              style: StizeType.heroTitle.copyWith(color: c.ink)),
+          Text(
+            l10n.stopReportTitle,
+            style: StizeType.heroTitle.copyWith(color: c.ink),
+          ),
           const SizedBox(height: 2),
-          Text(widget.stopName, style: StizeType.label.copyWith(color: c.ink60)),
+          Text(
+            widget.stopName,
+            style: StizeType.label.copyWith(color: c.ink60),
+          ),
           const SizedBox(height: StizeSpace.space3),
           RadioGroup<String>(
             groupValue: _category,
@@ -192,17 +207,24 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
                     padding: const EdgeInsets.only(bottom: 2),
                     child: Material(
                       color: _category == cat ? c.fill08 : Colors.transparent,
-                      borderRadius: BorderRadius.circular(StizeRadius.radiusControl),
+                      borderRadius: BorderRadius.circular(
+                        StizeRadius.radiusControl,
+                      ),
                       child: RadioListTile<String>(
                         value: cat,
                         dense: true,
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: StizeSpace.space1),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: StizeSpace.space1,
+                        ),
                         shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(StizeRadius.radiusControl)),
-                        title: Text(stopReportLabel(l10n, cat),
-                            style: StizeType.body.copyWith(color: c.ink)),
+                          borderRadius: BorderRadius.circular(
+                            StizeRadius.radiusControl,
+                          ),
+                        ),
+                        title: Text(
+                          stopReportLabel(l10n, cat),
+                          style: StizeType.body.copyWith(color: c.ink),
+                        ),
                       ),
                     ),
                   ),
@@ -211,8 +233,10 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
           ),
           if (_category == 'other') ...[
             const SizedBox(height: StizeSpace.space2),
-            Text(l10n.stopReportOtherLabel,
-                style: StizeType.caption.copyWith(color: c.ink60)),
+            Text(
+              l10n.stopReportOtherLabel,
+              style: StizeType.caption.copyWith(color: c.ink60),
+            ),
             const SizedBox(height: StizeSpace.space1),
             TextField(
               controller: _comment,
@@ -228,7 +252,9 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
                 fillColor: c.fill08,
                 counterText: '',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(StizeRadius.radiusControl),
+                  borderRadius: BorderRadius.circular(
+                    StizeRadius.radiusControl,
+                  ),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -238,13 +264,17 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: StizeSpace.space2),
-              child: Text(_error!,
-                  textAlign: TextAlign.center,
-                  style: StizeType.caption.copyWith(color: c.ink)),
+              child: Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: StizeType.caption.copyWith(color: c.ink),
+              ),
             ),
-          Text(l10n.stopReportPrivacy,
-              textAlign: TextAlign.center,
-              style: StizeType.caption.copyWith(color: c.ink50)),
+          Text(
+            l10n.stopReportPrivacy,
+            textAlign: TextAlign.center,
+            style: StizeType.caption.copyWith(color: c.ink50),
+          ),
           const SizedBox(height: StizeSpace.space2),
           SizedBox(
             height: 52,
@@ -263,7 +293,10 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: c.onInk))
+                        strokeWidth: 2,
+                        color: c.onInk,
+                      ),
+                    )
                   : Text(l10n.stopReportSend),
             ),
           ),
@@ -293,9 +326,11 @@ class _StopReportSheetState extends ConsumerState<StopReportSheet> {
           ),
         ),
         const SizedBox(height: StizeSpace.space3),
-        Text(already ? l10n.stopReportAlreadyTitle : l10n.stopReportSentTitle,
-            textAlign: TextAlign.center,
-            style: StizeType.heroTitle.copyWith(color: c.ink)),
+        Text(
+          already ? l10n.stopReportAlreadyTitle : l10n.stopReportSentTitle,
+          textAlign: TextAlign.center,
+          style: StizeType.heroTitle.copyWith(color: c.ink),
+        ),
         const SizedBox(height: StizeSpace.space2),
         Text(
           already

@@ -163,7 +163,11 @@ class _VehicleDetailSheet extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          vehicleGlyph(type, size: 16, color: StizeColors.of(context).onTransit),
+          vehicleGlyph(
+            type,
+            size: 16,
+            color: StizeColors.of(context).onTransit,
+          ),
           const SizedBox(width: 4),
           // Stiže: line number = the one semibold, white on every type.
           // OFF keeps the prior bold 14 (killswitch).
@@ -209,7 +213,9 @@ class _VehicleDetailSheet extends StatelessWidget {
       leading: Icon(
         u.isBoardStop ? Icons.star : Icons.circle,
         size: u.isBoardStop ? 16 : 8,
-        color: u.isBoardStop ? theme.colorScheme.primary : theme.colorScheme.outline,
+        color: u.isBoardStop
+            ? theme.colorScheme.primary
+            : theme.colorScheme.outline,
       ),
       title: Text(
         u.stop.name,

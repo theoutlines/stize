@@ -11,11 +11,21 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
 
   Future<List<FavoriteStop>> _readAll(SharedPreferences prefs) async {
     final raw = prefs.getStringList(_prefsKey) ?? const [];
-    return raw.map((s) => FavoriteStop.fromJson(jsonDecode(s) as Map<String, dynamic>)).toList();
+    return raw
+        .map(
+          (s) => FavoriteStop.fromJson(jsonDecode(s) as Map<String, dynamic>),
+        )
+        .toList();
   }
 
-  Future<void> _writeAll(SharedPreferences prefs, List<FavoriteStop> stops) async {
-    await prefs.setStringList(_prefsKey, stops.map((s) => jsonEncode(s.toJson())).toList());
+  Future<void> _writeAll(
+    SharedPreferences prefs,
+    List<FavoriteStop> stops,
+  ) async {
+    await prefs.setStringList(
+      _prefsKey,
+      stops.map((s) => jsonEncode(s.toJson())).toList(),
+    );
   }
 
   @override

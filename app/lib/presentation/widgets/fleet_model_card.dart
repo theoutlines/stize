@@ -90,8 +90,9 @@ class FleetModelView extends ConsumerWidget {
           const SizedBox(height: 14),
           Text(
             l10n.fleetApproxNote,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.outline),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
           ),
         ],
       ],
@@ -123,7 +124,11 @@ class FleetModelView extends ConsumerWidget {
   }
 
   Widget _header(
-      BuildContext context, ThemeData theme, AppLocalizations l10n, String lang) {
+    BuildContext context,
+    ThemeData theme,
+    AppLocalizations l10n,
+    String lang,
+  ) {
     final model = fleet.modelName ?? l10n.fleetUnknownModel;
     // Model name is the headline; the local nickname sits small beneath it, and
     // in the reader's script (Latin for sr, ASCII otherwise) — see [nicknameFor].
@@ -134,8 +139,11 @@ class FleetModelView extends ConsumerWidget {
         CircleAvatar(
           radius: 22,
           backgroundColor: vehicleColor(fallbackType),
-          child: vehicleGlyph(fallbackType,
-              size: 24, color: StizeColors.of(context).onTransit),
+          child: vehicleGlyph(
+            fallbackType,
+            size: 24,
+            color: StizeColors.of(context).onTransit,
+          ),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -144,14 +152,16 @@ class FleetModelView extends ConsumerWidget {
             children: [
               Text(
                 model,
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               if (nickname != null)
                 Text(
                   nickname,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.outline),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.outline,
+                  ),
                 ),
             ],
           ),
@@ -164,8 +174,12 @@ class FleetModelView extends ConsumerWidget {
   /// (author, licence, Wikimedia Commons; tap opens the file page). Without a
   /// photo, or while/if it fails to load, a quiet glyph placeholder keeps the
   /// layout stable.
-  Widget _heroSlot(BuildContext context, ThemeData theme,
-      AppLocalizations l10n, FleetPhoto? photo) {
+  Widget _heroSlot(
+    BuildContext context,
+    ThemeData theme,
+    AppLocalizations l10n,
+    FleetPhoto? photo,
+  ) {
     final placeholder = Container(
       width: double.infinity,
       height: photo == null ? 96 : null,
@@ -201,16 +215,19 @@ class FleetModelView extends ConsumerWidget {
         const SizedBox(height: 6),
         InkWell(
           borderRadius: BorderRadius.circular(4),
-          onTap: () => launchUrl(Uri.parse(photo.page),
-              mode: LaunchMode.externalApplication),
+          onTap: () => launchUrl(
+            Uri.parse(photo.page),
+            mode: LaunchMode.externalApplication,
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: Text(
               l10n.fleetPhotoCredit(photo.author, photo.license),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.outline),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
             ),
           ),
         ),
@@ -228,24 +245,28 @@ class FleetModelView extends ConsumerWidget {
 
     // 1) Air conditioning — the headline question of a Belgrade summer.
     if (fleet.ac != null) {
-      rows.add(_row(
-        theme,
-        fleet.ac! ? Icons.ac_unit : Icons.wb_sunny_outlined,
-        fleet.ac! ? l10n.fleetAc : l10n.fleetNoAc,
-        positive: fleet.ac!,
-        assumed: fleet.isAssumed('ac'),
-      ));
+      rows.add(
+        _row(
+          theme,
+          fleet.ac! ? Icons.ac_unit : Icons.wb_sunny_outlined,
+          fleet.ac! ? l10n.fleetAc : l10n.fleetNoAc,
+          positive: fleet.ac!,
+          assumed: fleet.isAssumed('ac'),
+        ),
+      );
     }
 
     // 2) Low floor.
     if (fleet.lowFloor != null) {
-      rows.add(_row(
-        theme,
-        fleet.lowFloor! ? Icons.accessible : Icons.stairs_outlined,
-        fleet.lowFloor! ? l10n.fleetLowFloor : l10n.fleetHighFloor,
-        positive: fleet.lowFloor!,
-        assumed: fleet.isAssumed('low_floor'),
-      ));
+      rows.add(
+        _row(
+          theme,
+          fleet.lowFloor! ? Icons.accessible : Icons.stairs_outlined,
+          fleet.lowFloor! ? l10n.fleetLowFloor : l10n.fleetHighFloor,
+          positive: fleet.lowFloor!,
+          assumed: fleet.isAssumed('low_floor'),
+        ),
+      );
     }
 
     // 3) Age.
@@ -253,51 +274,78 @@ class FleetModelView extends ConsumerWidget {
     final years = fleet.yearsBuilt;
     if (age != null && years != null) {
       final assumed = fleet.isAssumed('years_built');
-      rows.add(_row(
-        theme,
-        Icons.history,
-        assumed
-            ? l10n.fleetAgeApprox(age, years[0], years[1])
-            : '${l10n.fleetAge}: ${l10n.fleetAgeYears(age)}',
-        assumed: assumed,
-      ));
+      rows.add(
+        _row(
+          theme,
+          Icons.history,
+          assumed
+              ? l10n.fleetAgeApprox(age, years[0], years[1])
+              : '${l10n.fleetAge}: ${l10n.fleetAgeYears(age)}',
+          assumed: assumed,
+        ),
+      );
     }
 
     // 4) Comfort — not a number, a five-dot scale + a word (spec §4).
     if (fleet.comfortScore != null) {
-      rows.add(_comfortRow(theme, l10n, fleet.comfortScore!, fleet.approximate));
+      rows.add(
+        _comfortRow(theme, l10n, fleet.comfortScore!, fleet.approximate),
+      );
     }
 
     // 5) Capacity / articulated / length.
     if (fleet.articulated == true) {
-      rows.add(_row(theme, Icons.airline_seat_flat_angled, l10n.fleetArticulated,
-          assumed: fleet.approximate));
+      rows.add(
+        _row(
+          theme,
+          Icons.airline_seat_flat_angled,
+          l10n.fleetArticulated,
+          assumed: fleet.approximate,
+        ),
+      );
     }
     if (fleet.capacity != null) {
-      rows.add(_row(theme, Icons.groups_outlined, l10n.fleetCapacity(fleet.capacity!),
-          assumed: fleet.approximate));
+      rows.add(
+        _row(
+          theme,
+          Icons.groups_outlined,
+          l10n.fleetCapacity(fleet.capacity!),
+          assumed: fleet.approximate,
+        ),
+      );
     }
     if (fleet.lengthM != null) {
-      rows.add(_row(theme, Icons.straighten,
+      rows.add(
+        _row(
+          theme,
+          Icons.straighten,
           l10n.fleetLength(_trimMeters(fleet.lengthM!)),
-          assumed: fleet.approximate));
+          assumed: fleet.approximate,
+        ),
+      );
     }
 
     // 6) Powertrain — eco badge.
     final power = _powertrainLabel(l10n, fleet.powertrain);
     if (power != null) {
-      rows.add(_row(
-        theme,
-        fleet.powertrain.isElectric ? Icons.eco : Icons.local_gas_station_outlined,
-        power,
-        positive: fleet.powertrain.isElectric,
-        assumed: fleet.approximate,
-      ));
+      rows.add(
+        _row(
+          theme,
+          fleet.powertrain.isElectric
+              ? Icons.eco
+              : Icons.local_gas_station_outlined,
+          power,
+          positive: fleet.powertrain.isElectric,
+          assumed: fleet.approximate,
+        ),
+      );
     }
 
     // 7) USB.
     if (fleet.usb == true) {
-      rows.add(_row(theme, Icons.usb, l10n.fleetUsb, assumed: fleet.isAssumed('usb')));
+      rows.add(
+        _row(theme, Icons.usb, l10n.fleetUsb, assumed: fleet.isAssumed('usb')),
+      );
     }
 
     // Details: manufacturer + country of origin (concrete-model classes only).
@@ -308,15 +356,26 @@ class FleetModelView extends ConsumerWidget {
       final value = country == null
           ? fleet.manufacturer!
           : '${fleet.manufacturer}, $country';
-      rows.add(_row(theme, Icons.factory_outlined, l10n.fleetManufacturer(value),
-          muted: true));
+      rows.add(
+        _row(
+          theme,
+          Icons.factory_outlined,
+          l10n.fleetManufacturer(value),
+          muted: true,
+        ),
+      );
     }
 
     // Details: operator (non-GSP classes only).
     if (fleet.operatorName != null) {
-      rows.add(_row(theme, Icons.business_outlined,
+      rows.add(
+        _row(
+          theme,
+          Icons.business_outlined,
           l10n.fleetOperator(fleet.operatorName!),
-          muted: true));
+          muted: true,
+        ),
+      );
     }
 
     return rows;
@@ -379,10 +438,16 @@ class FleetModelView extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Icon(Icons.chair_outlined, size: 20, color: theme.colorScheme.onSurface),
+          Icon(
+            Icons.chair_outlined,
+            size: 20,
+            color: theme.colorScheme.onSurface,
+          ),
           const SizedBox(width: 12),
-          Text('${l10n.fleetSectionComfort}: ',
-              style: theme.textTheme.bodyMedium),
+          Text(
+            '${l10n.fleetSectionComfort}: ',
+            style: theme.textTheme.bodyMedium,
+          ),
           for (var i = 1; i <= 5; i++)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 1),
@@ -397,7 +462,9 @@ class FleetModelView extends ConsumerWidget {
           const SizedBox(width: 8),
           Text(
             assumed ? '$word ~' : word,
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
           ),
         ],
       ),

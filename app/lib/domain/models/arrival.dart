@@ -8,7 +8,10 @@ class LatLon {
   final double lon;
 
   factory LatLon.fromJson(Map<String, dynamic> json) {
-    return LatLon((json['lat'] as num).toDouble(), (json['lon'] as num).toDouble());
+    return LatLon(
+      (json['lat'] as num).toDouble(),
+      (json['lon'] as num).toDouble(),
+    );
   }
 }
 
@@ -62,7 +65,9 @@ class Arrival {
       etaMinutes: json['eta_minutes'] as int,
       stopsRemaining: json['stops_remaining'] as int?,
       routeId: json['route_id'] as String,
-      gps: json['gps'] == null ? null : LatLon.fromJson(json['gps'] as Map<String, dynamic>),
+      gps: json['gps'] == null
+          ? null
+          : LatLon.fromJson(json['gps'] as Map<String, dynamic>),
       garageNo: json['garage_no'] as String?,
       directionRouteId: json['direction_route_id'] as String?,
       heading: (json['heading'] as num?)?.toDouble(),

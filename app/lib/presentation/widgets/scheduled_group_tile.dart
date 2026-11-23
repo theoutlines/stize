@@ -19,7 +19,6 @@ class ScheduledGroupTile extends StatelessWidget {
 
   final ScheduledGroupCell cell;
 
-
   @override
   Widget build(BuildContext context) {
     // The Stiže card is live only when the design-system theme is on; OFF keeps
@@ -42,8 +41,7 @@ class ScheduledGroupTile extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.schedule,
-                size: 14, color: caption.color),
+            Icon(Icons.schedule, size: 14, color: caption.color),
             const SizedBox(width: StizeSpace.space1),
             Text(l10n.arrivalScheduled, style: caption),
           ],
@@ -53,10 +51,11 @@ class ScheduledGroupTile extends StatelessWidget {
       scheduled: true,
       etaFooter: followUps.isEmpty
           ? null
-          : Text(followUps.map((e) => clockAt(localeName, e)).join(' · '),
-              style: caption),
+          : Text(
+              followUps.map((e) => clockAt(localeName, e)).join(' · '),
+              style: caption,
+            ),
       live: false,
     );
   }
-
 }

@@ -35,5 +35,4 @@ bool keepAquariumResult({
   required bool mounted,
   required bool current,
   required bool onDemand,
-}) =>
-    mounted && current && !onDemand;
+}) => mounted && current && !onDemand;

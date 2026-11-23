@@ -51,7 +51,10 @@ class _LiveVehiclesMapState extends ConsumerState<LiveVehiclesMap>
   @override
   void initState() {
     super.initState();
-    _anim = AnimationController(vsync: this, duration: widget.animationDuration);
+    _anim = AnimationController(
+      vsync: this,
+      duration: widget.animationDuration,
+    );
     _syncArrivals();
     _playEase();
   }

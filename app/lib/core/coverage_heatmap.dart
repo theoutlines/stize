@@ -30,22 +30,36 @@ const coverageDataUrl = '$apiBaseUrl/api/v1/coverage?rev=3';
 // band, with white only in the top ~7% of density — so a single route stays a
 // dim dark-orange and only the densest corridors (centre, bridges) burn white.
 const coverageDarkRamp = <Object>[
-  0.0, 'rgba(0,0,0,0)',
-  0.08, 'rgba(60,24,4,0.5)',
-  0.4, '#8c370c',
-  0.7, '#d65a1a',
-  0.85, '#ef7b22',
-  0.93, '#ffb860',
-  1.0, '#ffffff',
+  0.0,
+  'rgba(0,0,0,0)',
+  0.08,
+  'rgba(60,24,4,0.5)',
+  0.4,
+  '#8c370c',
+  0.7,
+  '#d65a1a',
+  0.85,
+  '#ef7b22',
+  0.93,
+  '#ffb860',
+  1.0,
+  '#ffffff',
 ];
 const coverageLightRamp = <Object>[
-  0.0, 'rgba(255,255,255,0)',
-  0.08, 'rgba(120,170,214,0.45)',
-  0.4, '#6baed6',
-  0.7, '#3182bd',
-  0.85, '#2171b5',
-  0.93, '#0b4083',
-  1.0, '#08306b',
+  0.0,
+  'rgba(255,255,255,0)',
+  0.08,
+  'rgba(120,170,214,0.45)',
+  0.4,
+  '#6baed6',
+  0.7,
+  '#3182bd',
+  0.85,
+  '#2171b5',
+  0.93,
+  '#0b4083',
+  1.0,
+  '#08306b',
 ];
 
 /// The shared GeoJSON source. Adding this to a style triggers the data fetch;
@@ -69,10 +83,14 @@ List<Object> coverageRadiusExpression() => [
   'interpolate',
   ['linear'],
   ['zoom'],
-  11, 9,
-  13, 8,
-  15, 7,
-  18, 6,
+  11,
+  9,
+  13,
+  8,
+  15,
+  7,
+  18,
+  6,
 ];
 
 // ---- Coverage tab (foreground infographic) --------------------------------
@@ -86,10 +104,14 @@ List<Object> coverageTabIntensityExpression() => [
   'interpolate',
   ['linear'],
   ['zoom'],
-  11, 0.024,
-  13, 0.07,
-  15, 0.28,
-  18, 1.0,
+  11,
+  0.024,
+  13,
+  0.07,
+  15,
+  0.28,
+  18,
+  1.0,
 ];
 
 /// `heatmap-opacity` for the Coverage tab — mostly opaque, a slight fade when
@@ -98,9 +120,12 @@ List<Object> coverageTabOpacityExpression() => [
   'interpolate',
   ['linear'],
   ['zoom'],
-  11, 0.9,
-  16, 0.85,
-  18, 0.65,
+  11,
+  0.9,
+  16,
+  0.85,
+  18,
+  0.65,
 ];
 
 /// The heatmap layer for the Coverage tab. [filter] narrows the vehicle types.
@@ -188,8 +213,10 @@ List<Object> coverageMainOpacityExpression() => [
   'interpolate',
   ['linear'],
   ['zoom'],
-  kCoverageMainFadeStart, kCoverageMainMaxOpacity,
-  kCoverageMainFadeEnd, 0.0,
+  kCoverageMainFadeStart,
+  kCoverageMainMaxOpacity,
+  kCoverageMainFadeEnd,
+  0.0,
 ];
 
 /// `heatmap-intensity` for the overlay — deliberately lower than the tab so the
@@ -201,10 +228,14 @@ List<Object> coverageMainIntensityExpression() => [
   'interpolate',
   ['linear'],
   ['zoom'],
-  11, 0.04,
-  12.5, 0.07,
-  14, 0.14,
-  14.8, 0.22,
+  11,
+  0.04,
+  12.5,
+  0.07,
+  14,
+  0.14,
+  14.8,
+  0.22,
 ];
 
 /// The heatmap layer for the main-map overlay.

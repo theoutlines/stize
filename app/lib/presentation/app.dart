@@ -20,15 +20,15 @@ class StiglaApp extends ConsumerWidget {
       theme: StizeTheme.light(),
       darkTheme: StizeTheme.dark(),
       themeMode: settings?.themeMode ?? ThemeMode.system,
-      locale: settings?.localeCode != null ? Locale(settings!.localeCode!) : null,
+      locale: settings?.localeCode != null
+          ? Locale(settings!.localeCode!)
+          : null,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: appRouter,
       // Overlay a STAGING marker on the test build only.
       builder: isStaging
-          ? (context, child) => Stack(
-              children: [?child, const StagingBadge()],
-            )
+          ? (context, child) => Stack(children: [?child, const StagingBadge()])
           : null,
     );
   }

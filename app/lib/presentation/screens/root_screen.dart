@@ -39,15 +39,19 @@ class _RootScreenState extends ConsumerState<RootScreen> {
     if (_loggedAppOpen || !analyticsEnabled) return;
     _loggedAppOpen = true;
     final mode = ref.read(vehicleMapModeProvider);
-    ref.read(eventLoggerProvider).log(
-      Ev.appOpen,
-      props: {
-        'mode': mode == VehicleMapMode.aquarium ? Ev.modeAquarium : Ev.modeOnDemand,
-        'locale_class': localeClassOf(
-          WidgetsBinding.instance.platformDispatcher.locale.languageCode,
-        ),
-      },
-    );
+    ref
+        .read(eventLoggerProvider)
+        .log(
+          Ev.appOpen,
+          props: {
+            'mode': mode == VehicleMapMode.aquarium
+                ? Ev.modeAquarium
+                : Ev.modeOnDemand,
+            'locale_class': localeClassOf(
+              WidgetsBinding.instance.platformDispatcher.locale.languageCode,
+            ),
+          },
+        );
   }
 
   /// Opens the menu popover. Called from the map's round menu button, the
