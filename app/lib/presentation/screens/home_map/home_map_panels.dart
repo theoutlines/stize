@@ -178,6 +178,9 @@ extension _MapPanels on _HomeMapScreenState {
       case ContextView.settings:
         return ListView(
           controller: scrollController,
+          // Desktop panel (no sheet controller): hug the two settings rows
+          // instead of stretching to the window height.
+          shrinkWrap: scrollController == null,
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: const [SettingsPanel()],
         );
@@ -193,6 +196,7 @@ extension _MapPanels on _HomeMapScreenState {
         final formEnabled = ref.watch(feedbackFormEnabledProvider);
         return ListView(
           controller: scrollController,
+          shrinkWrap: scrollController == null,
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
             if (formEnabled)
