@@ -14,6 +14,8 @@ export default defineConfig(async () => {
           bindings: {
             TEST_MIGRATIONS: migrations,
             TEST_MIGRATIONS_ANALYTICS: analyticsMigrations,
+            // KV writes must be visible at once in tests.
+            KV_CACHE_TTL_MS: "0",
           },
         },
       }),

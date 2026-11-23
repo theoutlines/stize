@@ -13,6 +13,7 @@ import {
   sweepBudgetDecision,
   type DegradationMetrics,
 } from "./upstreamBudget";
+import { kvGetCached } from "./kvCache";
 
 // ---------------------------------------------------------------------------
 // Sentinel sweep — citywide transport-history collection.
@@ -258,8 +259,8 @@ export async function runSweepTick(
   let sentinels: string[];
   try {
     const [dayRaw, nightRaw, cursorRaw] = await Promise.all([
-      env.STIGLA_KV.get(KV_INTERVAL_DAY),
-      env.STIGLA_KV.get(KV_INTERVAL_NIGHT),
+      kvGetCached(env, KV_INTERVAL_DAY),
+      kvGetCached(env, KV_INTERVAL_NIGHT),
       readSweepState(env, STATE_CURSOR),
     ]);
     intervalSeconds = night
@@ -469,8 +470,8 @@ export async function sweepStatus(
     await Promise.all([
       getFlag(env, "analytics_sweep").catch(() => false),
       getFlag(env, "upstream_budget").catch(() => false),
-      env.STIGLA_KV.get(KV_INTERVAL_DAY),
-      env.STIGLA_KV.get(KV_INTERVAL_NIGHT),
+      kvGetCached(env, KV_INTERVAL_DAY),
+      kvGetCached(env, KV_INTERVAL_NIGHT),
       resolveJitterSeconds(env),
       resolveBudgetConfig(env),
       resolveBreakerConfig(env),
