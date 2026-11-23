@@ -126,8 +126,6 @@ class AppMenuCard extends ConsumerWidget {
     final coverage = ref.watch(coverageEnabledProvider);
     final analytics = ref.watch(analyticsEnabledProvider);
     final donateUrl = ref.watch(donateUrlProvider);
-    final version = ref.watch(appVersionProvider).valueOrNull;
-    final muted = theme.colorScheme.onSurfaceVariant;
 
     // Close the menu first, then act from the page underneath (the root
     // navigator), so destinations stack over the map, not over the menu.
@@ -211,35 +209,14 @@ class AppMenuCard extends ConsumerWidget {
                   Navigator.of(context).pop();
                 },
               ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 6, 14, 4),
-              child: Wrap(
-                spacing: 4,
-                children: [
-                  _LinkText(l10n.menuAbout,
-                      () => go((_, router) => router.push('/about'))),
-                  Text('·', style: theme.textTheme.bodySmall?.copyWith(color: muted)),
-                  _LinkText(l10n.menuLicenses, () {
-                    final host = Navigator.of(context, rootNavigator: true).context;
-                    Navigator.of(context).pop();
-                    openLicensesPage(host, l10n, version);
-                  }),
-                  Text('·', style: theme.textTheme.bodySmall?.copyWith(color: muted)),
-                  _LinkText(l10n.menuPrivacy,
-                      () => go((_, router) => router.push('/privacy'))),
-                ],
-              ),
+            // One full-height row (not three small adjacent links, which were
+            // too easy to mis-tap); licences and privacy live inside About.
+            _MenuRow(
+              icon: Icons.info_outline,
+              label: l10n.aboutTitle,
+              small: true,
+              onTap: () => go((_, router) => router.push('/about')),
             ),
-            if (version != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 6),
-                child: Text(
-                  version,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.outline,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -285,31 +262,6 @@ class _MenuRow extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LinkText extends StatelessWidget {
-  const _LinkText(this.label, this.onTap);
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-        child: Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ),

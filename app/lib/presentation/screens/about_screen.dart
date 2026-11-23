@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import '../widgets/back_to_button.dart';
+import '../widgets/drawer_footer.dart';
 
 class AboutScreen extends ConsumerWidget {
   const AboutScreen({super.key});
@@ -15,13 +17,13 @@ class AboutScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final feedMeta = ref.watch(feedMetaProvider).valueOrNull;
     final routeDataLabel = _routeDataLabel(context, l10n, feedMeta?.feedStartDate);
+    final version = ref.watch(appVersionProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
+        leading: const BackToButton(),
+        leadingWidth: BackToButton.leadingWidth,
         title: Text(l10n.aboutTitle),
-        actions: [
-          IconButton(icon: const Icon(Icons.settings_outlined), onPressed: () => context.push('/settings')),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
@@ -48,6 +50,30 @@ class AboutScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             Text(
               routeDataLabel,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+            ),
+          ],
+          // Licences and privacy live here, as full-height rows: in the menu
+          // they were small adjacent links, too easy to mis-tap on a phone.
+          const SizedBox(height: 24),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.description_outlined),
+            title: Text(l10n.drawerLicenses),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => openLicensesPage(context, l10n, version),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: Text(l10n.drawerPrivacy),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/privacy'),
+          ),
+          if (version != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              version,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
             ),
           ],

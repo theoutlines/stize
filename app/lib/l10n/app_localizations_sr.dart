@@ -681,15 +681,6 @@ class AppLocalizationsSr extends AppLocalizations {
   String get menuSupport => 'Podrži Stiže';
 
   @override
-  String get menuAbout => 'O aplikaciji';
-
-  @override
-  String get menuLicenses => 'Licence';
-
-  @override
-  String get menuPrivacy => 'Privatnost';
-
-  @override
   String get menuClose => 'Zatvori meni';
 
   @override

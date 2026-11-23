@@ -454,12 +454,15 @@
     "description": "Open-data attribution required by the licence (source body, where published, that the data is modified)."
   },
   "menuSupport": "Support Stiže",
-  "menuAbout": "About",
-  "menuLicenses": "Licenses",
-  "menuPrivacy": "Privacy",
   "menuClose": "Close menu",
   "settingsAuto": "Auto",
   "settingsAutoHint": "Auto follows your phone. Transport on the map is switched with the layers button on the map.",
   "stopBackTo": "Back to {name}",
-  "@stopBackTo": {"placeholders": {"name": {"type": "String"}}}
+  "@stopBackTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

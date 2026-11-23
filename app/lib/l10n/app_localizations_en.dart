@@ -680,15 +680,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuSupport => 'Support Stiže';
 
   @override
-  String get menuAbout => 'About';
-
-  @override
-  String get menuLicenses => 'Licenses';
-
-  @override
-  String get menuPrivacy => 'Privacy';
-
-  @override
   String get menuClose => 'Close menu';
 
   @override

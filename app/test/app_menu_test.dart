@@ -51,10 +51,14 @@ void main() {
     expect(find.text('My Stops'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Share feedback'), findsOneWidget);
-    expect(find.text('About'), findsOneWidget);
-    expect(find.text('Licenses'), findsOneWidget);
-    expect(find.text('Privacy'), findsOneWidget);
-    expect(find.text('Stiže 1.0.0 (1)'), findsOneWidget);
+    // About is one full-size row; licences and privacy moved inside it.
+    expect(find.text('About Stiže'), findsOneWidget);
+    expect(find.text('Licenses'), findsNothing);
+    // Every row is at least 44 px tall (thumb target).
+    for (final label in ['My Stops', 'Settings', 'Share feedback', 'About Stiže']) {
+      final box = tester.getSize(find.ancestor(of: find.text(label), matching: find.byType(InkWell)).first);
+      expect(box.height, greaterThanOrEqualTo(44), reason: label);
+    }
     // The map is always underneath; no "Map" destination.
     expect(find.text('Map'), findsNothing);
   });

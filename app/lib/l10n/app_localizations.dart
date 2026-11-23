@@ -1268,24 +1268,6 @@ abstract class AppLocalizations {
   /// **'Support Stiže'**
   String get menuSupport;
 
-  /// No description provided for @menuAbout.
-  ///
-  /// In en, this message translates to:
-  /// **'About'**
-  String get menuAbout;
-
-  /// No description provided for @menuLicenses.
-  ///
-  /// In en, this message translates to:
-  /// **'Licenses'**
-  String get menuLicenses;
-
-  /// No description provided for @menuPrivacy.
-  ///
-  /// In en, this message translates to:
-  /// **'Privacy'**
-  String get menuPrivacy;
-
   /// No description provided for @menuClose.
   ///
   /// In en, this message translates to:
