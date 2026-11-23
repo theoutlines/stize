@@ -179,7 +179,7 @@ class AppMenuCard extends ConsumerWidget {
       if (analytics)
         _MenuRow(
           icon: StizeIcons.stats,
-          label: 'Аналитика',
+          label: l10n.cityTitle,
           onTap: () => go((_, router) => router.push('/analytics')),
         ),
       // A compact sheet over the current screen, not a full page: two controls

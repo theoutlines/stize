@@ -34,7 +34,13 @@ class AnalyticsCell {
     required this.arrivals,
     required this.meanHeadwaySecs,
     required this.meanSpeedStopsPerMin,
+    this.delayCount = 0,
+    this.meanDelaySecs,
   });
+
+  /// Arrivals matched to the timetable, and their signed mean delay.
+  final int delayCount;
+  final double? meanDelaySecs;
 
   final int dow;
   final int hour;
@@ -50,6 +56,8 @@ class AnalyticsCell {
     arrivals: (j['arrivals'] as num?)?.toInt() ?? 0,
     meanHeadwaySecs: (j['mean_headway_secs'] as num?)?.toDouble(),
     meanSpeedStopsPerMin: (j['mean_speed_stops_per_min'] as num?)?.toDouble(),
+    delayCount: (j['delay_count'] as num?)?.toInt() ?? 0,
+    meanDelaySecs: (j['mean_delay_secs'] as num?)?.toDouble(),
   );
 }
 

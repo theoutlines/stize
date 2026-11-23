@@ -828,6 +828,8 @@ interface AggRow {
   headway_secs_sum: number;
   speed_count: number;
   speed_stops_per_min_sum: number;
+  sched_delay_count?: number;
+  sched_delay_secs_sum?: number;
 }
 
 const emptyFold = () => ({
@@ -853,7 +855,8 @@ export async function getLineAnalytics(env: Env, line: string): Promise<LineAnal
       `SELECT dow, hour,
               SUM(samples) AS samples, SUM(arrivals) AS arrivals,
               SUM(headway_count) AS headway_count, SUM(headway_secs_sum) AS headway_secs_sum,
-              SUM(speed_count) AS speed_count, SUM(speed_stops_per_min_sum) AS speed_stops_per_min_sum
+              SUM(speed_count) AS speed_count, SUM(speed_stops_per_min_sum) AS speed_stops_per_min_sum,
+              SUM(sched_delay_count) AS sched_delay_count, SUM(sched_delay_secs_sum) AS sched_delay_secs_sum
        FROM agg_line_dir_time WHERE line = ?
        GROUP BY dow, hour`,
     )
@@ -900,6 +903,9 @@ export async function getLineAnalytics(env: Env, line: string): Promise<LineAnal
       mean_speed_stops_per_min: r.speed_count
         ? Number((r.speed_stops_per_min_sum / r.speed_count).toFixed(3))
         : null,
+      // Signed mean delay vs the timetable (city section); null = unknown.
+      delay_count: r.sched_delay_count ?? 0,
+      mean_delay_secs: r.sched_delay_count ? Math.round((r.sched_delay_secs_sum ?? 0) / r.sched_delay_count) : null,
     })),
     updated_at: lastRun ? Number(lastRun.value) : null,
     punctuality: null,

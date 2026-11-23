@@ -13,6 +13,7 @@ import type {
 import { isServiceKilled, setServiceKilled } from "./lib/killswitch";
 import { FEATURE_FLAGS, getAllFlags, getFlagMemoized, isFeatureFlag, setFlag, getFlag } from "./lib/featureFlags";
 import { aggregate, getLineAnalytics } from "./lib/analytics";
+import { getCitySummary, refreshCitySummary } from "./lib/cityAnalytics";
 import { runSweepTick, sweepStatus } from "./lib/sweep";
 import { logProductEvents, sanitizeBatch } from "./lib/productAnalytics";
 import { getArrivals } from "./lib/arrivals";
@@ -566,6 +567,15 @@ app.get("/api/v1/analytics/lines/:line", async (c) => {
   return c.json(data);
 });
 
+// City section: one precomputed summary for the whole city (grid by local
+// weekday × hour, per-line rollups, totals). Read from KV; recomputed after the
+// daily aggregate, and once on a cold miss unless D1 reads are constrained.
+app.get("/api/v1/analytics/city", async (c) => {
+  const data = await getCitySummary(c.env, !(await readsConstrained(c.env)));
+  c.header("Cache-Control", "public, max-age=900");
+  return c.json(data);
+});
+
 // Run the aggregation on demand (same as the daily cron) — for testing.
 app.post("/api/v1/admin/analytics/aggregate", async (c) => {
   if (await readsConstrained(c.env)) {
@@ -728,6 +738,9 @@ export default {
           console.log(
             `analytics aggregate: ${r.buckets} buckets, window ${r.from}..${r.to}, caughtUp=${r.caughtUp}`,
           );
+          // The city page reads one precomputed summary; refresh it right after
+          // the aggregate moved (best-effort: the old one stays served).
+          await refreshCitySummary(env).catch((err) => console.error("city summary refresh failed", err));
         } catch (err) {
           console.error("analytics aggregate failed", err);
         }

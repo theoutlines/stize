@@ -30,6 +30,7 @@ import '../../domain/models/app_config.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/feed_meta.dart';
+import '../../domain/models/city_analytics.dart';
 import '../../domain/models/line_analytics.dart';
 import '../../domain/models/jam.dart';
 import '../../domain/models/pinned_line.dart';
@@ -159,6 +160,16 @@ final feedMetaProvider = FutureProvider<FeedMeta?>((ref) async {
   } catch (_) {
     return null;
   }
+});
+
+/// The city section's summary (one precomputed JSON for the whole city).
+final citySummaryProvider = FutureProvider.autoDispose<CitySummary>((
+  ref,
+) async {
+  final json = await ref
+      .watch(apiClientProvider)
+      .getJson('/api/v1/analytics/city');
+  return CitySummary.fromJson(json);
 });
 
 /// Rolled-up analytics for one line number (draft transport-analytics feature).

@@ -1513,6 +1513,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Around you'**
   String get nearbyAroundYou;
+
+  /// No description provided for @cityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'City'**
+  String get cityTitle;
+
+  /// No description provided for @cityHeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'How Belgrade transport runs'**
+  String get cityHeadline;
+
+  /// No description provided for @citySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'From arrivals our users saw'**
+  String get citySubtitle;
+
+  /// No description provided for @cityKpiDelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Average delay'**
+  String get cityKpiDelay;
+
+  /// No description provided for @cityKpiInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Typical interval'**
+  String get cityKpiInterval;
+
+  /// No description provided for @cityKpiLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines seen'**
+  String get cityKpiLines;
+
+  /// No description provided for @cityKpiArrivals.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrivals seen'**
+  String get cityKpiArrivals;
+
+  /// No description provided for @cityMin.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min'**
+  String cityMin(int n);
+
+  /// No description provided for @cityOnTime.
+  ///
+  /// In en, this message translates to:
+  /// **'on time'**
+  String get cityOnTime;
+
+  /// No description provided for @cityLateBy.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min late'**
+  String cityLateBy(int n);
+
+  /// No description provided for @cityEarlyBy.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min early'**
+  String cityEarlyBy(int n);
+
+  /// No description provided for @cityHeatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When it runs late'**
+  String get cityHeatTitle;
+
+  /// No description provided for @cityHeatSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Average delay by weekday and hour'**
+  String get cityHeatSubtitle;
+
+  /// No description provided for @cityLegendLow.
+  ///
+  /// In en, this message translates to:
+  /// **'on time'**
+  String get cityLegendLow;
+
+  /// No description provided for @cityLegendHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'often late'**
+  String get cityLegendHigh;
+
+  /// No description provided for @cityHeatWorst.
+  ///
+  /// In en, this message translates to:
+  /// **'Worst: {day} at {hour}:00, about {min} min late.'**
+  String cityHeatWorst(String day, int hour, int min);
+
+  /// No description provided for @cityHeatCell.
+  ///
+  /// In en, this message translates to:
+  /// **'{day} {hour}:00–{next}:00'**
+  String cityHeatCell(String day, int hour, int next);
+
+  /// No description provided for @cityHeatCellCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} arrivals'**
+  String cityHeatCellCount(int n);
+
+  /// No description provided for @cityHeatFew.
+  ///
+  /// In en, this message translates to:
+  /// **'too few arrivals'**
+  String get cityHeatFew;
+
+  /// No description provided for @cityLinesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines'**
+  String get cityLinesTitle;
+
+  /// No description provided for @cityLinesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Size: arrivals seen · number: average delay'**
+  String get cityLinesSubtitle;
+
+  /// No description provided for @cityLinesSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{best} is the most punctual line. {worst} runs the latest.'**
+  String cityLinesSummary(String best, String worst);
+
+  /// No description provided for @cityLegendBest.
+  ///
+  /// In en, this message translates to:
+  /// **'best'**
+  String get cityLegendBest;
+
+  /// No description provided for @cityLegendWorst.
+  ///
+  /// In en, this message translates to:
+  /// **'worst'**
+  String get cityLegendWorst;
+
+  /// No description provided for @cityLegendThin.
+  ///
+  /// In en, this message translates to:
+  /// **'too few arrivals to judge'**
+  String get cityLegendThin;
+
+  /// No description provided for @cityIntervalsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Longest real intervals'**
+  String get cityIntervalsTitle;
+
+  /// No description provided for @cityIntervalsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Evenings 21:00 to 01:00, average wait'**
+  String get cityIntervalsSubtitle;
+
+  /// No description provided for @cityNote.
+  ///
+  /// In en, this message translates to:
+  /// **'We only see stops people open, at the hours they open them. Lines with too few arrivals are not ranked.'**
+  String get cityNote;
+
+  /// No description provided for @cityEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough arrivals yet'**
+  String get cityEmptyTitle;
+
+  /// No description provided for @cityEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Stats appear once we have seen at least {min} arrivals.'**
+  String cityEmptyBody(int min);
+
+  /// No description provided for @cityLineUsual.
+  ///
+  /// In en, this message translates to:
+  /// **'Usually at this hour'**
+  String get cityLineUsual;
+
+  /// No description provided for @cityLineEvery.
+  ///
+  /// In en, this message translates to:
+  /// **'every {n} min'**
+  String cityLineEvery(int n);
+
+  /// No description provided for @cityLineHeatSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This line, by weekday and hour'**
+  String get cityLineHeatSubtitle;
+
+  /// No description provided for @cityLineThinBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We have seen {n} arrivals of this line. Stats appear after {min}.'**
+  String cityLineThinBody(int n, int min);
+
+  /// No description provided for @cityLineNoHour.
+  ///
+  /// In en, this message translates to:
+  /// **'no data for this hour'**
+  String get cityLineNoHour;
 }
 
 class _AppLocalizationsDelegate

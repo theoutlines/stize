@@ -67,6 +67,9 @@ LineTypeIndex _lineTypeIndex = LineTypeIndex.empty;
 /// once the lines are loaded; safe to call again on refresh.
 void setLineTypeIndex(LineTypeIndex index) => _lineTypeIndex = index;
 
+/// The transport type of a line number (bus when the index has not loaded).
+VehicleType lineTypeOf(String line) => _lineTypeIndex.typeOf(line);
+
 /// Tram line numbers, exposed so the map can draw the tram rail network (C2).
 /// Empty until [setLineTypeIndex] has run.
 List<String> get tramLineNumbers => _lineTypeIndex.tramLineNumbers;

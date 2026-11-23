@@ -509,5 +509,128 @@
     }
   },
   "locateMeTooltip": "Show where I am",
-  "nearbyAroundYou": "Around you"
+  "nearbyAroundYou": "Around you",
+  "cityTitle": "City",
+  "cityHeadline": "How Belgrade transport runs",
+  "citySubtitle": "From arrivals our users saw",
+  "cityKpiDelay": "Average delay",
+  "cityKpiInterval": "Typical interval",
+  "cityKpiLines": "Lines seen",
+  "cityKpiArrivals": "Arrivals seen",
+  "cityMin": "{n} min",
+  "@cityMin": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "cityOnTime": "on time",
+  "cityLateBy": "{n} min late",
+  "@cityLateBy": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "cityEarlyBy": "{n} min early",
+  "@cityEarlyBy": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "cityHeatTitle": "When it runs late",
+  "cityHeatSubtitle": "Average delay by weekday and hour",
+  "cityLegendLow": "on time",
+  "cityLegendHigh": "often late",
+  "cityHeatWorst": "Worst: {day} at {hour}:00, about {min} min late.",
+  "@cityHeatWorst": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "hour": {
+        "type": "int"
+      },
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "cityHeatCell": "{day} {hour}:00–{next}:00",
+  "@cityHeatCell": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "hour": {
+        "type": "int"
+      },
+      "next": {
+        "type": "int"
+      }
+    }
+  },
+  "cityHeatCellCount": "{n} arrivals",
+  "@cityHeatCellCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "cityHeatFew": "too few arrivals",
+  "cityLinesTitle": "Lines",
+  "cityLinesSubtitle": "Size: arrivals seen · number: average delay",
+  "cityLinesSummary": "{best} is the most punctual line. {worst} runs the latest.",
+  "@cityLinesSummary": {
+    "placeholders": {
+      "best": {
+        "type": "String"
+      },
+      "worst": {
+        "type": "String"
+      }
+    }
+  },
+  "cityLegendBest": "best",
+  "cityLegendWorst": "worst",
+  "cityLegendThin": "too few arrivals to judge",
+  "cityIntervalsTitle": "Longest real intervals",
+  "cityIntervalsSubtitle": "Evenings 21:00 to 01:00, average wait",
+  "cityNote": "We only see stops people open, at the hours they open them. Lines with too few arrivals are not ranked.",
+  "cityEmptyTitle": "Not enough arrivals yet",
+  "cityEmptyBody": "Stats appear once we have seen at least {min} arrivals.",
+  "@cityEmptyBody": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "cityLineUsual": "Usually at this hour",
+  "cityLineEvery": "every {n} min",
+  "@cityLineEvery": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "cityLineHeatSubtitle": "This line, by weekday and hour",
+  "cityLineThinBody": "We have seen {n} arrivals of this line. Stats appear after {min}.",
+  "@cityLineThinBody": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "cityLineNoHour": "no data for this hour"
 }
