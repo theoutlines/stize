@@ -255,7 +255,8 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
           const LiveUnavailableBanner(),
         ?widget.aboveFreshness,
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+          // Reads as the title's subline: tight under the level header.
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
           child: Text(
             _freshnessLabel(l10n, board.updatedAt),
             style: theme.textTheme.bodySmall?.copyWith(

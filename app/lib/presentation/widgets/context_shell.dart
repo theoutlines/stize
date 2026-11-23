@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'level_header.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -71,7 +73,11 @@ class ContextPanel extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(8, 8, 12, 6),
                     child: searchField!,
                   ),
-                if (navRow != null)
+                // A LevelHeader owns its insets (one 16px left edge with the
+                // content); other nav rows keep the panel's padding.
+                if (navRow is LevelHeader)
+                  navRow!
+                else if (navRow != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(4, 0, 8, 4),
                     child: navRow!,

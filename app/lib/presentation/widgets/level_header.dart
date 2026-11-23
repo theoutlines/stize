@@ -32,31 +32,50 @@ class LevelHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final hasBack = backLabel != null && onBack != null;
+    // One left edge for everything in a level (owner, 2026-11-23): back
+    // link, title, the board's update time, chips and cards all start 16px in.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: const EdgeInsets.fromLTRB(16, 10, 2, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           if (hasBack)
-            TextButton.icon(
-              onPressed: onBack,
-              icon: const Icon(StizeIcons.back, size: 18),
-              label: Text(
-                backLabel!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              style: TextButton.styleFrom(
-                foregroundColor: scheme.onSurfaceVariant,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: const Size(0, 36),
-                tapTargetSize: MaterialTapTargetSize.padded,
+            // A plain text link, no pill: arrow + previous level's name.
+            Semantics(
+              button: true,
+              child: InkWell(
+                onTap: onBack,
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  height: 36,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        StizeIcons.back,
+                        size: 18,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          backLabel!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                ),
               ),
             ),
           Row(
             children: [
-              const SizedBox(width: 8),
               // Title + star take all the room up to the close button (a
               // Flexible + Spacer pair split it in half and cut long names).
               Expanded(
