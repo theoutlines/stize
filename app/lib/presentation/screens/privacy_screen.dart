@@ -1,3 +1,5 @@
+import 'package:stize/presentation/widgets/page_app_bar.dart';
+import 'package:stize/core/design/components/stize_page_column.dart';
 import 'package:flutter/material.dart';
 import 'package:stize/core/design/stize_text.dart';
 
@@ -25,21 +27,23 @@ class PrivacyScreen extends StatelessWidget {
       ),
     );
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.privacyTitle)),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          children: [
-            Text(l10n.privacyIntro, style: StizeText.of(context).body),
-            const SizedBox(height: 24),
-            section(l10n.privacyLocationTitle, l10n.privacyLocationBody),
-            section(l10n.privacyAnalyticsTitle, l10n.privacyAnalyticsBody),
-            section(l10n.privacyTrackersTitle, l10n.privacyTrackersBody),
-            section(l10n.privacyFeedbackTitle, l10n.privacyFeedbackBody),
-            section(l10n.privacyServicesTitle, l10n.privacyServicesBody),
-            section(l10n.privacyOpenSourceTitle, l10n.privacyOpenSourceBody),
-          ],
+    return StizePageColumn(
+      child: Scaffold(
+        appBar: pageAppBar(context, l10n.privacyTitle),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            children: [
+              Text(l10n.privacyIntro, style: StizeText.of(context).body),
+              const SizedBox(height: 24),
+              section(l10n.privacyLocationTitle, l10n.privacyLocationBody),
+              section(l10n.privacyAnalyticsTitle, l10n.privacyAnalyticsBody),
+              section(l10n.privacyTrackersTitle, l10n.privacyTrackersBody),
+              section(l10n.privacyFeedbackTitle, l10n.privacyFeedbackBody),
+              section(l10n.privacyServicesTitle, l10n.privacyServicesBody),
+              section(l10n.privacyOpenSourceTitle, l10n.privacyOpenSourceBody),
+            ],
+          ),
         ),
       ),
     );
