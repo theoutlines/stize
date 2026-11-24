@@ -415,25 +415,58 @@ void main() {
         );
     expect(horizontal, isNotEmpty);
 
-    // Every chip is built — including the last one, off-screen to the right —
-    // so nothing is clipped away. (A SingleChildScrollView builds all children.)
+    // Chips only for lines with an arrival on the board (owner, 2026-11-24):
+    // the 20 lines that aren't coming get no chip.
     expect(find.widgetWithText(StizeTextChip, 'All lines'), findsOneWidget);
     expect(find.widgetWithText(StizeLineChip, '401'), findsOneWidget);
-    expect(find.widgetWithText(StizeLineChip, '863'), findsOneWidget);
+    expect(find.widgetWithText(StizeLineChip, '405'), findsOneWidget);
+    expect(find.widgetWithText(StizeLineChip, '863'), findsNothing);
 
     // Both arrivals show before filtering.
     expect(find.text('3 stops away'), findsOneWidget); // line 401
     expect(find.text('7 stops away'), findsOneWidget); // line 405
 
-    // Tapping the 401 chip filters the list down to just line 401.
+    // From "All lines" a tap picks only that line.
     await tester.tap(find.widgetWithText(StizeLineChip, '401'));
     await tester.pumpAndSettle();
+    expect(find.text('3 stops away'), findsOneWidget);
+    expect(find.text('7 stops away'), findsNothing);
 
-    expect(find.text('3 stops away'), findsOneWidget); // 401 stays
-    expect(find.text('7 stops away'), findsNothing); // 405 filtered out
+    // A second line is added, not swapped in.
+    await tester.tap(find.widgetWithText(StizeLineChip, '405'));
+    await tester.pumpAndSettle();
+    expect(find.text('3 stops away'), findsOneWidget);
+    expect(find.text('7 stops away'), findsOneWidget);
+
+    // Untick both: back to "All lines".
+    await tester.tap(find.widgetWithText(StizeLineChip, '401'));
+    await tester.pumpAndSettle();
+    expect(find.text('3 stops away'), findsNothing);
+    await tester.tap(find.widgetWithText(StizeLineChip, '405'));
+    await tester.pumpAndSettle();
+    expect(find.text('3 stops away'), findsOneWidget);
+    expect(find.text('7 stops away'), findsOneWidget);
+    final all = tester.widget<StizeTextChip>(
+      find.widgetWithText(StizeTextChip, 'All lines'),
+    );
+    expect(all.selected, isTrue);
   });
 
-  testWidgets('toggling favorite updates the star icon', (tester) async {
+  test('toggleLineFilter: all → one → add → remove → all', () {
+    var f = toggleLineFilter(const {}, '5');
+    expect(f, {'5'});
+    f = toggleLineFilter(f, '6');
+    expect(f, {'5', '6'});
+    f = toggleLineFilter(f, '5');
+    expect(f, {'6'});
+    f = toggleLineFilter(f, '6');
+    expect(f, isEmpty);
+    expect(toggleLineFilter({'5', '6'}, null), isEmpty);
+  });
+
+  testWidgets('More menu adds the stop to My Stops; the star shows as status', (
+    tester,
+  ) async {
     final favorites = _FakeFavoritesRepository();
     await tester.pumpWidget(
       _wrap(
@@ -444,12 +477,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(StizeIcons.star), findsOneWidget);
+    // No star button on screen any more, and no report row at the end.
+    expect(find.byIcon(StizeIcons.star), findsNothing);
+    expect(find.byIcon(StizeIcons.starFilled), findsNothing);
+    expect(find.text('Something wrong with this stop?'), findsNothing);
 
-    await tester.tap(find.byIcon(StizeIcons.star));
+    await tester.tap(find.byIcon(StizeIcons.more));
+    await tester.pumpAndSettle();
+    expect(find.text('Share stop'), findsOneWidget);
+    expect(find.text('Report a problem'), findsOneWidget);
+    await tester.tap(find.text('Add to My Stops'));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(StizeIcons.starFilled), findsOneWidget);
     expect(await favorites.isFavorite('20091'), isTrue);
+    expect(find.byIcon(StizeIcons.starFilled), findsOneWidget);
   });
 }

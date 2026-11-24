@@ -196,3 +196,21 @@ The **stop shutter** (in-app — the `stop_sheet.dart` bottom sheet; the same re
 is mirrored by `StopScreen` for the deep link `/stop/:id`) **and the Nearby
 shutter** (5). The mini-map and Planned rows on a complete absence of live (Phase-1
 behaviour) are **outside** this change.
+
+## Reachability (2026-11-24, owner decision)
+
+A planned departure is shown only if its trip has not left the terminus yet:
+`eta >= lead - 2 min`, where `lead` is how long the trip has been on the road
+when it reaches this stop. A trip already on the road without a live vehicle is
+a phantom and is never shown. No exceptions.
+
+- `lead` is baked per departure into `schedule/<stop>.json` (aligned 1:1 with
+  `svc`) by `backend/scripts/build-schedule-lead.mjs`, from `trips/` + `shapes/`.
+  `null` = no trip data (kept: can't be judged).
+- Order in the Worker: upcoming (reachable and not) → dedup against live (a live
+  vehicle consumes its own timetable trip) → drop unreachable.
+- The count/window rules (`minTrips`, `windowMinutes`) count reachable ones only.
+- Map: no scheduled objects at all. A planned trip "in transit" without live is by
+  definition a trip that already left the terminus.
+- Offline timetable board (API down, `serviceStatus: unavailable`): unchanged.
+  With no live data at all we can't tell a phantom from an untracked vehicle.

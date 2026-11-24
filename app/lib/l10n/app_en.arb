@@ -251,8 +251,6 @@
       }
     }
   },
-  "fleetSortByTime": "By time",
-  "fleetSortByComfort": "By comfort",
   "fleetUnknownModel": "Model unknown",
   "fleetSectionComfort": "Comfort",
   "fleetSectionAmenities": "On board",
@@ -415,6 +413,11 @@
     "description": "Destination label when the line ends at the stop being viewed."
   },
   "stopReportEntry": "Something wrong with this stop?",
+  "stopMore": "More",
+  "stopShare": "Share stop",
+  "stopLinkCopied": "Link copied",
+  "stopReportProblem": "Report a problem",
+  "stopInMyStops": "In My Stops",
   "stopReportTitle": "What’s wrong?",
   "stopReportNotHere": "The stop isn’t here or it’s elsewhere",
   "stopReportWrongType": "Wrong type (bus, tram, trolleybus)",

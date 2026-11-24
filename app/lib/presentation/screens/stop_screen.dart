@@ -10,11 +10,11 @@ import '../../core/api_config.dart';
 import '../../core/foreground.dart';
 import '../../core/live_position.dart';
 import '../../data/analytics/event_logger.dart';
-import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/route_alert.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/stop_header_actions.dart';
 import '../widgets/stop_arrivals_list.dart';
 import '../widgets/jam_stop_banner.dart';
 import '../widgets/live_vehicles_map.dart';
@@ -75,12 +75,6 @@ class _StopScreenState extends ConsumerState<StopScreen> {
     final stopLocation = ref
         .watch(stopLocationProvider(widget.stopId))
         .valueOrNull;
-    final isFavoriteAsync = ref
-        .watch(favoritesControllerProvider)
-        .maybeWhen(
-          data: (favs) => favs.any((f) => f.stopId == widget.stopId),
-          orElse: () => false,
-        );
 
     final allAlerts =
         ref.watch(alertsProvider).valueOrNull ?? const <RouteAlert>[];
@@ -95,28 +89,13 @@ class _StopScreenState extends ConsumerState<StopScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          board.valueOrNull?.stopName ?? widget.initialStopName ?? '',
+        // Star status + More right after the name, as on the in-app board.
+        title: Row(
+          children: [
+            Flexible(child: Text(stopName, overflow: TextOverflow.ellipsis)),
+            StopHeaderActions(stopId: widget.stopId, stopName: stopName),
+          ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isFavoriteAsync ? StizeIcons.starFilled : StizeIcons.star,
-            ),
-            onPressed: () {
-              final notifier = ref.read(favoritesControllerProvider.notifier);
-              if (isFavoriteAsync) {
-                notifier.remove(widget.stopId);
-              } else {
-                final name =
-                    board.valueOrNull?.stopName ??
-                    widget.initialStopName ??
-                    widget.stopId;
-                notifier.add(FavoriteStop(stopId: widget.stopId, name: name));
-              }
-            },
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(arrivalsProvider(widget.stopId)),

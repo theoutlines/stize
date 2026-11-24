@@ -680,18 +680,6 @@ abstract class AppLocalizations {
   /// **'#{number}'**
   String fleetVehicleNumber(String number);
 
-  /// No description provided for @fleetSortByTime.
-  ///
-  /// In en, this message translates to:
-  /// **'By time'**
-  String get fleetSortByTime;
-
-  /// No description provided for @fleetSortByComfort.
-  ///
-  /// In en, this message translates to:
-  /// **'By comfort'**
-  String get fleetSortByComfort;
-
   /// No description provided for @fleetUnknownModel.
   ///
   /// In en, this message translates to:
@@ -1153,6 +1141,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something wrong with this stop?'**
   String get stopReportEntry;
+
+  /// No description provided for @stopMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get stopMore;
+
+  /// No description provided for @stopShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share stop'**
+  String get stopShare;
+
+  /// No description provided for @stopLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get stopLinkCopied;
+
+  /// No description provided for @stopReportProblem.
+  ///
+  /// In en, this message translates to:
+  /// **'Report a problem'**
+  String get stopReportProblem;
+
+  /// No description provided for @stopInMyStops.
+  ///
+  /// In en, this message translates to:
+  /// **'In My Stops'**
+  String get stopInMyStops;
 
   /// No description provided for @stopReportTitle.
   ///

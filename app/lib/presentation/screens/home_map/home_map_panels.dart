@@ -126,7 +126,9 @@ extension _MapPanels on _HomeMapScreenState {
               : null,
           onBack: _slotBack,
           onClose: _closeAllLevels,
-          trailing: top is _StopLevel ? _slotStarButton(top.id, title) : null,
+          trailing: top is _StopLevel
+              ? StopHeaderActions(stopId: top.id, stopName: title)
+              : null,
         );
       case ContextView.vehicle:
         final track = _selectedVehicleKey == null
@@ -285,32 +287,6 @@ extension _MapPanels on _HomeMapScreenState {
               _openSlotModel(fleet, garageNo: _selectedVehicleKey, type: type),
         );
     }
-  }
-
-  /// The favourite star for the stop nav row (host-owned so the board can be
-  /// body-only). Watches + toggles the favourites controller.
-  Widget _slotStarButton(String stopId, String stopName) {
-    final isFav = ref
-        .watch(favoritesControllerProvider)
-        .maybeWhen(
-          data: (favs) => favs.any((f) => f.stopId == stopId),
-          orElse: () => false,
-        );
-    return IconButton(
-      icon: Icon(isFav ? StizeIcons.starFilled : StizeIcons.star),
-      color: isFav ? StizeColors.of(context).favorite : null,
-      tooltip: isFav
-          ? AppLocalizations.of(context).removeFromFavorites
-          : AppLocalizations.of(context).addToFavorites,
-      onPressed: () {
-        final notifier = ref.read(favoritesControllerProvider.notifier);
-        if (isFav) {
-          notifier.remove(stopId);
-        } else {
-          notifier.add(FavoriteStop(stopId: stopId, name: stopName));
-        }
-      },
-    );
   }
 
   /// Build the followed vehicle's upcoming-stop list (owner R1 #5) from the

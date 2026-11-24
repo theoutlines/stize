@@ -5,11 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_config.dart';
-import '../../core/design/stize_tokens.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/foreground.dart';
 import '../../domain/models/arrival.dart';
-import '../../domain/models/favorite_stop.dart';
 import '../../domain/models/route_alert.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
@@ -18,6 +16,7 @@ import 'empty_state.dart';
 import 'stop_arrivals_list.dart';
 import 'jam_stop_banner.dart';
 import 'route_alerts_strip.dart';
+import 'stop_header_actions.dart';
 import '../../core/design/stize_icons.dart';
 
 /// The reusable "stop" view — a stop's live arrivals board, with no assumption
@@ -123,12 +122,6 @@ class _StopBoardState extends ConsumerState<StopBoard> {
 
     final stopName =
         board.valueOrNull?.stopName ?? widget.initialStopName ?? '';
-    final isFavorite = ref
-        .watch(favoritesControllerProvider)
-        .maybeWhen(
-          data: (favs) => favs.any((f) => f.stopId == widget.stopId),
-          orElse: () => false,
-        );
 
     final allAlerts =
         ref.watch(alertsProvider).valueOrNull ?? const <RouteAlert>[];
@@ -141,7 +134,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.showHeader) _header(theme, stopName, isFavorite),
+        if (widget.showHeader) _header(theme, stopName),
         if (widget.showHeader) const Divider(height: 1),
         Expanded(
           child: ListView(
@@ -176,26 +169,22 @@ class _StopBoardState extends ConsumerState<StopBoard> {
     );
   }
 
-  Widget _header(ThemeData theme, String stopName, bool isFavorite) {
+  Widget _header(ThemeData theme, String stopName) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 8, 8),
       child: Row(
         children: [
-          Expanded(
+          // Name, then the star status + More right after it; close stays on
+          // the far right, away from More.
+          Flexible(
             child: Text(
               stopName,
               style: StizeText.of(context).section,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          IconButton(
-            icon: Icon(isFavorite ? StizeIcons.starFilled : StizeIcons.star),
-            color: isFavorite ? StizeColors.of(context).favorite : null,
-            tooltip: isFavorite
-                ? AppLocalizations.of(context).removeFromFavorites
-                : AppLocalizations.of(context).addToFavorites,
-            onPressed: () => _toggleFavorite(stopName, isFavorite),
-          ),
+          StopHeaderActions(stopId: widget.stopId, stopName: stopName),
+          const Spacer(),
           if (widget.onClose != null)
             IconButton(
               icon: const Icon(StizeIcons.close),
@@ -204,14 +193,5 @@ class _StopBoardState extends ConsumerState<StopBoard> {
         ],
       ),
     );
-  }
-
-  void _toggleFavorite(String stopName, bool isFavorite) {
-    final notifier = ref.read(favoritesControllerProvider.notifier);
-    if (isFavorite) {
-      notifier.remove(widget.stopId);
-    } else {
-      notifier.add(FavoriteStop(stopId: widget.stopId, name: stopName));
-    }
   }
 }

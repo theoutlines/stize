@@ -5,6 +5,27 @@ history (what changed for riders and developers), not a commit log.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
+## 2026-11-24
+
+### Changed
+- **No phantom arrivals.** A timetable departure is shown only if its trip has
+  not left the terminus yet. A trip already on the road without a live vehicle
+  either runs untracked or doesn't run, so it is no longer listed ("tram 5 in
+  1 min" at a stop 11 min from the terminus). Scheduled vehicles are no longer
+  drawn on the map at all, for the same reason.
+- **Stop header:** the star button and the "Something wrong with this stop?"
+  row are gone. A More button right after the stop name holds Add to My Stops,
+  Share stop and Report a problem; a small star after the name shows the stop
+  is in My Stops. The list ends with its last card.
+- **Line filter:** "All lines" is picked by default; unpicked line chips are
+  neutral and a picked one takes its line colour. From "All lines" a tap picks
+  just that line, further taps add or remove lines. Only lines with an arrival
+  get a chip.
+
+### Removed
+- **By time / By comfort sort** on the stop board. Comfort badges stay on the
+  cards.
+
 ## 2026-11-22
 
 ### Added

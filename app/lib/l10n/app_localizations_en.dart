@@ -348,12 +348,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get fleetSortByTime => 'By time';
-
-  @override
-  String get fleetSortByComfort => 'By comfort';
-
-  @override
   String get fleetUnknownModel => 'Model unknown';
 
   @override
@@ -613,6 +607,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stopReportEntry => 'Something wrong with this stop?';
+
+  @override
+  String get stopMore => 'More';
+
+  @override
+  String get stopShare => 'Share stop';
+
+  @override
+  String get stopLinkCopied => 'Link copied';
+
+  @override
+  String get stopReportProblem => 'Report a problem';
+
+  @override
+  String get stopInMyStops => 'In My Stops';
 
   @override
   String get stopReportTitle => 'What’s wrong?';

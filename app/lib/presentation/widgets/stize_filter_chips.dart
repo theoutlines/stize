@@ -37,9 +37,10 @@ int? stizeNextEtaForLine(List<Arrival> all, Arrival current) {
   return best;
 }
 
-/// Line-filter chip filled with the line's transit colour (white number), 36
-/// high / 20 radius, min-width 48. A picked chip keeps its fill and adds an
-/// ink ring.
+/// Line-filter chip (owner pick C, 2026-11-24). Unpicked: the neutral
+/// `fill-07` chip with the number in `ink-75`, like "All lines" at rest, so a
+/// row of lines never reads as "all picked". Picked: the whole chip turns the
+/// line's transit colour with a white number. 36 high, 20 radius, min 48 wide.
 class StizeLineChip extends StatelessWidget {
   const StizeLineChip({
     super.key,
@@ -57,30 +58,28 @@ class StizeLineChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = StizeColors.of(context);
-    return Material(
-      color: color,
-      borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          height: StizeSize.chipH,
-          constraints: const BoxConstraints(minWidth: 48),
-          padding: const EdgeInsets.symmetric(horizontal: StizeSpace.space3),
-          decoration: selected
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
-                  border: Border.all(color: c.ink, width: 2),
-                )
-              : null,
-          // widthFactor 1: the chip is as wide as its number, never the row.
-          child: Center(
-            widthFactor: 1,
-            child: Text(
-              line,
-              style: StizeType.control.copyWith(
-                fontSize: 16,
-                color: c.onTransit,
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? color : c.fill07,
+        borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            height: StizeSize.chipH,
+            constraints: const BoxConstraints(minWidth: 48),
+            padding: const EdgeInsets.symmetric(horizontal: StizeSpace.space3),
+            // widthFactor 1: the chip is as wide as its number, never the row.
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                line,
+                style: StizeType.control.copyWith(
+                  fontSize: 16,
+                  color: selected ? c.onTransit : c.ink75,
+                ),
               ),
             ),
           ),
@@ -131,28 +130,39 @@ class StizeTextChip extends StatelessWidget {
   }
 }
 
+/// The next filter after a tap (owner, 2026-11-24). An empty set means
+/// "All lines". From "All lines" a line tap picks only that line (nobody has to
+/// untick the rest); after that taps add or remove lines; removing the last one
+/// returns to "All lines". A tap on "All lines" ([line] null) clears the rest.
+Set<String> toggleLineFilter(Set<String> current, String? line) {
+  if (line == null) return const {};
+  if (current.contains(line)) return {...current}..remove(line);
+  return {...current, line};
+}
+
 /// The one line-filter row for both stop render paths (in-app
-/// panel + /stop/:id): "All lines" + a transit-colour chip per line, one
-/// horizontally scrolling row starting at the cards' 16px edge. Lines with no
-/// arrival right now are shown faded and inert.
+/// panel + /stop/:id): "All lines" + a chip per line with an arrival on the
+/// board, one horizontally scrolling row starting at the cards' 16px edge.
 class StizeLineFilterRow extends StatelessWidget {
   const StizeLineFilterRow({
     super.key,
     required this.allLabel,
-    required this.allLines,
-    required this.arrivingLines,
+    required this.lines,
     required this.typeByLine,
     required this.selected,
     required this.onSelect,
   });
 
   final String allLabel;
-  final List<String> allLines;
-  final Set<String> arrivingLines;
+
+  /// Lines with an arrival on the board, in display order.
+  final List<String> lines;
   final Map<String, VehicleType> typeByLine;
 
-  /// The picked line, or null for "All lines".
-  final String? selected;
+  /// The picked lines; empty = "All lines".
+  final Set<String> selected;
+
+  /// Called with the tapped line, or null for "All lines".
   final ValueChanged<String?> onSelect;
 
   @override
@@ -169,27 +179,16 @@ class StizeLineFilterRow extends StatelessWidget {
         children: [
           StizeTextChip(
             label: allLabel,
-            selected: selected == null,
+            selected: selected.isEmpty,
             onTap: () => onSelect(null),
           ),
-          for (final line in allLines)
-            if (arrivingLines.contains(line))
-              StizeLineChip(
-                line: line,
-                color: stizeChipColor(c, typeByLine[line]),
-                selected: selected == line,
-                onTap: () => onSelect(line),
-              )
-            else
-              Opacity(
-                opacity: 0.4,
-                child: StizeLineChip(
-                  line: line,
-                  color: stizeChipColor(c, typeByLine[line]),
-                  selected: false,
-                  onTap: null,
-                ),
-              ),
+          for (final line in lines)
+            StizeLineChip(
+              line: line,
+              color: stizeChipColor(c, typeByLine[line]),
+              selected: selected.contains(line),
+              onTap: () => onSelect(line),
+            ),
         ],
       ),
     );

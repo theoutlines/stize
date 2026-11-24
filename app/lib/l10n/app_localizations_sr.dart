@@ -349,12 +349,6 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
-  String get fleetSortByTime => 'Po vremenu';
-
-  @override
-  String get fleetSortByComfort => 'Po komforu';
-
-  @override
   String get fleetUnknownModel => 'Model nepoznat';
 
   @override
@@ -614,6 +608,21 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get stopReportEntry => 'Nešto nije u redu sa ovom stanicom?';
+
+  @override
+  String get stopMore => 'Više';
+
+  @override
+  String get stopShare => 'Podeli stajalište';
+
+  @override
+  String get stopLinkCopied => 'Link je kopiran';
+
+  @override
+  String get stopReportProblem => 'Prijavi problem';
+
+  @override
+  String get stopInMyStops => 'U Mojim stajalištima';
 
   @override
   String get stopReportTitle => 'Šta nije u redu?';

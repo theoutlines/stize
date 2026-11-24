@@ -169,6 +169,9 @@ export async function getArrivals(
           (liveByRoute.get(key) ?? liveByRoute.set(key, []).get(key)!).push(a.eta_minutes);
         }
         scheduled = dedupScheduledAgainstLive(scheduled, liveByRoute);
+        // Reachability: after live vehicles have consumed their own trips, drop
+        // every remaining trip that has already left the terminus: no phantoms.
+        scheduled = scheduled.filter((s) => s.reachable);
         for (const s of scheduled) {
           const lm = await getLineByNumber(env, s.line);
           arrivals.push({

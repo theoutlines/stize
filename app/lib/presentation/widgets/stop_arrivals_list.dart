@@ -22,12 +22,11 @@ import 'fleet_model_card.dart';
 import 'live_unavailable_banner.dart';
 import 'scheduled_group_tile.dart';
 import 'stize_filter_chips.dart';
-import 'stop_report_sheet.dart';
 import '../../core/design/stize_icons.dart';
 
 /// THE arrivals list of a stop, shared by both shutters: the in-app sheet
 /// ([StopBoard]) and the `/stop/:id` deep-link screen ([StopScreen]). Owns the
-/// line filter, the comfort sort, the line×direction folding, the ETA-change
+/// line filter, the line×direction folding, the ETA-change
 /// badges and the card wiring, so a change to how arrivals render is made once.
 ///
 /// The hosts keep only their chrome (header / app bar, alerts, jam banner,
@@ -69,11 +68,8 @@ class StopArrivalsList extends ConsumerStatefulWidget {
 }
 
 class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
-  String? _lineFilter;
-
-  /// B4: optional "sort by comfort" instead of the default time order. Only
-  /// offered when ≥2 arriving vehicles of different classes are identified.
-  bool _sortByComfort = false;
+  /// Picked lines; empty = "All lines" (see [toggleLineFilter]).
+  Set<String> _lineFilter = const {};
 
   // ETA-change tracking (G1): the last absolute predicted arrival instant per
   // live vehicle, and the signed whole-minute delta from the latest refresh.
@@ -126,37 +122,31 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
       );
     }
 
-    final arrivingLines = board.arrivals.map((a) => a.line).toSet();
-    // Only chip non-empty lines — a blank value would render an empty chip (F6).
-    final allLines = {
-      ...widget.stopLines,
-      ...arrivingLines,
-    }.where((l) => l.trim().isNotEmpty).toList()..sort(compareLineNames);
+    // Chips only for lines with an arrival on the board: filtering by a line
+    // that isn't coming is a dead end. Non-empty only: a blank value would
+    // render an empty chip (F6).
+    final chipLines =
+        board.arrivals
+            .map((a) => a.line)
+            .where((l) => l.trim().isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort(compareLineNames);
 
-    // If a filtered line stops arriving, fall back to "all" without mutating
-    // state during build.
-    final effectiveFilter =
-        (_lineFilter != null && arrivingLines.contains(_lineFilter))
-        ? _lineFilter
-        : null;
-    final visibleArrivals = effectiveFilter == null
+    // A picked line that stops arriving drops out of the filter without
+    // mutating state during build; none left = "All lines".
+    final effectiveFilter = _lineFilter.where(chipLines.contains).toSet();
+    final visibleArrivals = effectiveFilter.isEmpty
         ? board.arrivals
-        : board.arrivals.where((a) => a.line == effectiveFilter).toList();
+        : board.arrivals
+              .where((a) => effectiveFilter.contains(a.line))
+              .toList();
 
     // Fleet-ID (B1–B5). A null catalog silently disables every Fleet surface.
     final catalog = ref.watch(fleetCatalogProvider).valueOrNull;
     final fleetByIndex = <FleetVehicle?>[
       for (final a in visibleArrivals) catalog?.resolve(a.garageNo),
     ];
-
-    // B4 gate: offer the comfort sort only when the identified vehicles span
-    // ≥2 distinct classes (a toggle with no effect is worse than none).
-    final distinctClasses = <String>{
-      for (final f in fleetByIndex)
-        if (f != null && f.hasInfo && f.comfortScore != null) f.id ?? '',
-    }..remove('');
-    final canSortByComfort = distinctClasses.length >= 2;
-    final sortByComfort = canSortByComfort && _sortByComfort;
 
     final destinations =
         ref.watch(lineDestinationsProvider).valueOrNull ??
@@ -220,21 +210,7 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
       firstCard = false;
     }
 
-    if (sortByComfort) {
-      // A deliberately flat, live-only reorder: comfort first, time breaks ties.
-      final order = [for (var i = 0; i < visibleArrivals.length; i++) i]
-        ..sort((a, b) {
-          final ca = fleetByIndex[a]?.comfortScore ?? -1;
-          final cb = fleetByIndex[b]?.comfortScore ?? -1;
-          if (ca != cb) return cb.compareTo(ca);
-          return visibleArrivals[a].etaMinutes.compareTo(
-            visibleArrivals[b].etaMinutes,
-          );
-        });
-      for (final i in order) {
-        addTile(visibleArrivals[i], fleetByIndex[i], null);
-      }
-    } else {
+    {
       // Time order: one card per line×direction, later vehicles folded in,
       // covered non-live rows dropped, surviving Scheduled folded into a cell.
       // Directions whose headsign is this stop: those vehicles end here.
@@ -287,11 +263,10 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
             ),
           ),
         ),
-        if (allLines.length > 1)
+        if (chipLines.length > 1)
           StizeLineFilterRow(
             allLabel: l10n.lineFilterAll,
-            allLines: allLines,
-            arrivingLines: arrivingLines,
+            lines: chipLines,
             // Chip colour == card colour: the type comes from the arrivals.
             typeByLine: stizeTypeByLine(board.arrivals),
             selected: effectiveFilter,
@@ -299,33 +274,10 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
               if (line != null) {
                 ref.read(eventLoggerProvider).log(Ev.lineFilter);
               }
-              setState(() => _lineFilter = line);
+              setState(
+                () => _lineFilter = toggleLineFilter(effectiveFilter, line),
+              );
             },
-          ),
-        if (canSortByComfort)
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: StizeSpace.space4,
-              vertical: StizeSpace.space1,
-            ),
-            child: Row(
-              spacing: StizeSpace.space2,
-              children: [
-                StizeTextChip(
-                  label: l10n.fleetSortByTime,
-                  selected: !_sortByComfort,
-                  onTap: () => setState(() => _sortByComfort = false),
-                ),
-                StizeTextChip(
-                  label: l10n.fleetSortByComfort,
-                  selected: _sortByComfort,
-                  onTap: () {
-                    ref.read(eventLoggerProvider).log(Ev.sortComfort);
-                    setState(() => _sortByComfort = true);
-                  },
-                ),
-              ],
-            ),
           ),
         // 4px between the colour cards, with a 16px side gutter.
         Padding(
@@ -336,28 +288,14 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
             flat ? 0 : StizeSpace.space4,
             0,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AnimatedEntries(
-                gap: flat ? 0 : StizeSpace.space1,
-                children: tiles,
-              ),
-              const SizedBox(height: StizeSpace.space2),
-              // The quiet way to flag wrong data: last, never next to arrivals.
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: flat ? StizeSpace.space4 : 0,
-                ),
-                child: StopReportEntry(
-                  stopId: widget.stopId,
-                  stopName: board.stopName,
-                ),
-              ),
-            ],
+          // The list ends with its last card (owner, 2026-11-24): the report
+          // entry moved to the header's More menu, and the host adds only the
+          // safe area below.
+          child: AnimatedEntries(
+            gap: flat ? 0 : StizeSpace.space1,
+            children: tiles,
           ),
         ),
-        const SizedBox(height: 12),
       ],
     );
   }

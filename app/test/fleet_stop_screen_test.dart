@@ -144,46 +144,36 @@ void main() {
     },
   );
 
-  testWidgets(
-    'B2/B4: badges show, junk number is hidden, comfort sort appears',
-    (tester) async {
-      final catalog = FleetCatalog.tryParse(_catalogJson)!;
-      await tester.pumpWidget(_wrap(catalog: catalog));
-      await tester.pumpAndSettle();
-
-      // Bozankaya has AC + low floor → those badges appear.
-      expect(find.byIcon(StizeIcons.snowflake), findsOneWidget);
-      expect(find.byIcon(StizeIcons.accessible), findsOneWidget);
-
-      // Two distinct classes → the comfort sort is offered.
-      expect(find.text('By comfort'), findsOneWidget);
-      expect(find.text('By time'), findsOneWidget);
-
-      // The junk placeholder P5 is never shown anywhere.
-      expect(find.textContaining('P5'), findsNothing);
-      expect(find.textContaining('#P5'), findsNothing);
-    },
-  );
-
-  testWidgets('B4: sorting by comfort puts the Bozankaya above the Kata', (
+  testWidgets('B2: badges show, junk number is hidden, no sort control', (
     tester,
   ) async {
     final catalog = FleetCatalog.tryParse(_catalogJson)!;
     await tester.pumpWidget(_wrap(catalog: catalog));
     await tester.pumpAndSettle();
 
-    // Default (time) order: Kata (3 min) is above Bozankaya (9 min).
-    final kataY0 = tester.getTopLeft(find.text('3')).dy;
-    final bozaY0 = tester.getTopLeft(find.text('9')).dy;
-    expect(kataY0, lessThan(bozaY0));
+    // Bozankaya has AC + low floor → those badges appear.
+    expect(find.byIcon(StizeIcons.snowflake), findsOneWidget);
+    expect(find.byIcon(StizeIcons.accessible), findsOneWidget);
 
-    await tester.tap(find.text('By comfort'));
+    // The comfort sort is gone (owner, 2026-11-24): the board is always by
+    // time; comfort stays in the badges.
+    expect(find.text('By comfort'), findsNothing);
+    expect(find.text('By time'), findsNothing);
+
+    // The junk placeholder P5 is never shown anywhere.
+    expect(find.textContaining('P5'), findsNothing);
+    expect(find.textContaining('#P5'), findsNothing);
+  });
+
+  testWidgets('the board is always in time order', (tester) async {
+    final catalog = FleetCatalog.tryParse(_catalogJson)!;
+    await tester.pumpWidget(_wrap(catalog: catalog));
     await tester.pumpAndSettle();
 
-    // Now the comfy Bozankaya (9 min) sits above the old Kata (3 min).
-    final kataY1 = tester.getTopLeft(find.text('3')).dy;
-    final bozaY1 = tester.getTopLeft(find.text('9')).dy;
-    expect(bozaY1, lessThan(kataY1));
+    // Kata (3 min) stays above the more comfortable Bozankaya (9 min).
+    final kataY = tester.getTopLeft(find.text('3')).dy;
+    final bozaY = tester.getTopLeft(find.text('9')).dy;
+    expect(kataY, lessThan(bozaY));
   });
 
   testWidgets('B3: card shows model on top, Latin nickname below (sr locale)', (
@@ -268,7 +258,7 @@ void main() {
 
     // Sheet is open with Fleet-ID surfaced.
     expect(find.byIcon(StizeIcons.snowflake), findsOneWidget);
-    expect(find.text('By comfort'), findsOneWidget);
+    expect(find.text('By comfort'), findsNothing);
     expect(find.textContaining('P5'), findsNothing); // junk hidden
   });
 }

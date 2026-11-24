@@ -4,6 +4,7 @@ import {
   belgradeNow,
   upcomingScheduled,
   dedupScheduledAgainstLive,
+  isReachable,
   scheduledMapObjectsForRoute,
   type ScheduleMeta,
   type StopSchedule,
@@ -167,5 +168,45 @@ describe("scheduledMapObjectsForRoute", () => {
     const objs = scheduledMapObjectsForRoute(overnight, coords, meta, satEarly);
     expect(objs).toHaveLength(1);
     expect(objs[0].lon).toBeCloseTo(20.41, 3); // halfway stop0->stop1
+  });
+});
+
+describe("reachability (no phantoms)", () => {
+  // Batutova 2026-11-24 10:23: tram 5 planned at 10:24, but the trip left the
+  // terminus 11 min before reaching this stop, i.e. at 10:13. No live 5 = phantom.
+  const at1023: NowContext = { dateISO: "2026-01-02", yesterdayISO: "2026-01-01", minutes: 623 };
+  const withLead = (mins: number[], lead: (number | null)[]): StopSchedule => ({
+    stop_id: "20097",
+    deps: [{ line: "5", route_id: "00005-1", dir: "1", svc: { RD: mins }, lead: { RD: lead } }],
+  });
+
+  it("isReachable: eta must cover the trip's lead minus the grace", () => {
+    expect(isReachable(1, 11)).toBe(false);
+    expect(isReachable(9, 11)).toBe(true); // 11 - 2 grace
+    expect(isReachable(8, 11)).toBe(false);
+    expect(isReachable(0, 0)).toBe(true); // at the terminus itself
+    expect(isReachable(1, null)).toBe(true); // unknown: keep
+  });
+
+  it("a trip already on the road is flagged unreachable and doesn't count toward minTrips", () => {
+    const r = upcomingScheduled(withLead([624, 637, 651, 664], [11, 11, 11, 11]), meta, at1023);
+    expect(r.map((x) => [x.eta_minutes, x.reachable])).toEqual([
+      [1, false],
+      [14, true],
+      [28, true],
+      [41, true],
+    ]);
+  });
+
+  it("live consumes its own trip first, then phantoms are dropped", () => {
+    // Live 5 two minutes out (it's the 10:24 trip, running late by a minute).
+    const all = upcomingScheduled(withLead([624, 637, 651], [11, 11, 11]), meta, at1023);
+    const kept = dedupScheduledAgainstLive(all, new Map([["00005-1", [2]]])).filter((s) => s.reachable);
+    expect(kept.map((x) => x.eta_minutes)).toEqual([14, 28]);
+  });
+
+  it("old builds without lead behave as before", () => {
+    const r = upcomingScheduled(sched({ RD: [600, 610, 620] }), meta, friday);
+    expect(r.every((x) => x.reachable)).toBe(true);
   });
 });
