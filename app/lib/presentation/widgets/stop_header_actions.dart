@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/design/stize_icons.dart';
@@ -9,15 +8,11 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'stop_report_sheet.dart';
 
-/// Public address of a stop, for Share stop (the `/stop/:id` deep link).
-String stopShareUrl(String stopId) =>
-    'https://stize.app/stop/${Uri.encodeComponent(stopId)}';
-
 /// What sits right after a stop's name in every stop header (owner,
 /// 2026-11-24): a small filled star when the stop is in My Stops (a status,
 /// not a button) and the More button. More is next to the name, away from the
-/// close button, so it is never hit by mistake. Favourite, share and report
-/// are rare actions, so they live in the More menu, not on screen.
+/// close button, so it is never hit by mistake. Favourite and report are
+/// rare actions, so they live in the More menu, not on screen.
 class StopHeaderActions extends ConsumerWidget {
   const StopHeaderActions({
     super.key,
@@ -55,7 +50,7 @@ class StopHeaderActions extends ConsumerWidget {
   }
 }
 
-enum _StopAction { favorite, share, report }
+enum _StopAction { favorite, report }
 
 class _MoreButton extends ConsumerWidget {
   const _MoreButton({
@@ -154,7 +149,6 @@ class _MoreButton extends ConsumerWidget {
           isFav ? StizeIcons.starFilled : StizeIcons.star,
           isFav ? l10n.removeFromFavorites : l10n.addToFavorites,
         ),
-        item(_StopAction.share, StizeIcons.share, l10n.stopShare),
         item(_StopAction.report, StizeIcons.flag, l10n.stopReportProblem),
       ],
     );
@@ -167,12 +161,6 @@ class _MoreButton extends ConsumerWidget {
         } else {
           notifier.add(FavoriteStop(stopId: stopId, name: stopName));
         }
-      case _StopAction.share:
-        await Clipboard.setData(ClipboardData(text: stopShareUrl(stopId)));
-        if (!context.mounted) return;
-        ScaffoldMessenger.maybeOf(
-          context,
-        )?.showSnackBar(SnackBar(content: Text(l10n.stopLinkCopied)));
       case _StopAction.report:
         await showStopReportSheet(context, stopId: stopId, stopName: stopName);
     }

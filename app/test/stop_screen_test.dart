@@ -484,7 +484,7 @@ void main() {
 
     await tester.tap(find.byIcon(StizeIcons.more));
     await tester.pumpAndSettle();
-    expect(find.text('Share stop'), findsOneWidget);
+    expect(find.text('Share stop'), findsNothing);
     expect(find.text('Report a problem'), findsOneWidget);
     await tester.tap(find.text('Add to My Stops'));
     await tester.pumpAndSettle();

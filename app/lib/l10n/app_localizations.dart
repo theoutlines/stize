@@ -1148,18 +1148,6 @@ abstract class AppLocalizations {
   /// **'More'**
   String get stopMore;
 
-  /// No description provided for @stopShare.
-  ///
-  /// In en, this message translates to:
-  /// **'Share stop'**
-  String get stopShare;
-
-  /// No description provided for @stopLinkCopied.
-  ///
-  /// In en, this message translates to:
-  /// **'Link copied'**
-  String get stopLinkCopied;
-
   /// No description provided for @stopReportProblem.
   ///
   /// In en, this message translates to:

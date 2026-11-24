@@ -14,8 +14,8 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   1 min" at a stop 11 min from the terminus). Scheduled vehicles are no longer
   drawn on the map at all, for the same reason.
 - **Stop header:** the star button and the "Something wrong with this stop?"
-  row are gone. A More button right after the stop name holds Add to My Stops,
-  Share stop and Report a problem; a small star after the name shows the stop
+  row are gone. A More button right after the stop name holds Add to My Stops
+  and Report a problem; a small star after the name shows the stop
   is in My Stops. The list ends with its last card.
 - **Line filter:** "All lines" is picked by default; unpicked line chips are
   neutral and a picked one takes its line colour. From "All lines" a tap picks

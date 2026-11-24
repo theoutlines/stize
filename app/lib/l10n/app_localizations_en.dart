@@ -612,12 +612,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stopMore => 'More';
 
   @override
-  String get stopShare => 'Share stop';
-
-  @override
-  String get stopLinkCopied => 'Link copied';
-
-  @override
   String get stopReportProblem => 'Report a problem';
 
   @override

@@ -613,12 +613,6 @@ class AppLocalizationsSr extends AppLocalizations {
   String get stopMore => 'Više';
 
   @override
-  String get stopShare => 'Podeli stajalište';
-
-  @override
-  String get stopLinkCopied => 'Link je kopiran';
-
-  @override
   String get stopReportProblem => 'Prijavi problem';
 
   @override
