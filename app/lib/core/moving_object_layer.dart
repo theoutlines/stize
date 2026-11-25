@@ -27,6 +27,7 @@ import 'package:maplibre/maplibre.dart';
 import '../domain/models/vehicle_source.dart';
 import '../domain/models/vehicle_type.dart';
 import '../presentation/widgets/vehicle_icon.dart';
+import 'map_support.dart';
 
 // ---- Typed moving object ----------------------------------------------------
 
@@ -357,21 +358,32 @@ SymbolStyleLayer movingObjectsLabelLayer() => SymbolStyleLayer(
 /// (Re)registers the glyph and arrow images the symbol layers reference. Must be
 /// called on each style (re)load, alongside `registerStigmaImages`, because a
 /// style reload drops previously added images.
-Future<void> registerMovingObjectImages(StyleController style) async {
+Future<void> registerMovingObjectImages(
+  StyleController style, {
+  required Object owner,
+}) async {
   await Future.wait([
-    style.addImageFromWidget(
+    putImageFromWidget(
+      style,
+      owner,
       id: MovingObjectImages.glyphBus,
       widget: _glyphImage(VehicleType.bus),
     ),
-    style.addImageFromWidget(
+    putImageFromWidget(
+      style,
+      owner,
       id: MovingObjectImages.glyphTram,
       widget: _glyphImage(VehicleType.tram),
     ),
-    style.addImageFromWidget(
+    putImageFromWidget(
+      style,
+      owner,
       id: MovingObjectImages.glyphTrolley,
       widget: _glyphImage(VehicleType.trolleybus),
     ),
-    style.addImageFromWidget(
+    putImageFromWidget(
+      style,
+      owner,
       id: MovingObjectImages.arrow,
       widget: const _ArrowImage(),
     ),

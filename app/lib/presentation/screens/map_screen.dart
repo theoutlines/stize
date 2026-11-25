@@ -61,7 +61,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Future<void> _onStyleLoaded(StyleController style) async {
-    await registerStigmaImages(style, Theme.of(context).colorScheme);
+    await registerStigmaImages(
+      style,
+      Theme.of(context).colorScheme,
+      owner: this,
+    );
     if (mounted) setState(() => _imagesReady = true);
   }
 

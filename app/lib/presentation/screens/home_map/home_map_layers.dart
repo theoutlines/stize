@@ -91,13 +91,13 @@ extension _MapLayers on _HomeMapScreenState {
     _stopLayersAdded = false;
     _vehLayerAdded = false;
     _focusLayersAdded = false;
-    await registerStigmaImages(style, _scheme);
+    await registerStigmaImages(style, _scheme, owner: this);
     if (!mounted) return;
     // Stops FIRST so they sit *under* the vehicle symbols added next — moving
     // objects belong above the stop/rail infrastructure (C2). Rails are the
     // lowest of the stop layers (see _addStopLayers).
     await _addStopLayers(style);
-    await registerMovingObjectImages(style);
+    await registerMovingObjectImages(style, owner: this);
     await _addVehicleSymbolLayers();
     if (!mounted) return;
     _setState(() => _imagesReady = true);
