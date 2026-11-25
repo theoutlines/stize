@@ -41,6 +41,7 @@ class StizeTransitCard extends StatelessWidget {
     this.leftNote,
     this.followUps,
     this.live = true,
+    this.topInset = 0,
     this.onTap,
   });
 
@@ -78,12 +79,28 @@ class StizeTransitCard extends StatelessWidget {
   /// back so the tappable cards read first.
   final bool live;
 
+  /// Extra room above row 1 (a Nearby carousel keeps its page dots there).
+  final double topInset;
+
   final VoidCallback? onTap;
 
   static const double heldBackOpacity = 0.82;
 
   /// Opacity of a time we no longer trust.
   static const double approximateOpacity = 0.5;
+
+  /// The card's surface as it reads on screen (a held-back card included), for
+  /// a list that stretches its first or last card past the edge.
+  static Color surfaceFor(
+    StizeColors c,
+    VehicleType type, {
+    required bool scheduled,
+    required bool live,
+  }) {
+    final fill = scheduled ? c.fill08 : fillFor(c, type);
+    if (live || scheduled) return fill;
+    return fill.withValues(alpha: fill.a * heldBackOpacity);
+  }
 
   static Color fillFor(StizeColors c, VehicleType type) => switch (type) {
     VehicleType.bus => c.transitBus,
@@ -246,9 +263,11 @@ class StizeTransitCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: StizeSpace.space4,
-            vertical: StizeSpace.space3,
+          padding: EdgeInsets.fromLTRB(
+            StizeSpace.space4,
+            StizeSpace.space3 + topInset,
+            StizeSpace.space4,
+            StizeSpace.space3,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

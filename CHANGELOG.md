@@ -7,6 +7,17 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-25
 
+### Changed (evening)
+- **Nearby edges stretch.** On mobile, pulling the list past its top stretches
+  the first card and shows the refresh button inside the stretch; it holds
+  there while the list refreshes. Pulling past the bottom stretches the last
+  card, which springs back.
+- **Carousel dots** sit in their own band above the card's data again, over
+  both cards while you swipe.
+- **Route alerts in English.** Alerts stored before translations existed are
+  translated on the next daily refresh, so an English interface no longer
+  shows a Serbian notice.
+
 ### Changed
 - **Stop board cards.** The line number sits on a white plate; the time has
   "min" beside it; under the time is where the vehicle is now ("1 stop away",
