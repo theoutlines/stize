@@ -415,6 +415,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   int? _followEtaMinutes;
   ll.LatLng?
   _followBoardStop; // the stop the follow was opened from ("your stop")
+  // That stop's id: its board feeds the follow head's switcher between the
+  // vehicles of the same line and direction (owner, 2026-11-25, S1).
+  String? _followBoardStopId;
 
   String? _stopContextId; // stop feeding the markers (state B); null = not in B
   ProviderSubscription<AsyncValue<ArrivalsBoard>>? _stopArrivalsSub;
@@ -783,7 +786,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_sheetCtl.isAttached || !_oneScrollRoot) return;
         _sheetCtl.animateTo(
-          NearbySheet.oneScrollRest,
+          NearbySheet.oneScrollRestFor(MediaQuery.sizeOf(context).height),
           duration: StizeMotion.medium,
           curve: StizeMotion.smoothOut,
         );

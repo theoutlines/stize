@@ -477,8 +477,10 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     return ListView(
       controller: controller,
       shrinkWrap: widget.hugContent,
-      padding: const EdgeInsets.only(bottom: 24),
-      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       children: children,
     );
   }

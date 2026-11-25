@@ -63,8 +63,14 @@ class NearbySheet extends StatelessWidget {
   final TextEditingController? searchController;
   final bool searchActive;
 
-  /// Where the one-scroll sheet rests when the home opens.
-  static const double oneScrollRest = 0.42;
+  /// Where the one-scroll sheet rests when the home opens: about one and a
+  /// half cards (owner, 2026-11-25, after Transit), so the map keeps most of
+  /// the screen and a half card says "there is more".
+  static const double oneScrollRestPx = 190;
+
+  /// [oneScrollRestPx] as a fraction of a body of height [h].
+  static double oneScrollRestFor(double h) =>
+      h <= 0 ? 0.25 : (oneScrollRestPx / h).clamp(0.2, 0.42);
 
   /// Sheet size before search focus raised it, so Cancel returns "as it was".
   static final _preSearch = Expando<double>();
@@ -126,11 +132,11 @@ class NearbySheet extends StatelessWidget {
         controller: controller,
         // Unified detents (owner R2 #4): large is NOT fullscreen — a strip of map
         // always stays on top.
-        initialChildSize: oneScroll ? oneScrollRest : kSheetPeek,
+        initialChildSize: oneScroll ? oneScrollRestFor(viewport) : kSheetPeek,
         // One-scroll: the list never sinks below its resting place, so a pull
         // down at rest overscrolls the list and refreshes it (owner,
         // 2026-11-23: refresh only showed up after dragging all the way down).
-        minChildSize: oneScroll ? oneScrollRest : 0.12,
+        minChildSize: oneScroll ? oneScrollRestFor(viewport) : 0.12,
         maxChildSize: oneScroll ? (maxSize ?? kSheetLarge) : kSheetLarge,
         snap: !oneScroll,
         // Two resting places for a drag (owner, 2026-11-23): stopping halfway
@@ -226,7 +232,7 @@ class _SheetDragArea extends StatelessWidget {
       onVerticalDragUpdate: (d) {
         if (!c.isAttached) return;
         final next = (c.size - (d.primaryDelta ?? 0) / viewport).clamp(
-          snap ? 0.12 : NearbySheet.oneScrollRest,
+          snap ? 0.12 : NearbySheet.oneScrollRestFor(viewport),
           snap ? kSheetLarge : 1.0,
         );
         c.jumpTo(next);

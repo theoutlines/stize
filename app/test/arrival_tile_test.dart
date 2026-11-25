@@ -54,7 +54,7 @@ void main() {
     });
 
     testWidgets(
-      'a placeholder (terminus) card is held back, not tappable, says it starts here',
+      'a placeholder (terminus) card is full brightness, not tappable, says it starts here',
       (tester) async {
         // P2 = the schedule-derived placeholder class: valid ETA, no live position.
         await tester.pumpWidget(
@@ -70,8 +70,8 @@ void main() {
           ),
         );
 
-        expect(_card(tester).live, isFalse);
-        expect(_card(tester).onTap, isNull);
+        expect(_card(tester).live, isTrue); // not dimmed
+        expect(_card(tester).onTap, isNull); // but not followable yet
         expect(find.text('Starts here'), findsOneWidget);
       },
     );

@@ -134,6 +134,12 @@ extension _MapContext on _HomeMapScreenState {
   void _closeVehicleContext() {
     _stopFollow();
     _clearFocus();
+    // The anchors belong to the follow that just ended: a later marker-tap
+    // follow must not inherit them.
+    _followStopsRemaining = null;
+    _followEtaMinutes = null;
+    _followBoardStop = null;
+    _followBoardStopId = null;
     final returnStop = _onDemand ? _returnToStopId : null;
     _returnToStopId = null;
     if (returnStop != null) {
@@ -283,6 +289,7 @@ extension _MapContext on _HomeMapScreenState {
     _followEtaMinutes = a.etaMinutes;
     final ctxStop = _slotStopId ?? _stopContextId;
     _followBoardStop = ctxStop == null ? null : _resolveStopLatLngSync(ctxStop);
+    _followBoardStopId = ctxStop;
     // Single follow entry (fly the camera in from a list row). refreshVehicles
     // false so a fan-out can't prune the marker we just injected.
     _enterFollow(

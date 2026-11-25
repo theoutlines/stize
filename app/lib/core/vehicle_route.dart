@@ -46,6 +46,12 @@ class VehicleRoutePlan {
 
 const _dist = ll.Distance();
 
+/// A fix this far past a stop (along the route) still counts as at the stop.
+const double kAtStopMeters = 40;
+
+/// Typical Belgrade pace between two stops, for routes with no ETA anchor.
+const double kTypicalMinutesPerStop = 1.5;
+
 /// Splits a route into the part behind the vehicle and the part ahead, and
 /// lists the stops the vehicle still has to serve with approximate ETAs.
 ///
@@ -97,7 +103,9 @@ VehicleRoutePlan planVehicleRoute({
       poly,
       ll.LatLng(stops[i].lat, stops[i].lon),
     );
-    if (stopAlong >= vehicleAlong - 15) {
+    // 40 m: a vehicle standing at a stop reports a fix a few metres past the
+    // pole; it is still at that stop, not between it and the next one.
+    if (stopAlong >= vehicleAlong - kAtStopMeters) {
       nextIdx = i;
       break;
     }
@@ -106,23 +114,23 @@ VehicleRoutePlan planVehicleRoute({
 
   // Average per-stop minutes for the ETA extrapolation (approximate). Anchored
   // to the feed's stops_remaining/ETA-to-board when available.
+  // Without an anchor (the vehicle is at the board stop, "0 stops", or it was
+  // tapped on the map) fall back to a typical city pace so the route still
+  // carries times (owner, 2026-11-25: "where are the numbers?").
   final avgPerStop =
       (stopsRemaining != null &&
           stopsRemaining > 0 &&
           etaToBoardMinutes != null)
       ? etaToBoardMinutes / stopsRemaining
-      : null;
+      : kTypicalMinutesPerStop;
 
   final upcomingStops = <UpcomingStop>[];
   for (var j = nextIdx; j < stops.length; j++) {
-    int? eta;
-    if (avgPerStop != null) {
-      // Minutes to stop j, counted from the LIVE next stop (j - nextIdx), so the
-      // ETAs advance with the vehicle instead of staying pinned to entry.
-      final stopsAhead = j - nextIdx + 1;
-      eta = (avgPerStop * stopsAhead).round();
-      if (eta < 0) eta = 0;
-    }
+    // Minutes to stop j, counted from the LIVE next stop (j - nextIdx), so the
+    // ETAs advance with the vehicle instead of staying pinned to entry.
+    final stopsAhead = j - nextIdx + 1;
+    var eta = (avgPerStop * stopsAhead).round();
+    if (eta < 0) eta = 0;
     upcomingStops.add(
       UpcomingStop(stop: stops[j], etaMinutes: eta, isBoardStop: j == boardIdx),
     );

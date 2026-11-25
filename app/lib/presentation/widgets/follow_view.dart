@@ -15,6 +15,19 @@ import 'sheet_chrome.dart';
 import 'stize_transit_card.dart';
 import 'vehicle_icon.dart';
 
+/// One vehicle of the followed line and direction in the head's switcher.
+class FollowVehicleOption {
+  const FollowVehicleOption({
+    required this.etaMinutes,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final int etaMinutes;
+  final bool selected;
+  final VoidCallback onTap;
+}
+
 /// The head of the follow sheet: the followed vehicle as a card in its line
 /// colour, the same grid as a stop-board card (owner, 2026-11-25).
 ///
@@ -36,7 +49,13 @@ class FollowHeader extends StatelessWidget {
     this.onClose,
     this.showHandle = false,
     this.topRadius = 0,
+    this.vehicles = const [],
   });
+
+  /// The vehicles of this line and direction on your stop's board ("1 · 3 ·
+  /// 7 min"), the followed one picked; a tap follows that one instead
+  /// (owner, 2026-11-25, S1). Fewer than two: no switcher.
+  final List<FollowVehicleOption> vehicles;
 
   final String line;
   final VehicleType type;
@@ -190,7 +209,61 @@ class FollowHeader extends StatelessWidget {
                 const SizedBox(width: StizeSpace.space3 + SheetCloseButton.size),
             ],
           ),
+          if (vehicles.length > 1) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: onClose != null
+                      ? StizeSpace.space3 + SheetCloseButton.size
+                      : 0,
+                ),
+                child: Wrap(
+                  spacing: 6,
+                  children: [
+                    for (final v in vehicles) _segment(c, l10n, fill, v),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _segment(
+    StizeColors c,
+    AppLocalizations l10n,
+    Color fill,
+    FollowVehicleOption v,
+  ) {
+    final label = v.etaMinutes <= 0
+        ? l10n.arrivalEtaNow.toLowerCase()
+        : '${v.etaMinutes} ${l10n.arrivalEtaMinutesUnit}';
+    return Semantics(
+      button: true,
+      selected: v.selected,
+      child: Material(
+        color: v.selected ? c.onTransit : Colors.black.withValues(alpha: 0.18),
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: v.selected ? null : v.onTap,
+          child: Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: StizeType.lineNumber.copyWith(
+                height: 1.2,
+                color: v.selected ? fill : c.onTransit,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

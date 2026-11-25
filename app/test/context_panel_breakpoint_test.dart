@@ -87,7 +87,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     final pill = tester.getRect(find.byType(MapSearchPill));
     const bodyH = 844 - 300;
-    final sheetTop = bodyH * (1 - NearbySheet.oneScrollRest);
+    final sheetTop = bodyH * (1 - NearbySheet.oneScrollRestFor(844));
     expect(pill.bottom, lessThanOrEqualTo(sheetTop));
     expect(pill.bottom, greaterThan(sheetTop - 40));
   });
