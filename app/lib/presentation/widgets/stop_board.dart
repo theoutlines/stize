@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'flat_cards.dart';
+import 'stretch_card_list.dart';
 import 'package:stize/core/design/stize_text.dart';
 
 import 'package:flutter/material.dart';
@@ -135,19 +137,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
     // Desktop island (no sheet controller): the board hugs its content, up to
     // the island's height, then scrolls inside (owner, 2026-11-25).
     final hug = widget.scrollController == null && !widget.showHeader;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: hug ? MainAxisSize.min : MainAxisSize.max,
-      children: [
-        if (widget.showHeader) _header(theme, stopName),
-        if (widget.showHeader) const Divider(height: 1),
-        Flexible(
-          fit: hug ? FlexFit.loose : FlexFit.tight,
-          child: ListView(
-            controller: widget.scrollController,
-            shrinkWrap: hug,
-            padding: EdgeInsets.zero,
-            children: [
+    final content = <Widget>[
               RouteAlertsStrip(alerts: relevantAlerts),
               JamStopBanner(
                 stopId: widget.stopId,
@@ -169,8 +159,28 @@ class _StopBoardState extends ConsumerState<StopBoard> {
                   onOpenFleetCard: widget.onOpenFleetCard,
                 ),
               ),
-            ],
-          ),
+];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: hug ? MainAxisSize.min : MainAxisSize.max,
+      children: [
+        if (widget.showHeader) _header(theme, stopName),
+        if (widget.showHeader) const Divider(height: 1),
+        Flexible(
+          fit: hug ? FlexFit.loose : FlexFit.tight,
+          child: hug || !FlatCards.of(context)
+              ? ListView(
+                  controller: widget.scrollController,
+                  shrinkWrap: hug,
+                  padding: EdgeInsets.zero,
+                  children: content,
+                )
+              // Mobile sheet: the last card stretches past the bottom and
+              // springs back, like Nearby (owner, 2026-11-25).
+              : StretchCardList(
+                  controller: widget.scrollController,
+                  children: content,
+                ),
         ),
       ],
     );

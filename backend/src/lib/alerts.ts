@@ -340,5 +340,18 @@ export async function listAlerts(env: Env): Promise<RouteAlert[]> {
   const raw = await kvGetCached(env, KV_KEY);
   const alerts: RouteAlert[] = raw ? JSON.parse(raw) : [];
   // The source publishes in Cyrillic; the app reads Latin (audit round 2, D4).
-  return alerts.map((a) => ({ ...a, title: toLatin(a.title), summary: toLatin(a.summary) }));
+  // Lines and stops too: the app's lines are Latin ("KC1", "EKO1") and its
+  // stop names Latin, so Cyrillic "КЦ1" or "ECO 1" never matched (2026-11-25).
+  return alerts.map((a) => ({
+    ...a,
+    title: toLatin(a.title),
+    summary: toLatin(a.summary),
+    lines: a.lines.map(normalizeLine),
+    stops: a.stops.map(toLatin),
+  }));
+}
+
+/** "КЦ1" → "KC1", "ECO 1" → "EKO1", "7л" → "7L": the app's spelling. */
+export function normalizeLine(line: string): string {
+  return toLatin(line).replace(/\s+/g, "").toUpperCase().replace(/^ECO/, "EKO");
 }

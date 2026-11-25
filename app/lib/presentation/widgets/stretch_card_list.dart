@@ -106,7 +106,12 @@ class _StretchCardListState extends State<StretchCardList> {
         alignment: Alignment.topCenter,
         child: Container(
           height: pulled + 1,
-          color: widget.topColor,
+          color: widget.topColor == null
+              ? null
+              : Color.alphaBlend(
+                  widget.topColor!,
+                  Theme.of(context).colorScheme.surface,
+                ),
           alignment: Alignment.center,
           child: Opacity(
             opacity: progress,
@@ -167,18 +172,34 @@ class _StretchCardListState extends State<StretchCardList> {
         ),
       ],
     );
-    return NotificationListener<ScrollNotification>(
-      onNotification: _onScroll,
-      child: CustomPaint(
-        painter: _EdgePainter(
-          _edges,
-          // With a refresh control the top band paints itself (and holds
-          // while refreshing).
-          top: widget.onRefresh == null ? widget.topColor : null,
-          bottom: widget.bottomColor,
-          bottomPadding: widget.bottomPadding,
+    // Opaque over the sheet, so a translucent card (timetable, held back)
+    // stretches to exactly what it looks like, and covers its own hairline.
+    final under = Theme.of(context).colorScheme.surface;
+    Color? solid(Color? c) => c == null ? null : Color.alphaBlend(c, under);
+    return StretchCardEdges._(
+      _edges,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onScroll,
+        child: CustomPaint(
+          painter: _EdgePainter(
+            _edges,
+            // With a refresh control the top band paints itself (and holds
+            // while refreshing).
+            top: widget.onRefresh == null ? solid(widget.topColor) : null,
+            bottom: solid(widget.bottomColor),
+            under: under,
+            bottomPadding: widget.bottomPadding,
+          ),
+          foregroundPainter: _EdgePainter(
+            _edges,
+            top: null,
+            bottom: solid(widget.bottomColor),
+            under: under,
+            bottomPadding: widget.bottomPadding,
+            coverLine: true,
+          ),
+          child: list,
         ),
-        child: list,
       ),
     );
   }
@@ -190,49 +211,97 @@ class _Edges extends ChangeNotifier {
   double pixels = 0;
   double? contentEnd;
 
+  /// Set by the list's content when only it knows its last card (a stop
+  /// board); wins over [StretchCardList.bottomColor].
+  Color? reportedBottom;
+
   void changed() => notifyListeners();
 }
 
-/// Paints the stretched first and last card under the list.
+/// Lets content inside a [StretchCardList] name the colour of its last card,
+/// when the list itself can't know it (the stop board builds its cards deep
+/// inside). Safe to call during build: the list only repaints.
+class StretchCardEdges extends InheritedWidget {
+  const StretchCardEdges._(this._edges, {required super.child});
+
+  final _Edges _edges;
+
+  static void reportLast(BuildContext context, Color? color) {
+    final scope = context
+        .getInheritedWidgetOfExactType<StretchCardEdges>();
+    if (scope == null || scope._edges.reportedBottom == color) return;
+    scope._edges.reportedBottom = color;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      scope._edges.changed();
+    });
+  }
+
+  @override
+  bool updateShouldNotify(StretchCardEdges old) => false;
+}
+
+/// Paints the stretched first and last card under the list; as a foreground
+/// painter ([coverLine]) it hides the last card's hairline while it stretches,
+/// so the card reads as one piece (owner, 2026-11-25).
 class _EdgePainter extends CustomPainter {
   _EdgePainter(
     this.edges, {
     required this.top,
     required this.bottom,
+    required this.under,
     required this.bottomPadding,
+    this.coverLine = false,
   }) : super(repaint: edges);
 
   final _Edges edges;
   final Color? top;
   final Color? bottom;
+  final Color under;
   final double bottomPadding;
+  final bool coverLine;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final reported = edges.reportedBottom;
+    final bottomColor = reported != null
+        ? Color.alphaBlend(reported, under)
+        : bottom;
+    final end = edges.contentEnd;
+    if (coverLine) {
+      if (bottomColor != null && edges.bottom > 0 && end != null) {
+        canvas.drawRect(
+          Rect.fromLTWH(0, end - edges.pixels - 1, size.width, 1),
+          Paint()..color = bottomColor,
+        );
+      }
+      return;
+    }
     if (top != null && edges.top > 0) {
       canvas.drawRect(
         Rect.fromLTWH(0, 0, size.width, edges.top),
         Paint()..color = top!,
       );
     }
-    final end = edges.contentEnd;
-    if (bottom != null && edges.bottom > 0 && end != null) {
+    if (bottomColor != null && edges.bottom > 0 && end != null) {
       final y = end - edges.pixels;
       // The safe-area strip fades in first, so the card reads as one piece
       // stretching down; then the pull itself.
       final fade = (edges.bottom / 12).clamp(0.0, 1.0);
       canvas.drawRect(
         Rect.fromLTWH(0, y, size.width, bottomPadding),
-        Paint()..color = bottom!.withValues(alpha: bottom!.a * fade),
+        Paint()..color = bottomColor.withValues(alpha: fade),
       );
       canvas.drawRect(
         Rect.fromLTWH(0, y + bottomPadding, size.width, edges.bottom),
-        Paint()..color = bottom!,
+        Paint()..color = bottomColor,
       );
     }
   }
 
   @override
   bool shouldRepaint(_EdgePainter old) =>
-      old.top != top || old.bottom != bottom || old.bottomPadding != bottomPadding;
+      old.top != top ||
+      old.bottom != bottom ||
+      old.under != under ||
+      old.bottomPadding != bottomPadding;
 }

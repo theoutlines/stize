@@ -39,3 +39,12 @@ describe("listAlerts", () => {
     expect(await listAlerts(env)).toEqual(sample);
   });
 });
+
+describe("normalizeLine", () => {
+  it("spells lines the way the app does", async () => {
+    const { normalizeLine } = await import("../src/lib/alerts");
+    expect(normalizeLine("КЦ1")).toBe("KC1");
+    expect(normalizeLine("ECO 1")).toBe("EKO1");
+    expect(normalizeLine("26L")).toBe("26L");
+  });
+});

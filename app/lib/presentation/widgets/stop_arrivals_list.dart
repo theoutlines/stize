@@ -21,6 +21,9 @@ import 'empty_state.dart';
 import 'live_unavailable_banner.dart';
 import 'scheduled_group_tile.dart';
 import 'stize_filter_chips.dart';
+import 'stize_transit_card.dart';
+import 'stretch_card_list.dart';
+import '../../core/arrival_display.dart';
 import '../../core/design/stize_icons.dart';
 
 /// THE arrivals list of a stop, shared by both shutters: the in-app sheet
@@ -151,6 +154,9 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
     // mix the timetable into the live run).
     final tiles = <Widget>[];
     final timetable = <Widget>[];
+    final sc = StizeColors.of(context);
+    Color? lastLive;
+    Color? lastTimetable;
     {
       // One card per line×direction, later vehicles folded in, covered
       // non-live rows dropped, surviving timetable times folded into a cell.
@@ -168,6 +174,13 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
         switch (entry) {
           case ArrivalRow(:final arrival, :final laterEtaMinutes):
             final dir = arrival.directionRouteId ?? arrival.routeId;
+            final status = arrivalRowStatus(arrival);
+            lastLive = StizeTransitCard.surfaceFor(
+              sc,
+              arrival.vehicleType,
+              scheduled: status == ArrivalRowStatus.scheduled,
+              live: status != ArrivalRowStatus.scheduled,
+            );
             tiles.add(
               ArrivalTile(
                 // Stable identity for the animated list: one card per
@@ -192,6 +205,12 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
           case ScheduledGroupCell():
             final n = schedSeen[entry.line] = (schedSeen[entry.line] ?? 0) + 1;
             final dir = entry.directionKey;
+            lastTimetable = StizeTransitCard.surfaceFor(
+              sc,
+              entry.vehicleType,
+              scheduled: true,
+              live: false,
+            );
             timetable.add(
               ScheduledGroupTile(
                 key: ValueKey('sch|${entry.line}|$n'),
@@ -216,6 +235,9 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
       );
       tiles.addAll(timetable);
     }
+
+    // In a stretching list the last card stretches past the bottom.
+    StretchCardEdges.reportLast(context, lastTimetable ?? lastLive);
 
     final ageSeconds = DateTime.now()
         .toUtc()
