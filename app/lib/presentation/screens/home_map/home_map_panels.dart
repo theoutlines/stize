@@ -156,7 +156,7 @@ extension _MapPanels on _HomeMapScreenState {
     switch (_activeView) {
       case ContextView.nearby:
         return NearbyView(
-          userLocation: _meTo,
+          userLocation: _browsePoint ?? _meTo,
           locationDenied: _locationDenied,
           active: _tabActive && _appResumed,
           onEnableLocation: _recenterOnMe,

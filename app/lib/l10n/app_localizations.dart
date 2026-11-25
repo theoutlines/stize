@@ -1855,6 +1855,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No A/C'**
   String get fleetChipNoAc;
+
+  /// No description provided for @nearbyThisPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Around this point'**
+  String get nearbyThisPoint;
 }
 
 class _AppLocalizationsDelegate

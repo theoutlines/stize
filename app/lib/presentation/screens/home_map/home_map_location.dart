@@ -175,6 +175,13 @@ extension _MapLocation on _HomeMapScreenState {
     // Recentring on the user is an explicit camera intent — it ends any follow
     // (the vehicle marker + route highlight stay put).
     _stopFollow();
+    // Back to you: Nearby is around your fix again.
+    if (_browsePoint != null || _browseLifted) {
+      _setState(() {
+        _browsePoint = null;
+        _browseLifted = false;
+      });
+    }
     // Recenter immediately on the best position we already have (instant
     // feedback), then always kick off a fresh fix that recenters again — so the
     // button reliably moves the camera to the user on every tap, and a stale
@@ -200,5 +207,82 @@ extension _MapLocation on _HomeMapScreenState {
       // An unclassified failure: report it as "unavailable", never as "off".
       _showLocationMessage(LocationUnavailableReason.positionUnavailable);
     }
+  }
+
+  // ---- Nearby around a map point -------------------------------------------
+
+  /// Nearby is on screen with nothing else open: the map can choose its point.
+  bool get _browseEligible =>
+      !_following &&
+      _selectedVehicleKey == null &&
+      _focus == null &&
+      _levels.isEmpty &&
+      _slotModel == null &&
+      !_pillActive;
+
+  /// The centre point is drawn (dragging now, or a point chosen).
+  bool get _browseShowing =>
+      _browseEligible && (_browseLifted || _browsePoint != null);
+
+  /// The visible map's centre in screen pixels (left of the panel / above the
+  /// sheet excluded).
+  Offset _visibleCentre(Size size) {
+    final insets = _mapInsets;
+    return Offset(
+      insets.left + (size.width - insets.left - insets.right) / 2,
+      insets.top + (size.height - insets.top - insets.bottom) / 2,
+    );
+  }
+
+  Widget _mapCenterPoint(Size size) {
+    final c = _visibleCentre(size);
+    return Positioned(
+      left: c.dx - 20,
+      top: c.dy - 20,
+      child: IgnorePointer(
+        child: MapCenterPoint(lifted: _browseLifted, drop: _browseDrop),
+      ),
+    );
+  }
+
+  /// A user drag started on the Nearby map: lift the dot.
+  void _onBrowseDragStart() {
+    if (!_browseEligible || _browseLifted) return;
+    _setState(() => _browseLifted = true);
+  }
+
+  /// The drag settled: drop the dot on the visible centre and make that
+  /// Nearby's point. A point within 40 m of your fix is just "around you".
+  void _onBrowseIdle() {
+    if (!_browseLifted) return;
+    final c = _controller;
+    if (c == null || !mounted) return;
+    final size = MediaQuery.sizeOf(context);
+    final geo = c.toLngLat(_visibleCentre(size));
+    final point = ll.LatLng(geo.lat, geo.lon);
+    final me = _meTo;
+    final home =
+        me != null && _distance.as(ll.LengthUnit.Meter, me, point) < 40;
+    _setState(() {
+      _browseLifted = false;
+      _browsePoint = home ? null : point;
+      _browseDrop++;
+    });
+  }
+
+  /// The pill's place line: around you, or the stop nearest the map point.
+  String? _browsePlaceLabel(AppLocalizations l10n) {
+    final p = _browsePoint;
+    if (p == null) return _meTo == null ? null : l10n.nearbyAroundYou;
+    Stop? best;
+    var bestD = double.infinity;
+    for (final s in _areaStops) {
+      final d = _distance.as(ll.LengthUnit.Meter, p, ll.LatLng(s.lat, s.lon));
+      if (d < bestD) {
+        bestD = d;
+        best = s;
+      }
+    }
+    return best != null && bestD < 600 ? best.name : l10n.nearbyThisPoint;
   }
 }

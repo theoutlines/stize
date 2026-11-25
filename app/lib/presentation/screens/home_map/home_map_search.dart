@@ -563,7 +563,8 @@ extension _MapSearch on _HomeMapScreenState {
         controller: _pillCtl,
         focusNode: _pillFocus,
         active: _pillActive,
-        placeLabel: _meTo == null ? null : l10n.nearbyAroundYou,
+        placeLabel: _browsePlaceLabel(l10n),
+        away: _browsePoint != null,
         onLocate: _recenterOnMe,
         // Nothing moves on the tap itself: iOS drops the keyboard when the
         // focused field jumps during the tap (owner, 2026-11-23). The list

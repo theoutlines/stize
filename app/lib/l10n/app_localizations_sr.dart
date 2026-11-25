@@ -1039,4 +1039,7 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get fleetChipNoAc => 'Bez klime';
+
+  @override
+  String get nearbyThisPoint => 'Oko ove tačke';
 }

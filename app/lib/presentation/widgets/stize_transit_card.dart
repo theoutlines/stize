@@ -106,8 +106,12 @@ class StizeTransitCard extends StatelessWidget {
   /// 2026-11-25, variant A: colour alone doesn't tell a visitor tram from
   /// bus). White plate + line colour on a live card; line-colour plate +
   /// white on a timetable card.
-  static Widget plate(StizeColors c, VehicleType type, String line,
-      {bool inverted = false}) {
+  static Widget plate(
+    StizeColors c,
+    VehicleType type,
+    String line, {
+    bool inverted = false,
+  }) {
     final fill = fillFor(c, type);
     final ink = inverted ? c.onTransit : fill;
     return Container(
@@ -171,7 +175,12 @@ class StizeTransitCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Icon(StizeIcons.forward, size: 16, color: on),
+                    // Baseline-aligned, an icon sits on its bottom edge and reads
+                    // high: drop it 3px onto the text's x-height centre.
+                    Transform.translate(
+                      offset: const Offset(0, 3),
+                      child: Icon(StizeIcons.forward, size: 16, color: on),
+                    ),
                     const SizedBox(width: StizeSpace.space1),
                     Flexible(
                       child: Text(
@@ -212,10 +221,7 @@ class StizeTransitCard extends StatelessWidget {
                 ),
                 if (next != null && !scheduled) ...[
                   const SizedBox(width: StizeSpace.space3),
-                  Text(
-                    next!,
-                    style: StizeType.lineNumber.copyWith(color: on),
-                  ),
+                  Text(next!, style: StizeType.lineNumber.copyWith(color: on)),
                 ],
               ],
             ),

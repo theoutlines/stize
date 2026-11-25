@@ -52,6 +52,7 @@ import '../providers/providers.dart';
 import '../widgets/context_shell.dart';
 import '../widgets/stop_header_actions.dart';
 import '../widgets/fleet_model_card.dart';
+import '../widgets/map_center_point.dart';
 import '../widgets/follow_view.dart';
 import '../widgets/sheet_chrome.dart';
 import '../widgets/nearby_sheet.dart';
@@ -257,6 +258,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   late final AnimationController _meAnim;
   ll.LatLng? _meFrom; // where the marker eased from
   ll.LatLng? _meTo; // the latest fix (null = no marker shown)
+  // Nearby around a point on the map instead of around you (owner,
+  // 2026-11-25): your dot leaves its fix and sits on the visible centre while
+  // you drag; null = around you.
+  ll.LatLng? _browsePoint;
+  bool _browseLifted = false;
+  int _browseDrop = 0;
 
   /// The guide was opened on this device (ends the first-launch strip).
   bool _guideSeen = true;
@@ -876,7 +883,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                             // level (X2), not a cullable GL symbol. Wrapped in an
                             // AnimatedBuilder so it eases to each fresh fix; the ticker
                             // is idle between fixes, so this only repaints while moving.
-                            if (_meTo != null)
+                            // While Nearby is around a map point, your dot is the
+                            // centre point instead (drawn over the map below).
+                            if (_meTo != null && !_browseShowing)
                               AnimatedBuilder(
                                 animation: _meAnim,
                                 builder: (context, _) {
@@ -906,6 +915,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                     // Positioned like the real map, so tests see the same Stack
                     // sizing as production.
                     const Positioned.fill(child: SizedBox()),
+                  // Your dot on the visible centre while Nearby is around a
+                  // map point.
+                  if (_browseShowing) _mapCenterPoint(size),
                   // Round action buttons at the top: menu (left), recenter (right).
                   _pushedTopButtons(theme, size),
                   // Staging-only stop-render diagnostics (isStaging; invisible in prod).
@@ -952,7 +964,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                       levelBody: _oneScrollRoot
                           ? null
                           : (sc) => _slotContent(l10n, scrollController: sc),
-                      userLocation: _meTo,
+                      userLocation: _browsePoint ?? _meTo,
                       locationDenied: _locationDenied,
                       active: _tabActive && _appResumed,
                       onEnableLocation: _recenterOnMe,
