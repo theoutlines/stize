@@ -35,6 +35,7 @@ class MyStopsList extends ConsumerWidget {
         if (stops.isEmpty) {
           return ListView(
             controller: scrollController,
+            shrinkWrap: scrollController == null,
             children: [
               EmptyState(
                 icon: StizeIcons.star,
@@ -46,6 +47,7 @@ class MyStopsList extends ConsumerWidget {
         }
         return ListView.separated(
           controller: scrollController,
+          shrinkWrap: scrollController == null,
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
           itemCount: stops.length,
           separatorBuilder: (_, _) => const SizedBox(height: 8),

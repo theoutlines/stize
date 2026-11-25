@@ -742,5 +742,7 @@
     }
   },
   "close": "Close",
-  "fleetChipArticulated": "Articulated"
+  "fleetChipArticulated": "Articulated",
+  "fleetChipAc": "A/C",
+  "fleetChipNoAc": "No A/C"
 }

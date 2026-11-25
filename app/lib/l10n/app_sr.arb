@@ -352,5 +352,7 @@
   "fleetOperatorShort": "Prevoznik {name}",
   "fleetPhotoShort": "Foto: {author}, {license}",
   "close": "Zatvori",
-  "fleetChipArticulated": "Zglobni"
+  "fleetChipArticulated": "Zglobni",
+  "fleetChipAc": "Klima",
+  "fleetChipNoAc": "Bez klime"
 }

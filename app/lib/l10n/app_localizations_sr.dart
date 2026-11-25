@@ -1033,4 +1033,10 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get fleetChipArticulated => 'Zglobni';
+
+  @override
+  String get fleetChipAc => 'Klima';
+
+  @override
+  String get fleetChipNoAc => 'Bez klime';
 }

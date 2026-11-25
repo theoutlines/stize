@@ -1,8 +1,10 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'animated_entries.dart';
 import 'flat_cards.dart';
 
+import '../../core/design/stize_icons.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../core/arrival_display.dart';
 import '../../core/eta_format.dart';
@@ -49,6 +51,8 @@ class NearbyList extends StatelessWidget {
     final flat = FlatCards.of(context);
     final list = ListView(
       controller: scrollController,
+      // Desktop island: hug the cards (no empty strip under the last one).
+      shrinkWrap: scrollController == null,
       // Top padding matches the horizontal (side) padding so the first card is
       // inset equally from the island's top and sides (owner desktop request).
       // Flat (mobile one-scroll): edge to edge, no inset.
@@ -209,6 +213,46 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
 
   bool _has(int i) => i >= 0 && i < widget.groups.length;
 
+  // Desktop: a trackpad's horizontal swipe arrives as scroll signals, not a
+  // drag. Sum them and turn the page once per gesture.
+  double _wheelDx = 0;
+  DateTime _lastWheelPage = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _hover = false;
+
+  void _onPointerSignal(PointerSignalEvent e) {
+    if (e is! PointerScrollEvent) return;
+    final dx = e.scrollDelta.dx;
+    if (dx.abs() <= e.scrollDelta.dy.abs()) return; // vertical: the list's
+    _wheelDx += dx;
+    final now = DateTime.now();
+    if (_wheelDx.abs() < 40 ||
+        now.difference(_lastWheelPage) < const Duration(milliseconds: 450)) {
+      return;
+    }
+    _lastWheelPage = now;
+    final delta = _wheelDx > 0 ? 1 : -1;
+    _wheelDx = 0;
+    _goTo(_page + delta);
+  }
+
+  /// Animate to [target] (the arrows, the dots, a trackpad swipe).
+  void _goTo(int target) {
+    if (!_has(target) || target == _page || _settle.isAnimating) return;
+    final delta = target > _page ? 1 : -1;
+    // Jump over pages in between: settle on the neighbour, then land.
+    final end = delta > 0 ? -_width : _width;
+    _to = Tween<double>(begin: _drag, end: end).animate(
+      CurvedAnimation(parent: _settle, curve: StizeMotion.smoothOut),
+    )..addListener(() => setState(() => _drag = _to!.value));
+    _settle.forward(from: 0).whenComplete(() {
+      if (!mounted) return;
+      setState(() {
+        _page = target;
+        _drag = 0;
+      });
+    });
+  }
+
   void _onUpdate(DragUpdateDetails d) {
     _settle.stop();
     setState(() {
@@ -251,6 +295,19 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
     );
   }
 
+  Widget _arrow(IconData icon, VoidCallback onTap) => Material(
+    color: Colors.black.withValues(alpha: 0.35),
+    shape: const CircleBorder(),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: SizedBox.square(
+        dimension: 32,
+        child: Icon(icon, size: 16, color: Colors.white),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final n = widget.groups.length;
@@ -261,7 +318,9 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
     return LayoutBuilder(
       builder: (context, box) {
         _width = box.maxWidth;
-        return GestureDetector(
+        final canPrev = _has(_page - 1);
+        final canNext = _has(_page + 1);
+        final carousel = GestureDetector(
           // Horizontal swipes move the whole card; vertical drags still scroll.
           onHorizontalDragUpdate: _onUpdate,
           onHorizontalDragEnd: _onEnd,
@@ -283,31 +342,63 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
                     ),
                   ),
                 Positioned(
-                  top: StizeSpace.space4,
+                  top: StizeSpace.space4 - 9,
                   left: 0,
                   right: 0,
-                  child: IgnorePointer(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        for (var i = 0; i < n; i++)
-                          Container(
-                            width: 6,
-                            height: 6,
-                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withValues(
-                                alpha: i == shown ? 0.95 : 0.4,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (var i = 0; i < n; i++)
+                        // Each dot opens its direction (a 24px tap box).
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _goTo(i),
+                          child: Padding(
+                            padding: const EdgeInsets.all(9),
+                            child: Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(
+                                  alpha: i == shown ? 0.95 : 0.4,
+                                ),
                               ),
                             ),
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
                 ),
+                // Pointer devices: arrows on hover, at the card's sides.
+                if (_hover && canPrev)
+                  Positioned(
+                    left: StizeSpace.space1,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: _arrow(StizeIcons.back, () => _goTo(_page - 1)),
+                    ),
+                  ),
+                if (_hover && canNext)
+                  Positioned(
+                    right: StizeSpace.space1,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: _arrow(StizeIcons.forward, () => _goTo(_page + 1)),
+                    ),
+                  ),
               ],
             ),
+          ),
+        );
+        return Listener(
+          onPointerSignal: _onPointerSignal,
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _hover = true),
+            onExit: (_) => setState(() => _hover = false),
+            child: carousel,
           ),
         );
       },

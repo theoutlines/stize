@@ -132,14 +132,20 @@ class _StopBoardState extends ConsumerState<StopBoard> {
       return matchesLine || a.matchesStopName(stopName);
     }).toList();
 
+    // Desktop island (no sheet controller): the board hugs its content, up to
+    // the island's height, then scrolls inside (owner, 2026-11-25).
+    final hug = widget.scrollController == null && !widget.showHeader;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: hug ? MainAxisSize.min : MainAxisSize.max,
       children: [
         if (widget.showHeader) _header(theme, stopName),
         if (widget.showHeader) const Divider(height: 1),
-        Expanded(
+        Flexible(
+          fit: hug ? FlexFit.loose : FlexFit.tight,
           child: ListView(
             controller: widget.scrollController,
+            shrinkWrap: hug,
             padding: EdgeInsets.zero,
             children: [
               RouteAlertsStrip(alerts: relevantAlerts),

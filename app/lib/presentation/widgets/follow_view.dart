@@ -126,7 +126,7 @@ class FollowHeader extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showHandle)
-            SheetDragHandle(color: on.withValues(alpha: 0.5)),
+            Center(child: SheetDragHandle(color: on.withValues(alpha: 0.5))),
           Row(
             children: [
               StizeTransitCard.plate(c, type, line),
@@ -514,7 +514,7 @@ class FleetVehicleCard extends ConsumerWidget {
 
     final chips = <String>[
       if (fleetAgeYears(fleet) case final age?) l10n.fleetChipAge(age),
-      if (fleet.ac != null) fleet.ac! ? l10n.fleetAc : l10n.fleetNoAc,
+      if (fleet.ac != null) fleet.ac! ? l10n.fleetChipAc : l10n.fleetChipNoAc,
       if (fleet.lowFloor != null)
         fleet.lowFloor! ? l10n.fleetChipLowFloor : l10n.fleetChipSteps,
       if (fleet.articulated == true) l10n.fleetChipArticulated,
@@ -685,9 +685,7 @@ class FleetVehicleCard extends ConsumerWidget {
   }
 
   Widget _chip(StizeColors c, String text) => Container(
-    height: 28,
-    padding: const EdgeInsets.symmetric(horizontal: 10),
-    alignment: Alignment.center,
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
     decoration: BoxDecoration(
       color: c.fill08,
       borderRadius: BorderRadius.circular(14),

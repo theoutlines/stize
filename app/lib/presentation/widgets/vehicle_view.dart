@@ -70,6 +70,8 @@ class VehicleView extends ConsumerWidget {
 
     return ListView(
       controller: scrollController,
+      // Desktop island: hug the content.
+      shrinkWrap: scrollController == null,
       padding: EdgeInsets.zero,
       children: [
         if (jamAhead)

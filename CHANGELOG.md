@@ -5,6 +5,41 @@ history (what changed for riders and developers), not a commit log.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
+## 2026-11-25
+
+### Changed
+- **Stop board cards.** The line number sits on a white plate; the time has
+  "min" beside it; under the time is where the vehicle is now ("1 stop away",
+  "At the stop"), led by a small dot that pulses while it moves. The next
+  vehicles of the same direction follow in one line ("next 13 · 26 · 40 min",
+  "još" in Serbian). Fleet badges, age, interval and the ↑↓ change badge are
+  gone from the board: model and amenities live on the follow screen.
+- **A vehicle that stopped moving** (its position unchanged for 2 minutes)
+  loses the dot, and its time dims with "≈": we no longer trust it.
+- **Vehicles waiting at the terminus** say "Starts here" ("Polazi odavde").
+- **Timetable section.** Timetable times sit below the live cards under one
+  "By timetable" header, never mixed into the live run; each card shows the
+  line, the destination, the clock time and the next two.
+- **Nearby** uses the same card, with the stop and its distance under the
+  destination. On desktop a line's directions page with a trackpad swipe, the
+  dots or the arrows that appear on hover.
+- **Follow screen in one sheet** (mobile): the followed vehicle heads the sheet
+  as a card in its line colour ("2 stops to Batutova"), then the route as a
+  line with stops, the vehicle on it and your stop marked, then the vehicle
+  itself: photo, model and nickname, short chips, a line about it, maker and
+  operator. A stuck vehicle says so on its stop ("Stuck · 3 min", "U zastoju")
+  and the times after it turn approximate.
+- **Close button.** On mobile the sheet's close rides above its right edge and
+  pushes the map buttons up when it reaches them; on desktop it stays in the
+  header. Every close is the same round button. In My stops a filled star
+  replaces the × that removed a stop.
+- **Desktop island** hugs its content up to the window height instead of
+  leaving an empty strip below the list.
+
+### Fixed
+- The map follows a tapped vehicle again (follow engages even when the entry
+  camera flight is interrupted).
+
 ## 2026-11-24
 
 ### Changed

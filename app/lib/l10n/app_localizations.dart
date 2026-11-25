@@ -1843,6 +1843,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Articulated'**
   String get fleetChipArticulated;
+
+  /// No description provided for @fleetChipAc.
+  ///
+  /// In en, this message translates to:
+  /// **'A/C'**
+  String get fleetChipAc;
+
+  /// No description provided for @fleetChipNoAc.
+  ///
+  /// In en, this message translates to:
+  /// **'No A/C'**
+  String get fleetChipNoAc;
 }
 
 class _AppLocalizationsDelegate

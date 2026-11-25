@@ -1028,4 +1028,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fleetChipArticulated => 'Articulated';
+
+  @override
+  String get fleetChipAc => 'A/C';
+
+  @override
+  String get fleetChipNoAc => 'No A/C';
 }

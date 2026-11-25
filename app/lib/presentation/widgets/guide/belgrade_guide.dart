@@ -77,6 +77,7 @@ class GuideHome extends StatelessWidget {
     final t = now ?? DateTime.now();
     return ListView(
       controller: scrollController,
+      shrinkWrap: scrollController == null,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       children: [
         _FreeLine(text: l10n.guideFree),
@@ -142,6 +143,7 @@ class GuideReadStop extends StatelessWidget {
     final theme = Theme.of(context);
     return ListView(
       controller: scrollController,
+      shrinkWrap: scrollController == null,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
         for (final (icon, text) in items)
@@ -175,6 +177,7 @@ class GuidePlaces extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       controller: scrollController,
+      shrinkWrap: scrollController == null,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
         for (final p in kGuidePlaces)
