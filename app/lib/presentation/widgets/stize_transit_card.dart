@@ -123,8 +123,11 @@ class StizeTransitCard extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             line,
+            // White on a colour plate reads heavier than colour on white:
+            // the timetable plate drops to 500 so both look the same weight
+            // (owner, 2026-11-25).
             style: StizeType.section.copyWith(
-              fontWeight: FontWeight.w600,
+              fontWeight: inverted ? FontWeight.w500 : FontWeight.w600,
               height: 1.2,
               color: ink,
             ),

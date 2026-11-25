@@ -57,7 +57,9 @@ class ArrivalTile extends StatelessWidget {
       scheduled: status == ArrivalRowStatus.scheduled,
       approximate: isStuck,
       next: laterLabel(l10n, localeName, laterEtaMinutes),
-      live: live,
+      // A terminus departure is as real as a live one: full brightness, only
+      // not followable yet (owner, 2026-11-25).
+      live: status != ArrivalRowStatus.scheduled,
       onTap: live ? onTap : null,
     );
   }
