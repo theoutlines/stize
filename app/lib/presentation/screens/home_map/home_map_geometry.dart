@@ -161,6 +161,7 @@ extension _MapGeometry on _HomeMapScreenState {
     _following = true;
     _selectedVehicleKey = key; // (re)seed on the first follow tick
     _lastFollowMoveAt = null;
+    _followStartedAt = DateTime.now();
     if (flyTo && controller != null) {
       final zoom = math.max(
         controller.getCamera().zoom,
@@ -222,7 +223,18 @@ extension _MapGeometry on _HomeMapScreenState {
   /// tracking (owner R3 #1). Screen-math moves x AND y explicitly, so the
   /// vehicle can't drift off vertically. Throttled to [_followInterval].
   void _followTick() {
-    if (!_following || !_followEngaged) return;
+    if (!_following) return;
+    if (!_followEngaged) {
+      // The fly-to normally engages follow when it settles; if its future was
+      // dropped (an interrupted web flight never resolves), engage on time.
+      final started = _followStartedAt;
+      if (started == null ||
+          DateTime.now().difference(started) <
+              _HomeMapScreenState._followEngageFallback) {
+        return;
+      }
+      _followEngaged = true;
+    }
     final key = _selectedVehicleKey;
     final controller = _controller;
     if (key == null || controller == null) return;

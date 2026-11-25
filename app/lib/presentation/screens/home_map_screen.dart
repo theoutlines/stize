@@ -429,6 +429,13 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // break follow (the classic self-cancelling-follow bug).
   bool _following = false;
   bool _followEngaged = false;
+
+  /// When the current follow started. If the entry fly-to's future never
+  /// completes (on web an interrupted flight, e.g. by the sheet re-fitting the
+  /// camera as the vehicle level opens, never resolves), follow engages anyway
+  /// once [_followEngageFallback] has passed: the map must never stop tracking.
+  DateTime? _followStartedAt;
+  static const _followEngageFallback = Duration(milliseconds: 1200);
   // The followed line has no route geometry in our GTFS (a suburban / non-GSP
   // carrier like "Ada 4"): follow degrades to raw GPS — no route line, no route
   // ahead, an honest label (owner R4 #2).
