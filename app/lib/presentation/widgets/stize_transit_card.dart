@@ -200,30 +200,39 @@ class StizeTransitCard extends StatelessWidget {
       ],
     );
 
-    final hasRow3 = leftNote != null || (next != null && !scheduled);
+    final hasNext = next != null && !scheduled;
+    final hasRow3 = leftNote != null || hasNext;
+    // One fixed 24px line, 6px below the destination row, whatever it holds:
+    // the stop line of a Nearby card sits in the same place with or without a
+    // "next" beside it, so neighbouring cards line up (owner, 2026-11-25).
     final row3 = !hasRow3
         ? null
         : Padding(
-            // 4px row gap + 6 = the 10px that separates the "next" block.
-            padding: EdgeInsets.only(top: next != null ? 6 : 0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: leftNote == null
-                      ? const SizedBox.shrink()
-                      : Text(
-                          leftNote!,
-                          style: captionStyle(c, scheduled: scheduled),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                ),
-                if (next != null && !scheduled) ...[
-                  const SizedBox(width: StizeSpace.space3),
-                  Text(next!, style: StizeType.lineNumber.copyWith(color: on)),
+            padding: const EdgeInsets.only(top: 6),
+            child: SizedBox(
+              height: 24,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: leftNote == null
+                        ? const SizedBox.shrink()
+                        : Text(
+                            leftNote!,
+                            style: captionStyle(c, scheduled: scheduled),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                  ),
+                  if (hasNext) ...[
+                    const SizedBox(width: StizeSpace.space3),
+                    Text(
+                      next!,
+                      style: StizeType.lineNumber.copyWith(color: on),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           );
 

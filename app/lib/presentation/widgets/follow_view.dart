@@ -231,6 +231,7 @@ class FollowHeader extends StatelessWidget {
                       : 0,
                 ),
                 child: Wrap(
+                  alignment: WrapAlignment.end,
                   spacing: 6,
                   children: [
                     for (final v in vehicles) _segment(c, l10n, fill, v),
@@ -265,12 +266,15 @@ class FollowHeader extends StatelessWidget {
           child: Container(
             height: 32,
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: StizeType.lineNumber.copyWith(
-                height: 1.2,
-                color: v.selected ? fill : c.onTransit,
+            // Shrink-wrapped: an aligned Container would stretch to the row.
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                label,
+                style: StizeType.lineNumber.copyWith(
+                  height: 1.2,
+                  color: v.selected ? fill : c.onTransit,
+                ),
               ),
             ),
           ),
