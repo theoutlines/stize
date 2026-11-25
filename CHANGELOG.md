@@ -42,6 +42,13 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-25
 
+### Fixed (night)
+- **One locate button on desktop.** "Where am I" lives only in the search
+  pill, as on mobile; the extra round button on the right is gone.
+- **Loading screen in Stiže colours.** The screen before the app starts uses
+  the design-system background (light #F4F4F2, dark #151515) instead of the
+  old green tint.
+
 ### Changed (night)
 - **New basemap: Stiže Standard.** Our own map style replaces MapTiler
   Streets in both themes: warm built-up areas, calm blue-grey streets, street
