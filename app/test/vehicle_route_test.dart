@@ -87,9 +87,10 @@ void main() {
       stopsRemaining: null,
       etaToBoardMinutes: null,
     );
-    // Still lists upcoming stops (from nearest to the vehicle), just no ETAs.
+    // Still lists upcoming stops, timed at the typical city pace.
     expect(plan.stops, isNotEmpty);
-    expect(plan.stops.every((u) => u.etaMinutes == null), isTrue);
+    expect(plan.stops.first.etaMinutes, (kTypicalMinutesPerStop).round());
+    expect(plan.stops.every((u) => u.etaMinutes != null), isTrue);
   });
 
   test('handles an empty shape without throwing', () {
