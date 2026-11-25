@@ -7,6 +7,17 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-25
 
+### Changed (night)
+- **New basemap: Stiže Standard.** Our own map style replaces MapTiler
+  Streets in both themes: warm built-up areas, calm blue-grey streets, street
+  names in Serbian Latin, buildings that rise into soft 3D when the map is
+  tilted. Places show as icons in coloured circles by kind: landmarks
+  (museums, theatres, churches, hospitals, stations, universities, malls)
+  from zoom 15, everyday places (hotels, pharmacies, supermarkets, cinemas)
+  from 16, every named café, bar, shop and street artwork from 17. Bus and tram stops come
+  only from our own stop layer. Place colours never use the tram, bus or
+  trolleybus hues.
+
 ### Changed (evening)
 - **Levels open as high as Nearby.** A stop, the guide and the other levels
   on mobile now rise to just under the close button, like the Nearby list;
