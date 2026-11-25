@@ -107,6 +107,6 @@ class CitySummary {
 }
 
 /// Sample minimums: below them a number is not shown (honesty rule from
-/// docs/TRANSPORT_ANALYTICS.md). Owner-approved 2026-11-23.
+/// the transport analytics spec (internal)). Owner-approved 2026-11-23.
 const kCityCellMinSamples = 10;
 const kCityLineMinSamples = 30;

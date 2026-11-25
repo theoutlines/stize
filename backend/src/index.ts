@@ -47,7 +47,7 @@ import {
 import { kvGetCached } from "./lib/kvCache";
 
 // KV key for the drawer's optional Donate link. Empty/unset ⇒ the client hides
-// the Donate item; set it (dashboard/wrangler) to reveal it. See feature-flags.md.
+// the Donate item; set it (dashboard/wrangler) to reveal it. See the internal flag registry.
 const DONATE_URL_KV_KEY = "config:donate_url";
 
 const app = new Hono<{ Bindings: Env }>();

@@ -11,7 +11,7 @@
 #   ON). It talks to *its own* backend version: Workers Builds uploads each
 #   branch push of stigla-backend-staging as a version with a branch preview
 #   alias, https://<branch-slug>-stigla-backend-staging.theoutlines.workers.dev,
-#   so web + API of one branch form an isolated pair (docs/staging.md). If that
+#   so web + API of one branch form an isolated pair (the internal environments notes). If that
 #   alias doesn't answer in time, the build falls back to the shared staging API
 #   https://api-staging.stize.app and says so in the log.
 # - The MapTiler client key comes from the Pages project variable MAPTILER_KEY

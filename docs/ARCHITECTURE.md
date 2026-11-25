@@ -49,8 +49,8 @@ source into a stable versioned API under `/api/v1`. Key pieces:
 - **Feedback** (D1 `stigla-ideas`, the in-app "Write to me" form) and **experimental route alerts** (`src/lib/alerts.ts`, scrapes
   the public transit news site and uses an LLM to extract structured JSON,
   refreshed by a daily Cron trigger).
-- **Feature flags** live in KV and flip without a redeploy — see
-  [`feature-flags.md`](feature-flags.md).
+- **Feature flags** live in KV and flip without a redeploy
+  (`backend/src/lib/featureFlags.ts`).
 
 ## App — layered Flutter (`app/lib/`)
 

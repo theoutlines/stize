@@ -20,7 +20,7 @@ npm run deploy                 # manual fallback only; see below
 
 Deploys are Git-driven: a push to `main` deploys the prod and staging workers
 via Cloudflare Workers Builds, and every other branch uploads a staging version
-with its own preview alias. See `docs/staging.md`.
+with its own preview alias. See the internal environments notes.
 
 ## Architecture
 

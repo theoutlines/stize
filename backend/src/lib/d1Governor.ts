@@ -57,7 +57,7 @@ const KV_DAILY_LIMIT = "config:d1_daily_rows_written_limit";
 const KV_READ_THRESHOLD_PCT = "config:d1_governor_read_threshold_pct";
 const KV_DAILY_READ_LIMIT = "config:d1_daily_rows_read_limit";
 const KV_INTERVAL_MIN = "config:d1_governor_interval_min";
-// Transport analytics' share of the daily write limit (docs/TRANSPORT_ANALYTICS.md,
+// Transport analytics' share of the daily write limit (the transport analytics spec (internal),
 // owner 2026-11-22: 40%). Past it, only `analytics_collect` stands down, well
 // before the general threshold stops every governed writer.
 const KV_ANALYTICS_PCT = "config:d1_analytics_share_pct";
