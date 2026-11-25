@@ -293,10 +293,6 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       mainAxisSize: widget.hugContent ? MainAxisSize.min : MainAxisSize.max,
       children: [
         if (widget.showLocalSearch) _localSearch(Theme.of(context)),
-        // Mobile: the guide strip opens the list itself (flush, stretches
-        // with it); elsewhere it sits above the list.
-        if (widget.banner != null && _query.isEmpty && !FlatCards.of(context))
-          widget.banner!,
         if (contextLines.isNotEmpty) JamNearbyStrip(contextLines: contextLines),
         Flexible(
           fit: widget.hugContent ? FlexFit.loose : FlexFit.tight,
@@ -457,7 +453,8 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       onRefresh: _fetch,
       onTapGroup: widget.onTapGroup,
       header: _liveUnavailable ? const LiveUnavailableBanner() : null,
-      lead: _query.isEmpty && FlatCards.of(context) ? widget.banner : null,
+      // The guide strip opens the list itself, mobile and desktop alike.
+      lead: _query.isEmpty ? widget.banner : null,
       leadColor: GuideStrip.surface(StizeColors.of(context)),
     );
   }
@@ -595,9 +592,14 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       shrinkWrap: widget.hugContent,
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        // Mobile: the guide strip leads empty and loading states too.
-        if (widget.banner != null && _query.isEmpty && FlatCards.of(context))
-          widget.banner!,
+        // The guide strip leads empty and loading states too.
+        if (widget.banner != null && _query.isEmpty)
+          FlatCards.of(context)
+              ? widget.banner!
+              : Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                  child: widget.banner,
+                ),
         ConstrainedBox(
           constraints: BoxConstraints(minHeight: widget.hugContent ? 0 : 220),
           child: child,

@@ -372,6 +372,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   final _pillCtl = TextEditingController();
   final _pillFocus = FocusNode();
   bool _pillActive = false;
+  // Desktop: the same pill above the panel is in its search state.
+  bool _deskSearchActive = false;
   final _topButtonsKey = GlobalKey();
   double _topButtonsH = 120; // measured after layout
   bool _wasOneScrollRoot = true;
@@ -477,6 +479,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   void initState() {
     super.initState();
     _pillCtl.addListener(_onPillQuery);
+    // Desktop pill: leaving an empty field turns it back into the pill.
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus &&
+          _searchController.text.isEmpty &&
+          _deskSearchActive &&
+          mounted) {
+        setState(() => _deskSearchActive = false);
+      }
+    });
     WidgetsBinding.instance.addObserver(this);
     guideOpenedBefore().then((v) {
       if (mounted && v != _guideSeen) setState(() => _guideSeen = v);

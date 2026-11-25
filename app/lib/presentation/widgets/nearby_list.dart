@@ -92,6 +92,11 @@ class NearbyList extends StatelessWidget {
         parent: AlwaysScrollableScrollPhysics(),
       ),
       children: [
+        if (lead != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: StizeSpace.space1),
+            child: lead,
+          ),
         ?header,
         AnimatedEntries(
           gap: StizeSpace.space1,

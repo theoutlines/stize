@@ -464,25 +464,21 @@ class GuideStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!FlatCards.of(context)) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-        child: GuideRow(
-          icon: icon,
-          title: title,
-          subtitle: subtitle,
-          onTap: onTap,
-        ),
-      );
-    }
-    // Mobile one-scroll (owner, 2026-11-25, variant A): a flat row in the
-    // list's own language, flush with the sheet's top like the cards, the
-    // timetable cards' neutral fill and the same hairline under it.
+    // One strip for mobile and desktop (owner, 2026-11-25, variant A): a row
+    // in the cards' own language with the timetable cards' neutral fill.
+    // Mobile: flat, flush with the sheet's top, a hairline under it. Desktop
+    // island: rounded like the island's cards.
+    final flat = FlatCards.of(context);
     final c = StizeColors.of(context);
     final text = StizeText.of(context);
     return Material(
       color: surface(c),
-      shape: Border(bottom: BorderSide(color: c.stripeLine)),
+      shape: flat
+          ? Border(bottom: BorderSide(color: c.stripeLine))
+          : RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
+            ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
