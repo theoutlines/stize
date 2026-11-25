@@ -27,15 +27,19 @@ class _WheelElasticState extends State<WheelElastic>
   ScrollMetrics? _metrics;
   double _pull = 0;
   Timer? _rest;
-  late final AnimationController _back = AnimationController(
-    vsync: this,
-    duration: StizeMotion.medium,
-  )..addListener(() => setState(() => _pull = _from * (1 - _curve.value)));
-  late final Animation<double> _curve = CurvedAnimation(
-    parent: _back,
-    curve: StizeMotion.smoothOut,
-  );
+  // Created in initState, not lazily: a lazy controller first touched in
+  // dispose() looks up TickerMode on a deactivated element (CI failure).
+  late final AnimationController _back;
+  late final Animation<double> _curve;
   double _from = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _back = AnimationController(vsync: this, duration: StizeMotion.medium)
+      ..addListener(() => setState(() => _pull = _from * (1 - _curve.value)));
+    _curve = CurvedAnimation(parent: _back, curve: StizeMotion.smoothOut);
+  }
 
   @override
   void dispose() {
