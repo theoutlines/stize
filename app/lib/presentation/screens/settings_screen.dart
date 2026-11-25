@@ -1,3 +1,4 @@
+import 'package:stize/presentation/widgets/sheet_chrome.dart';
 import 'package:stize/presentation/widgets/page_app_bar.dart';
 import 'package:stize/core/design/components/stize_page_column.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +11,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/context_slot.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
-import '../../core/design/stize_icons.dart';
 
 // Serbian first — the app's home city is Belgrade. `null` (follow the system)
 // stays on top: it's the default, not a language. Russian was removed on
@@ -71,11 +71,7 @@ Future<void> showSettingsSheet(BuildContext context) {
                             style: StizeText.of(dialogContext).section,
                           ),
                         ),
-                        IconButton(
-                          tooltip: MaterialLocalizations.of(
-                            dialogContext,
-                          ).closeButtonTooltip,
-                          icon: const Icon(StizeIcons.close, size: 20),
+                        SheetCloseButton(
                           onPressed: () => Navigator.of(dialogContext).pop(),
                         ),
                       ],

@@ -13,6 +13,8 @@ import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
 import 'package:stize/presentation/screens/stop_screen.dart';
 import 'package:stize/presentation/widgets/stop_sheet.dart';
+import 'package:stize/presentation/widgets/follow_view.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 import 'package:stize/core/design/stize_icons.dart';
 
 // A tiny, deterministic catalog: two tram classes with very different comfort,
@@ -144,93 +146,86 @@ void main() {
     },
   );
 
-  testWidgets(
-    'B2/B4: badges show, junk number is hidden, comfort sort appears',
-    (tester) async {
-      final catalog = FleetCatalog.tryParse(_catalogJson)!;
-      await tester.pumpWidget(_wrap(catalog: catalog));
-      await tester.pumpAndSettle();
-
-      // Bozankaya has AC + low floor → those badges appear.
-      expect(find.byIcon(StizeIcons.snowflake), findsOneWidget);
-      expect(find.byIcon(StizeIcons.accessible), findsOneWidget);
-
-      // Two distinct classes → the comfort sort is offered.
-      expect(find.text('By comfort'), findsOneWidget);
-      expect(find.text('By time'), findsOneWidget);
-
-      // The junk placeholder P5 is never shown anywhere.
-      expect(find.textContaining('P5'), findsNothing);
-      expect(find.textContaining('#P5'), findsNothing);
-    },
-  );
-
-  testWidgets('B4: sorting by comfort puts the Bozankaya above the Kata', (
+  testWidgets('board cards carry no fleet badges, no junk number, no sort', (
     tester,
   ) async {
     final catalog = FleetCatalog.tryParse(_catalogJson)!;
     await tester.pumpWidget(_wrap(catalog: catalog));
     await tester.pumpAndSettle();
 
-    // Default (time) order: Kata (3 min) is above Bozankaya (9 min).
-    final kataY0 = tester.getTopLeft(find.text('3')).dy;
-    final bozaY0 = tester.getTopLeft(find.text('9')).dy;
-    expect(kataY0, lessThan(bozaY0));
-
-    await tester.tap(find.text('By comfort'));
-    await tester.pumpAndSettle();
-
-    // Now the comfy Bozankaya (9 min) sits above the old Kata (3 min).
-    final kataY1 = tester.getTopLeft(find.text('3')).dy;
-    final bozaY1 = tester.getTopLeft(find.text('9')).dy;
-    expect(bozaY1, lessThan(kataY1));
+    // Model, age and amenities moved to the follow screen (owner,
+    // 2026-11-25): a board card only says how to catch the vehicle.
+    expect(find.byIcon(StizeIcons.snowflake), findsNothing);
+    expect(find.byIcon(StizeIcons.accessible), findsNothing);
+    expect(find.text('By comfort'), findsNothing);
+    expect(find.text('By time'), findsNothing);
+    expect(find.textContaining('P5'), findsNothing);
   });
 
-  testWidgets('B3: card shows model on top, Latin nickname below (sr locale)', (
+  testWidgets('the board is always in time order', (tester) async {
+    final catalog = FleetCatalog.tryParse(_catalogJson)!;
+    await tester.pumpWidget(_wrap(catalog: catalog));
+    await tester.pumpAndSettle();
+
+    // Kata (3 min) stays above the more comfortable Bozankaya (9 min).
+    final kataY = tester.getTopLeft(find.text('3')).dy;
+    final bozaY = tester.getTopLeft(find.text('9')).dy;
+    expect(kataY, lessThan(bozaY));
+  });
+
+  Widget vehicleCard(FleetCatalog catalog, Locale locale) => ProviderScope(
+    overrides: [fleetCatalogProvider.overrideWith((ref) async => catalog)],
+    child: MaterialApp(
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: FleetVehicleCard(
+            fleet: catalog.resolve('81540'),
+            type: VehicleType.tram,
+            garageNo: '81540',
+          ),
+        ),
+      ),
+    ),
+  );
+
+  testWidgets('follow card: model with the Latin nickname (sr locale)', (
     tester,
   ) async {
     final catalog = FleetCatalog.tryParse(_catalogJson)!;
-    await tester.pumpWidget(
-      _wrap(catalog: catalog, locale: const Locale('sr')),
-    );
-    await tester.pumpAndSettle();
-
-    // Tap the AC badge (only the Bozankaya has one).
-    await tester.tap(find.byIcon(StizeIcons.snowflake));
+    await tester.pumpWidget(vehicleCard(catalog, const Locale('sr')));
     await tester.pumpAndSettle();
 
     expect(find.text('Bozankaya'), findsOneWidget); // model name, headline
-    expect(find.text('Turčin'), findsOneWidget); // Latin nickname beneath
-    expect(find.text('Турчин'), findsNothing); // never Cyrillic
+    expect(find.text('“Turčin” · #81540'), findsOneWidget); // Latin nickname
+    expect(find.textContaining('Турчин'), findsNothing); // never Cyrillic
     expect(find.text('Novi tramvaj.'), findsOneWidget); // human_note_sr
     expect(find.text('Новый трамвай.'), findsNothing); // never the ru source
 
-    // Model sits above the nickname.
     final modelY = tester.getTopLeft(find.text('Bozankaya')).dy;
-    final nickY = tester.getTopLeft(find.text('Turčin')).dy;
+    final nickY = tester.getTopLeft(find.textContaining('Turčin')).dy;
     expect(modelY, lessThan(nickY));
   });
 
-  testWidgets('B3: English card shows model on top, ASCII nickname below', (
+  testWidgets('follow card: model with the ASCII nickname (en locale)', (
     tester,
   ) async {
     final catalog = FleetCatalog.tryParse(_catalogJson)!;
-    await tester.pumpWidget(
-      _wrap(catalog: catalog, locale: const Locale('en')),
-    );
+    await tester.pumpWidget(vehicleCard(catalog, const Locale('en')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(StizeIcons.snowflake));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Bozankaya'), findsOneWidget); // model headline
-    expect(find.text('Turcin'), findsOneWidget); // ASCII nickname, for fun
-    expect(find.text('Турчин'), findsNothing); // not the Cyrillic form
+    expect(find.text('Bozankaya'), findsOneWidget);
+    expect(find.text('“Turcin” · #81540'), findsOneWidget);
+    expect(find.textContaining('Турчин'), findsNothing);
+    expect(find.text('Articulated'), findsOneWidget);
+    expect(find.text('~218 people'), findsOneWidget);
   });
 
-  // Regression: the *in-app* tap path opens the map's bottom sheet
-  // (stop_sheet.dart), not the full StopScreen. Fleet-ID must show there too.
-  testWidgets('map stop sheet also shows Fleet-ID badges', (tester) async {
+  // The *in-app* tap path opens the map's bottom sheet (stop_sheet.dart), not
+  // the full StopScreen: same cards there, no fleet badges either.
+  testWidgets('map stop sheet shows the same badge-free cards', (tester) async {
     final catalog = FleetCatalog.tryParse(_catalogJson)!;
     await tester.pumpWidget(
       ProviderScope(
@@ -266,9 +261,9 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    // Sheet is open with Fleet-ID surfaced.
-    expect(find.byIcon(StizeIcons.snowflake), findsOneWidget);
-    expect(find.text('By comfort'), findsOneWidget);
+    expect(find.text('Batutova'), findsWidgets);
+    expect(find.byIcon(StizeIcons.snowflake), findsNothing);
+    expect(find.text('By comfort'), findsNothing);
     expect(find.textContaining('P5'), findsNothing); // junk hidden
   });
 }

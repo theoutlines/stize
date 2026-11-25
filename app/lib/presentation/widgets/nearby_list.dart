@@ -1,13 +1,18 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'animated_entries.dart';
 import 'flat_cards.dart';
 
+import '../../core/design/stize_icons.dart';
 import '../../core/design/stize_tokens.dart';
+import '../../core/arrival_display.dart';
 import '../../core/eta_format.dart';
+import '../../core/movement_tracker.dart';
 import '../../core/nearby_focus.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../l10n/app_localizations.dart';
+import 'arrival_tile.dart';
 import 'stize_transit_card.dart';
 
 /// The "Nearby" list itself — a pure, scrollable list of line+direction rows.
@@ -46,6 +51,8 @@ class NearbyList extends StatelessWidget {
     final flat = FlatCards.of(context);
     final list = ListView(
       controller: scrollController,
+      // Desktop island: hug the cards (no empty strip under the last one).
+      shrinkWrap: scrollController == null,
       // Top padding matches the horizontal (side) padding so the first card is
       // inset equally from the island's top and sides (owner desktop request).
       // Flat (mobile one-scroll): edge to edge, no inset.
@@ -111,36 +118,45 @@ class NearbyCard extends StatelessWidget {
     final localeName = Localizations.localeOf(context).toString();
     final hasLive = nearbyGroupHasLive(group);
     final etas = visibleNearbyEtas(group);
-    final scheduled = etas.isNotEmpty && !nearbyEtaIsLive(etas.first);
-    final caption = StizeTransitCard.captionStyle(c, scheduled: scheduled);
+    final first = etas.isEmpty ? null : etas.first;
+    final scheduled = first != null && !nearbyEtaIsLive(first);
+    final later = etas.skip(1).map((e) => e.etaMinutes).take(3).toList();
+    final stuck =
+        !scheduled && MovementTracker.instance.isStuck(first?.garageNo);
 
-    // The next time of this line, with its unit attached (same as the board).
-    String? next;
-    // "next in 0 min" said nothing: a second vehicle also arriving now gets
-    // no caption (owner, 2026-11-23).
-    if (etas.length > 1 && etas[1].etaMinutes > 0) {
-      final m = etas[1].etaMinutes;
-      next = m >= kFarEtaMinutes
-          ? l10n.arrivalNextAt(clockAt(localeName, m))
-          : l10n.arrivalNextIn(m <= 0 ? 0 : m);
+    // Same card as the stop board; the stop and its distance sit under the
+    // destination, since Nearby mixes several stops.
+    String? position;
+    if (first != null && !scheduled) {
+      position = switch (arrivalProximity(
+        stopsRemaining: first.stopsRemaining,
+        etaMinutes: first.etaMinutes,
+      )) {
+        ArrivalProximity.here => l10n.arrivalStopsAway(0),
+        ArrivalProximity.stopsAway => l10n.arrivalStopsAway(
+          first.stopsRemaining!,
+        ),
+        ArrivalProximity.unknown => null,
+      };
     }
 
     return StizeTransitCard(
       type: group.vehicleType,
       line: group.line,
       destination: group.destination,
-      caption: [
-        if (hasLive) StizeTransitCard.liveDot(c),
-        Text(
+      leftNote:
           '${group.stopName} · ${l10n.nearbyDistanceMeters(group.distanceMeters)}',
-          style: caption,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        if (next != null) Text(next, style: caption),
-      ],
-      etaMinutes: etas.isEmpty ? null : etas.first.etaMinutes,
+      position: position,
+      moving: hasLive && !stuck,
+      approximate: stuck,
+      etaMinutes: first?.etaMinutes,
       scheduled: scheduled,
+      next: scheduled
+          ? null
+          : ArrivalTile.laterLabel(l10n, localeName, later),
+      followUps: scheduled && later.isNotEmpty
+          ? later.take(2).map((m) => clockAt(localeName, m)).join(' · ')
+          : null,
       live: hasLive,
       onTap: onTap,
     );
@@ -197,6 +213,46 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
 
   bool _has(int i) => i >= 0 && i < widget.groups.length;
 
+  // Desktop: a trackpad's horizontal swipe arrives as scroll signals, not a
+  // drag. Sum them and turn the page once per gesture.
+  double _wheelDx = 0;
+  DateTime _lastWheelPage = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _hover = false;
+
+  void _onPointerSignal(PointerSignalEvent e) {
+    if (e is! PointerScrollEvent) return;
+    final dx = e.scrollDelta.dx;
+    if (dx.abs() <= e.scrollDelta.dy.abs()) return; // vertical: the list's
+    _wheelDx += dx;
+    final now = DateTime.now();
+    if (_wheelDx.abs() < 40 ||
+        now.difference(_lastWheelPage) < const Duration(milliseconds: 450)) {
+      return;
+    }
+    _lastWheelPage = now;
+    final delta = _wheelDx > 0 ? 1 : -1;
+    _wheelDx = 0;
+    _goTo(_page + delta);
+  }
+
+  /// Animate to [target] (the arrows, the dots, a trackpad swipe).
+  void _goTo(int target) {
+    if (!_has(target) || target == _page || _settle.isAnimating) return;
+    final delta = target > _page ? 1 : -1;
+    // Jump over pages in between: settle on the neighbour, then land.
+    final end = delta > 0 ? -_width : _width;
+    _to = Tween<double>(begin: _drag, end: end).animate(
+      CurvedAnimation(parent: _settle, curve: StizeMotion.smoothOut),
+    )..addListener(() => setState(() => _drag = _to!.value));
+    _settle.forward(from: 0).whenComplete(() {
+      if (!mounted) return;
+      setState(() {
+        _page = target;
+        _drag = 0;
+      });
+    });
+  }
+
   void _onUpdate(DragUpdateDetails d) {
     _settle.stop();
     setState(() {
@@ -239,6 +295,19 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
     );
   }
 
+  Widget _arrow(IconData icon, VoidCallback onTap) => Material(
+    color: Colors.black.withValues(alpha: 0.35),
+    shape: const CircleBorder(),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: SizedBox.square(
+        dimension: 32,
+        child: Icon(icon, size: 16, color: Colors.white),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final n = widget.groups.length;
@@ -249,7 +318,9 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
     return LayoutBuilder(
       builder: (context, box) {
         _width = box.maxWidth;
-        return GestureDetector(
+        final canPrev = _has(_page - 1);
+        final canNext = _has(_page + 1);
+        final carousel = GestureDetector(
           // Horizontal swipes move the whole card; vertical drags still scroll.
           onHorizontalDragUpdate: _onUpdate,
           onHorizontalDragEnd: _onEnd,
@@ -271,31 +342,63 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
                     ),
                   ),
                 Positioned(
-                  top: StizeSpace.space4,
+                  top: StizeSpace.space4 - 9,
                   left: 0,
                   right: 0,
-                  child: IgnorePointer(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        for (var i = 0; i < n; i++)
-                          Container(
-                            width: 6,
-                            height: 6,
-                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withValues(
-                                alpha: i == shown ? 0.95 : 0.4,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (var i = 0; i < n; i++)
+                        // Each dot opens its direction (a 24px tap box).
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _goTo(i),
+                          child: Padding(
+                            padding: const EdgeInsets.all(9),
+                            child: Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(
+                                  alpha: i == shown ? 0.95 : 0.4,
+                                ),
                               ),
                             ),
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
                 ),
+                // Pointer devices: arrows on hover, at the card's sides.
+                if (_hover && canPrev)
+                  Positioned(
+                    left: StizeSpace.space1,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: _arrow(StizeIcons.back, () => _goTo(_page - 1)),
+                    ),
+                  ),
+                if (_hover && canNext)
+                  Positioned(
+                    right: StizeSpace.space1,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: _arrow(StizeIcons.forward, () => _goTo(_page + 1)),
+                    ),
+                  ),
               ],
             ),
+          ),
+        );
+        return Listener(
+          onPointerSignal: _onPointerSignal,
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _hover = true),
+            onExit: (_) => setState(() => _hover = false),
+            child: carousel,
           ),
         );
       },

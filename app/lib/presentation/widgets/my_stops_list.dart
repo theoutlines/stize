@@ -5,6 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'empty_state.dart';
 import '../../core/design/stize_icons.dart';
+import '../../core/design/stize_tokens.dart';
 
 /// The saved stops, as a level inside the context slot (mobile sheet / desktop
 /// panel). Tapping a stop opens it as the next level on the same map.
@@ -34,6 +35,7 @@ class MyStopsList extends ConsumerWidget {
         if (stops.isEmpty) {
           return ListView(
             controller: scrollController,
+            shrinkWrap: scrollController == null,
             children: [
               EmptyState(
                 icon: StizeIcons.star,
@@ -45,6 +47,7 @@ class MyStopsList extends ConsumerWidget {
         }
         return ListView.separated(
           controller: scrollController,
+          shrinkWrap: scrollController == null,
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
           itemCount: stops.length,
           separatorBuilder: (_, _) => const SizedBox(height: 8),
@@ -60,8 +63,14 @@ class MyStopsList extends ConsumerWidget {
                 minTileHeight: 56,
                 title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
                 subtitle: custom != null ? Text(stop.name) : null,
+                // A filled star, not a ×: a × reads as "close" everywhere else
+                // (owner, 2026-11-25). Tapping it takes the stop out.
                 trailing: IconButton(
-                  icon: const Icon(StizeIcons.close, size: 20),
+                  icon: Icon(
+                    StizeIcons.starFilled,
+                    size: 20,
+                    color: StizeColors.of(context).favorite,
+                  ),
                   tooltip: l10n.removeFromFavorites,
                   onPressed: () => ref
                       .read(favoritesControllerProvider.notifier)

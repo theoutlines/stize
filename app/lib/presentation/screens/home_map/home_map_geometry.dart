@@ -123,6 +123,18 @@ extension _MapGeometry on _HomeMapScreenState {
         .read(eventLoggerProvider)
         .log(Ev.vehicleFollow, props: {'source': source});
     _setState(() => _selectedVehicleKey = key);
+    // Mobile: the follow opens in the sheet at its low detent, the map on top.
+    if (!_panelActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_sheetCtl.isAttached) return;
+        if ((_sheetCtl.size - kSheetPeek).abs() < 0.01) return;
+        _sheetCtl.animateTo(
+          kSheetPeek,
+          duration: StizeMotion.slow,
+          curve: StizeMotion.smoothOut,
+        );
+      });
+    }
     _writeVehiclesToSource(); // tap highlight on the symbol layer
     if (!_paused && _vehAnimator.hasPendingMotion) _startVehDriver();
     _paintVehicles();

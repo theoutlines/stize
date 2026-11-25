@@ -35,10 +35,14 @@ class ScheduledGroupCell extends ArrivalListEntry {
     required this.line,
     required this.vehicleType,
     required this.etaMinutes,
+    this.directionKey,
   });
 
   final String line;
   final VehicleType vehicleType;
+
+  /// The line×direction this cell stands for (resolves its destination).
+  final String? directionKey;
 
   /// Surviving scheduled ETAs (minutes), ascending, at most [maxTimes] entries.
   /// First is the "nearest" shown large; the rest are the muted follow-ups.
@@ -184,6 +188,7 @@ List<ArrivalListEntry> groupArrivals(
         ScheduledGroupCell(
           line: survivingScheduled.first.$2.line,
           vehicleType: survivingScheduled.first.$2.vehicleType,
+          directionKey: _directionKey(survivingScheduled.first.$2),
           etaMinutes: [
             for (final m in survivingScheduled.take(kMaxScheduledTimes))
               m.$2.etaMinutes,
@@ -218,7 +223,7 @@ List<ArrivalListEntry> groupArrivals(
 }
 
 /// Most later trips a folded live card lists next to its main ETA.
-const int kMaxLaterLiveTimes = 2;
+const int kMaxLaterLiveTimes = 3;
 
 /// One card per line×direction (owner, 2026-11-22): keeps the soonest live row
 /// of each line×direction where it is and folds that direction's later live

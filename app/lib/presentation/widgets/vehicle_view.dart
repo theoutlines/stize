@@ -4,85 +4,59 @@ import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/fleet_matcher.dart';
-import '../../core/map_support.dart' show vehicleColor;
-import '../../core/vehicle_route.dart';
-import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
+import '../../domain/models/vehicle_type.dart';
 import '../providers/providers.dart';
-import 'fleet_badges.dart';
-import 'fleet_model_card.dart';
-import 'vehicle_icon.dart';
+import 'follow_view.dart';
 import '../../core/design/stize_icons.dart';
 
-/// The reusable "vehicle" view — the content of the followed-vehicle context,
-/// hosted identically by the desktop context panel and the mobile follow sheet.
-/// Only the container adds chrome (the line pill + back-chip + × live in the
-/// panel/sheet header).
-///
-/// Faithful to the accepted mock's essentials and the owner's decision #7: the
-/// direction, a movement-status line, and an "About the vehicle" Fleet-ID card
-/// whose behaviour comes straight from the code — a model + garage number +
-/// amenity strip; a real-but-unmatched garage shows muted; a junk placeholder
-/// hides the card. The per-stop ETA route list from the mock is intentionally
-/// left to the map (the highlighted route + stops), since the mock's ETAs were
-/// declared placeholders and follow mode has no per-stop plan.
+/// The body of the follow sheet (mobile) and the follow level of the desktop
+/// island, under the [FollowHeader]: the route as a line with stops, then the
+/// vehicle itself ("This tram"). One sheet, no separate vehicle card (owner,
+/// 2026-11-25).
 class VehicleView extends ConsumerWidget {
   const VehicleView({
     super.key,
     required this.line,
     required this.type,
-    this.origin,
-    this.destination,
-    this.stuck = false,
     this.scheduled = false,
     this.garageNo,
-    this.upcomingStops = const [],
+    this.route = const [],
+    this.vehicleBetween = false,
+    this.stuckMinutes,
     this.routeUnavailable = false,
-    this.showRouteButton = false,
     this.jamAhead = false,
-    this.onShowRoute,
-    this.onOpenModel,
+    this.scrollController,
   });
-
-  /// A detected tram jam lies AHEAD of this vehicle on its own direction (item 5).
-  /// Computed by the host (it owns the along-track position + jam shapes); the
-  /// view just shows the compact warning. False = opposite direction / jam behind.
-  final bool jamAhead;
 
   final String line;
   final VehicleType type;
 
-  /// Route terminals, once the shape has loaded (null until then).
-  final String? origin;
-  final String? destination;
-
-  /// "Looks stopped" vs "On the move".
-  final bool stuck;
-
   /// Opened from a schedule-predicted object (position is a GTFS estimate).
   final bool scheduled;
 
-  /// The followed vehicle's garage number (the follow key when it came from an
-  /// arrival). Resolved against the fleet catalog for the "About" card.
+  /// The followed vehicle's garage number, resolved against the fleet catalog
+  /// for the "This tram" card.
   final String? garageNo;
 
-  /// The vehicle's upcoming stops (next → end), for the worded route list under
-  /// the fleet card. Empty → the list is hidden.
-  final List<UpcomingStop> upcomingStops;
+  /// The route around the vehicle: the stop behind it, then the stops ahead.
+  final List<FollowRouteStop> route;
+
+  /// The vehicle is between the passed stop and the next one.
+  final bool vehicleBetween;
+
+  /// Minutes the vehicle has not moved, once it reads as stuck.
+  final int? stuckMinutes;
 
   /// The followed line has no route geometry in our GTFS (a suburban / non-GSP
-  /// carrier): show an honest "route unavailable" note instead of the stop list.
+  /// carrier): an honest "route unavailable" note instead of the stop list.
   final bool routeUnavailable;
 
-  /// Mobile keeps the "Show route on map" action (kept 1:1 with today's app);
-  /// desktop hides it — the route is always drawn on the panel-side map.
-  final bool showRouteButton;
-  final VoidCallback? onShowRoute;
+  /// A detected tram jam lies AHEAD of this vehicle on its own direction.
+  final bool jamAhead;
 
-  /// When set, tapping the "About the vehicle" card opens the model as a leaf
-  /// sub-view of THIS panel (desktop) instead of a modal. Null → the modal
-  /// ([showFleetModelCard], mobile).
-  final void Function(FleetVehicle fleet)? onOpenModel;
+  /// The mobile sheet's controller, so dragging the content drags the sheet.
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -90,85 +64,77 @@ class VehicleView extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final catalog = ref.watch(fleetCatalogProvider).valueOrNull;
     final fleet = catalog?.resolve(garageNo);
-    // Decision #7: a junk placeholder id (P1..P999) hides the card entirely; a
-    // real-but-unmatched garage still shows (muted); a match shows in full.
+    // A junk placeholder id (P1..P999) hides the card; a real-but-unmatched
+    // garage still shows with what we know.
     final showAbout = fleet != null && fleet.kind != FleetMatchKind.unknownJunk;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      controller: scrollController,
+      // Desktop island: hug the content.
+      shrinkWrap: scrollController == null,
+      padding: EdgeInsets.zero,
       children: [
-        // Direction (route terminals) — the panel/sheet header already carries
-        // the line pill, so here we lead with where it's going.
-        Text(
-          (origin != null && destination != null)
-              ? '$origin → $destination'
-              : l10n.followingVehicle,
-          style: StizeText.of(context).label,
-        ),
-        const SizedBox(height: 8),
-        _statusChip(theme, l10n),
-        if (jamAhead) _jamAheadWarning(theme, l10n),
-        if (scheduled) ...[
-          const SizedBox(height: 8),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                StizeIcons.clock,
-                size: 14,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  l10n.vehicleScheduled,
-                  style: StizeText.of(
-                    context,
-                  ).note.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ),
-            ],
+        if (jamAhead)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: _jamAheadWarning(theme, l10n),
           ),
-        ],
-        if (showAbout) ...[
-          const SizedBox(height: 16),
-          _aboutVehicle(context, theme, l10n, fleet),
-        ],
-        if (routeUnavailable) ...[
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Icon(
-                StizeIcons.info,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  l10n.routeUnavailable,
-                  style: StizeText.of(
-                    context,
-                  ).body.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        if (scheduled)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              children: [
+                Icon(
+                  StizeIcons.clock,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-              ),
-            ],
-          ),
-        ] else if (upcomingStops.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _routeList(context, theme, l10n),
-        ],
-        if (showRouteButton) ...[
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              icon: const Icon(StizeIcons.map),
-              label: Text(l10n.vehicleShowRoute),
-              onPressed: onShowRoute,
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    l10n.vehicleScheduled,
+                    style: StizeText.of(
+                      context,
+                    ).note.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        if (routeUnavailable)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(
+                  StizeIcons.info,
+                  size: 16,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.routeUnavailable,
+                    style: StizeText.of(
+                      context,
+                    ).body.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (route.isNotEmpty)
+          FollowRoute(
+            stops: route,
+            line: line,
+            type: type,
+            vehicleBetween: vehicleBetween,
+            stuckMinutes: stuckMinutes,
+          ),
+        if (showAbout)
+          FleetVehicleCard(fleet: fleet, type: type, garageNo: garageNo)
+        else
+          const SizedBox(height: 24),
       ],
     );
   }
@@ -208,212 +174,4 @@ class VehicleView extends ConsumerWidget {
     );
   }
 
-  /// The worded route (owner R1 #5): the vehicle's next stop + the ones ahead,
-  /// like a running timetable, so you can tell where it's going without staring
-  /// at the map. The next (nearest) stop is highlighted. ETAs are approximate
-  /// (only the board stop's is a real prediction — the rest are extrapolated).
-  Widget _routeList(
-    BuildContext context,
-    ThemeData theme,
-    AppLocalizations l10n,
-  ) {
-    // Cap the list so the panel stays glanceable; the map shows the full route.
-    final shown = upcomingStops.take(6).toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          l10n.vehicleUpcomingStops,
-          style: StizeText.of(
-            context,
-          ).label.copyWith(color: theme.colorScheme.outline),
-        ),
-        const SizedBox(height: 4),
-        for (var i = 0; i < shown.length; i++)
-          _routeRow(theme, l10n, shown[i], isNext: i == 0),
-      ],
-    );
-  }
-
-  Widget _routeRow(
-    ThemeData theme,
-    AppLocalizations l10n,
-    UpcomingStop u, {
-    required bool isNext,
-  }) {
-    final eta = u.etaMinutes;
-    final color = isNext
-        ? theme.colorScheme.primary
-        : theme.colorScheme.outline;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(
-            isNext ? StizeIcons.locate : StizeIcons.dot,
-            size: isNext ? 15 : 7,
-            color: color,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              u.stop.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: isNext
-                  ? StizeText.ofTheme(
-                      theme,
-                    ).body.copyWith(fontWeight: FontWeight.w500)
-                  : StizeText.ofTheme(theme).body,
-            ),
-          ),
-          if (u.isBoardStop) ...[
-            const SizedBox(width: 8),
-            Text(
-              l10n.vehicleYourStop,
-              style: StizeText.ofTheme(
-                theme,
-              ).note.copyWith(color: theme.colorScheme.primary),
-            ),
-          ],
-          if (eta != null) ...[
-            const SizedBox(width: 8),
-            Text(
-              eta <= 0 ? l10n.arrivalEtaNow : l10n.vehicleEtaMinutesApprox(eta),
-              style: StizeText.ofTheme(theme).body.copyWith(
-                fontWeight: isNext ? FontWeight.w500 : FontWeight.w500,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _statusChip(ThemeData theme, AppLocalizations l10n) {
-    final stuckColor = theme.colorScheme.error;
-    final movingColor =
-        (theme.extension<StizeColors>() ?? StizeColors.dark).moving;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          stuck ? StizeIcons.warning : StizeIcons.walk,
-          size: 16,
-          color: stuck ? stuckColor : movingColor,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          stuck ? l10n.vehicleStuck : l10n.vehicleMoving,
-          style: StizeText.ofTheme(theme).body.copyWith(
-            color: stuck ? stuckColor : movingColor,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// "About the vehicle" (decision #7): the Fleet-ID card, priority-2 (below
-  /// the route/direction). Tappable → the existing model view. Behaviour is
-  /// delegated to [FleetBadgeStrip]: junk placeholder hides, unknown shows muted
-  /// garage, a match shows the amenity strip.
-  Widget _aboutVehicle(
-    BuildContext context,
-    ThemeData theme,
-    AppLocalizations l10n,
-    FleetVehicle fleet,
-  ) {
-    final title = fleet.hasInfo && fleet.modelName != null
-        ? fleet.modelName!
-        : (garageNo == null || garageNo!.trim().isEmpty
-              ? l10n.followingVehicle
-              : l10n.fleetVehicleNumber(garageNo!));
-    final tappable = fleet.hasInfo;
-
-    final card = Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.aboutVehicle,
-            style: StizeText.of(
-              context,
-            ).label.copyWith(color: theme.colorScheme.outline),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: vehicleColor(type).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: vehicleGlyph(type, size: 18, color: vehicleColor(type)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: StizeText.of(context).control,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (garageNo != null &&
-                        garageNo!.trim().isNotEmpty &&
-                        fleet.hasInfo)
-                      Text(
-                        l10n.fleetVehicleNumber(garageNo!),
-                        style: StizeText.of(
-                          context,
-                        ).caption.copyWith(color: theme.colorScheme.outline),
-                      ),
-                  ],
-                ),
-              ),
-              // The amenity strip encodes decision #7 exactly (junk → nothing,
-              // unknown → muted garage, match → badges).
-              FleetBadgeStrip(fleet: fleet, garageNo: garageNo),
-            ],
-          ),
-          if (tappable) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '${l10n.viewModelDetails} ›',
-                style: StizeText.of(
-                  context,
-                ).label.copyWith(color: theme.colorScheme.primary),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-
-    if (!tappable) return card;
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      // Desktop panel: open the model as a leaf sub-view IN the panel (no second
-      // surface — owner R1 #3). Mobile: the modal card.
-      onTap: () => onOpenModel != null
-          ? onOpenModel!(fleet)
-          : showFleetModelCard(
-              context,
-              fleet: fleet,
-              fallbackType: type,
-              garageNo: garageNo,
-            ),
-      child: card,
-    );
-  }
 }

@@ -349,12 +349,6 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
-  String get fleetSortByTime => 'Po vremenu';
-
-  @override
-  String get fleetSortByComfort => 'Po komforu';
-
-  @override
   String get fleetUnknownModel => 'Model nepoznat';
 
   @override
@@ -614,6 +608,15 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get stopReportEntry => 'Nešto nije u redu sa ovom stanicom?';
+
+  @override
+  String get stopMore => 'Više';
+
+  @override
+  String get stopReportProblem => 'Prijavi problem';
+
+  @override
+  String get stopInMyStops => 'U Mojim stajalištima';
 
   @override
   String get stopReportTitle => 'Šta nije u redu?';
@@ -947,4 +950,93 @@ class AppLocalizationsSr extends AppLocalizations {
   String cityLinesBestOnly(String best) {
     return '$best je najtačnija linija; nijedna od prometnih linija ne kasni primetno.';
   }
+
+  @override
+  String arrivalNextList(String times) {
+    return 'još $times min';
+  }
+
+  @override
+  String get arrivalStartsHere => 'Polazi odavde';
+
+  @override
+  String get arrivalByTimetable => 'Po redu vožnje';
+
+  @override
+  String followStopsTo(int count, String stop) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$stop za $count stanica',
+      few: '$stop za $count stanice',
+      one: '$stop za $count stanicu',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String followAtStop(String stop) {
+    return 'Na stanici $stop';
+  }
+
+  @override
+  String followNextStop(String stop) {
+    return 'Sledeća: $stop';
+  }
+
+  @override
+  String followStuck(int minutes) {
+    return 'U zastoju · $minutes min';
+  }
+
+  @override
+  String get followYourStop => 'Vaša stanica';
+
+  @override
+  String fleetChipAge(int years) {
+    return '$years god.';
+  }
+
+  @override
+  String fleetChipCapacity(int count) {
+    return '~$count putnika';
+  }
+
+  @override
+  String fleetChipComfort(String word) {
+    return 'Udobnost: $word';
+  }
+
+  @override
+  String get fleetChipSteps => 'Stepenice';
+
+  @override
+  String get fleetChipLowFloor => 'Niskopodni';
+
+  @override
+  String fleetMadeBy(String value) {
+    return 'Proizvođač $value';
+  }
+
+  @override
+  String fleetOperatorShort(String name) {
+    return 'Prevoznik $name';
+  }
+
+  @override
+  String fleetPhotoShort(String author, String license) {
+    return 'Foto: $author, $license';
+  }
+
+  @override
+  String get close => 'Zatvori';
+
+  @override
+  String get fleetChipArticulated => 'Zglobni';
+
+  @override
+  String get fleetChipAc => 'Klima';
+
+  @override
+  String get fleetChipNoAc => 'Bez klime';
 }

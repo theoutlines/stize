@@ -7,9 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/arrival_grouping.dart';
 import '../../core/design/stize_tokens.dart';
-import '../../core/eta_delta.dart';
 import '../../core/fleet_matcher.dart';
 import '../../core/live_position.dart';
+import '../../core/movement_tracker.dart';
 import '../../data/analytics/event_logger.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
@@ -18,16 +18,14 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'arrival_tile.dart';
 import 'empty_state.dart';
-import 'fleet_model_card.dart';
 import 'live_unavailable_banner.dart';
 import 'scheduled_group_tile.dart';
 import 'stize_filter_chips.dart';
-import 'stop_report_sheet.dart';
 import '../../core/design/stize_icons.dart';
 
 /// THE arrivals list of a stop, shared by both shutters: the in-app sheet
 /// ([StopBoard]) and the `/stop/:id` deep-link screen ([StopScreen]). Owns the
-/// line filter, the comfort sort, the line×direction folding, the ETA-change
+/// line filter, the line×direction folding, the ETA-change
 /// badges and the card wiring, so a change to how arrivals render is made once.
 ///
 /// The hosts keep only their chrome (header / app bar, alerts, jam banner,
@@ -69,17 +67,8 @@ class StopArrivalsList extends ConsumerStatefulWidget {
 }
 
 class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
-  String? _lineFilter;
-
-  /// B4: optional "sort by comfort" instead of the default time order. Only
-  /// offered when ≥2 arriving vehicles of different classes are identified.
-  bool _sortByComfort = false;
-
-  // ETA-change tracking (G1): the last absolute predicted arrival instant per
-  // live vehicle, and the signed whole-minute delta from the latest refresh.
-  // Diffing the absolute instant, not the count-down, keeps the badge honest.
-  Map<String, DateTime> _prevArrival = {};
-  Map<String, int> _etaDelta = {};
+  /// Picked lines; empty = "All lines" (see [toggleLineFilter]).
+  Set<String> _lineFilter = const {};
 
   @override
   void initState() {
@@ -93,10 +82,16 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
     if (!identical(old.board, widget.board)) _trackEta(widget.board);
   }
 
+  /// Feed every live fix to the shared movement tracker, stamped with the
+  /// board's own time: a vehicle whose position stays put for two minutes
+  /// reads as stuck (no pulsing dot, "≈" time).
   void _trackEta(ArrivalsBoard board) {
-    final result = diffEtaDeltas(_prevArrival, board);
-    _prevArrival = result.arrivalTimes;
-    _etaDelta = result.deltas;
+    for (final a in board.arrivals) {
+      final gps = a.gps;
+      final key = a.garageNo;
+      if (gps == null || key == null || !arrivalHasLivePosition(a)) continue;
+      MovementTracker.instance.observe(key, gps.lat, gps.lon, at: board.updatedAt);
+    }
   }
 
   @override
@@ -126,117 +121,39 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
       );
     }
 
-    final arrivingLines = board.arrivals.map((a) => a.line).toSet();
-    // Only chip non-empty lines — a blank value would render an empty chip (F6).
-    final allLines = {
-      ...widget.stopLines,
-      ...arrivingLines,
-    }.where((l) => l.trim().isNotEmpty).toList()..sort(compareLineNames);
+    // Chips only for lines with an arrival on the board: filtering by a line
+    // that isn't coming is a dead end. Non-empty only: a blank value would
+    // render an empty chip (F6).
+    final chipLines =
+        board.arrivals
+            .map((a) => a.line)
+            .where((l) => l.trim().isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort(compareLineNames);
 
-    // If a filtered line stops arriving, fall back to "all" without mutating
-    // state during build.
-    final effectiveFilter =
-        (_lineFilter != null && arrivingLines.contains(_lineFilter))
-        ? _lineFilter
-        : null;
-    final visibleArrivals = effectiveFilter == null
+    // A picked line that stops arriving drops out of the filter without
+    // mutating state during build; none left = "All lines".
+    final effectiveFilter = _lineFilter.where(chipLines.contains).toSet();
+    final visibleArrivals = effectiveFilter.isEmpty
         ? board.arrivals
-        : board.arrivals.where((a) => a.line == effectiveFilter).toList();
-
-    // Fleet-ID (B1–B5). A null catalog silently disables every Fleet surface.
-    final catalog = ref.watch(fleetCatalogProvider).valueOrNull;
-    final fleetByIndex = <FleetVehicle?>[
-      for (final a in visibleArrivals) catalog?.resolve(a.garageNo),
-    ];
-
-    // B4 gate: offer the comfort sort only when the identified vehicles span
-    // ≥2 distinct classes (a toggle with no effect is worse than none).
-    final distinctClasses = <String>{
-      for (final f in fleetByIndex)
-        if (f != null && f.hasInfo && f.comfortScore != null) f.id ?? '',
-    }..remove('');
-    final canSortByComfort = distinctClasses.length >= 2;
-    final sortByComfort = canSortByComfort && _sortByComfort;
+        : board.arrivals
+              .where((a) => effectiveFilter.contains(a.line))
+              .toList();
 
     final destinations =
         ref.watch(lineDestinationsProvider).valueOrNull ??
         const <String, String>{};
-    final headways = ref
-        .watch(stopPlannedHeadwaysProvider(widget.stopId))
-        .valueOrNull;
 
     final flat = FlatCards.of(context);
+    // Live and expected cards first, in time order; the timetable follows in
+    // its own section under a "By timetable" header (owner, 2026-11-25: never
+    // mix the timetable into the live run).
     final tiles = <Widget>[];
-    var firstCard = true; // the nearest arrival reads biggest
-    void addTile(Arrival arrival, FleetVehicle? fleet, List<int>? later) {
-      final dir = arrival.directionRouteId ?? arrival.routeId;
-      tiles.add(
-        ArrivalTile(
-          // Stable identity for the animated list: one live card per
-          // line×direction (folded), else the vehicle.
-          key: ValueKey(
-            later != null
-                ? 'row|${arrival.line}|$dir'
-                : 'row|${arrival.line}|$dir|${arrival.garageNo ?? arrival.etaMinutes}',
-          ),
-          arrival: arrival,
-          etaDeltaMinutes: _etaDelta[arrival.garageNo],
-          fleet: fleet,
-          emphasis: firstCard,
-          destination: _cardDestination(
-            arrival,
-            dir,
-            destinations,
-            board.stopName,
-            l10n,
-          ),
-          // Folded card: later trips sit under the big ETA, so no "next in".
-          nextEtaMinutes: later != null
-              ? null
-              : stizeNextEtaForLine(visibleArrivals, arrival),
-          laterEtaMinutes: later ?? const [],
-          headwayMinutes: headways?[dir],
-          onOpenFleetCard: fleet != null && fleet.hasInfo
-              ? () => widget.onOpenFleetCard != null
-                    ? widget.onOpenFleetCard!(
-                        fleet,
-                        arrival.garageNo,
-                        arrival.vehicleType,
-                      )
-                    : showFleetModelCard(
-                        context,
-                        fleet: fleet,
-                        fallbackType: arrival.vehicleType,
-                        garageNo: arrival.garageNo,
-                      )
-              : null,
-          onTap:
-              (!arrivalHasLivePosition(arrival) ||
-                  widget.onFocusVehicle == null)
-              ? null
-              : () => widget.onFocusVehicle!(arrival, board.updatedAt),
-        ),
-      );
-      firstCard = false;
-    }
-
-    if (sortByComfort) {
-      // A deliberately flat, live-only reorder: comfort first, time breaks ties.
-      final order = [for (var i = 0; i < visibleArrivals.length; i++) i]
-        ..sort((a, b) {
-          final ca = fleetByIndex[a]?.comfortScore ?? -1;
-          final cb = fleetByIndex[b]?.comfortScore ?? -1;
-          if (ca != cb) return cb.compareTo(ca);
-          return visibleArrivals[a].etaMinutes.compareTo(
-            visibleArrivals[b].etaMinutes,
-          );
-        });
-      for (final i in order) {
-        addTile(visibleArrivals[i], fleetByIndex[i], null);
-      }
-    } else {
-      // Time order: one card per line×direction, later vehicles folded in,
-      // covered non-live rows dropped, surviving Scheduled folded into a cell.
+    final timetable = <Widget>[];
+    {
+      // One card per line×direction, later vehicles folded in, covered
+      // non-live rows dropped, surviving timetable times folded into a cell.
       // Directions whose headsign is this stop: those vehicles end here.
       const marker = '\u0000';
       final terminating = {
@@ -249,18 +166,55 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
         groupArrivals(visibleArrivals, terminatingDirections: terminating),
       )) {
         switch (entry) {
-          case ArrivalRow(:final arrival, :final index, :final laterEtaMinutes):
-            addTile(arrival, fleetByIndex[index], laterEtaMinutes);
+          case ArrivalRow(:final arrival, :final laterEtaMinutes):
+            final dir = arrival.directionRouteId ?? arrival.routeId;
+            tiles.add(
+              ArrivalTile(
+                // Stable identity for the animated list: one card per
+                // line×direction.
+                key: ValueKey('row|${arrival.line}|$dir'),
+                arrival: arrival,
+                destination: _cardDestination(
+                  arrival.line,
+                  dir,
+                  destinations,
+                  board.stopName,
+                  l10n,
+                ),
+                laterEtaMinutes: laterEtaMinutes,
+                onTap:
+                    (!arrivalHasLivePosition(arrival) ||
+                        widget.onFocusVehicle == null)
+                    ? null
+                    : () => widget.onFocusVehicle!(arrival, board.updatedAt),
+              ),
+            );
           case ScheduledGroupCell():
             final n = schedSeen[entry.line] = (schedSeen[entry.line] ?? 0) + 1;
-            tiles.add(
+            final dir = entry.directionKey;
+            timetable.add(
               ScheduledGroupTile(
                 key: ValueKey('sch|${entry.line}|$n'),
                 cell: entry,
+                destination: dir == null
+                    ? null
+                    : _cardDestination(
+                        entry.line,
+                        dir,
+                        destinations,
+                        board.stopName,
+                        l10n,
+                      ),
               ),
             );
         }
       }
+    }
+    if (timetable.isNotEmpty) {
+      tiles.add(
+        TimetableHeader(key: const ValueKey('timetable'), label: l10n.arrivalByTimetable),
+      );
+      tiles.addAll(timetable);
     }
 
     final ageSeconds = DateTime.now()
@@ -287,11 +241,10 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
             ),
           ),
         ),
-        if (allLines.length > 1)
+        if (chipLines.length > 1)
           StizeLineFilterRow(
             allLabel: l10n.lineFilterAll,
-            allLines: allLines,
-            arrivingLines: arrivingLines,
+            lines: chipLines,
             // Chip colour == card colour: the type comes from the arrivals.
             typeByLine: stizeTypeByLine(board.arrivals),
             selected: effectiveFilter,
@@ -299,33 +252,10 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
               if (line != null) {
                 ref.read(eventLoggerProvider).log(Ev.lineFilter);
               }
-              setState(() => _lineFilter = line);
+              setState(
+                () => _lineFilter = toggleLineFilter(effectiveFilter, line),
+              );
             },
-          ),
-        if (canSortByComfort)
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: StizeSpace.space4,
-              vertical: StizeSpace.space1,
-            ),
-            child: Row(
-              spacing: StizeSpace.space2,
-              children: [
-                StizeTextChip(
-                  label: l10n.fleetSortByTime,
-                  selected: !_sortByComfort,
-                  onTap: () => setState(() => _sortByComfort = false),
-                ),
-                StizeTextChip(
-                  label: l10n.fleetSortByComfort,
-                  selected: _sortByComfort,
-                  onTap: () {
-                    ref.read(eventLoggerProvider).log(Ev.sortComfort);
-                    setState(() => _sortByComfort = true);
-                  },
-                ),
-              ],
-            ),
           ),
         // 4px between the colour cards, with a 16px side gutter.
         Padding(
@@ -336,28 +266,14 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
             flat ? 0 : StizeSpace.space4,
             0,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AnimatedEntries(
-                gap: flat ? 0 : StizeSpace.space1,
-                children: tiles,
-              ),
-              const SizedBox(height: StizeSpace.space2),
-              // The quiet way to flag wrong data: last, never next to arrivals.
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: flat ? StizeSpace.space4 : 0,
-                ),
-                child: StopReportEntry(
-                  stopId: widget.stopId,
-                  stopName: board.stopName,
-                ),
-              ),
-            ],
+          // The list ends with its last card (owner, 2026-11-24): the report
+          // entry moved to the header's More menu, and the host adds only the
+          // safe area below.
+          child: AnimatedEntries(
+            gap: flat ? 0 : StizeSpace.space1,
+            children: tiles,
           ),
         ),
-        const SizedBox(height: 12),
       ],
     );
   }
@@ -368,7 +284,7 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
   /// 2026-11-23). Falls back to "Terminus" when the board has no other
   /// direction of the line.
   String? _cardDestination(
-    Arrival arrival,
+    String line,
     String dir,
     Map<String, String> destinations,
     String stopName,
@@ -379,7 +295,7 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
     if (shown != marker) return shown;
     final board = widget.board;
     for (final a in board.arrivals) {
-      if (a.line != arrival.line) continue;
+      if (a.line != line) continue;
       final other = a.directionRouteId ?? a.routeId;
       if (other == dir) continue;
       final next = displayDestination(destinations[other], stopName, marker);

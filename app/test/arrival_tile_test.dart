@@ -54,7 +54,7 @@ void main() {
     });
 
     testWidgets(
-      'a placeholder (Expected) card is held back, not tappable, labelled Expected',
+      'a placeholder (terminus) card is held back, not tappable, says it starts here',
       (tester) async {
         // P2 = the schedule-derived placeholder class: valid ETA, no live position.
         await tester.pumpWidget(
@@ -72,12 +72,12 @@ void main() {
 
         expect(_card(tester).live, isFalse);
         expect(_card(tester).onTap, isNull);
-        expect(find.text('Expected'), findsOneWidget);
+        expect(find.text('Starts here'), findsOneWidget);
       },
     );
 
     testWidgets(
-      'a scheduled card is held back, not tappable, labelled Scheduled',
+      'a scheduled card is not tappable and carries no Scheduled word',
       (tester) async {
         await tester.pumpWidget(
           _wrap(
@@ -90,7 +90,7 @@ void main() {
 
         expect(_card(tester).live, isFalse);
         expect(_card(tester).onTap, isNull);
-        expect(find.text('Scheduled'), findsOneWidget);
+        expect(find.text('Scheduled'), findsNothing);
       },
     );
   });

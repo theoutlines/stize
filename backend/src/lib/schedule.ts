@@ -18,6 +18,10 @@ export interface StopScheduleEntry {
   route_id: string; // direction-specific bundle key (matches live direction_route_id)
   dir: string;
   svc: Record<string, number[]>; // service_id -> sorted minutes
+  // Minutes the trip has been on the road when it reaches this stop (time here
+  // minus its first departure), aligned 1:1 with `svc`; null = unknown. Baked by
+  // scripts/build-schedule-lead.mjs. Absent on old builds.
+  lead?: Record<string, (number | null)[]>;
 }
 export interface StopSchedule {
   stop_id: string;
@@ -29,6 +33,9 @@ export interface ScheduledArrival {
   route_id: string;
   dir: string;
   eta_minutes: number;
+  // false = the trip has already left the terminus (see isReachable). Kept only
+  // so dedup against live can consume it; never shown to riders.
+  reachable: boolean;
 }
 
 // Belgrade wall-clock context for "now", derived in the Europe/Belgrade zone so
@@ -76,6 +83,19 @@ export function activeServices(dateISO: string, meta: ScheduleMeta): Set<string>
   return active;
 }
 
+// Reachability (owner decision 2026-11-24): a planned departure is shown only if
+// its trip has not left the terminus yet. A trip already on the road without a
+// live vehicle either runs untracked or doesn't run at all; showing it is a
+// phantom ("5 · Scheduled in 1 min" at a stop 11 min from the terminus).
+// Grace absorbs minute rounding and a departure that is just happening.
+export const REACH_GRACE_MINUTES = 2;
+
+/** True when the trip behind a departure `eta` min away can still be on time. */
+export function isReachable(eta: number, lead: number | null | undefined): boolean {
+  if (lead === null || lead === undefined) return true; // can't judge: keep
+  return eta >= lead - REACH_GRACE_MINUTES;
+}
+
 /**
  * Upcoming planned departures per line at a stop, from `now`:
  * a departure counts if it's among the next `minTrips` on its line OR within
@@ -100,27 +120,37 @@ export function upcomingScheduled(
 
   const out: ScheduledArrival[] = [];
   for (const dep of schedule.deps) {
-    const etas: number[] = [];
+    const etas: { eta: number; reachable: boolean }[] = [];
     for (const [svcId, mins] of Object.entries(dep.svc)) {
+      const leads = dep.lead?.[svcId];
       if (todaySvc.has(svcId)) {
-        for (const t of mins) if (t >= now.minutes) etas.push(t - now.minutes);
+        mins.forEach((t, k) => {
+          const eta = t - now.minutes;
+          if (eta >= 0) etas.push({ eta, reachable: isReachable(eta, leads?.[k]) });
+        });
       }
       if (yestSvc.has(svcId)) {
         // Yesterday's overnight trips run in today's small hours (t - 1440).
-        for (const t of mins) {
-          if (t >= OVERNIGHT) {
-            const local = t - OVERNIGHT;
-            if (local >= now.minutes) etas.push(local - now.minutes);
-          }
-        }
+        mins.forEach((t, k) => {
+          if (t < OVERNIGHT) return;
+          const eta = t - OVERNIGHT - now.minutes;
+          if (eta >= 0) etas.push({ eta, reachable: isReachable(eta, leads?.[k]) });
+        });
       }
     }
-    etas.sort((a, b) => a - b);
+    etas.sort((a, b) => a.eta - b.eta);
+    // The count/window rules apply to reachable departures only. Unreachable
+    // ones inside the range are still returned (flagged) so the caller can let
+    // a live vehicle consume its own timetable trip before dropping phantoms.
     let taken = 0;
-    for (let i = 0; i < etas.length && taken < maxPerLine; i++) {
-      if (etas[i] > maxEtaMinutes) break; // too far out to be useful (sorted)
-      if (i < minTrips || etas[i] <= windowMinutes) {
-        out.push({ line: dep.line, route_id: dep.route_id, dir: dep.dir, eta_minutes: etas[i] });
+    for (const e of etas) {
+      if (taken >= maxPerLine || e.eta > maxEtaMinutes) break;
+      if (!e.reachable) {
+        out.push({ line: dep.line, route_id: dep.route_id, dir: dep.dir, eta_minutes: e.eta, reachable: false });
+        continue;
+      }
+      if (taken < minTrips || e.eta <= windowMinutes) {
+        out.push({ line: dep.line, route_id: dep.route_id, dir: dep.dir, eta_minutes: e.eta, reachable: true });
         taken++;
       } else {
         break; // sorted: once past both rules, the rest are further out

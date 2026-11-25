@@ -476,6 +476,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     // 16px inset of their own.
     return ListView(
       controller: controller,
+      shrinkWrap: widget.hugContent,
       padding: const EdgeInsets.only(bottom: 24),
       physics: const AlwaysScrollableScrollPhysics(),
       children: children,
