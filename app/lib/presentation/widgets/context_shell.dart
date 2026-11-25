@@ -4,6 +4,7 @@ import 'package:stize/core/design/stize_text.dart';
 
 import 'follow_view.dart';
 import 'level_header.dart';
+import 'wheel_elastic.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -87,7 +88,8 @@ class ContextPanel extends StatelessWidget {
                   ),
                 Flexible(
                   fit: hug ? FlexFit.loose : FlexFit.tight,
-                  child: child,
+                  // Wheel / trackpad past the end stretches and springs back.
+                  child: WheelElastic(child: child),
                 ),
               ],
             ),

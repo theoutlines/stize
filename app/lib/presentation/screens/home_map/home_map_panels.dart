@@ -156,7 +156,7 @@ extension _MapPanels on _HomeMapScreenState {
     switch (_activeView) {
       case ContextView.nearby:
         return NearbyView(
-          userLocation: _meTo,
+          userLocation: _browsePoint ?? _meTo,
           locationDenied: _locationDenied,
           active: _tabActive && _appResumed,
           onEnableLocation: _recenterOnMe,
@@ -362,7 +362,7 @@ extension _MapPanels on _HomeMapScreenState {
     var between = false;
     if (upcoming.isNotEmpty && focus != null) {
       final seq = upcoming.first.stop.seq;
-      final atStop = (upcoming.first.etaMinutes ?? 1) <= 0;
+      final atStop = upcoming.first.vehicleHere;
       final hasPassed = seq > 0 && seq - 1 < focus.stops.length;
       if (hasPassed) {
         route.add(
@@ -390,7 +390,7 @@ extension _MapPanels on _HomeMapScreenState {
     if (boardIdx >= 0) {
       final u = upcoming[boardIdx];
       eta = u.etaMinutes;
-      caption = boardIdx == 0 && (u.etaMinutes ?? 1) <= 0
+      caption = boardIdx == 0 && u.vehicleHere
           ? l10n.followAtStop(u.stop.name)
           : l10n.followStopsTo(boardIdx + 1, u.stop.name);
     } else if (upcoming.isNotEmpty) {

@@ -1034,4 +1034,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fleetChipNoAc => 'No A/C';
+
+  @override
+  String get nearbyThisPoint => 'Around this point';
 }

@@ -354,5 +354,6 @@
   "close": "Zatvori",
   "fleetChipArticulated": "Zglobni",
   "fleetChipAc": "Klima",
-  "fleetChipNoAc": "Bez klime"
+  "fleetChipNoAc": "Bez klime",
+  "nearbyThisPoint": "Oko ove tačke"
 }

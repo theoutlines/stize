@@ -478,6 +478,7 @@ extension _MapLayers on _HomeMapScreenState {
       // While following, the camera is being panned every frame by us — don't
       // treat those idles as browsing (they'd hammer the stop/vehicle reload).
       if (_following) return;
+      _onBrowseIdle();
       _loadStopsForVisibleArea();
       _loadVehiclesForVisibleArea();
       _reconcileCoverageLayer();
@@ -488,6 +489,9 @@ extension _MapLayers on _HomeMapScreenState {
       // re-layout, not a user gesture — never break follow on it.
       final guard = _followResumeGuardUntil;
       if (guard != null && DateTime.now().isBefore(guard)) return;
+      if (!_selfCameraMove && event.reason == CameraChangeReason.apiGesture) {
+        _onBrowseDragStart();
+      }
       // Break follow only on a genuine user pan/zoom (the marker + highlight
       // stay). Our own programmatic pans are bracketed by [_selfCameraMove] so
       // they never count — even if the platform mislabels one as a gesture — so

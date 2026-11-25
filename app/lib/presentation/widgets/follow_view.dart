@@ -173,7 +173,16 @@ class FollowHeader extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Icon(StizeIcons.forward, size: 16, color: on),
+                          // Baseline-aligned, an icon sits on its bottom edge and reads
+                          // high: drop it 3px onto the text's x-height centre.
+                          Transform.translate(
+                            offset: const Offset(0, 3),
+                            child: Icon(
+                              StizeIcons.forward,
+                              size: 16,
+                              color: on,
+                            ),
+                          ),
                           const SizedBox(width: StizeSpace.space1),
                           Flexible(
                             child: Text(
@@ -206,7 +215,9 @@ class FollowHeader extends StatelessWidget {
               // Keeps the caption flush with the time above it when the close
               // sits in the first row.
               if (onClose != null)
-                const SizedBox(width: StizeSpace.space3 + SheetCloseButton.size),
+                const SizedBox(
+                  width: StizeSpace.space3 + SheetCloseButton.size,
+                ),
             ],
           ),
           if (vehicles.length > 1) ...[
@@ -220,6 +231,7 @@ class FollowHeader extends StatelessWidget {
                       : 0,
                 ),
                 child: Wrap(
+                  alignment: WrapAlignment.end,
                   spacing: 6,
                   children: [
                     for (final v in vehicles) _segment(c, l10n, fill, v),
@@ -254,12 +266,15 @@ class FollowHeader extends StatelessWidget {
           child: Container(
             height: 32,
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: StizeType.lineNumber.copyWith(
-                height: 1.2,
-                color: v.selected ? fill : c.onTransit,
+            // Shrink-wrapped: an aligned Container would stretch to the row.
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                label,
+                style: StizeType.lineNumber.copyWith(
+                  height: 1.2,
+                  color: v.selected ? fill : c.onTransit,
+                ),
               ),
             ),
           ),
@@ -411,7 +426,12 @@ class FollowRoute extends StatelessWidget {
     ),
   );
 
-  Widget _dot(StizeColors c, Color color, {bool yours = false, bool faded = false}) {
+  Widget _dot(
+    StizeColors c,
+    Color color, {
+    bool yours = false,
+    bool faded = false,
+  }) {
     final ring = faded ? color.withValues(alpha: 0.35) : color;
     return Container(
       width: yours ? 16 : 12,
@@ -435,10 +455,12 @@ class FollowRoute extends StatelessWidget {
     bool stuck,
   ) {
     final behind = s.passed;
-    final top = isFirst ? Colors.transparent : _seg(color, behind);
-    final bottom = isLast
+    // The line behind the vehicle (into the stop it stands at, or up to its
+    // marker between stops) is faded; ahead of it, full colour.
+    final top = isFirst
         ? Colors.transparent
-        : _seg(color, behind && !vehicleBetween);
+        : _seg(color, behind || s.vehicleHere);
+    final bottom = isLast ? Colors.transparent : _seg(color, behind);
     final dot = s.vehicleHere
         ? _marker(c, color)
         : _dot(c, color, yours: s.yours, faded: behind);
@@ -468,28 +490,34 @@ class FollowRoute extends StatelessWidget {
           _rail(top: top, bottom: bottom, dot: dot),
           const SizedBox(width: StizeSpace.space3),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    s.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: (s.yours ? StizeType.lineNumber : StizeType.body)
-                        .copyWith(color: c.ink),
-                  ),
-                  if (sub != null)
+            child: Opacity(
+              // The stop behind: its words dim, the rail keeps its own shade.
+              opacity: behind ? 0.45 : 1,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      sub,
-                      style: StizeType.caption.copyWith(
-                        fontWeight: subStrong ? FontWeight.w500 : null,
-                        color: c.ink.withValues(alpha: subStrong ? 0.88 : 0.6),
-                      ),
+                      s.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: (s.yours ? StizeType.lineNumber : StizeType.body)
+                          .copyWith(color: c.ink),
                     ),
-                ],
+                    if (sub != null)
+                      Text(
+                        sub,
+                        style: StizeType.caption.copyWith(
+                          fontWeight: subStrong ? FontWeight.w500 : null,
+                          color: c.ink.withValues(
+                            alpha: subStrong ? 0.88 : 0.6,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -508,7 +536,7 @@ class FollowRoute extends StatelessWidget {
         ],
       ),
     );
-    return Opacity(opacity: behind ? 0.45 : 1, child: row);
+    return row;
   }
 
   /// The vehicle between two stops: its marker on the line, and the stuck
@@ -524,7 +552,7 @@ class FollowRoute extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _rail(
-            top: color,
+            top: _seg(color, true),
             bottom: color,
             dot: _marker(c, color),
             dotCenter: 18,
@@ -576,8 +604,11 @@ class FleetVehicleCard extends ConsumerWidget {
     final photo = fleet.id == null
         ? null
         : ref.watch(fleetPhotosProvider).valueOrNull?[fleet.id];
-    final title = fleet.modelName ??
-        (garageNo == null ? l10n.fleetUnknownModel : l10n.fleetVehicleNumber(garageNo!));
+    final title =
+        fleet.modelName ??
+        (garageNo == null
+            ? l10n.fleetUnknownModel
+            : l10n.fleetVehicleNumber(garageNo!));
     final nick = fleet.nicknameFor(lang);
     final garage = garageNo?.trim();
     final subtitle = [
@@ -618,7 +649,11 @@ class FleetVehicleCard extends ConsumerWidget {
     final placeholder = Container(
       color: c.fill08,
       alignment: Alignment.center,
-      child: Icon(vehicleIconFor(type), size: 40, color: c.ink.withValues(alpha: 0.3)),
+      child: Icon(
+        vehicleIconFor(type),
+        size: 40,
+        color: c.ink.withValues(alpha: 0.3),
+      ),
     );
 
     final hero = SizedBox(
@@ -765,7 +800,11 @@ class FleetVehicleCard extends ConsumerWidget {
     ),
     child: Text(
       text,
-      style: StizeType.body.copyWith(fontSize: 14, height: 20 / 14, color: c.ink),
+      style: StizeType.body.copyWith(
+        fontSize: 14,
+        height: 20 / 14,
+        color: c.ink,
+      ),
     ),
   );
 }

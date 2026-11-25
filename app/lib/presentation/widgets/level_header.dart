@@ -33,8 +33,6 @@ class LevelHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final hasBack = backLabel != null && onBack != null;
     // One left edge for everything in a level (owner, 2026-11-23): back
     // link, title, the board's update time, chips and cards all start 16px in.
@@ -46,40 +44,7 @@ class LevelHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (hasBack)
-            // A plain text link, no pill: arrow + previous level's name.
-            Semantics(
-              button: true,
-              child: InkWell(
-                onTap: onBack,
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  height: 36,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        StizeIcons.back,
-                        size: 18,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          backLabel!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: StizeText.of(
-                            context,
-                          ).body.copyWith(color: scheme.onSurfaceVariant),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          if (hasBack) _BackLink(label: backLabel!, onTap: onBack!),
           Row(
             children: [
               // Title + star take all the room up to the close button (a
@@ -105,6 +70,66 @@ class LevelHeader extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "← previous level": a plain text link. No box on hover or press (a tight
+/// box clipped the arrow, owner 2026-11-25): the words brighten instead.
+class _BackLink extends StatefulWidget {
+  const _BackLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_BackLink> createState() => _BackLinkState();
+}
+
+class _BackLinkState extends State<_BackLink> {
+  bool _on = false;
+
+  void _set(bool v) {
+    if (v != _on) setState(() => _on = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = _on ? scheme.onSurface : scheme.onSurfaceVariant;
+    return Semantics(
+      button: true,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => _set(true),
+        onExit: (_) => _set(false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => _set(true),
+          onTapCancel: () => _set(false),
+          onTapUp: (_) => _set(false),
+          onTap: widget.onTap,
+          child: SizedBox(
+            height: 36,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(StizeIcons.back, size: 18, color: color),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: StizeText.of(context).body.copyWith(color: color),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

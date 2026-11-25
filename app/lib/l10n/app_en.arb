@@ -744,5 +744,6 @@
   "close": "Close",
   "fleetChipArticulated": "Articulated",
   "fleetChipAc": "A/C",
-  "fleetChipNoAc": "No A/C"
+  "fleetChipNoAc": "No A/C",
+  "nearbyThisPoint": "Around this point"
 }

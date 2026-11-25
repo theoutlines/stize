@@ -13,6 +13,7 @@ import '../../core/nearby_focus.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../l10n/app_localizations.dart';
 import 'arrival_tile.dart';
+import 'scheduled_group_tile.dart';
 import 'stize_transit_card.dart';
 
 /// The "Nearby" list itself — a pure, scrollable list of line+direction rows.
@@ -73,35 +74,67 @@ class NearbyList extends StatelessWidget {
         AnimatedEntries(
           gap: flat ? 0 : StizeSpace.space1,
           children: [
-            // Mobile (flat): one card per line, directions swiped inside it.
-            if (flat)
-              for (final line in carouselByLine(groups))
-                line.length == 1
-                    ? NearbyCard(
-                        key: ValueKey(line.first.key),
-                        group: line.first,
-                        onTap: onTapGroup == null
-                            ? null
-                            : () => onTapGroup!(line.first),
-                      )
-                    : LineDirectionsCarousel(
-                        key: ValueKey('line|${line.first.line}'),
-                        groups: line,
-                        onTapGroup: onTapGroup,
-                      )
-            else
-              for (final g in groups)
-                NearbyCard(
-                  key: ValueKey(g.key),
-                  group: g,
-                  onTap: onTapGroup == null ? null : () => onTapGroup!(g),
-                ),
+            ..._entries(context, flat),
           ],
         ),
       ],
     );
     if (onRefresh == null) return list;
     return RefreshIndicator(onRefresh: onRefresh!, child: list);
+  }
+
+  /// Live cards first; timetable-only lines after one "By timetable" header,
+  /// the same split as a stop board (owner, 2026-11-25). Mobile (flat): one
+  /// card per line, its directions swiped inside it.
+  List<Widget> _entries(BuildContext context, bool flat) {
+    final l10n = AppLocalizations.of(context);
+    final out = <Widget>[];
+    var headerAdded = false;
+    void header(bool live) {
+      if (live || headerAdded) return;
+      headerAdded = true;
+      if (out.isEmpty) return; // all timetable: no header needed
+      out.add(
+        TimetableHeader(
+          key: const ValueKey('timetable'),
+          label: l10n.arrivalByTimetable,
+        ),
+      );
+    }
+
+    if (flat) {
+      for (final line in carouselByLine(groups)) {
+        final live = nearbyGroupHasLive(line.first);
+        header(live);
+        out.add(
+          line.length == 1
+              ? NearbyCard(
+                  key: ValueKey(line.first.key),
+                  group: line.first,
+                  onTap: onTapGroup == null
+                      ? null
+                      : () => onTapGroup!(line.first),
+                )
+              : LineDirectionsCarousel(
+                  key: ValueKey('line|${line.first.line}|$live'),
+                  groups: line,
+                  onTapGroup: onTapGroup,
+                ),
+        );
+      }
+    } else {
+      for (final g in groups) {
+        header(nearbyGroupHasLive(g));
+        out.add(
+          NearbyCard(
+            key: ValueKey(g.key),
+            group: g,
+            onTap: onTapGroup == null ? null : () => onTapGroup!(g),
+          ),
+        );
+      }
+    }
+    return out;
   }
 }
 
@@ -179,7 +212,9 @@ List<List<NearbyGroup>> carouselByLine(List<NearbyGroup> groups) {
   final byLine = <String, List<NearbyGroup>>{};
   final order = <String>[];
   for (final g in groups) {
-    final k = g.line;
+    // Live and timetable-only directions never share a card: a live card
+    // only swipes to other live directions (owner, 2026-11-25).
+    final k = '${g.line}|${nearbyGroupHasLive(g)}';
     if (!byLine.containsKey(k)) order.add(k);
     (byLine[k] ??= []).add(g);
   }
@@ -294,10 +329,10 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
     });
   }
 
-  Widget _card(int i) {
+  Widget _card(int i, {bool sizer = false}) {
     final g = widget.groups[i];
     return NearbyCard(
-      key: ValueKey(g.key),
+      key: sizer ? null : ValueKey(g.key),
       group: g,
       onTap: widget.onTapGroup == null ? null : () => widget.onTapGroup!(g),
     );
@@ -335,15 +370,26 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
           child: ClipRect(
             child: Stack(
               children: [
-                Transform.translate(
-                  offset: Offset(_drag, 0),
-                  child: _card(_page),
+                // The tallest direction sets the card's height, so paging
+                // never makes the list jump (owner, 2026-11-25).
+                for (var i = 0; i < n; i++)
+                  IgnorePointer(
+                    child: Visibility(
+                      visible: false,
+                      maintainSize: true,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      child: _card(i, sizer: true),
+                    ),
+                  ),
+                Positioned.fill(
+                  child: Transform.translate(
+                    offset: Offset(_drag, 0),
+                    child: _card(_page),
+                  ),
                 ),
                 if (_drag != 0 && _has(side))
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
+                  Positioned.fill(
                     child: Transform.translate(
                       offset: Offset(_drag + (_drag < 0 ? _width : -_width), 0),
                       child: _card(side),

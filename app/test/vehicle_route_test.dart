@@ -113,4 +113,27 @@ void main() {
     expect(plan.traveled, isEmpty);
     expect(plan.upcoming, isEmpty);
   });
+
+  test('a vehicle standing at a stop is at it, not between stops', () {
+    final plan = planVehicleRoute(
+      shape: _shape(),
+      // 20 m past stop 2 (0.0002° lat ≈ 22 m).
+      vehicle: const ll.LatLng(44.8202, 20.0),
+      boardStop: const ll.LatLng(44.83, 20.0),
+      stopsRemaining: 1,
+      etaToBoardMinutes: 2,
+    );
+    expect(plan.stops.first.stop.stopId, 's2');
+    expect(plan.stops.first.vehicleHere, isTrue);
+    expect(plan.stops.first.etaMinutes, 0);
+  });
+
+  test('a vehicle 300 m from any stop is between stops', () {
+    final plan = planVehicleRoute(
+      shape: _shape(),
+      vehicle: const ll.LatLng(44.815, 20.0),
+      boardStop: const ll.LatLng(44.83, 20.0),
+    );
+    expect(plan.stops.first.vehicleHere, isFalse);
+  });
 }
