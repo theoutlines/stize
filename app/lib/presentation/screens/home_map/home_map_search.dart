@@ -516,7 +516,7 @@ extension _MapSearch on _HomeMapScreenState {
     if (!_pillActive || !_sheetCtl.isAttached) return;
     final size = MediaQuery.sizeOf(context);
     final want = _pillCtl.text.isEmpty
-        ? NearbySheet.oneScrollRest
+        ? NearbySheet.oneScrollRestFor(size.height)
         : _oneScrollMax(size);
     if ((_sheetCtl.size - want).abs() < 0.01) return;
     _sheetCtl.animateTo(
@@ -542,7 +542,9 @@ extension _MapSearch on _HomeMapScreenState {
   double _pillTopFor(Size size) {
     // Searching with a query: the pill stays pinned at the top.
     if (_pillActive && _pillCtl.text.isNotEmpty) return _pillPinnedTop();
-    final s = _sheetCtl.isAttached ? _sheetCtl.size : NearbySheet.oneScrollRest;
+    final s = _sheetCtl.isAttached
+        ? _sheetCtl.size
+        : NearbySheet.oneScrollRestFor(size.height);
     final sheetTop = _bodyH(size) * (1 - s);
     final riding = sheetTop - MapSearchPill.height - StizeSpace.space4;
     return riding < _pillPinnedTop() ? _pillPinnedTop() : riding;
@@ -573,7 +575,7 @@ extension _MapSearch on _HomeMapScreenState {
           _setState(() => _pillActive = false);
           if (_sheetCtl.isAttached) {
             _sheetCtl.animateTo(
-              NearbySheet.oneScrollRest,
+              NearbySheet.oneScrollRestFor(size.height),
               duration: StizeMotion.medium,
               curve: StizeMotion.smoothOut,
             );

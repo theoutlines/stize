@@ -282,11 +282,34 @@ extension _MapPanels on _HomeMapScreenState {
     final f = _followModel(l10n);
     final scheduled =
         _focus?.scheduled ?? (track?.source == VehicleSource.scheduled);
+    final siblings = _followSiblings(line, track);
+    final current = siblings
+        .where((a) => VehicleTrackAnimator.keyFor(a) == _selectedVehicleKey)
+        .firstOrNull;
+    final board = _followBoardStopId == null
+        ? null
+        : ref.watch(arrivalsProvider(_followBoardStopId!)).valueOrNull;
     return FollowHeader(
       line: line,
       type: type,
       destination: _focus?.destination,
-      etaMinutes: f.eta,
+      // The same number the board card showed for this vehicle, when the
+      // board has it; else the route's estimate.
+      etaMinutes: current?.etaMinutes ?? f.eta,
+      vehicles: siblings.length < 2 || board == null
+          ? const []
+          : [
+              for (final a in siblings)
+                FollowVehicleOption(
+                  etaMinutes: a.etaMinutes,
+                  selected: VehicleTrackAnimator.keyFor(a) == _selectedVehicleKey,
+                  onTap: () => _focusVehicleFromArrival(
+                    a,
+                    board.updatedAt,
+                    source: Ev.srcSheet,
+                  ),
+                ),
+            ],
       caption: f.caption,
       moving: _selectedVehicleKey != null && f.stuckMinutes == null && !scheduled,
       approximate: f.stuckMinutes != null,
@@ -294,6 +317,26 @@ extension _MapPanels on _HomeMapScreenState {
       showHandle: !_panelActive,
       topRadius: _panelActive ? 0 : kSheetRadius.topLeft.x,
     );
+  }
+
+  /// The live vehicles of the followed line and direction on the board the
+  /// follow came from, soonest first, at most three: the head's switcher.
+  List<Arrival> _followSiblings(String line, VehicleTrack? track) {
+    final id = _followBoardStopId;
+    if (id == null) return const [];
+    final board = ref.watch(arrivalsProvider(id)).valueOrNull;
+    if (board == null) return const [];
+    final dir = track?.directionRouteId;
+    final list = board.arrivals
+        .where(
+          (a) =>
+              a.line == line &&
+              arrivalHasLivePosition(a) &&
+              (dir == null || (a.directionRouteId ?? a.routeId) == dir),
+        )
+        .toList()
+      ..sort((a, b) => a.etaMinutes.compareTo(b.etaMinutes));
+    return list.take(3).toList();
   }
 
   /// What the follow header and route show, from the focused shape and the

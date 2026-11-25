@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'vehicle_icon.dart';
+
 import '../../core/design/stize_tokens.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/vehicle_type.dart';
@@ -165,9 +167,34 @@ class StizeLineFilterRow extends StatelessWidget {
   /// Called with the tapped line, or null for "All lines".
   final ValueChanged<String?> onSelect;
 
+  /// Tram, trolleybus, bus: the order of the groups (owner, 2026-11-25).
+  static const _typeOrder = [
+    VehicleType.tram,
+    VehicleType.trolleybus,
+    VehicleType.bus,
+  ];
+
   @override
   Widget build(BuildContext context) {
     final c = StizeColors.of(context);
+    // Grouped by vehicle type, each group led by its icon and set off by a
+    // thin divider (variant F1). A stop with one type keeps a plain row.
+    final groups = <VehicleType?, List<String>>{};
+    for (final line in lines) {
+      (groups[typeByLine[line]] ??= []).add(line);
+    }
+    final grouped = groups.length > 1;
+    final order = [
+      for (final t in _typeOrder)
+        if (groups.containsKey(t)) t,
+      if (groups.containsKey(null)) null,
+    ];
+    Widget chip(String line) => StizeLineChip(
+      line: line,
+      color: stizeChipColor(c, typeByLine[line]),
+      selected: selected.contains(line),
+      onTap: () => onSelect(line),
+    );
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(
@@ -182,13 +209,19 @@ class StizeLineFilterRow extends StatelessWidget {
             selected: selected.isEmpty,
             onTap: () => onSelect(null),
           ),
-          for (final line in lines)
-            StizeLineChip(
-              line: line,
-              color: stizeChipColor(c, typeByLine[line]),
-              selected: selected.contains(line),
-              onTap: () => onSelect(line),
-            ),
+          if (!grouped)
+            for (final line in lines) chip(line)
+          else
+            for (final t in order) ...[
+              Container(width: 1, height: 24, color: c.fill16),
+              if (t != null)
+                Icon(
+                  vehicleIconFor(t),
+                  size: 18,
+                  color: c.ink.withValues(alpha: 0.5),
+                ),
+              for (final line in groups[t]!) chip(line),
+            ],
         ],
       ),
     );
