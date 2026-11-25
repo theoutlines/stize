@@ -56,9 +56,12 @@ class NearbyList extends StatelessWidget {
       // Top padding matches the horizontal (side) padding so the first card is
       // inset equally from the island's top and sides (owner desktop request).
       // Flat (mobile one-scroll): edge to edge, no inset.
+      // Desktop island (no sheet controller): the last stripe ends at the
+      // island's edge, no strip under it (owner, 2026-11-25). The mobile sheet
+      // keeps 24 of breathing room above the home indicator.
       padding: flat
-          ? const EdgeInsets.only(bottom: 24)
-          : const EdgeInsets.fromLTRB(12, 12, 12, 24),
+          ? EdgeInsets.only(bottom: scrollController == null ? 0 : 24)
+          : EdgeInsets.fromLTRB(12, 12, 12, scrollController == null ? 12 : 24),
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         ?header,
