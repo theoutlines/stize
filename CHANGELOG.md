@@ -21,7 +21,7 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 ### Fixed (night)
 - **Theme switch keeps the map working.** Switching light/dark with the new
   basemap no longer aborts the map setup: stop pins, vehicles and the
-  location dot are re-added (and re-tinted) instead of erroring out.
+  location dot are replaced and re-tinted for the new theme.
 
 ### Changed (evening)
 - **Levels open as high as Nearby.** A stop, the guide and the other levels

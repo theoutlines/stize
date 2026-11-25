@@ -358,25 +358,32 @@ SymbolStyleLayer movingObjectsLabelLayer() => SymbolStyleLayer(
 /// (Re)registers the glyph and arrow images the symbol layers reference. Must be
 /// called on each style (re)load, alongside `registerStigmaImages`, because a
 /// style reload drops previously added images.
-Future<void> registerMovingObjectImages(StyleController style) async {
+Future<void> registerMovingObjectImages(
+  StyleController style, {
+  required Object owner,
+}) async {
   await Future.wait([
     putImageFromWidget(
       style,
+      owner,
       id: MovingObjectImages.glyphBus,
       widget: _glyphImage(VehicleType.bus),
     ),
     putImageFromWidget(
       style,
+      owner,
       id: MovingObjectImages.glyphTram,
       widget: _glyphImage(VehicleType.tram),
     ),
     putImageFromWidget(
       style,
+      owner,
       id: MovingObjectImages.glyphTrolley,
       widget: _glyphImage(VehicleType.trolleybus),
     ),
     putImageFromWidget(
       style,
+      owner,
       id: MovingObjectImages.arrow,
       widget: const _ArrowImage(),
     ),

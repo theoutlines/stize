@@ -371,25 +371,28 @@ Widget _clusterBubble(ColorScheme scheme) {
   );
 }
 
-/// Adds a widget-rendered image to the style, replacing an image with the same
-/// id if the style still holds one.
+/// Image ids each map has added so far, keyed by the map's owner (its widget
+/// `State`). Lets a re-registration replace images the style still holds.
+final _addedImages = Expando<Set<String>>('mapImages');
+
+/// Adds a widget-rendered image to the style, replacing the one this [owner]
+/// added before under the same id.
 ///
 /// A theme switch calls `setStyle` with the other Stiže Standard variant. The
-/// two share every layer id, so MapLibre GL JS applies the change as an in-place
-/// diff and fires `style.load` while keeping the images already added; a plain
-/// `addImage` then throws "already exists" and aborts the rest of the style
-/// setup. Replacing also re-tints theme-dependent images (pins, the me-dot).
+/// two share every layer id, so MapLibre GL JS applies the change as an
+/// in-place diff and fires `style.load` while keeping the images already added;
+/// a plain `addImage` then only logs "already exists" and keeps the old,
+/// wrongly tinted image. Removing first re-tints pins and the me-dot.
 Future<void> putImageFromWidget(
-  StyleController style, {
+  StyleController style,
+  Object owner, {
   required String id,
   required Widget widget,
 }) async {
-  try {
-    await style.addImageFromWidget(id: id, widget: widget);
-  } catch (_) {
-    await style.removeImage(id);
-    await style.addImageFromWidget(id: id, widget: widget);
-  }
+  final added = _addedImages[owner] ??= <String>{};
+  if (added.contains(id)) await style.removeImage(id);
+  await style.addImageFromWidget(id: id, widget: widget);
+  added.add(id);
 }
 
 /// (Re)registers every custom marker image on a freshly (re)loaded style.
@@ -398,14 +401,16 @@ Future<void> putImageFromWidget(
 /// a style reload drops previously added images.
 Future<void> registerStigmaImages(
   StyleController style,
-  ColorScheme scheme,
-) async {
+  ColorScheme scheme, {
+  required Object owner,
+}) async {
   await Future.wait([
     // Stop pins carry the colour of the transport type they serve (D1); a stop
     // with several types gets one unified "mixed" pin (D2). Hollow-disc shape
     // keeps them clearly distinct from the solid moving-vehicle pills (D3).
     putImageFromWidget(
       style,
+      owner,
       id: MapImages.bus,
       widget: _stopPin(
         vehicleGlyph(VehicleType.bus, size: 20, color: _busColor),
@@ -415,6 +420,7 @@ Future<void> registerStigmaImages(
     ),
     putImageFromWidget(
       style,
+      owner,
       id: MapImages.tram,
       widget: _stopPin(
         vehicleGlyph(VehicleType.tram, size: 20, color: _tramColor),
@@ -424,6 +430,7 @@ Future<void> registerStigmaImages(
     ),
     putImageFromWidget(
       style,
+      owner,
       id: MapImages.trolley,
       widget: _stopPin(
         vehicleGlyph(VehicleType.trolleybus, size: 20, color: _trolleyColor),
@@ -433,6 +440,7 @@ Future<void> registerStigmaImages(
     ),
     putImageFromWidget(
       style,
+      owner,
       id: MapImages.mixedStop,
       widget: _stopPin(
         mixedStopGlyph(size: 20, color: _mixedStopColor),
@@ -442,6 +450,7 @@ Future<void> registerStigmaImages(
     ),
     putImageFromWidget(
       style,
+      owner,
       id: MapImages.favorite,
       widget: _stopPin(
         const Icon(StizeIcons.starFilled, size: 20, color: Color(0xFFF6A609)),
@@ -451,6 +460,7 @@ Future<void> registerStigmaImages(
     ),
     putImageFromWidget(
       style,
+      owner,
       id: MapImages.place,
       widget: _stopPin(
         const Icon(StizeIcons.pin, size: 20, color: Color(0xFFE5484D)),
@@ -460,12 +470,14 @@ Future<void> registerStigmaImages(
     ),
     putImageFromWidget(
       style,
+      owner,
       id: MapImages.vehicle,
       widget: _vehiclePin(StizeIcons.bus, scheme.primary, scheme),
     ),
-    putImageFromWidget(style, id: MapImages.me, widget: _meDot(scheme)),
+    putImageFromWidget(style, owner, id: MapImages.me, widget: _meDot(scheme)),
     putImageFromWidget(
       style,
+      owner,
       id: MapImages.cluster,
       widget: _clusterBubble(scheme),
     ),
