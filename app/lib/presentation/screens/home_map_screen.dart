@@ -52,6 +52,8 @@ import '../providers/providers.dart';
 import '../widgets/context_shell.dart';
 import '../widgets/stop_header_actions.dart';
 import '../widgets/fleet_model_card.dart';
+import '../widgets/follow_view.dart';
+import '../widgets/sheet_chrome.dart';
 import '../widgets/nearby_sheet.dart';
 import '../widgets/nearby_view.dart';
 import '../widgets/stop_board.dart';
@@ -799,8 +801,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     // owner (owner R2 #3). When NEITHER is shown (desktop panel, a follow bar)
     // drop the stale value so the owner doesn't keep a phantom bottom inset.
     // (Assigned during build, no setState — the value is read just below.)
-    final showingNearbySheet =
-        !_panelActive && _focus == null && _selectedVehicleKey == null;
+    // The follow lives in the same sheet now (owner, 2026-11-25); only a
+    // line opened without a vehicle keeps its compact bar.
+    final showingNearbySheet = !_panelActive && !_lineOnlyFocus;
     final mobileSheetShowing = showingNearbySheet;
     if (!mobileSheetShowing && _mobileSheetPx != 0) _mobileSheetPx = 0;
 
@@ -925,14 +928,17 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   // Otherwise the experimental "Nearby" sheet when its flag is on (it
                   // *replaces* the search bar), else the normal search + favourites. A
                   // stop arrivals sheet suppresses the whole cluster (#7).
-                  else if (_focus != null || _selectedVehicleKey != null)
+                  else if (_lineOnlyFocus)
                     _focusPanel(theme)
                   else
                     NearbySheet(
                       controller: _sheetCtl,
                       // One scroll is the Nearby root only; a level (Settings, a
-                      // stop, ...) is a regular draggable sheet again.
-                      oneScroll: _levels.isEmpty && _slotModel == null,
+                      // stop, a followed vehicle, ...) is a regular draggable
+                      // sheet again.
+                      oneScroll: _oneScrollRoot,
+                      // The follow card carries the grabber on its own colour.
+                      headerOwnsHandle: _selectedVehicleKey != null,
                       maxSize: _oneScrollMax(size),
                       searchController: _pillCtl,
                       searchActive: _pillActive,
@@ -940,7 +946,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                       // same sheet; null = Nearby.
                       levelHeader: _slotNavRow(l10n),
                       banner: _guideBanner(l10n),
-                      levelBody: (_levels.isEmpty && _slotModel == null)
+                      levelBody: _oneScrollRoot
                           ? null
                           : (sc) => _slotContent(l10n, scrollController: sc),
                       userLocation: _meTo,
@@ -961,6 +967,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   // and removing its PointerInterceptor platform view left stale
                   // copies of the sheet painted on iOS Safari (owner, 2026-11-23).
                   if (!_panelActive) _searchPill(l10n, size),
+                  // The sheet's close, outside it: rides above its right edge.
+                  if (!_panelActive && !_lineOnlyFocus) _mapSheetClose(size),
                   // On-device FPS meter — diagnostic only, off in the normal app; on a
                   // staging preview the owner enables it with `?fps=1` to compare the
                   // symbol layer against the widget path at different vehicle counts.

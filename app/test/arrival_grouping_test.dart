@@ -287,7 +287,7 @@ void main() {
               .toList(),
           ['42/r1', '78/r1', '42/r2'],
         );
-        expect(rows.first.laterEtaMinutes, [7, 16]); // capped at two
+        expect(rows.first.laterEtaMinutes, [7, 16, 25]); // capped at three
         expect(rows[1].laterEtaMinutes, isEmpty);
       },
     );

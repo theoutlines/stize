@@ -480,6 +480,13 @@ class VehicleTrackAnimator {
     return _clock().difference(t.lastMovedAt) >= _stuckAfter;
   }
 
+  /// How long the vehicle has not moved, or null for an unknown key.
+  Duration? stillFor(String key) {
+    final t = _tracks[key];
+    if (t == null) return null;
+    return _clock().difference(t.lastMovedAt);
+  }
+
   /// Display opacity for a vehicle: fully opaque while present, then fading over
   /// the grace period once it goes missing rather than vanishing abruptly (X6).
   /// Steeper than before (and a shorter grace, [_graceThreshold]=3) so a vehicle

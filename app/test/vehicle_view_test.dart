@@ -6,6 +6,7 @@ import 'package:stize/core/fleet_matcher.dart';
 import 'package:stize/domain/models/vehicle_type.dart';
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
+import 'package:stize/presentation/widgets/follow_view.dart';
 import 'package:stize/presentation/widgets/vehicle_view.dart';
 
 // A garage in [81531,81560] resolves to the Bozankaya class (AC / low-floor /
@@ -23,91 +24,82 @@ const _catalogJson = '''
 }
 ''';
 
-Widget _wrap({required String? garageNo}) {
+Widget _wrap({
+  required String? garageNo,
+  List<FollowRouteStop> route = const [],
+  bool between = false,
+  int? stuckMinutes,
+}) {
   final catalog = FleetCatalog.tryParse(_catalogJson)!;
   return ProviderScope(
     overrides: [fleetCatalogProvider.overrideWith((ref) async => catalog)],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('en'),
       home: Scaffold(
         body: VehicleView(
           line: '5',
           type: VehicleType.tram,
-          origin: 'Batutova',
-          destination: 'Zeleni venac',
           garageNo: garageNo,
+          route: route,
+          vehicleBetween: between,
+          stuckMinutes: stuckMinutes,
         ),
       ),
     ),
   );
 }
 
+const _route = [
+  FollowRouteStop(name: 'Đeram pijaca', passed: true),
+  FollowRouteStop(name: 'Lion', etaMinutes: 0, vehicleHere: true),
+  FollowRouteStop(name: 'Pop Stojanova', etaMinutes: 1),
+  FollowRouteStop(name: 'Batutova', etaMinutes: 3, yours: true),
+];
+
 void main() {
-  testWidgets('direction + status render', (tester) async {
-    await tester.pumpWidget(_wrap(garageNo: '81540'));
-    await tester.pumpAndSettle();
-    expect(find.text('Batutova → Zeleni venac'), findsOneWidget);
-    expect(find.text('On the move'), findsOneWidget);
-  });
-
-  testWidgets(
-    'a matched garage shows the About card + model + CTA (decision #7)',
-    (tester) async {
-      await tester.pumpWidget(_wrap(garageNo: '81540'));
-      await tester.pumpAndSettle();
-      expect(find.text('About the vehicle'), findsOneWidget);
-      expect(find.text('Bozankaya'), findsOneWidget);
-      expect(find.textContaining('View model details'), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    'a junk placeholder id hides the About card entirely (decision #7)',
-    (tester) async {
-      await tester.pumpWidget(_wrap(garageNo: 'P5'));
-      await tester.pumpAndSettle();
-      // No card, no CTA — the placeholder number is never surfaced.
-      expect(find.text('About the vehicle'), findsNothing);
-      expect(find.textContaining('View model details'), findsNothing);
-    },
-  );
-
-  testWidgets('a real-but-unmatched garage still shows (muted), no CTA', (
+  testWidgets('the route lists the stops with times and your stop', (
     tester,
   ) async {
-    // 70260 is a plausible number outside every class range → unknown.
-    await tester.pumpWidget(_wrap(garageNo: '70260'));
+    await tester.pumpWidget(_wrap(garageNo: '81540', route: _route));
     await tester.pumpAndSettle();
-    expect(find.text('About the vehicle'), findsOneWidget);
-    // The muted garage number is shown; no "view model" CTA (nothing to open).
-    expect(find.textContaining('View model details'), findsNothing);
+    expect(find.text('Đeram pijaca'), findsOneWidget);
+    expect(find.text('Lion'), findsOneWidget);
+    expect(find.text('1 min'), findsOneWidget);
+    expect(find.text('3 min'), findsOneWidget);
+    expect(find.text('Your stop'), findsOneWidget);
+    expect(find.textContaining('Stuck'), findsNothing);
   });
 
-  testWidgets(
-    'a line with no route geometry shows the honest note, not a route list '
-    '(owner R4 #2)',
-    (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [fleetCatalogProvider.overrideWith((ref) async => null)],
-          child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(
-              body: VehicleView(
-                line: 'Ada 4',
-                type: VehicleType.bus,
-                garageNo: null,
-                routeUnavailable: true,
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Route unavailable for this line'), findsOneWidget);
-      expect(find.text('Rest of the route'), findsNothing);
-    },
-  );
+  testWidgets('a stuck vehicle says so on the route; later times turn ≈', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(garageNo: '81540', route: _route, stuckMinutes: 3),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Stuck · 3 min'), findsOneWidget);
+    expect(find.text('≈ 1 min'), findsOneWidget);
+    expect(find.text('≈ 3 min'), findsOneWidget);
+  });
+
+  testWidgets('a matched garage shows the vehicle card with its chips', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrap(garageNo: '81540'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bozankaya'), findsOneWidget);
+    expect(find.text('Articulated'), findsOneWidget);
+    expect(find.textContaining('#81540'), findsOneWidget);
+  });
+
+  testWidgets('a junk placeholder id hides the vehicle card entirely', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrap(garageNo: 'P5'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bozankaya'), findsNothing);
+    expect(find.textContaining('#P5'), findsNothing);
+  });
 }

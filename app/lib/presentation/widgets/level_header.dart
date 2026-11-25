@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:stize/core/design/stize_text.dart';
 import '../../core/design/stize_icons.dart';
+import 'sheet_chrome.dart';
 
 /// Header of a level in the context slot (mobile sheet / desktop panel).
 ///
@@ -21,6 +22,8 @@ class LevelHeader extends StatelessWidget {
   final String title;
 
   /// Name of the previous level; null on the first level (then [onClose] shows).
+  /// On the mobile map the host passes no [onClose]: the close rides above the
+  /// sheet instead ([MapSheetCloseButton]).
   final String? backLabel;
   final VoidCallback? onBack;
   final VoidCallback? onClose;
@@ -98,36 +101,7 @@ class LevelHeader extends StatelessWidget {
                 ),
               ),
               if (!hasBack && onClose != null)
-                // Compact round close: a 32px circle on the title's centre
-                // line (the old 48px filled square sat off the baseline),
-                // inside a 44px tap target.
-                Semantics(
-                  button: true,
-                  label: MaterialLocalizations.of(context).closeButtonTooltip,
-                  child: InkResponse(
-                    onTap: onClose,
-                    radius: 22,
-                    child: SizedBox.square(
-                      dimension: 44,
-                      child: Center(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: scheme.onSurface.withValues(alpha: 0.08),
-                          ),
-                          child: SizedBox.square(
-                            dimension: 32,
-                            child: Icon(
-                              StizeIcons.close,
-                              size: 18,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                SheetCloseButton(onPressed: onClose!),
             ],
           ),
         ],

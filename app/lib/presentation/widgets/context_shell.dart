@@ -2,6 +2,7 @@ import 'package:stize/core/design/stize_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:stize/core/design/stize_text.dart';
 
+import 'follow_view.dart';
 import 'level_header.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
@@ -77,7 +78,7 @@ class ContextPanel extends StatelessWidget {
                   ),
                 // A LevelHeader owns its insets (one 16px left edge with the
                 // content); other nav rows keep the panel's padding.
-                if (navRow is LevelHeader)
+                if (navRow is LevelHeader || navRow is FollowHeader)
                   navRow!
                 else if (navRow != null)
                   Padding(

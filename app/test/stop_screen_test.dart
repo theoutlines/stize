@@ -209,7 +209,8 @@ void main() {
       ),
       findsOneWidget,
     ); // a planned time reads as a clock
-    expect(find.text('Scheduled'), findsOneWidget); // planned marker
+    // Timetable times sit in their own section under one header.
+    expect(find.text('By timetable'), findsOneWidget);
   });
 
   testWidgets('shows the human empty state when there are no arrivals', (

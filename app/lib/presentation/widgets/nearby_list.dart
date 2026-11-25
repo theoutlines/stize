@@ -4,10 +4,13 @@ import 'animated_entries.dart';
 import 'flat_cards.dart';
 
 import '../../core/design/stize_tokens.dart';
+import '../../core/arrival_display.dart';
 import '../../core/eta_format.dart';
+import '../../core/movement_tracker.dart';
 import '../../core/nearby_focus.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../l10n/app_localizations.dart';
+import 'arrival_tile.dart';
 import 'stize_transit_card.dart';
 
 /// The "Nearby" list itself — a pure, scrollable list of line+direction rows.
@@ -111,36 +114,45 @@ class NearbyCard extends StatelessWidget {
     final localeName = Localizations.localeOf(context).toString();
     final hasLive = nearbyGroupHasLive(group);
     final etas = visibleNearbyEtas(group);
-    final scheduled = etas.isNotEmpty && !nearbyEtaIsLive(etas.first);
-    final caption = StizeTransitCard.captionStyle(c, scheduled: scheduled);
+    final first = etas.isEmpty ? null : etas.first;
+    final scheduled = first != null && !nearbyEtaIsLive(first);
+    final later = etas.skip(1).map((e) => e.etaMinutes).take(3).toList();
+    final stuck =
+        !scheduled && MovementTracker.instance.isStuck(first?.garageNo);
 
-    // The next time of this line, with its unit attached (same as the board).
-    String? next;
-    // "next in 0 min" said nothing: a second vehicle also arriving now gets
-    // no caption (owner, 2026-11-23).
-    if (etas.length > 1 && etas[1].etaMinutes > 0) {
-      final m = etas[1].etaMinutes;
-      next = m >= kFarEtaMinutes
-          ? l10n.arrivalNextAt(clockAt(localeName, m))
-          : l10n.arrivalNextIn(m <= 0 ? 0 : m);
+    // Same card as the stop board; the stop and its distance sit under the
+    // destination, since Nearby mixes several stops.
+    String? position;
+    if (first != null && !scheduled) {
+      position = switch (arrivalProximity(
+        stopsRemaining: first.stopsRemaining,
+        etaMinutes: first.etaMinutes,
+      )) {
+        ArrivalProximity.here => l10n.arrivalStopsAway(0),
+        ArrivalProximity.stopsAway => l10n.arrivalStopsAway(
+          first.stopsRemaining!,
+        ),
+        ArrivalProximity.unknown => null,
+      };
     }
 
     return StizeTransitCard(
       type: group.vehicleType,
       line: group.line,
       destination: group.destination,
-      caption: [
-        if (hasLive) StizeTransitCard.liveDot(c),
-        Text(
+      leftNote:
           '${group.stopName} · ${l10n.nearbyDistanceMeters(group.distanceMeters)}',
-          style: caption,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        if (next != null) Text(next, style: caption),
-      ],
-      etaMinutes: etas.isEmpty ? null : etas.first.etaMinutes,
+      position: position,
+      moving: hasLive && !stuck,
+      approximate: stuck,
+      etaMinutes: first?.etaMinutes,
       scheduled: scheduled,
+      next: scheduled
+          ? null
+          : ArrivalTile.laterLabel(l10n, localeName, later),
+      followUps: scheduled && later.isNotEmpty
+          ? later.take(2).map((m) => clockAt(localeName, m)).join(' · ')
+          : null,
       live: hasLive,
       onTap: onTap,
     );

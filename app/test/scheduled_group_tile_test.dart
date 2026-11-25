@@ -20,7 +20,7 @@ Finder _textMatching(RegExp re) =>
 
 void main() {
   testWidgets(
-    'renders line, Scheduled label, nearest time + next two as clocks',
+    'renders line, nearest time + next two as clocks, no Scheduled word',
     (tester) async {
       await tester.pumpWidget(
         _wrap(
@@ -33,7 +33,8 @@ void main() {
       );
 
       expect(find.text('79'), findsOneWidget);
-      expect(find.text('Scheduled'), findsOneWidget);
+      // The section header carries "By timetable"; the card doesn't.
+      expect(find.text('Scheduled'), findsNothing);
       // A planned time reads as a clock: nearest large, the two follow-ups on
       // one quiet line under it.
       expect(_textMatching(_clock), findsOneWidget);

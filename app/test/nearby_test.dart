@@ -110,7 +110,7 @@ void main() {
       expect(find.textContaining('Batutova'), findsOneWidget);
       expect(find.textContaining('120 m'), findsOneWidget);
       expect(find.text('3'), findsOneWidget); // soonest, the big number
-      expect(find.text('next in 9 min'), findsOneWidget); // second departure
+      expect(find.text('next 9 min'), findsOneWidget); // second departure
     });
 
     testWidgets('brightness == clickability: a live group has a chevron, a '

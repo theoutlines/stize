@@ -16,6 +16,7 @@ import 'empty_state.dart';
 import 'stop_arrivals_list.dart';
 import 'jam_stop_banner.dart';
 import 'route_alerts_strip.dart';
+import 'sheet_chrome.dart';
 import 'stop_header_actions.dart';
 import '../../core/design/stize_icons.dart';
 
@@ -186,10 +187,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
           StopHeaderActions(stopId: widget.stopId, stopName: stopName),
           const Spacer(),
           if (widget.onClose != null)
-            IconButton(
-              icon: const Icon(StizeIcons.close),
-              onPressed: widget.onClose,
-            ),
+            SheetCloseButton(onPressed: widget.onClose!),
         ],
       ),
     );

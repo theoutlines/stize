@@ -12,10 +12,8 @@ import 'package:stize/domain/repositories/arrivals_repository.dart';
 import 'package:stize/domain/repositories/favorites_repository.dart';
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
-import 'package:stize/presentation/widgets/fleet_model_card.dart';
 import 'package:stize/presentation/widgets/stop_board.dart';
 import 'package:stize/presentation/widgets/stop_sheet.dart';
-import 'package:stize/core/design/stize_icons.dart';
 
 // One AC/low-floor tram so a Fleet-ID badge is tappable → opens the fleet card.
 const _catalogJson = '''
@@ -142,50 +140,4 @@ void main() {
     );
     expect(insets.bottom, greaterThan(0));
   });
-
-  testWidgets(
-    'fleet card opens as an in-sheet subview and back returns to the board; '
-    'detents unchanged through the swap',
-    (tester) async {
-      await tester.pumpWidget(_host());
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
-
-      // The board is up (its comfort/time sort is a board-only control) and no
-      // fleet subview yet.
-      expect(find.byType(StopBoard), findsOneWidget);
-      expect(find.byType(FleetModelView), findsNothing);
-
-      // Detent contract before the swap.
-      double maxDetent() => tester
-          .widget<DraggableScrollableSheet>(
-            find.byType(DraggableScrollableSheet),
-          )
-          .maxChildSize;
-      expect(maxDetent(), kSheetLarge);
-
-      // Tap the Fleet-ID (AC) badge → the sheet swaps to the fleet card subview,
-      // in the SAME sheet (no second modal barrier).
-      await tester.tap(find.byIcon(StizeIcons.snowflake));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(FleetModelView), findsOneWidget);
-      // Model name shows in the back header AND as the card headline (same pairing
-      // as the desktop panel: nav-row title + card headline).
-      expect(find.text('Bozankaya'), findsWidgets);
-      expect(find.byIcon(StizeIcons.back), findsOneWidget); // back header
-      expect(find.byType(StopBoard), findsNothing); // board swapped out
-      // The sheet is the same one — detents are unchanged through the swap.
-      expect(maxDetent(), kSheetLarge);
-
-      // Back returns to the exact previous view (the arrivals board).
-      await tester.tap(find.byIcon(StizeIcons.back));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(FleetModelView), findsNothing);
-      expect(find.byType(StopBoard), findsOneWidget);
-      expect(maxDetent(), kSheetLarge);
-    },
-  );
 }

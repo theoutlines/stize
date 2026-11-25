@@ -125,25 +125,14 @@ extension _MapPanels on _HomeMapScreenState {
               ? _levelTitle(_levels[_levels.length - 2], l10n)
               : null,
           onBack: _slotBack,
-          onClose: _closeAllLevels,
+          // Mobile: the close rides above the sheet (MapSheetCloseButton).
+          onClose: _panelActive ? _closeAllLevels : null,
           trailing: top is _StopLevel
               ? StopHeaderActions(stopId: top.id, stopName: title)
               : null,
         );
       case ContextView.vehicle:
-        final track = _selectedVehicleKey == null
-            ? null
-            : _vehAnimator.trackFor(_selectedVehicleKey!);
-        final line = _focus?.line ?? track?.line ?? '';
-        final type = _focus?.type ?? track?.type ?? VehicleType.bus;
-        final dir = (_focus != null)
-            ? '${_focus!.origin} → ${_focus!.destination}'
-            : l10n.followingVehicle;
-        return ContextNavRow(
-          onBack: _slotBack,
-          leading: _linePill(line, type),
-          title: dir,
-        );
+        return _followHeader(l10n);
     }
   }
 
@@ -261,32 +250,117 @@ extension _MapPanels on _HomeMapScreenState {
             : _vehAnimator.trackFor(_selectedVehicleKey!);
         final line = _focus?.line ?? track?.line ?? '';
         final type = _focus?.type ?? track?.type ?? VehicleType.bus;
-        final stuck =
-            _selectedVehicleKey != null &&
-            _vehAnimator.isStuck(_selectedVehicleKey!);
+        final f = _followModel(l10n);
         return VehicleView(
           line: line,
           type: type,
-          origin: _focus?.origin,
-          destination: _focus?.destination,
-          stuck: stuck,
           scheduled:
               _focus?.scheduled ?? (track?.source == VehicleSource.scheduled),
           garageNo: _selectedVehicleKey,
-          upcomingStops: _buildUpcomingStops(),
-          // A line with no route geometry in our GTFS (e.g. "Ada 4"): show an
-          // honest note instead of an empty route list (owner R4 #2).
+          route: f.route,
+          vehicleBetween: f.between,
+          stuckMinutes: f.stuckMinutes,
+          // A line with no route geometry in our GTFS (e.g. "Ada 4"): an honest
+          // note instead of an empty route list (owner R4 #2).
           routeUnavailable: _followNoRouteData,
-          // Item 5: warn only if a jam is on this vehicle's direction AND ahead of
-          // it — opposite direction / a jam already behind stays silent.
+          // Warn only if a jam is on this vehicle's direction AND ahead of it.
           jamAhead: _jamAheadForFollowed(track),
-          // The route is drawn on the panel-side map, so no "show route" button.
-          showRouteButton: false,
-          // Tapping the "About" card opens the model as a leaf IN the panel.
-          onOpenModel: (fleet) =>
-              _openSlotModel(fleet, garageNo: _selectedVehicleKey, type: type),
+          scrollController: scrollController,
         );
     }
+  }
+
+  /// The follow level's head: the vehicle as a card in its line colour. The
+  /// close lives in it on the desktop island; on mobile it rides above the
+  /// sheet and the card carries the sheet's grabber instead.
+  Widget _followHeader(AppLocalizations l10n) {
+    final track = _selectedVehicleKey == null
+        ? null
+        : _vehAnimator.trackFor(_selectedVehicleKey!);
+    final line = _focus?.line ?? track?.line ?? '';
+    final type = _focus?.type ?? track?.type ?? VehicleType.bus;
+    final f = _followModel(l10n);
+    final scheduled =
+        _focus?.scheduled ?? (track?.source == VehicleSource.scheduled);
+    return FollowHeader(
+      line: line,
+      type: type,
+      destination: _focus?.destination,
+      etaMinutes: f.eta,
+      caption: f.caption,
+      moving: _selectedVehicleKey != null && f.stuckMinutes == null && !scheduled,
+      approximate: f.stuckMinutes != null,
+      onClose: _panelActive ? _closeVehicleContext : null,
+      showHandle: !_panelActive,
+      topRadius: _panelActive ? 0 : kSheetRadius.topLeft.x,
+    );
+  }
+
+  /// What the follow header and route show, from the focused shape and the
+  /// followed vehicle's live position: the stop behind it, the stops ahead with
+  /// their times, your stop, and how long it has stood still.
+  ({
+    List<FollowRouteStop> route,
+    bool between,
+    int? stuckMinutes,
+    int? eta,
+    String? caption,
+  })
+  _followModel(AppLocalizations l10n) {
+    final upcoming = _buildUpcomingStops();
+    final key = _selectedVehicleKey;
+    int? stuckMinutes;
+    if (key != null && _vehAnimator.isStuck(key)) {
+      final still = _vehAnimator.stillFor(key);
+      if (still != null) stuckMinutes = stuckMinutesOf(still);
+    }
+    final focus = _focus;
+    final route = <FollowRouteStop>[];
+    var between = false;
+    if (upcoming.isNotEmpty && focus != null) {
+      final seq = upcoming.first.stop.seq;
+      final atStop = (upcoming.first.etaMinutes ?? 1) <= 0;
+      final hasPassed = seq > 0 && seq - 1 < focus.stops.length;
+      if (hasPassed) {
+        route.add(
+          FollowRouteStop(name: focus.stops[seq - 1].name, passed: true),
+        );
+      }
+      between = hasPassed && !atStop;
+      final shown = upcoming.take(8).toList();
+      for (var i = 0; i < shown.length; i++) {
+        final u = shown[i];
+        route.add(
+          FollowRouteStop(
+            name: u.stop.name,
+            etaMinutes: u.etaMinutes,
+            yours: u.isBoardStop,
+            vehicleHere: i == 0 && !between,
+          ),
+        );
+      }
+    }
+
+    int? eta;
+    String? caption;
+    final boardIdx = upcoming.indexWhere((u) => u.isBoardStop);
+    if (boardIdx >= 0) {
+      final u = upcoming[boardIdx];
+      eta = u.etaMinutes;
+      caption = boardIdx == 0 && (u.etaMinutes ?? 1) <= 0
+          ? l10n.followAtStop(u.stop.name)
+          : l10n.followStopsTo(boardIdx + 1, u.stop.name);
+    } else if (upcoming.isNotEmpty) {
+      eta = upcoming.first.etaMinutes;
+      caption = l10n.followNextStop(upcoming.first.stop.name);
+    }
+    return (
+      route: route,
+      between: between,
+      stuckMinutes: stuckMinutes,
+      eta: eta,
+      caption: caption,
+    );
   }
 
   /// Build the followed vehicle's upcoming-stop list (owner R1 #5) from the
@@ -336,42 +410,6 @@ extension _MapPanels on _HomeMapScreenState {
     return plan.stops;
   }
 
-  /// The compact coloured line pill (in the vehicle nav row).
-  Widget _linePill(String line, VehicleType type) {
-    final color = vehicleColor(type);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(StizeRadius.radiusPill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          vehicleGlyph(
-            type,
-            size: 16,
-            color: StizeColors.of(context).onTransit,
-          ),
-          const SizedBox(width: 8),
-          Builder(
-            builder: (context) {
-              final stize = StizeColors.of(context);
-              return Text(
-                line,
-                style: StizeType.lineNumber.copyWith(color: stize.onTransit),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// The persistent global search row for the panel (stops / streets / lines) —
-  /// visible in all views (decision #6). The hamburger sits here and ONLY on the
-  /// nearby (root) view (owner R1 #4). Reuses the same search state as the
-  /// legacy bottom search, so results render in the panel body.
   Widget _panelSearchField(AppLocalizations l10n, ThemeData theme) {
     // The burger lives in the search row on the nearby root — and, while
     // collapsed, in EVERY view: the context nav row (its usual back/drawer
@@ -967,11 +1005,7 @@ extension _MapPanels on _HomeMapScreenState {
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(StizeIcons.close),
-                  onPressed: _closeVehicleContext,
-                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                ),
+                SheetCloseButton(onPressed: _closeVehicleContext),
               ],
             ),
           ),

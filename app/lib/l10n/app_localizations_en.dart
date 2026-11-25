@@ -946,4 +946,86 @@ class AppLocalizationsEn extends AppLocalizations {
   String cityLinesBestOnly(String best) {
     return '$best is the most punctual line; none of the busy lines runs notably late.';
   }
+
+  @override
+  String arrivalNextList(String times) {
+    return 'next $times min';
+  }
+
+  @override
+  String get arrivalStartsHere => 'Starts here';
+
+  @override
+  String get arrivalByTimetable => 'By timetable';
+
+  @override
+  String followStopsTo(int count, String stop) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stops to $stop',
+      one: '1 stop to $stop',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String followAtStop(String stop) {
+    return 'At $stop';
+  }
+
+  @override
+  String followNextStop(String stop) {
+    return 'Next: $stop';
+  }
+
+  @override
+  String followStuck(int minutes) {
+    return 'Stuck · $minutes min';
+  }
+
+  @override
+  String get followYourStop => 'Your stop';
+
+  @override
+  String fleetChipAge(int years) {
+    return '$years yr';
+  }
+
+  @override
+  String fleetChipCapacity(int count) {
+    return '~$count people';
+  }
+
+  @override
+  String fleetChipComfort(String word) {
+    return 'Comfort: $word';
+  }
+
+  @override
+  String get fleetChipSteps => 'Steps';
+
+  @override
+  String get fleetChipLowFloor => 'Low floor';
+
+  @override
+  String fleetMadeBy(String value) {
+    return 'Made by $value';
+  }
+
+  @override
+  String fleetOperatorShort(String name) {
+    return 'Operator $name';
+  }
+
+  @override
+  String fleetPhotoShort(String author, String license) {
+    return 'Photo: $author, $license';
+  }
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get fleetChipArticulated => 'Articulated';
 }

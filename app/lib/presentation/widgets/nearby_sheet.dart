@@ -39,7 +39,12 @@ class NearbySheet extends StatelessWidget {
     this.searchActive = false,
     this.levelHeader,
     this.levelBody,
+    this.headerOwnsHandle = false,
   });
+
+  /// The level header draws the grabber itself (the follow card, on its line
+  /// colour), so the sheet skips its own.
+  final bool headerOwnsHandle;
 
   /// Drives the sheet's height from the host (open a level at half, close back
   /// to peek). The sheet itself is never rebuilt between levels, so its height
@@ -156,10 +161,12 @@ class NearbySheet extends StatelessWidget {
                   // One-scroll: the first card itself carries the sheet's top
                   // radius, nothing peeks above it.
                   child: ClipRRect(
-                    borderRadius: oneScroll ? kSheetRadius : BorderRadius.zero,
+                    borderRadius: oneScroll || headerOwnsHandle
+                        ? kSheetRadius
+                        : BorderRadius.zero,
                     child: Column(
                       children: [
-                        if (!oneScroll) const SheetDragHandle(),
+                        if (!oneScroll && !headerOwnsHandle) const SheetDragHandle(),
                         if (levelBody != null) ...[
                           ?levelHeader,
                           Expanded(child: levelBody!(scrollController)),

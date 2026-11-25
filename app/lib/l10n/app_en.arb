@@ -641,5 +641,106 @@
         "type": "String"
       }
     }
-  }
+  },
+  "arrivalNextList": "next {times} min",
+  "@arrivalNextList": {
+    "placeholders": {
+      "times": {
+        "type": "String"
+      }
+    }
+  },
+  "arrivalStartsHere": "Starts here",
+  "arrivalByTimetable": "By timetable",
+  "followStopsTo": "{count, plural, =1{1 stop to {stop}} other{{count} stops to {stop}}}",
+  "@followStopsTo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "followAtStop": "At {stop}",
+  "@followAtStop": {
+    "placeholders": {
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "followNextStop": "Next: {stop}",
+  "@followNextStop": {
+    "placeholders": {
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "followStuck": "Stuck · {minutes} min",
+  "@followStuck": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "followYourStop": "Your stop",
+  "fleetChipAge": "{years} yr",
+  "@fleetChipAge": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "fleetChipCapacity": "~{count} people",
+  "@fleetChipCapacity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fleetChipComfort": "Comfort: {word}",
+  "@fleetChipComfort": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "fleetChipSteps": "Steps",
+  "fleetChipLowFloor": "Low floor",
+  "fleetMadeBy": "Made by {value}",
+  "@fleetMadeBy": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "fleetOperatorShort": "Operator {name}",
+  "@fleetOperatorShort": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "fleetPhotoShort": "Photo: {author}, {license}",
+  "@fleetPhotoShort": {
+    "placeholders": {
+      "author": {
+        "type": "String"
+      },
+      "license": {
+        "type": "String"
+      }
+    }
+  },
+  "close": "Close",
+  "fleetChipArticulated": "Articulated"
 }

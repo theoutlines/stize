@@ -262,8 +262,13 @@ extension _MapSearch on _HomeMapScreenState {
     _setMobileSheetPx(px);
     final h = MediaQuery.sizeOf(context).height;
     if (h <= 0) return;
-    final hasLevel = _levels.isNotEmpty || _slotModel != null;
+    final following = _selectedVehicleKey != null;
+    final hasLevel = _levels.isNotEmpty || _slotModel != null || following;
     if (hasLevel && px / h < kSheetPeek - 0.1) {
+      if (following) {
+        _closeVehicleContext();
+        return;
+      }
       _closeAllLevels();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_sheetCtl.isAttached) return;
@@ -451,6 +456,49 @@ extension _MapSearch on _HomeMapScreenState {
   // ---- One-scroll home (mobile) --------------------------------------------
 
   /// Mobile Nearby root: the pill is on the map (levels have their own header).
+  /// A line opened on its own (no vehicle): the compact line bar, no sheet.
+  bool get _lineOnlyFocus =>
+      !_panelActive && _focus != null && _selectedVehicleKey == null;
+
+  /// What the close above the mobile sheet does now, or null when the level
+  /// has none (Nearby root, a nested level with its back link, a model leaf).
+  VoidCallback? get _mobileSheetCloseAction {
+    if (_panelActive || _lineOnlyFocus) return null;
+    if (_selectedVehicleKey != null) return _closeVehicleContext;
+    if (_slotModel != null) return null;
+    if (_levels.length == 1) return _closeAllLevels;
+    return null;
+  }
+
+  /// The close of the mobile sheet, riding just above its right edge; stops
+  /// under the status bar when the sheet is at its tallest.
+  Widget _mapSheetClose(Size size) {
+    final action = _mobileSheetCloseAction;
+    return AnimatedBuilder(
+      animation: _sheetCtl,
+      builder: (context, child) {
+        final top = _sheetCloseTopFor(size);
+        return Positioned(
+          right: StizeSpace.space4,
+          top: action == null || top == null ? -400 : top,
+          child: IgnorePointer(ignoring: action == null, child: child!),
+        );
+      },
+      child: MapSheetCloseButton(onPressed: () => action?.call()),
+    );
+  }
+
+  /// The close button's top for the current sheet height, or null before the
+  /// sheet is attached.
+  double? _sheetCloseTopFor(Size size) {
+    if (!_sheetCtl.isAttached) return null;
+    final sheetTop = _bodyH(size) * (1 - _sheetCtl.size);
+    final riding =
+        sheetTop - MapSheetCloseButton.gap - MapSheetCloseButton.size;
+    final floor = MediaQuery.paddingOf(context).top + StizeSpace.space3;
+    return riding < floor ? floor : riding;
+  }
+
   bool get _oneScrollRoot =>
       !_panelActive &&
       _focus == null &&
@@ -561,9 +609,16 @@ extension _MapSearch on _HomeMapScreenState {
         // status-bar inset and a 12px margin.
         final buttonsBottom =
             MediaQuery.paddingOf(context).top + 12 + _topButtonsH;
+        // The rising search pill (Nearby root) or the sheet's close (a level)
+        // pushes the buttons up once it reaches them.
+        final closeTop = _mobileSheetCloseAction == null
+            ? null
+            : _sheetCloseTopFor(size);
         final gap = _oneScrollRoot
             ? _pillTopFor(size) - StizeSpace.space3 - buttonsBottom
-            : 0.0;
+            : (closeTop == null
+                  ? 0.0
+                  : closeTop - StizeSpace.space3 - buttonsBottom);
         return Transform.translate(
           offset: Offset(0, gap < 0 ? gap : 0),
           child: child,

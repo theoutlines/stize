@@ -1735,6 +1735,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{best} is the most punctual line; none of the busy lines runs notably late.'**
   String cityLinesBestOnly(String best);
+
+  /// No description provided for @arrivalNextList.
+  ///
+  /// In en, this message translates to:
+  /// **'next {times} min'**
+  String arrivalNextList(String times);
+
+  /// No description provided for @arrivalStartsHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts here'**
+  String get arrivalStartsHere;
+
+  /// No description provided for @arrivalByTimetable.
+  ///
+  /// In en, this message translates to:
+  /// **'By timetable'**
+  String get arrivalByTimetable;
+
+  /// No description provided for @followStopsTo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 stop to {stop}} other{{count} stops to {stop}}}'**
+  String followStopsTo(int count, String stop);
+
+  /// No description provided for @followAtStop.
+  ///
+  /// In en, this message translates to:
+  /// **'At {stop}'**
+  String followAtStop(String stop);
+
+  /// No description provided for @followNextStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Next: {stop}'**
+  String followNextStop(String stop);
+
+  /// No description provided for @followStuck.
+  ///
+  /// In en, this message translates to:
+  /// **'Stuck · {minutes} min'**
+  String followStuck(int minutes);
+
+  /// No description provided for @followYourStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Your stop'**
+  String get followYourStop;
+
+  /// No description provided for @fleetChipAge.
+  ///
+  /// In en, this message translates to:
+  /// **'{years} yr'**
+  String fleetChipAge(int years);
+
+  /// No description provided for @fleetChipCapacity.
+  ///
+  /// In en, this message translates to:
+  /// **'~{count} people'**
+  String fleetChipCapacity(int count);
+
+  /// No description provided for @fleetChipComfort.
+  ///
+  /// In en, this message translates to:
+  /// **'Comfort: {word}'**
+  String fleetChipComfort(String word);
+
+  /// No description provided for @fleetChipSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps'**
+  String get fleetChipSteps;
+
+  /// No description provided for @fleetChipLowFloor.
+  ///
+  /// In en, this message translates to:
+  /// **'Low floor'**
+  String get fleetChipLowFloor;
+
+  /// No description provided for @fleetMadeBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Made by {value}'**
+  String fleetMadeBy(String value);
+
+  /// No description provided for @fleetOperatorShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Operator {name}'**
+  String fleetOperatorShort(String name);
+
+  /// No description provided for @fleetPhotoShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo: {author}, {license}'**
+  String fleetPhotoShort(String author, String license);
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @fleetChipArticulated.
+  ///
+  /// In en, this message translates to:
+  /// **'Articulated'**
+  String get fleetChipArticulated;
 }
 
 class _AppLocalizationsDelegate

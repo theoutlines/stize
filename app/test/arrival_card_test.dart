@@ -60,15 +60,18 @@ void main() {
         ArrivalTile(
           arrival: _arrival(eta: 6),
           destination: 'Vukov spomenik',
-          nextEtaMinutes: 9,
+          laterEtaMinutes: const [9, 21, 34],
+          stuck: false,
         ),
       ),
     );
     expect(find.text('6'), findsOneWidget);
     expect(find.text('min'), findsOneWidget);
     expect(find.text('Vukov spomenik'), findsOneWidget);
-    expect(find.text('next in 9 min'), findsOneWidget);
+    // The later vehicles of this direction, up to three (owner, 2026-11-25).
+    expect(find.text('next 9 · 21 · 34 min'), findsOneWidget);
     expect(find.text('3 stops away'), findsOneWidget);
+    expect(find.text('≈'), findsNothing);
   });
 
   testWidgets('a due vehicle reads "now", not 0', (tester) async {
@@ -79,7 +82,7 @@ void main() {
     expect(find.text('0'), findsNothing);
   });
 
-  testWidgets('a scheduled row shows a clock time and the Scheduled word', (
+  testWidgets('a timetable row shows a clock time, no Scheduled word', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -87,9 +90,29 @@ void main() {
         ArrivalTile(arrival: _arrival(scheduled: true, gps: null, eta: 20)),
       ),
     );
-    expect(find.text('Scheduled'), findsOneWidget);
+    // The section header says "By timetable"; the card doesn't repeat it.
+    expect(find.text('Scheduled'), findsNothing);
     // No "min" unit on a scheduled row — it shows a clock time instead.
     expect(find.text('min'), findsNothing);
+  });
+
+  testWidgets('a vehicle waiting at the terminus says it starts here', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(ArrivalTile(arrival: _arrival(garageNo: 'P3', eta: 4))),
+    );
+    expect(find.text('Starts here'), findsOneWidget);
+  });
+
+  testWidgets('a vehicle that stopped moving shows an approximate time', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(ArrivalTile(arrival: _arrival(eta: 8), stuck: true)),
+    );
+    expect(find.text('≈'), findsOneWidget);
+    expect(find.text('8'), findsOneWidget);
   });
 
   testWidgets('the trolleybus card is the darkened orange', (tester) async {

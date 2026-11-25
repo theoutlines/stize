@@ -375,7 +375,7 @@ class FleetModelView extends ConsumerWidget {
     if (fleet.manufacturer != null) {
       final country = fleet.country == null
           ? null
-          : _localizedCountry(fleet.country!, lang);
+          : localizedCountry(fleet.country!, lang);
       final value = country == null
           ? fleet.manufacturer!
           : '${fleet.manufacturer}, $country';
@@ -406,7 +406,7 @@ class FleetModelView extends ConsumerWidget {
 
   /// Localize a slash-separated country code ("DE/CH" → "Germany/Switzerland"),
   /// falling back to English, then the raw code for anything unmapped.
-  static String _localizedCountry(String code, String lang) {
+  static String localizedCountry(String code, String lang) {
     return code
         .split('/')
         .map((c) {

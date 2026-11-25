@@ -33,11 +33,14 @@ Future<T?> showAppSheet<T>(
 
 /// The canonical drag handle: a 36×4 rounded pill in `outlineVariant`.
 class SheetDragHandle extends StatelessWidget {
-  const SheetDragHandle({super.key, this.bottom = 8});
+  const SheetDragHandle({super.key, this.bottom = 8, this.color});
 
   /// Bottom padding under the handle (sheets vary slightly: 8 for nearby, 4 when
   /// a header follows immediately).
   final double bottom;
+
+  /// Override for a handle drawn on a coloured header (the follow card).
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +51,7 @@ class SheetDragHandle extends StatelessWidget {
         width: 36,
         height: 4,
         decoration: BoxDecoration(
-          color: theme.colorScheme.outlineVariant,
+          color: color ?? theme.colorScheme.outlineVariant,
           borderRadius: BorderRadius.circular(2),
         ),
       ),
@@ -88,6 +91,102 @@ class SheetBackHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The one close button of a sheet level: a 32px circle in a 44px tap target.
+/// Used inside a header row where the close lives in the panel (desktop
+/// island, dialogs); on the mobile map the close rides above the sheet as a
+/// [MapSheetCloseButton].
+class SheetCloseButton extends StatelessWidget {
+  const SheetCloseButton({
+    super.key,
+    required this.onPressed,
+    this.background,
+    this.color,
+  });
+
+  /// The tap target's side.
+  static const double size = 44;
+
+  final VoidCallback onPressed;
+  final Color? background;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      label: MaterialLocalizations.of(context).closeButtonTooltip,
+      child: InkResponse(
+        onTap: onPressed,
+        radius: size / 2,
+        child: SizedBox.square(
+          dimension: size,
+          child: Center(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: background ?? scheme.onSurface.withValues(alpha: 0.08),
+              ),
+              child: SizedBox.square(
+                dimension: 32,
+                child: Icon(
+                  StizeIcons.close,
+                  size: 18,
+                  color: color ?? scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The close of the mobile sheet, outside it (owner, 2026-11-25): a 44px
+/// round button over the map, just above the sheet's right edge, riding with
+/// the sheet as it is dragged. Closing is a state of the sheet, so it never
+/// sits on the map's own controls; the host pushes those up when the button
+/// reaches them, the same way the search pill does.
+class MapSheetCloseButton extends StatelessWidget {
+  const MapSheetCloseButton({super.key, required this.onPressed});
+
+  static const double size = 44;
+
+  /// Gap between the button and the sheet's top edge.
+  static const double gap = 12;
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return PointerInterceptor(
+      child: Semantics(
+        button: true,
+        label: MaterialLocalizations.of(context).closeButtonTooltip,
+        child: Material(
+          color: theme.colorScheme.surface,
+          elevation: 3,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onPressed,
+            child: SizedBox.square(
+              dimension: size,
+              child: Icon(
+                StizeIcons.close,
+                size: 18,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
