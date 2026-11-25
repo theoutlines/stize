@@ -29,7 +29,14 @@ class NearbyList extends StatelessWidget {
     this.onRefresh,
     this.onTapGroup,
     this.header,
+    this.lead,
+    this.leadColor,
   });
+
+  /// Mobile: a row that opens the list flush with the sheet's top (the guide
+  /// strip); the top stretch takes its [leadColor].
+  final Widget? lead;
+  final Color? leadColor;
 
   final List<NearbyGroup> groups;
 
@@ -61,12 +68,15 @@ class NearbyList extends StatelessWidget {
       return StretchCardList(
         controller: scrollController,
         bottomPadding: MediaQuery.paddingOf(context).bottom,
-        topColor: header == null && lines.isNotEmpty
+        topColor: lead != null
+            ? leadColor
+            : header == null && lines.isNotEmpty
             ? nearbySurface(c, lines.first.first)
             : null,
         bottomColor: lines.isNotEmpty ? nearbySurface(c, lines.last.first) : null,
         onRefresh: onRefresh,
         children: [
+          ?lead,
           ?header,
           AnimatedEntries(gap: 0, children: [..._entries(context, true)]),
         ],

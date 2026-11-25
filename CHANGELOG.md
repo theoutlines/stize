@@ -13,6 +13,11 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   there while the list refreshes. Pulling past the bottom stretches the last
   card, which springs back. The stop board's last card stretches the same
   way, and a stretching card hides its bottom divider.
+- **Guide strip in Nearby (mobile).** The guide nudge is a flat row that
+  opens the list flush with the sheet's top, in the timetable cards' neutral
+  fill; it stretches and refreshes like the first card. The first-launch
+  nudge has a × that hides it for good; the airport, station and night
+  strips carry a chevron and leave on their own.
 - **Carousel dots** sit in their own band above the card's data again, over
   both cards while you swipe.
 - **Route alerts in English.** Alerts stored before translations existed are

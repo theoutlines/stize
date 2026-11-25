@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/design/stize_icons.dart';
 import '../../../core/design/stize_tokens.dart';
 import '../../../l10n/app_localizations.dart';
+import '../flat_cards.dart';
 
 /// Pages of the Belgrade guide, each shown as a level in the map's sheet /
 /// desktop panel (owner-approved 2026-11-23, design v5).
@@ -446,6 +447,7 @@ class GuideStrip extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.onDismiss,
   });
 
   final IconData icon;
@@ -453,9 +455,90 @@ class GuideStrip extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
 
+  /// Shows a × that hides the strip for good (the first-launch nudge); the
+  /// contextual strips (a hub, night) carry a chevron and leave on their own.
+  final VoidCallback? onDismiss;
+
+  /// The flat strip's surface, for the list's edge stretch.
+  static Color surface(StizeColors c) => c.fill08;
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-    child: GuideRow(icon: icon, title: title, subtitle: subtitle, onTap: onTap),
-  );
+  Widget build(BuildContext context) {
+    if (!FlatCards.of(context)) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+        child: GuideRow(
+          icon: icon,
+          title: title,
+          subtitle: subtitle,
+          onTap: onTap,
+        ),
+      );
+    }
+    // Mobile one-scroll (owner, 2026-11-25, variant A): a flat row in the
+    // list's own language, flush with the sheet's top like the cards, the
+    // timetable cards' neutral fill and the same hairline under it.
+    final c = StizeColors.of(context);
+    final text = StizeText.of(context);
+    return Material(
+      color: surface(c),
+      shape: Border(bottom: BorderSide(color: c.stripeLine)),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            StizeSpace.space4,
+            StizeSpace.space3,
+            StizeSpace.space2,
+            StizeSpace.space3,
+          ),
+          child: Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: StizeSpace.space3),
+                child: Icon(icon, size: 20, color: c.ink.withValues(alpha: 0.75)),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: text.label.copyWith(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: text.caption.copyWith(
+                        color: c.ink.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onDismiss != null)
+                IconButton(
+                  onPressed: onDismiss,
+                  tooltip: AppLocalizations.of(context).close,
+                  icon: Icon(
+                    StizeIcons.close,
+                    size: 16,
+                    color: c.ink.withValues(alpha: 0.55),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.all(StizeSpace.space2),
+                  child: Icon(
+                    StizeIcons.chevronRight,
+                    size: 20,
+                    color: c.ink.withValues(alpha: 0.45),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
