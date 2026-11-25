@@ -371,6 +371,27 @@ Widget _clusterBubble(ColorScheme scheme) {
   );
 }
 
+/// Adds a widget-rendered image to the style, replacing an image with the same
+/// id if the style still holds one.
+///
+/// A theme switch calls `setStyle` with the other Stiže Standard variant. The
+/// two share every layer id, so MapLibre GL JS applies the change as an in-place
+/// diff and fires `style.load` while keeping the images already added; a plain
+/// `addImage` then throws "already exists" and aborts the rest of the style
+/// setup. Replacing also re-tints theme-dependent images (pins, the me-dot).
+Future<void> putImageFromWidget(
+  StyleController style, {
+  required String id,
+  required Widget widget,
+}) async {
+  try {
+    await style.addImageFromWidget(id: id, widget: widget);
+  } catch (_) {
+    await style.removeImage(id);
+    await style.addImageFromWidget(id: id, widget: widget);
+  }
+}
+
 /// (Re)registers every custom marker image on a freshly (re)loaded style.
 /// MUST be called on each style load — the initial one and again after every
 /// [MapController.setStyle] (e.g. when the app theme flips light/dark), because
@@ -383,7 +404,8 @@ Future<void> registerStigmaImages(
     // Stop pins carry the colour of the transport type they serve (D1); a stop
     // with several types gets one unified "mixed" pin (D2). Hollow-disc shape
     // keeps them clearly distinct from the solid moving-vehicle pills (D3).
-    style.addImageFromWidget(
+    putImageFromWidget(
+      style,
       id: MapImages.bus,
       widget: _stopPin(
         vehicleGlyph(VehicleType.bus, size: 20, color: _busColor),
@@ -391,7 +413,8 @@ Future<void> registerStigmaImages(
         scheme,
       ),
     ),
-    style.addImageFromWidget(
+    putImageFromWidget(
+      style,
       id: MapImages.tram,
       widget: _stopPin(
         vehicleGlyph(VehicleType.tram, size: 20, color: _tramColor),
@@ -399,7 +422,8 @@ Future<void> registerStigmaImages(
         scheme,
       ),
     ),
-    style.addImageFromWidget(
+    putImageFromWidget(
+      style,
       id: MapImages.trolley,
       widget: _stopPin(
         vehicleGlyph(VehicleType.trolleybus, size: 20, color: _trolleyColor),
@@ -407,7 +431,8 @@ Future<void> registerStigmaImages(
         scheme,
       ),
     ),
-    style.addImageFromWidget(
+    putImageFromWidget(
+      style,
       id: MapImages.mixedStop,
       widget: _stopPin(
         mixedStopGlyph(size: 20, color: _mixedStopColor),
@@ -415,7 +440,8 @@ Future<void> registerStigmaImages(
         scheme,
       ),
     ),
-    style.addImageFromWidget(
+    putImageFromWidget(
+      style,
       id: MapImages.favorite,
       widget: _stopPin(
         const Icon(StizeIcons.starFilled, size: 20, color: Color(0xFFF6A609)),
@@ -423,7 +449,8 @@ Future<void> registerStigmaImages(
         scheme,
       ),
     ),
-    style.addImageFromWidget(
+    putImageFromWidget(
+      style,
       id: MapImages.place,
       widget: _stopPin(
         const Icon(StizeIcons.pin, size: 20, color: Color(0xFFE5484D)),
@@ -431,12 +458,14 @@ Future<void> registerStigmaImages(
         scheme,
       ),
     ),
-    style.addImageFromWidget(
+    putImageFromWidget(
+      style,
       id: MapImages.vehicle,
       widget: _vehiclePin(StizeIcons.bus, scheme.primary, scheme),
     ),
-    style.addImageFromWidget(id: MapImages.me, widget: _meDot(scheme)),
-    style.addImageFromWidget(
+    putImageFromWidget(style, id: MapImages.me, widget: _meDot(scheme)),
+    putImageFromWidget(
+      style,
       id: MapImages.cluster,
       widget: _clusterBubble(scheme),
     ),
