@@ -242,10 +242,15 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
   // Horizontal offset of the current card, follows the finger.
   double _drag = 0;
   double _width = 1;
-  late final AnimationController _settle = AnimationController(
-    vsync: this,
-    duration: StizeMotion.fast,
-  );
+  late final AnimationController _settle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Eager: a lazy controller first touched in dispose() trips a
+    // deactivated-ancestor lookup.
+    _settle = AnimationController(vsync: this, duration: StizeMotion.fast);
+  }
   Animation<double>? _to;
 
   @override
