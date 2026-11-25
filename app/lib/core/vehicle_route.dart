@@ -8,9 +8,14 @@ class UpcomingStop {
     required this.stop,
     required this.etaMinutes,
     required this.isBoardStop,
+    this.vehicleHere = false,
   });
 
   final RouteShapeStop stop;
+
+  /// The vehicle stands at this stop (within [kAtStopMeters] of it along the
+  /// route), not between it and the previous one.
+  final bool vehicleHere;
 
   /// Estimated minutes until the vehicle reaches this stop, or null when we
   /// have nothing to anchor an estimate to. Only the board stop's value is a
@@ -98,6 +103,7 @@ VehicleRoutePlan planVehicleRoute({
   // as "next" rather than flickering off a metre early.
   final vehicleAlong = _alongTrackMeters(poly, vehicle);
   int nextIdx = stops.length;
+  var nextAlong = 0.0;
   for (var i = 0; i < stops.length; i++) {
     final stopAlong = _alongTrackMeters(
       poly,
@@ -107,10 +113,15 @@ VehicleRoutePlan planVehicleRoute({
     // pole; it is still at that stop, not between it and the next one.
     if (stopAlong >= vehicleAlong - kAtStopMeters) {
       nextIdx = i;
+      nextAlong = stopAlong;
       break;
     }
   }
   if (nextIdx >= stops.length) nextIdx = stops.length - 1; // all behind → last
+  // At the stop: within 40 m of it either way along the route. Decided by
+  // distance, not by the ETA, which is never 0 for an extrapolated stop (the
+  // route showed the vehicle "between" stops even while it stood at one).
+  final atNext = (nextAlong - vehicleAlong).abs() <= kAtStopMeters;
 
   // Average per-stop minutes for the ETA extrapolation (approximate). Anchored
   // to the feed's stops_remaining/ETA-to-board when available.
@@ -128,11 +139,16 @@ VehicleRoutePlan planVehicleRoute({
   for (var j = nextIdx; j < stops.length; j++) {
     // Minutes to stop j, counted from the LIVE next stop (j - nextIdx), so the
     // ETAs advance with the vehicle instead of staying pinned to entry.
-    final stopsAhead = j - nextIdx + 1;
+    final stopsAhead = j - nextIdx + (atNext ? 0 : 1);
     var eta = (avgPerStop * stopsAhead).round();
     if (eta < 0) eta = 0;
     upcomingStops.add(
-      UpcomingStop(stop: stops[j], etaMinutes: eta, isBoardStop: j == boardIdx),
+      UpcomingStop(
+        stop: stops[j],
+        etaMinutes: eta,
+        isBoardStop: j == boardIdx,
+        vehicleHere: atNext && j == nextIdx,
+      ),
     );
   }
 
