@@ -5,6 +5,7 @@ import {
   loadSentinels,
   parseInterval,
   runSweepTick,
+  sweepStatus,
 } from "../src/lib/sweep";
 import { setFlag, getFlag } from "../src/lib/featureFlags";
 import { recordUpstreamEvent, type UpstreamOutcome } from "../src/lib/upstreamBudget";
@@ -399,6 +400,23 @@ describe("runSweepTick — degradation breaker (upstream_budget on)", () => {
     expect(r.reason).toContain("degradation-breaker");
     expect(r.reason).toContain("p95_latency");
     expect(await getFlag(env, "analytics_sweep")).toBe(false); // auto-OFF, no redeploy
+  });
+
+  it("records the trip so /admin/sweep/status says why the sweep is off", async () => {
+    await setFlag(env, "analytics_sweep", true);
+    await setFlag(env, "upstream_budget", true);
+    await seedWindow(25, 4000, 0);
+    vi.stubGlobal("fetch", () => Promise.reject(new Error("should not fetch after a trip")));
+    const { ctx, settle } = collectingCtx();
+    await runSweepTick(env, ctx, DAY);
+    await settle();
+
+    const trip = JSON.parse((await sweepState("last_trip"))!);
+    expect(trip.kind).toBe("degradation");
+    expect(trip.reason).toContain("p95_latency");
+    expect(trip.at).toBeGreaterThan(0);
+    const status = await sweepStatus(env, DAY);
+    expect(status.breaker.last_trip?.kind).toBe("degradation");
   });
 
   it("trips on a high non-JSON/empty share", async () => {
