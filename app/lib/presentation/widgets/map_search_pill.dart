@@ -22,7 +22,12 @@ class MapSearchPill extends StatelessWidget {
     required this.onActivate,
     required this.onClose,
     this.away = false,
+    this.onChanged,
   });
+
+  /// Each edit of the query (desktop runs its search from here; mobile
+  /// listens to [controller]).
+  final ValueChanged<String>? onChanged;
 
   /// Nearby is around a point on the map, not around you: the locate button
   /// reads as "back to me".
@@ -115,6 +120,7 @@ class MapSearchPill extends StatelessWidget {
                         controller: controller,
                         focusNode: focusNode,
                         onTap: onActivate,
+                        onChanged: onChanged,
                         textInputAction: TextInputAction.search,
                         style: StizeType.body.copyWith(color: c.ink),
                         cursorColor: c.ink,

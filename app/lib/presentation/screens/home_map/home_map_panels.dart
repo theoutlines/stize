@@ -479,46 +479,22 @@ extension _MapPanels on _HomeMapScreenState {
           ),
           const SizedBox(width: 8),
         ],
+        // The same pill as on mobile (owner, 2026-11-25): locate | where the
+        // list is | search. A tap turns it into the field.
         Expanded(
-          child: Material(
-            borderRadius: BorderRadius.circular(24),
-            elevation: 3,
-            color: theme.colorScheme.surface,
-            clipBehavior: Clip.antiAlias,
-            child: Row(
-              children: [
-                const SizedBox(width: 12),
-                Icon(
-                  StizeIcons.search,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    focusNode: _focusNode,
-                    onChanged: _onSearchChanged,
-                    textInputAction: TextInputAction.search,
-                    decoration: InputDecoration(
-                      hintText: l10n.searchHint,
-                      border: InputBorder.none,
-                      // The pill around it is the ground; no second fill.
-                      filled: false,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ),
-                if (_searching)
-                  IconButton(
-                    icon: const Icon(StizeIcons.close),
-                    onPressed: _clearSearch,
-                  )
-                else
-                  const SizedBox(width: 8),
-              ],
-            ),
+          child: MapSearchPill(
+            controller: _searchController,
+            focusNode: _focusNode,
+            active: _deskSearchActive || _searching,
+            placeLabel: _browsePlaceLabel(l10n),
+            away: _browsePoint != null,
+            onLocate: _recenterOnMe,
+            onChanged: _onSearchChanged,
+            onActivate: () => _setState(() => _deskSearchActive = true),
+            onClose: () {
+              _clearSearch();
+              _setState(() => _deskSearchActive = false);
+            },
           ),
         ),
       ],

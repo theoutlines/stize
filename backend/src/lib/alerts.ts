@@ -221,6 +221,64 @@ async function parseAnnouncementWithLLM(
   return toolUse.input;
 }
 
+/**
+ * Translates an existing Serbian summary into English and Russian. Used to
+ * backfill alerts stored before summaries were translated, so an English UI
+ * never shows a Serbian announcement (owner, 2026-11-25).
+ */
+async function translateSummary(
+  env: Env,
+  summary: string,
+): Promise<{ summary_en: string; summary_ru: string }> {
+  const tool = {
+    name: "record_translation",
+    description: "Records a rider-facing transit notice translated from Serbian.",
+    input_schema: {
+      type: "object",
+      properties: {
+        summary_en: { type: "string", description: "Natural English translation." },
+        summary_ru: { type: "string", description: "Natural Russian translation." },
+      },
+      required: ["summary_en", "summary_ru"],
+    },
+  };
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 512,
+      tools: [tool],
+      tool_choice: { type: "tool", name: "record_translation" },
+      messages: [
+        {
+          role: "user",
+          content:
+            "Translate this Belgrade public transport notice. Keep line numbers, " +
+            "stop and street names as they are (Latin script).\n\n" +
+            toLatin(summary),
+        },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Claude API responded ${res.status}: ${await res.text()}`);
+  }
+  const data = (await res.json()) as {
+    content: Array<{ type: string; input?: { summary_en: string; summary_ru: string } }>;
+  };
+  const toolUse = data.content.find((c) => c.type === "tool_use");
+  if (!toolUse?.input) throw new Error("Claude did not return a tool_use block");
+  return toolUse.input;
+}
+
+/** Most translations backfilled per refresh, to bound one run's API calls. */
+const MAX_BACKFILL_PER_RUN = 20;
+
 export async function refreshAlerts(env: Env): Promise<{ added: number; total: number }> {
   const existingRaw = await env.STIGLA_KV.get(KV_KEY);
   const existing: RouteAlert[] = existingRaw ? JSON.parse(existingRaw) : [];
@@ -253,6 +311,20 @@ export async function refreshAlerts(env: Env): Promise<{ added: number; total: n
     }
   }
 
+  // Older alerts were stored before translations existed: fill them in.
+  let backfilled = 0;
+  for (const a of existing) {
+    if (a.summaryEn || backfilled >= MAX_BACKFILL_PER_RUN) continue;
+    backfilled++;
+    try {
+      const t = await translateSummary(env, a.summary);
+      a.summaryEn = t.summary_en;
+      a.summaryRu = a.summaryRu ?? t.summary_ru;
+    } catch (err) {
+      console.error(`Failed to translate alert ${a.id}`, err);
+    }
+  }
+
   const cutoff = Date.now() - MAX_AGE_DAYS_AFTER_EXPIRY * 24 * 60 * 60 * 1000;
   const merged = [...added, ...existing].filter((a) => {
     if (!a.validUntil) return true;
@@ -268,5 +340,18 @@ export async function listAlerts(env: Env): Promise<RouteAlert[]> {
   const raw = await kvGetCached(env, KV_KEY);
   const alerts: RouteAlert[] = raw ? JSON.parse(raw) : [];
   // The source publishes in Cyrillic; the app reads Latin (audit round 2, D4).
-  return alerts.map((a) => ({ ...a, title: toLatin(a.title), summary: toLatin(a.summary) }));
+  // Lines and stops too: the app's lines are Latin ("KC1", "EKO1") and its
+  // stop names Latin, so Cyrillic "КЦ1" or "ECO 1" never matched (2026-11-25).
+  return alerts.map((a) => ({
+    ...a,
+    title: toLatin(a.title),
+    summary: toLatin(a.summary),
+    lines: a.lines.map(normalizeLine),
+    stops: a.stops.map(toLatin),
+  }));
+}
+
+/** "КЦ1" → "KC1", "ECO 1" → "EKO1", "7л" → "7L": the app's spelling. */
+export function normalizeLine(line: string): string {
+  return toLatin(line).replace(/\s+/g, "").toUpperCase().replace(/^ECO/, "EKO");
 }

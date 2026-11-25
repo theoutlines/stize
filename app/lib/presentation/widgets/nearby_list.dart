@@ -15,6 +15,7 @@ import '../../l10n/app_localizations.dart';
 import 'arrival_tile.dart';
 import 'scheduled_group_tile.dart';
 import 'stize_transit_card.dart';
+import 'stretch_card_list.dart';
 
 /// The "Nearby" list itself — a pure, scrollable list of line+direction rows.
 /// Deliberately independent of the draggable sheet that hosts it (it only takes
@@ -28,7 +29,14 @@ class NearbyList extends StatelessWidget {
     this.onRefresh,
     this.onTapGroup,
     this.header,
+    this.lead,
+    this.leadColor,
   });
+
+  /// Mobile: a row that opens the list flush with the sheet's top (the guide
+  /// strip); the top stretch takes its [leadColor].
+  final Widget? lead;
+  final Color? leadColor;
 
   final List<NearbyGroup> groups;
 
@@ -50,32 +58,49 @@ class NearbyList extends StatelessWidget {
     // Cards animate in and out on a refresh instead of popping (owner,
     // 2026-11-23); the list is short, so one animated column is fine.
     final flat = FlatCards.of(context);
+    if (flat) {
+      // Mobile one-scroll: edge to edge; the first and last cards stretch past
+      // the list's ends and spring back, the refresh button rides in the top
+      // stretch (owner, 2026-11-25). Only the safe area stays under the last
+      // stripe.
+      final lines = carouselByLine(groups);
+      final c = StizeColors.of(context);
+      return StretchCardList(
+        controller: scrollController,
+        bottomPadding: MediaQuery.paddingOf(context).bottom,
+        topColor: lead != null
+            ? leadColor
+            : header == null && lines.isNotEmpty
+            ? nearbySurface(c, lines.first.first)
+            : null,
+        bottomColor: lines.isNotEmpty ? nearbySurface(c, lines.last.first) : null,
+        onRefresh: onRefresh,
+        children: [
+          ?lead,
+          ?header,
+          AnimatedEntries(gap: 0, children: [..._entries(context, true)]),
+        ],
+      );
+    }
     final list = ListView(
       controller: scrollController,
-      // Desktop island: hug the cards (no empty strip under the last one).
+      // Desktop island: hug the cards (no empty strip under the last one);
+      // the first card is inset equally from the island's top and sides.
       shrinkWrap: scrollController == null,
-      // Top padding matches the horizontal (side) padding so the first card is
-      // inset equally from the island's top and sides (owner desktop request).
-      // Flat (mobile one-scroll): edge to edge, no inset.
-      // Desktop island (no sheet controller): the last stripe ends at the
-      // island's edge, no strip under it (owner, 2026-11-25). The mobile sheet
-      // keeps 24 of breathing room above the home indicator.
-      // The last stripe ends at the sheet's or the island's edge; only the
-      // safe area (home indicator) stays below it. Overscroll stretches and
-      // springs back instead of a fixed strip (owner, 2026-11-25).
-      padding: flat
-          ? EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom)
-          : const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
       ),
       children: [
+        if (lead != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: StizeSpace.space1),
+            child: lead,
+          ),
         ?header,
         AnimatedEntries(
-          gap: flat ? 0 : StizeSpace.space1,
-          children: [
-            ..._entries(context, flat),
-          ],
+          gap: StizeSpace.space1,
+          children: [..._entries(context, false)],
         ),
       ],
     );
@@ -142,10 +167,18 @@ class NearbyList extends StatelessWidget {
 /// render nearby matches above the global stop/line results (owner C#3) with the
 /// exact same card the plain list uses.
 class NearbyCard extends StatelessWidget {
-  const NearbyCard({super.key, required this.group, this.onTap});
+  const NearbyCard({
+    super.key,
+    required this.group,
+    this.onTap,
+    this.topInset = 0,
+  });
 
   final NearbyGroup group;
   final VoidCallback? onTap;
+
+  /// Room above the card's first row (a carousel's page dots).
+  final double topInset;
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +232,7 @@ class NearbyCard extends StatelessWidget {
           ? later.take(2).map((m) => clockAt(localeName, m)).join(' · ')
           : null,
       live: hasLive,
+      topInset: topInset,
       onTap: onTap,
     );
   }
@@ -220,6 +254,22 @@ List<List<NearbyGroup>> carouselByLine(List<NearbyGroup> groups) {
   }
   return [for (final k in order) byLine[k]!];
 }
+
+/// How [group]'s card reads on screen, for the list's edge stretch.
+Color nearbySurface(StizeColors c, NearbyGroup group) {
+  final etas = visibleNearbyEtas(group);
+  final first = etas.isEmpty ? null : etas.first;
+  final scheduled = first != null && !nearbyEtaIsLive(first);
+  return StizeTransitCard.surfaceFor(
+    c,
+    group.vehicleType,
+    scheduled: scheduled,
+    live: nearbyGroupHasLive(group),
+  );
+}
+
+/// Extra top room of a carousel card, where its page dots sit.
+const double kCarouselDotsBand = 10;
 
 /// One line, several directions: a swipeable card with page dots.
 class LineDirectionsCarousel extends StatefulWidget {
@@ -339,6 +389,7 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
     return NearbyCard(
       key: sizer ? null : ValueKey(g.key),
       group: g,
+      topInset: kCarouselDotsBand,
       onTap: widget.onTapGroup == null ? null : () => widget.onTapGroup!(g),
     );
   }
@@ -400,11 +451,12 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
                       child: _card(side),
                     ),
                   ),
-                // On the centre line of the card's first row (plate | time):
-                // 12 padding + half the 40px row, minus the 9px tap inset and
-                // half the dot.
+                // Dots sit in their own band above the card's data, over
+                // both sliding pages (owner, 2026-11-25): the band is the
+                // card's 12px top padding plus [kCarouselDotsBand]; the 6px
+                // dot is centred in it (minus the 9px tap inset).
                 Positioned(
-                  top: StizeSpace.space3 + 20 - 9 - 3,
+                  top: (StizeSpace.space3 + kCarouselDotsBand) / 2 - 3 - 9,
                   left: 0,
                   right: 0,
                   child: Row(

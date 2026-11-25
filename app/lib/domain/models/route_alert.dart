@@ -55,9 +55,15 @@ class RouteAlert {
     return validFrom != null && validFrom!.isAfter(now);
   }
 
+  /// How long a change with no end date stays news. A line extended in May
+  /// is simply how the line runs by November (owner, 2026-11-25).
+  static const permanentNewsFor = Duration(days: 30);
+
   bool get isExpired {
     final now = DateTime.now();
-    return validUntil != null && validUntil!.isBefore(now);
+    if (validUntil != null) return validUntil!.isBefore(now);
+    final since = validFrom ?? publishedAt;
+    return now.difference(since) > permanentNewsFor;
   }
 
   /// Rough severity split for tone (H3): most route changes are routine and

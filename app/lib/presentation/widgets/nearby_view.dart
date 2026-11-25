@@ -22,6 +22,8 @@ import 'empty_state.dart';
 import 'jam_nearby_strip.dart';
 import 'live_unavailable_banner.dart';
 import 'nearby_list.dart';
+import 'guide/belgrade_guide.dart';
+import 'flat_cards.dart';
 import 'vehicle_icon.dart';
 import '../../core/design/stize_icons.dart';
 
@@ -291,7 +293,6 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       mainAxisSize: widget.hugContent ? MainAxisSize.min : MainAxisSize.max,
       children: [
         if (widget.showLocalSearch) _localSearch(Theme.of(context)),
-        if (widget.banner != null && _query.isEmpty) widget.banner!,
         if (contextLines.isNotEmpty) JamNearbyStrip(contextLines: contextLines),
         Flexible(
           fit: widget.hugContent ? FlexFit.loose : FlexFit.tight,
@@ -452,6 +453,9 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       onRefresh: _fetch,
       onTapGroup: widget.onTapGroup,
       header: _liveUnavailable ? const LiveUnavailableBanner() : null,
+      // The guide strip opens the list itself, mobile and desktop alike.
+      lead: _query.isEmpty ? widget.banner : null,
+      leadColor: GuideStrip.surface(StizeColors.of(context)),
     );
   }
 
@@ -588,6 +592,14 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       shrinkWrap: widget.hugContent,
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
+        // The guide strip leads empty and loading states too.
+        if (widget.banner != null && _query.isEmpty)
+          FlatCards.of(context)
+              ? widget.banner!
+              : Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                  child: widget.banner,
+                ),
         ConstrainedBox(
           constraints: BoxConstraints(minHeight: widget.hugContent ? 0 : 220),
           child: child,

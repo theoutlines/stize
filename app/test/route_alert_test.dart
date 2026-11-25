@@ -8,12 +8,13 @@ RouteAlert _alert({
   List<String> lines = const ['79'],
   List<String> stops = const [],
   String confidence = 'line',
+  DateTime? publishedAt,
 }) {
   return RouteAlert(
     id: 'test',
     url: 'https://example.com',
     title: 'Test',
-    publishedAt: DateTime(2026, 1, 1),
+    publishedAt: publishedAt ?? DateTime.now(),
     lines: lines,
     stops: stops,
     validFrom: validFrom,
@@ -25,11 +26,23 @@ RouteAlert _alert({
 
 void main() {
   group('activity window', () {
-    test('with no dates at all, is active and never expires', () {
+    test('a fresh alert with no dates is active', () {
       final alert = _alert();
       expect(alert.isActiveNow, isTrue);
       expect(alert.isUpcoming, isFalse);
       expect(alert.isExpired, isFalse);
+    });
+
+    test('a permanent change stops being news after a month', () {
+      final old = _alert(
+        publishedAt: DateTime.now().subtract(const Duration(days: 40)),
+      );
+      expect(old.isExpired, isTrue);
+      final started = _alert(
+        publishedAt: DateTime.now().subtract(const Duration(days: 40)),
+        validFrom: DateTime.now().subtract(const Duration(days: 10)),
+      );
+      expect(started.isExpired, isFalse);
     });
 
     test('a future validFrom makes it upcoming, not active', () {

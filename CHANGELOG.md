@@ -7,6 +7,28 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-25
 
+### Changed (evening)
+- **Nearby edges stretch.** On mobile, pulling the list past its top stretches
+  the first card and shows the refresh button inside the stretch; it holds
+  there while the list refreshes. Pulling past the bottom stretches the last
+  card, which springs back. The stop board's last card stretches the same
+  way, and a stretching card hides its bottom divider.
+- **Desktop search is the mobile pill.** Locate | where the list is |
+  search, above the panel; a click turns it into the field.
+- **Guide strip in Nearby.** On mobile and desktop alike the guide nudge is a
+  flat row that opens the list flush with the sheet's (island's) top, in the timetable cards' neutral
+  fill; it stretches and refreshes like the first card. The first-launch
+  nudge has a × that hides it for good; the airport, station and night
+  strips carry a chevron and leave on their own.
+- **Carousel dots** sit in their own band above the card's data again, over
+  both cards while you swipe.
+- **Route alerts in English.** Alerts stored before translations existed are
+  translated on the next daily refresh, so an English interface no longer
+  shows a Serbian notice.
+- **Route alerts match and age properly.** Lines and stops from Cyrillic
+  notices are matched in Latin ("КЦ1" is KC1, "ECO 1" is EKO1), and a
+  permanent change with no end date stops showing a month after it starts.
+
 ### Changed
 - **Stop board cards.** The line number sits on a white plate; the time has
   "min" beside it; under the time is where the vehicle is now ("1 stop away",

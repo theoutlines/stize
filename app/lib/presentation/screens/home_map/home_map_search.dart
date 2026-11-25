@@ -448,6 +448,10 @@ extension _MapSearch on _HomeMapScreenState {
           _setState(() => _guideSeen = true);
           _openGuideLevel(GuidePage.home);
         },
+        onDismiss: () {
+          _setState(() => _guideSeen = true);
+          markGuideOpened();
+        },
       );
     }
     return null;
