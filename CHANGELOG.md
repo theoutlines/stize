@@ -8,6 +8,9 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 ## 2026-11-25
 
 ### Changed (evening)
+- **Levels open as high as Nearby.** A stop, the guide and the other levels
+  on mobile now rise to just under the close button, like the Nearby list;
+  before they stopped about a tenth of the screen lower.
 - **Nearby edges stretch.** On mobile, pulling the list past its top stretches
   the first card and shows the refresh button inside the stretch; it holds
   there while the list refreshes. Pulling past the bottom stretches the last

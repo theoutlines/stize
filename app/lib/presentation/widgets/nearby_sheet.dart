@@ -137,12 +137,14 @@ class NearbySheet extends StatelessWidget {
         // down at rest overscrolls the list and refreshes it (owner,
         // 2026-11-23: refresh only showed up after dragging all the way down).
         minChildSize: oneScroll ? oneScrollRestFor(viewport) : 0.12,
-        maxChildSize: oneScroll ? (maxSize ?? kSheetLarge) : kSheetLarge,
+        // Levels (a stop, the guide…) rise as high as Nearby does: just under
+        // the close button's row (owner, 2026-11-25: the guide stopped short).
+        maxChildSize: maxSize ?? kSheetLarge,
         snap: !oneScroll,
         // Two resting places for a drag (owner, 2026-11-23): stopping halfway
         // and then pulling again felt like friction. Half is still used when
         // a level opens programmatically, so the stop stays visible on the map.
-        snapSizes: oneScroll ? null : const [kSheetPeek, kSheetLarge],
+        snapSizes: oneScroll ? null : [kSheetPeek, maxSize ?? kSheetLarge],
         builder: (context, scrollController) {
           // PointerInterceptor stops scroll/drag/taps on the sheet from falling
           // through to the MapLibre platform view underneath on web. No-op on
@@ -161,6 +163,7 @@ class NearbySheet extends StatelessWidget {
               // nothing.
               child: _SheetDragArea(
                 snap: !oneScroll,
+                large: maxSize ?? kSheetLarge,
                 controller: controller,
                 viewport: viewport,
                 child: FlatCards(
@@ -191,7 +194,8 @@ class NearbySheet extends StatelessWidget {
                               showLocalSearch: !oneScroll,
                               externalSearch: searchController,
                               externalSearchActive: searchActive,
-                              onSearchFocus: () => _toDetent(kSheetLarge),
+                              onSearchFocus: () =>
+                                  _toDetent(maxSize ?? kSheetLarge),
                               onSearchCancel: _restoreDetent,
                             ),
                           ),
@@ -213,12 +217,16 @@ class NearbySheet extends StatelessWidget {
 class _SheetDragArea extends StatelessWidget {
   const _SheetDragArea({
     this.snap = true,
+    this.large = kSheetLarge,
     required this.controller,
     required this.viewport,
     required this.child,
   });
 
   final bool snap;
+
+  /// The top detent.
+  final double large;
   final DraggableScrollableController? controller;
   final double viewport;
   final Widget child;
@@ -233,7 +241,7 @@ class _SheetDragArea extends StatelessWidget {
         if (!c.isAttached) return;
         final next = (c.size - (d.primaryDelta ?? 0) / viewport).clamp(
           snap ? 0.12 : NearbySheet.oneScrollRestFor(viewport),
-          snap ? kSheetLarge : 1.0,
+          snap ? large : 1.0,
         );
         c.jumpTo(next);
       },
@@ -242,13 +250,13 @@ class _SheetDragArea extends StatelessWidget {
         final v = d.primaryVelocity ?? 0;
         final double target;
         if (v < -300) {
-          target = kSheetLarge;
+          target = large;
         } else if (v > 300) {
           target = c.size < kSheetPeek ? 0.12 : kSheetPeek;
         } else {
-          target = (c.size - kSheetPeek).abs() < (c.size - kSheetLarge).abs()
+          target = (c.size - kSheetPeek).abs() < (c.size - large).abs()
               ? kSheetPeek
-              : kSheetLarge;
+              : large;
         }
         c.animateTo(
           target,
