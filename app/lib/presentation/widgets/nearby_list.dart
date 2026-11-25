@@ -341,8 +341,11 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
                       child: _card(side),
                     ),
                   ),
+                // On the centre line of the card's first row (plate | time):
+                // 12 padding + half the 40px row, minus the 9px tap inset and
+                // half the dot.
                 Positioned(
-                  top: StizeSpace.space4 - 9,
+                  top: StizeSpace.space3 + 20 - 9 - 3,
                   left: 0,
                   right: 0,
                   child: Row(
