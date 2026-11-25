@@ -65,7 +65,9 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
   `presentation/router.dart`. The root is a single Scaffold with a left drawer
   (`widgets/app_drawer.dart`) over an `IndexedStack` of the map (and Coverage when its flag is on).
 - **Map stack** (MapLibre + MapTiler vector tiles): `core/map_style.dart`
-  (theme-synced style URLs); `core/map_support.dart` (per-type classification,
+  builds our own basemap style ("Stiže Standard", light + dark) as JSON on the
+  MapTiler v3 / OpenMapTiles source, with zoom-tiered POI icons from the
+  sprite in `web/map/` (rebuild with `tool/sprite/`); `core/map_support.dart` (per-type classification,
   the `VehicleMarker` pill, `kMapRenderingEnabled` flag). Moving vehicles on the
   main map render as a **batched GPU symbol layer** (`core/moving_object_layer.dart`)
   — one GeoJSON source, sub-linear in vehicle count. The `VehicleMarker` widget
