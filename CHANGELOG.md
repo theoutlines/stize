@@ -36,6 +36,22 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 - **Desktop island** hugs its content up to the window height instead of
   leaving an empty strip below the list.
 
+- **Line plate shows the vehicle type** (tram, trolleybus, bus icon before the
+  number) on the board, timetable, Nearby and the follow head; colour alone
+  doesn't tell a visitor tram from bus. Icons redrawn on one grid: the tram is
+  low-floor with a straight pantograph, trolleybus and bus stand on wheels.
+- **Follow head switcher:** the vehicles of the line and direction on your
+  stop's board ("1 · 3 · 7 min"); a tap follows another one.
+- **Line filter grouped by type:** trams, trolleybuses, buses, each led by
+  its icon.
+- **Nearby around a point on the map:** drag the map and your dot sits on
+  its centre; let go and Nearby recomputes there. The locate button brings it
+  back to you. The home sheet rests lower, about one and a half cards.
+- **Nearby** has the board's "By timetable" split, its cards line up, and a
+  line's live directions never share a card with timetable-only ones.
+- "Starts here" cards are at full brightness; the follow route always has
+  times and shows a vehicle standing at a stop as at it.
+
 ### Fixed
 - The map follows a tapped vehicle again (follow engages even when the entry
   camera flight is interrupted).
