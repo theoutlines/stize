@@ -55,6 +55,24 @@ const KV_INTERVAL_NIGHT = "config:sweep_interval_night_seconds";
 // D1 `sweep_state` keys — the sweep's durable rotation/breaker state (NOT KV).
 const STATE_CURSOR = "cursor";
 const STATE_BREAKER = "breaker";
+// The last time a breaker switched the sweep off, and why. Written only on a trip
+// (one row), so /admin/sweep/status answers "why is the sweep off?" without the
+// logs, which prod keeps at a 20% sample and can drop the one line that says so.
+const STATE_LAST_TRIP = "last_trip";
+
+export interface LastTrip {
+  at: number; // unix seconds
+  kind: "degradation" | "failures";
+  reason: string;
+}
+
+async function recordTrip(env: Env, trip: LastTrip): Promise<void> {
+  try {
+    await writeSweepState(env, STATE_LAST_TRIP, JSON.stringify(trip));
+  } catch (e) {
+    console.error("sweep: could not record the breaker trip", e);
+  }
+}
 
 // Adaptive-skip margin. Our OWN sweep touches each sentinel once per
 // `cycleSeconds`, so any observation fresher than (cycle − this margin) must be
@@ -233,6 +251,7 @@ export async function runSweepTick(
       const verdict = evaluateDegradation(metrics, breakerCfg);
       if (verdict.tripped) {
         await setFlag(env, "analytics_sweep", false);
+        await recordTrip(env, { at: nowSec, kind: "degradation", reason: verdict.reason ?? "degradation" });
         console.error(
           `SWEEP_DEGRADATION_BREAKER_TRIPPED: ${verdict.reason}; analytics_sweep flipped OFF. ` +
             `Source degrading (slow/non-JSON) — investigate before re-enabling.`,
@@ -442,6 +461,8 @@ export interface SweepStatus {
     consecutive_failures: number;
     threshold: number;
     tripped_at: number | null;
+    // the last trip of either breaker (null = never recorded)
+    last_trip: LastTrip | null;
   };
 }
 
@@ -477,6 +498,13 @@ export async function sweepStatus(
       resolveBreakerConfig(env),
       readBreakerState(env),
     ]);
+  let lastTrip: LastTrip | null = null;
+  try {
+    const raw = await readSweepState(env, STATE_LAST_TRIP);
+    lastTrip = raw ? (JSON.parse(raw) as LastTrip) : null;
+  } catch {
+    lastTrip = null;
+  }
 
   const [counts, metrics] = await Promise.all([
     rollingCounts(env, 3600, nowSec),
@@ -521,6 +549,7 @@ export async function sweepStatus(
       consecutive_failures: breakerState.consecutiveFailures,
       threshold: BREAKER_THRESHOLD,
       tripped_at: breakerState.trippedAt,
+      last_trip: lastTrip,
     },
   };
 }
@@ -606,6 +635,11 @@ async function updateBreaker(env: Env, failures: number, attempted: number): Pro
   if (breaker.consecutiveFailures >= BREAKER_THRESHOLD) {
     breaker.trippedAt = Math.floor(Date.now() / 1000);
     await setFlag(env, "analytics_sweep", false);
+    await recordTrip(env, {
+      at: breaker.trippedAt,
+      kind: "failures",
+      reason: `${breaker.consecutiveFailures} consecutive failed sweeps`,
+    });
     // Loud, machine-greppable signal for the report channel / tail.
     console.error(
       `SWEEP_CIRCUIT_BREAKER_TRIPPED: ${breaker.consecutiveFailures} consecutive failed sweeps; ` +
