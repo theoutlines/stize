@@ -41,20 +41,20 @@ git checkout main && git merge feature/my-thing   # land it when tested
 git branch -d feature/my-thing                # tidy up
 ```
 
-Releasing from `main` is independent of any in-progress branch — see
-`docs/feature-flags.md` for how large features ride in `main` dormant (behind a
-flag) so releases can ship before the feature is finished.
+Releasing from `main` is independent of any in-progress branch: large features
+ride in `main` dormant behind a flag, so releases can ship before the feature is
+finished.
 
 ## Feature flags
 
 Remotely-togglable flags live in Cloudflare KV (same mechanism as the kill
-switch) and flip **without a redeploy**. See `docs/feature-flags.md`.
+switch) and flip **without a redeploy**. The list of flags lives in
+`backend/src/lib/featureFlags.ts`.
 
 ## Environments
 
 Production (`main`, flags off) and a separate **staging** web contour (dev flags
-on, isolated KV/D1, STAGING badge) for testing unreleased features. Addresses,
-data isolation and the promote-to-prod steps are in `docs/staging.md`.
+on, isolated KV/D1, STAGING badge) for testing unreleased features.
 
 ## Architecture
 
@@ -72,9 +72,8 @@ touching the map stack or adding a backend route.
 
 - **Notable change → a line in [`CHANGELOG.md`](CHANGELOG.md)** (English,
   product-facing: what a rider or developer got, not how it was debugged).
-- **Add or remove a feature flag → update the registry** in
-  `docs/feature-flags.md` in the same change (and delete its KV keys when a flag
-  is retired).
+- **Add or remove a feature flag** in `backend/src/lib/featureFlags.ts` (and
+  delete its KV keys when a flag is retired).
 
 ## Local setup
 

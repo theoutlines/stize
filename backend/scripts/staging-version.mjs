@@ -2,7 +2,7 @@
 // Uploads a *preview version* of the staging worker (stigla-backend-staging)
 // without changing which version serves live staging traffic, then prints the
 // version's preview URL on its own line so a follow-up frontend build can
-// capture it (see docs/staging.md).
+// capture it (see the internal environments notes).
 //
 //   npm run staging:version
 //   → ... wrangler output ...
@@ -39,7 +39,7 @@ if (res.status !== 0) {
 
 const TOGGLE_HINT =
   "Enable it: Cloudflare dash → stigla-backend-staging → Domains → Worker URL →\n" +
-  "the Preview row (leave the Production row off), then re-run. See docs/staging.md.";
+  "the Preview row (leave the Production row off), then re-run. See the internal environments notes.";
 
 // wrangler prints e.g. "Version Preview URL: https://<prefix>-<worker>.<sub>.workers.dev"
 const match = stdout.match(/Version Preview URL:\s*(https:\/\/\S+)/i);

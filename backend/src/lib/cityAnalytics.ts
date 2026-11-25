@@ -1,7 +1,7 @@
 import type { Env } from "../env";
 import { kvCacheRemember, kvGetCached } from "./kvCache";
 
-// City section summary (docs/TRANSPORT_ANALYTICS.md, "City section"): one
+// City section summary (the transport analytics spec (internal), "City section"): one
 // precomputed JSON for the whole city, folded from agg_line_dir_time.
 //
 // Read cost is the reason it is precomputed: folding the table scans every row

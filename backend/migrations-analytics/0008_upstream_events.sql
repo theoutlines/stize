@@ -13,7 +13,7 @@
 -- worker, not per-isolate. Rows are pruned to a short retention (~2h) opportunistically.
 -- Kept in D1 (never KV): this is minute-cadence-or-faster machine state and the
 -- sweep already writes raw_observations to this same DB (KV vs D1 principle,
--- migration 0007 / feature-flags.md).
+-- migration 0007 / the internal flag registry).
 CREATE TABLE IF NOT EXISTS upstream_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   ts INTEGER NOT NULL,          -- unix seconds of the fetch

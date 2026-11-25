@@ -14,7 +14,7 @@ import '../../domain/models/line_analytics.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 
-// City section (docs/TRANSPORT_ANALYTICS.md; canvas page "Город: аналитика",
+// City section (the transport analytics spec (internal); canvas page "Город: аналитика",
 // owner-approved 2026-11-23). Every block: one chart and one sentence. Neutral
 // ink ramp; two signals only: accent = best, late = problem. Transport colours
 // appear only as the small mark next to a line number.

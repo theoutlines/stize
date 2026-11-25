@@ -226,7 +226,7 @@ async function resolveObservationDirection(env: Env, r: RawArrival): Promise<str
 
 /**
  * Record arrival events from the board we just fetched (analytics v3,
- * docs/TRANSPORT_ANALYTICS.md).
+ * the transport analytics spec (internal)).
  *
  * Flag-gated (`analytics_collect`) and called inside `ctx.waitUntil` from the
  * *fresh-fetch* path only, so it adds **zero** load on the source. Only
@@ -283,7 +283,7 @@ export async function logObservations(
   if (stmts.length > 0) await env.STIGLA_ANALYTICS_DB.batch(stmts);
 }
 
-// --- v3 source: arrival events (docs/TRANSPORT_ANALYTICS.md) ---------------
+// --- v3 source: arrival events (the transport analytics spec (internal)) ---------------
 // Collection now writes only the moment a vehicle reaches a stop, one row per
 // (5-min slot, stop, vehicle), into `arrival_events` (migration 0010). The
 // aggregate queries below were written against `raw_observations`; this

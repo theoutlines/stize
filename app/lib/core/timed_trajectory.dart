@@ -244,7 +244,7 @@ class TimedTrajectory {
       // projection put the "stop" hundreds of metres from any real one — a dwell
       // or brake there would stop the marker where no stop exists. Glide it
       // instead: fewer pauses on those lines, but honest. (The track itself is
-      // still wrong on those sections — a separate GTFS-shape fix, see BACKLOG.)
+      // still wrong on those sections — a separate GTFS-shape fix, see the roadmap.)
       segs.add(
         _Segment.solve(
           t0: a.etaSeconds,

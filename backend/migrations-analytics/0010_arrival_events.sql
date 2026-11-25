@@ -1,4 +1,4 @@
--- Analytics v3 (docs/TRANSPORT_ANALYTICS.md): record arrival events, not boards.
+-- Analytics v3 (the transport analytics spec (internal)): record arrival events, not boards.
 --
 -- One row per (5-minute slot, stop, vehicle) the moment a vehicle reaches a stop.
 -- WITHOUT ROWID + primary key only, so an insert writes exactly 1 row and an

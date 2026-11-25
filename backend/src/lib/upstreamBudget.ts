@@ -28,7 +28,7 @@ import { kvGetCached } from "./kvCache";
 //      can see req/hr and breaker health without `wrangler tail`.
 //
 // Storage is D1, never KV: this is fetch-cadence machine state and the sweep
-// already writes to this DB (KV vs D1 principle — feature-flags.md / migration 0007).
+// already writes to this DB (KV vs D1 principle — the internal flag registry / migration 0007).
 // ---------------------------------------------------------------------------
 
 export type UpstreamKind = "live" | "sweep";
