@@ -59,10 +59,15 @@ class NearbyList extends StatelessWidget {
       // Desktop island (no sheet controller): the last stripe ends at the
       // island's edge, no strip under it (owner, 2026-11-25). The mobile sheet
       // keeps 24 of breathing room above the home indicator.
+      // The last stripe ends at the sheet's or the island's edge; only the
+      // safe area (home indicator) stays below it. Overscroll stretches and
+      // springs back instead of a fixed strip (owner, 2026-11-25).
       padding: flat
-          ? EdgeInsets.only(bottom: scrollController == null ? 0 : 24)
-          : EdgeInsets.fromLTRB(12, 12, 12, scrollController == null ? 12 : 24),
-      physics: const AlwaysScrollableScrollPhysics(),
+          ? EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom)
+          : const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       children: [
         ?header,
         AnimatedEntries(
@@ -360,7 +365,11 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
                           behavior: HitTestBehavior.opaque,
                           onTap: () => _goTo(i),
                           child: Padding(
-                            padding: const EdgeInsets.all(9),
+                            // Tall tap box, the old 4px gap between dots.
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 2,
+                              vertical: 9,
+                            ),
                             child: Container(
                               width: 6,
                               height: 6,

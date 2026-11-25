@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'flat_cards.dart';
 import 'live_pulse_dot.dart';
+import 'vehicle_icon.dart';
 
 import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
@@ -101,24 +102,34 @@ class StizeTransitCard extends StatelessWidget {
         color: onFor(c, scheduled).withValues(alpha: scheduled ? 0.8 : 0.88),
       );
 
-  /// The line number on its plate: white plate + line colour on a live card,
-  /// line-colour plate + white on a timetable card.
+  /// The line number on its plate, led by the vehicle type's icon (owner,
+  /// 2026-11-25, variant A: colour alone doesn't tell a visitor tram from
+  /// bus). White plate + line colour on a live card; line-colour plate +
+  /// white on a timetable card.
   static Widget plate(StizeColors c, VehicleType type, String line,
       {bool inverted = false}) {
     final fill = fillFor(c, type);
+    final ink = inverted ? c.onTransit : fill;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(6, 4, 8, 4),
       decoration: BoxDecoration(
         color: inverted ? fill : c.onTransit,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        line,
-        style: StizeType.section.copyWith(
-          fontWeight: FontWeight.w600,
-          height: 1.2,
-          color: inverted ? c.onTransit : fill,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(vehicleIconFor(type), size: 18, color: ink),
+          const SizedBox(width: 4),
+          Text(
+            line,
+            style: StizeType.section.copyWith(
+              fontWeight: FontWeight.w600,
+              height: 1.2,
+              color: ink,
+            ),
+          ),
+        ],
       ),
     );
   }
