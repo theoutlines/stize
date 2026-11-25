@@ -346,8 +346,9 @@ class MapStyle {
             'cinema',
             'attraction',
           ]),
-          // Real libraries and galleries; bookshops (library/books) wait for
-          // z17, street artwork (art_gallery/artwork) never shows.
+          // Real libraries and galleries; bookshops (library/books) and street
+          // artwork (art_gallery/artwork: murals, small sculptures, plaques)
+          // wait for z17, where they serve as meeting points and A→B ends.
           [
             'all',
             cls(['library']),
@@ -394,6 +395,11 @@ class MapStyle {
             'all',
             cls(['information']),
             sub(['office']),
+          ],
+          [
+            'all',
+            cls(['art_gallery']),
+            sub(['artwork']),
           ],
           cls([
             'restaurant',

@@ -27,6 +27,12 @@ void main() {
           'place-city',
         ]),
       );
+      final tier17 = jsonEncode(
+        (style['layers'] as List).firstWhere(
+          (l) => (l as Map)['id'] == 'poi-tier-2',
+        ),
+      );
+      expect(tier17, contains('artwork'));
       final out = Platform.environment['STYLE_DUMP'];
       if (out != null) {
         File('$out/style-${b.name}.json').writeAsStringSync(jsonEncode(style));

@@ -14,7 +14,7 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   tilted. Places show as icons in coloured circles by kind: landmarks
   (museums, theatres, churches, hospitals, stations, universities, malls)
   from zoom 15, everyday places (hotels, pharmacies, supermarkets, cinemas)
-  from 16, every named café, bar and shop from 17. Bus and tram stops come
+  from 16, every named café, bar, shop and street artwork from 17. Bus and tram stops come
   only from our own stop layer. Place colours never use the tram, bus or
   trolleybus hues.
 
