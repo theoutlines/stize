@@ -92,10 +92,13 @@ class _StretchCardListState extends State<StretchCardList> {
       final over = atTop
           ? p.minScrollExtent - p.pixels
           : p.pixels - p.maxScrollExtent;
-      const reach = 140.0;
+      // Stiff, like a drag's rubber band: the pull slows fast and tops out
+      // well short of the list (owner, 2026-11-26: half the screen took one
+      // flick). Reaching the refresh trigger takes a deliberate pull.
+      const reach = 96.0;
       final give = (1 - over / reach).clamp(0.0, 1.0);
       if (give <= 0) return;
-      p.jumpTo(p.pixels + dy * 0.9 * give);
+      p.jumpTo(p.pixels + dy * 0.4 * give * give);
     });
   }
 
