@@ -180,7 +180,9 @@ class _StretchCardListState extends State<StretchCardList> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: c.raised,
+                  // Inverted (`ink` with `bg` on it): `raised` vanished on
+                  // the grey guide band (owner, 2026-11-26).
+                  color: c.ink,
                   shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(color: Color(0x33000000), blurRadius: 8),
@@ -192,12 +194,12 @@ class _StretchCardListState extends State<StretchCardList> {
                         dimension: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.4,
-                          color: c.ink,
+                          color: c.bg,
                         ),
                       )
                     : Transform.rotate(
                         angle: progress * 3.14159 * 1.5,
-                        child: Icon(Icons.refresh, size: 22, color: c.ink),
+                        child: Icon(Icons.refresh, size: 22, color: c.bg),
                       ),
               ),
             ),
