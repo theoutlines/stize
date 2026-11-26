@@ -34,6 +34,7 @@ import '../../core/route_path.dart';
 import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_map_mode.dart';
 import '../../core/vehicle_route.dart';
+import '../../core/vehicle_arrangement.dart';
 import '../../core/vehicle_diagnostics.dart';
 import '../../core/vehicle_track_animator.dart';
 import '../../data/analytics/event_logger.dart';
@@ -231,18 +232,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // layer via the feature's `selected` property). Null = nothing selected.
   String? _selectedVehicleKey;
 
-  // Vehicle-arrangement state (symbol path), eased across writes so nothing
-  // snaps. `_spiderfyOffset` is the applied fan offset per key (dLat,dLon, only
-  // for stationary coincident vehicles); `_crossOpacity` is the eased crossing
-  // dim per key (a moving vehicle overlapping another). See [_arrangeVehicles].
-  final Map<String, ll.LatLng> _spiderfyOffset = {};
-  final Map<String, double> _crossOpacity = {};
-  // True while a fan offset / crossing dim is still easing toward its target, so
-  // the driver keeps ticking to animate the transition even when NO vehicle is
-  // "playing" (a choral HOLD on a stale feed parks every marker, so nothing else
-  // would keep the ticker alive and the fan would snap). Clears the moment the
-  // arrangement settles → idle stays at zero frames.
-  bool _fanAnimating = false;
+  // Vehicle marker layout (fan at stops, dim when crossing), eased across
+  // writes so nothing snaps. See [VehicleArranger].
+  final VehicleArranger _vehArranger = VehicleArranger();
   // Backgrounded (tab hidden / app paused): all animation and polling stop, and
   // we remember when so the frozen span can be discounted from the "stuck"
   // heuristic on resume.
