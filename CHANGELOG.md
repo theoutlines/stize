@@ -7,6 +7,10 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Changed (evening)
+- **Our own icon.** The browser tab, home-screen and app-install icons show the
+  Stiže mark (a rounded signal-green square) instead of the Flutter logo.
+
 ### Fixed (night)
 - **Address search stays in Belgrade.** Desktop search no longer mixes in
   addresses from other countries ("830" used to bring Taiwan and the US):

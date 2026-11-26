@@ -132,7 +132,8 @@ function page({ path, title, description, body, jsonLd }) {
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${ORIGIN}${path}">
 <meta property="og:type" content="website">
-<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <style>${CSS}</style>
 ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, "\\u003c")}</script>` : ""}
 </head>
