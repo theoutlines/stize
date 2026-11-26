@@ -22,6 +22,11 @@ class Stop {
   /// field (or the offline cache) — callers fall back to the line→type index.
   final List<VehicleType> types;
 
+  /// The number printed on the stop's sign in Belgrade ("šifra stajališta"):
+  /// the GTFS stop_id minus 20000 (20830 → "830"). Null for an id outside that
+  /// scheme. Same rule as the backend's `stopCode` (gtfsData.ts).
+  String? get code => stopCodeOf(stopId);
+
   factory Stop.fromJson(Map<String, dynamic> json) {
     return Stop(
       stopId: json['stop_id'] as String,
@@ -37,3 +42,9 @@ class Stop {
     );
   }
 }
+
+final _codeId = RegExp(r'^2\d{4}$');
+
+String? stopCodeOf(String stopId) =>
+    _codeId.hasMatch(stopId) ? '${int.parse(stopId) - 20000}' : null;
+

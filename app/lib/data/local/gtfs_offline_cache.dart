@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/geo.dart';
+import '../../core/search.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/stop.dart';
 import '../api/stigla_api_client.dart';
@@ -59,13 +60,8 @@ class GtfsOfflineCache {
   }
 
   Future<List<Stop>> searchStopsOffline(String query) async {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) return const [];
-    final stops = await getStops();
-    return stops
-        .where((s) => s.name.toLowerCase().contains(q))
-        .take(50)
-        .toList();
+    if (query.trim().isEmpty) return const [];
+    return searchStopsLocal(await getStops(), query);
   }
 
   Future<List<LineInfo>> searchLinesOffline(String query) async {

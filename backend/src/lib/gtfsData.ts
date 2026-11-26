@@ -74,11 +74,45 @@ export async function getStopById(env: Env, stopId: string): Promise<StopDto | n
   return stops.find((s) => s.stop_id === stopId) ?? null;
 }
 
-export async function searchStops(env: Env, query: string): Promise<StopDto[]> {
-  const stops = await loadStops(env);
+/// The number printed on the stop's sign in Belgrade ("šifra stajališta") is
+/// the GTFS stop_id minus 20000 (20830 → "830"). Null for an id outside that
+/// scheme, so a future feed with other ids never invents a code.
+export function stopCode(stopId: string): string | null {
+  if (!/^2\d{4}$/.test(stopId)) return null;
+  return String(Number(stopId) - 20000);
+}
+
+const CODE_QUERY = /^\d{1,4}$/;
+const MAX_CODE_MATCHES = 10;
+
+/// Name substring search, plus sign-number search for an all-digit query: the
+/// exact number first, then numbers that start with it (so typing 8 → 83 → 830
+/// narrows live), then name matches ("Blok 25" for "25"). Shared contract with
+/// the client's offline search (app/lib/core/search.dart searchStopsLocal).
+export function searchStopsIn(stops: StopDto[], query: string): StopDto[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  return stops.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 50);
+  const byCode: StopDto[] = [];
+  if (CODE_QUERY.test(q)) {
+    const n = String(Number(q));
+    const exact: StopDto[] = [];
+    const prefix: StopDto[] = [];
+    for (const s of stops) {
+      const code = stopCode(s.stop_id);
+      if (code === null) continue;
+      if (code === n) exact.push(s);
+      else if (code.startsWith(n)) prefix.push(s);
+    }
+    prefix.sort((a, b) => Number(a.stop_id) - Number(b.stop_id));
+    byCode.push(...exact, ...prefix.slice(0, MAX_CODE_MATCHES));
+  }
+  const seen = new Set(byCode.map((s) => s.stop_id));
+  const byName = stops.filter((s) => !seen.has(s.stop_id) && s.name.toLowerCase().includes(q));
+  return [...byCode, ...byName].slice(0, 50);
+}
+
+export async function searchStops(env: Env, query: string): Promise<StopDto[]> {
+  return searchStopsIn(await loadStops(env), query);
 }
 
 export async function nearbyStops(

@@ -26,6 +26,43 @@ List<NearbyGroup> filterNearbyGroups(List<NearbyGroup> groups, String query) {
   ];
 }
 
+final _codeQuery = RegExp(r'^\d{1,4}$');
+const _maxCodeMatches = 10;
+
+/// Stop search over a local list (the offline cache), the same contract as the
+/// backend's `searchStopsIn` (gtfsData.ts): for an all-digit query the stop
+/// with that sign number first, then numbers starting with it (typing 8 → 83 →
+/// 830 narrows live), then name matches ("Blok 25" for "25"). Max 50.
+List<Stop> searchStopsLocal(List<Stop> stops, String query) {
+  final q = query.trim().toLowerCase();
+  if (q.isEmpty) return const [];
+  final byCode = <Stop>[];
+  if (_codeQuery.hasMatch(q)) {
+    final n = '${int.parse(q)}';
+    final exact = <Stop>[];
+    final prefix = <Stop>[];
+    for (final s in stops) {
+      final code = s.code;
+      if (code == null) continue;
+      if (code == n) {
+        exact.add(s);
+      } else if (code.startsWith(n)) {
+        prefix.add(s);
+      }
+    }
+    prefix.sort((a, b) => int.parse(a.stopId).compareTo(int.parse(b.stopId)));
+    byCode
+      ..addAll(exact)
+      ..addAll(prefix.take(_maxCodeMatches));
+  }
+  final seen = {for (final s in byCode) s.stopId};
+  return [
+    ...byCode,
+    for (final s in stops)
+      if (!seen.contains(s.stopId) && s.name.toLowerCase().contains(q)) s,
+  ].take(50).toList();
+}
+
 /// The stop/line (and, on desktop, place) results of one global query. Places
 /// are desktop-only in the nearby merge; kept here so both hosts share the type.
 class GlobalSearchResults {

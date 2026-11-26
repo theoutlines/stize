@@ -244,10 +244,8 @@ extension _MapJams on _HomeMapScreenState {
       shrinkWrap: true,
       children: [
         for (final stop in _resultStops)
-          ListTile(
-            leading: const Icon(StizeIcons.pin),
-            title: Text(stop.name),
-            subtitle: Text(stop.lines.join(', ')),
+          StopResultTile(
+            stop: stop,
             onTap: () => _openStop(stop, source: Ev.srcSearch),
           ),
         for (final line in _resultLines)

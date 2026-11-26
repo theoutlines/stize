@@ -10,6 +10,7 @@ import {
   nearestStop,
   searchLines,
   searchStops,
+  stopCode,
 } from "../src/lib/gtfsData";
 
 describe("gtfsData (against the real built GTFS bundle)", () => {
@@ -23,6 +24,35 @@ describe("gtfsData (against the real built GTFS bundle)", () => {
     const results = await searchStops(env, "batutova");
     expect(results.length).toBeGreaterThanOrEqual(4);
     expect(results.every((s) => s.name.toLowerCase().includes("batutova"))).toBe(true);
+  });
+
+  it("finds a stop by the number on its sign (stop_id − 20000)", async () => {
+    const results = await searchStops(env, "830");
+    expect(results[0].stop_id).toBe("20830");
+    expect(results[0].name).toBe("Škola Vojislav Ilić");
+    // Leading zeros are the same number.
+    expect((await searchStops(env, "0830"))[0].stop_id).toBe("20830");
+  });
+
+  it("narrows by number prefix while typing, exact number first", async () => {
+    const results = await searchStops(env, "83");
+    expect(stopCode(results[0].stop_id)).toBe("83");
+    const codes = results.slice(1, 11).map((s) => stopCode(s.stop_id));
+    expect(codes.every((c) => c !== null && c.startsWith("83"))).toBe(true);
+  });
+
+  it("still matches names that contain the digits after the numbers", async () => {
+    // There is no stop 25, so the numbers starting with 25 lead.
+    const results = await searchStops(env, "25");
+    expect(stopCode(results[0].stop_id)?.startsWith("25")).toBe(true);
+    expect(results.some((s) => s.name === "Blok 25")).toBe(true);
+  });
+
+  it("maps stop ids to sign numbers and refuses other schemes", () => {
+    expect(stopCode("20830")).toBe("830");
+    expect(stopCode("21106")).toBe("1106");
+    expect(stopCode("830")).toBeNull();
+    expect(stopCode("10830")).toBeNull();
   });
 
   it("returns nearby stops sorted by distance", async () => {
