@@ -7,6 +7,14 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Added (night)
+- **Search by stop number.** Type the number from the stop's sign (830) and
+  that stop comes first; from three digits, stops whose number starts with
+  them follow (830 also finds 8300), then stops whose name has the digits.
+  A line whose number is exactly what you typed (83) stays above the stops.
+  Works offline too. Every stop in search results shows its number on the
+  right, on mobile and desktop.
+
 ### Fixed (late evening)
 - **No "Finding lines" flash when the sheet moves.** Raising the Nearby sheet
   to the top rebuilt the list and fetched it again; it keeps its data now.

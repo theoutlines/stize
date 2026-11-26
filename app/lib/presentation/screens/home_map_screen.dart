@@ -16,6 +16,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
 import '../../core/context_slot.dart';
+import '../../core/search.dart';
 import '../../core/coverage_heatmap.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../core/fleet_matcher.dart';
@@ -58,6 +59,7 @@ import '../widgets/sheet_chrome.dart';
 import '../widgets/nearby_sheet.dart';
 import '../widgets/nearby_view.dart';
 import '../widgets/stop_board.dart';
+import '../widgets/stop_result_tile.dart';
 import '../../core/app_links.dart';
 import '../../core/external_link.dart';
 import 'settings_screen.dart';

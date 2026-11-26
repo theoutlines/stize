@@ -23,6 +23,7 @@ import 'empty_state.dart';
 import 'jam_nearby_strip.dart';
 import 'live_unavailable_banner.dart';
 import 'nearby_list.dart';
+import 'stop_result_tile.dart';
 import 'guide/belgrade_guide.dart';
 import 'flat_cards.dart';
 import 'vehicle_icon.dart';
@@ -381,6 +382,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
         nearby: _filtered, // filtered + live-first ordered nearby groups
         stops: _global.stops,
         lines: _global.lines,
+        query: _query,
       );
       if (rows.isEmpty) {
         return _scrollable(
@@ -516,24 +518,12 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     );
   }
 
-  Widget _stopTile(Stop stop) {
-    final theme = Theme.of(context);
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: Icon(StizeIcons.pin, color: theme.colorScheme.onSurfaceVariant),
-      title: Text(stop.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: stop.lines.isEmpty
-          ? null
-          : Text(
-              stop.lines.join(' · '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-      onTap: widget.onSelectStop == null
-          ? null
-          : () => widget.onSelectStop!(stop),
-    );
-  }
+  Widget _stopTile(Stop stop) => StopResultTile(
+    stop: stop,
+    onTap: widget.onSelectStop == null
+        ? null
+        : () => widget.onSelectStop!(stop),
+  );
 
   Widget _lineTile(LineInfo line) {
     final type = line.vehicleType;
