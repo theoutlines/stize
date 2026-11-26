@@ -4,7 +4,6 @@ import 'package:stize/core/design/stize_text.dart';
 
 import 'follow_view.dart';
 import 'level_header.dart';
-import 'wheel_elastic.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -88,8 +87,10 @@ class ContextPanel extends StatelessWidget {
                   ),
                 Flexible(
                   fit: hug ? FlexFit.loose : FlexFit.tight,
-                  // Wheel / trackpad past the end stretches and springs back.
-                  child: WheelElastic(child: child),
+                  // The lists stretch on a wheel or trackpad themselves
+                  // (StretchCardList); the old whole-panel shift showed the
+                  // island's background as a dark strip (owner, 2026-11-26).
+                  child: child,
                 ),
               ],
             ),
