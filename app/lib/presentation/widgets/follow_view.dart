@@ -538,8 +538,8 @@ class FollowRoute extends StatelessWidget {
               padding: const EdgeInsets.only(top: 10, left: StizeSpace.space3),
               child: Text(
                 time,
+                // DS: `body` 16/24 (14 is off the type scale).
                 style: StizeType.body.copyWith(
-                  fontSize: 14,
                   color: c.ink.withValues(alpha: stuck ? 0.35 : 0.7),
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
@@ -709,9 +709,8 @@ class FleetVehicleCard extends ConsumerWidget {
                     if (subtitle.isNotEmpty)
                       Text(
                         subtitle,
-                        style: StizeType.body.copyWith(
-                          fontSize: 14,
-                          height: 20 / 14,
+                        // DS: `caption` 12/16 under the model name.
+                        style: StizeType.caption.copyWith(
                           color: Colors.white.withValues(alpha: 0.75),
                         ),
                       ),
@@ -757,9 +756,8 @@ class FleetVehicleCard extends ConsumerWidget {
                           const SizedBox(height: 12),
                           Text(
                             note,
+                            // DS: `body` 16/24.
                             style: StizeType.body.copyWith(
-                              fontSize: 14,
-                              height: 20 / 14,
                               color: c.ink.withValues(alpha: 0.75),
                             ),
                           ),
@@ -792,10 +790,8 @@ class FleetVehicleCard extends ConsumerWidget {
                   l10n.fleetPhotoShort(photo.author, photo.license),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: StizeType.caption.copyWith(
-                    fontSize: 11,
-                    color: c.ink.withValues(alpha: 0.4),
-                  ),
+                  // DS: `note` 12/16 in ink-50 (11 is off the scale).
+                  style: StizeType.note.copyWith(color: c.ink50),
                 ),
               ),
             ),
@@ -805,19 +801,13 @@ class FleetVehicleCard extends ConsumerWidget {
   }
 
   Widget _chip(StizeColors c, String text) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    // DS Chip: `control` 12/16 on `fill-08`, a full pill.
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     decoration: BoxDecoration(
       color: c.fill08,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(StizeRadius.radiusPill),
     ),
-    child: Text(
-      text,
-      style: StizeType.body.copyWith(
-        fontSize: 14,
-        height: 20 / 14,
-        color: c.ink,
-      ),
-    ),
+    child: Text(text, style: StizeType.control.copyWith(color: c.ink)),
   );
 }
 

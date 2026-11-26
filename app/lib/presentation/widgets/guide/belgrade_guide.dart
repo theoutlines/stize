@@ -496,7 +496,7 @@ class GuideStrip extends StatelessWidget {
                 child: Icon(
                   icon,
                   size: 20,
-                  color: c.ink.withValues(alpha: 0.75),
+                  color: c.ink75,
                 ),
               ),
               Expanded(
@@ -510,9 +510,7 @@ class GuideStrip extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: text.caption.copyWith(
-                        color: c.ink.withValues(alpha: 0.55),
-                      ),
+                      style: text.caption.copyWith(color: c.ink60),
                     ),
                   ],
                 ),
@@ -524,7 +522,7 @@ class GuideStrip extends StatelessWidget {
                   icon: Icon(
                     StizeIcons.close,
                     size: 16,
-                    color: c.ink.withValues(alpha: 0.55),
+                    color: c.ink50,
                   ),
                 )
               else
@@ -533,7 +531,7 @@ class GuideStrip extends StatelessWidget {
                   child: Icon(
                     StizeIcons.chevronRight,
                     size: 20,
-                    color: c.ink.withValues(alpha: 0.45),
+                    color: c.ink50,
                   ),
                 ),
             ],

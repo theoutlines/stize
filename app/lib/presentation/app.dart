@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api_config.dart';
+import '../core/design/stize_scroll.dart';
 import '../core/design/stize_theme.dart';
 import '../l10n/app_localizations.dart';
 import 'providers/providers.dart';
@@ -20,6 +21,8 @@ class StiglaApp extends ConsumerWidget {
       theme: StizeTheme.light(),
       darkTheme: StizeTheme.dark(),
       themeMode: settings?.themeMode ?? ThemeMode.system,
+      // One overscroll feel for every list and sheet (design system).
+      scrollBehavior: const StizeScrollBehavior(),
       locale: settings?.localeCode != null
           ? Locale(settings!.localeCode!)
           : null,

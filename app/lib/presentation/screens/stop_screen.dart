@@ -13,6 +13,7 @@ import '../../data/analytics/event_logger.dart';
 import '../../domain/models/route_alert.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import '../widgets/stretch_card_list.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/stop_header_actions.dart';
 import '../widgets/stop_arrivals_list.dart';
@@ -97,53 +98,51 @@ class _StopScreenState extends ConsumerState<StopScreen> {
           ],
         ),
       ),
-      body: RefreshIndicator(
+      // The same list as the in-app board (design system: StretchList).
+      body: StretchCardList(
         onRefresh: () async => ref.invalidate(arrivalsProvider(widget.stopId)),
-        child: ListView(
-          children: [
-            RouteAlertsStrip(alerts: relevantAlerts),
-            JamStopBanner(
-              stopId: widget.stopId,
-              lines: stopLocation?.lines ?? const [],
+        children: [
+          RouteAlertsStrip(alerts: relevantAlerts),
+          JamStopBanner(
+            stopId: widget.stopId,
+            lines: stopLocation?.lines ?? const [],
+          ),
+          board.when(
+            loading: () => EmptyState(
+              icon: StizeIcons.transit,
+              title: l10n.loadingArrivals,
             ),
-            board.when(
-              loading: () => EmptyState(
-                icon: StizeIcons.transit,
-                title: l10n.loadingArrivals,
-              ),
-              error: (err, st) =>
-                  stopArrivalsErrorState(l10n, err, _refreshNow),
-              data: (b) {
-                // Schedule-derived placeholder rows (GPS pinned to this stop)
-                // stay off the mini map, or they'd stack on the stop pin.
-                final mapVehicles = b.arrivals
-                    .where(arrivalHasLivePosition)
-                    .toList();
-                return StopArrivalsList(
-                  stopId: widget.stopId,
-                  board: b,
-                  stopLines: stopLocation?.lines ?? const [],
-                  onRetry: _refreshNow,
-                  aboveFreshness: stopLocation == null
-                      ? null
-                      : mapVehicles.isNotEmpty
-                      ? SizedBox(
-                          height: 220,
-                          child: LiveVehiclesMap(
-                            arrivals: mapVehicles,
-                            stopLocation: ll.LatLng(
-                              stopLocation.lat,
-                              stopLocation.lon,
-                            ),
+            error: (err, st) => stopArrivalsErrorState(l10n, err, _refreshNow),
+            data: (b) {
+              // Schedule-derived placeholder rows (GPS pinned to this stop)
+              // stay off the mini map, or they'd stack on the stop pin.
+              final mapVehicles = b.arrivals
+                  .where(arrivalHasLivePosition)
+                  .toList();
+              return StopArrivalsList(
+                stopId: widget.stopId,
+                board: b,
+                stopLines: stopLocation?.lines ?? const [],
+                onRetry: _refreshNow,
+                aboveFreshness: stopLocation == null
+                    ? null
+                    : mapVehicles.isNotEmpty
+                    ? SizedBox(
+                        height: 220,
+                        child: LiveVehiclesMap(
+                          arrivals: mapVehicles,
+                          stopLocation: ll.LatLng(
+                            stopLocation.lat,
+                            stopLocation.lon,
                           ),
-                        )
-                      // Nothing live to draw: explain the empty map.
-                      : _noLiveVehiclesHint(context, l10n),
-                );
-              },
-            ),
-          ],
-        ),
+                        ),
+                      )
+                    // Nothing live to draw: explain the empty map.
+                    : _noLiveVehiclesHint(context, l10n),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

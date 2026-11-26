@@ -7,6 +7,18 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Changed (evening)
+- **Stiffer stretch everywhere.** Every list and sheet, outside sheets too,
+  bounces with one stiffer resistance, by touch and by trackpad; a flick no
+  longer stretches half the screen. The stop link page and the vehicle sheet
+  use the same list, with pull to refresh in the first card's colour instead
+  of the Material spinner.
+- **Follow view on the type scale.** Route times and the line about the
+  vehicle are 16/24, the vehicle's nickname and the photo credit 12/16, the
+  chips are pills with 12/16 text. The guide strip's text and icons use the
+  system greys. The menu's backdrop is the system scrim; the stop sheet has
+  no backdrop, the map stays live.
+
 ### Changed (afternoon)
 - **One list on every platform.** The desktop island now scrolls with the
   same list as the mobile sheet: Nearby, a stop board, a followed vehicle,
