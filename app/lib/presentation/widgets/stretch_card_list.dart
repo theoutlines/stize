@@ -72,6 +72,12 @@ class _StretchCardListState extends State<StretchCardList> {
   /// showed instead (owner, 2026-11-26). At an end the signal pushes the list
   /// past it with growing resistance; each push springs back on its own, so
   /// the bounce settles as soon as the wheel goes quiet.
+  // While the wheel holds the list past an end, the scrollable must not take
+  // the next signal itself: it would clamp the list back to the end, and the
+  // pull flickered between stretched and not (owner, 2026-11-26).
+  bool _wheelPull = false;
+  late final _physics = _WheelPullPhysics(() => _wheelPull);
+
   void _onSignal(PointerSignalEvent e) {
     if (e is! PointerScrollEvent) return;
     final c = _controller;
@@ -82,6 +88,7 @@ class _StretchCardListState extends State<StretchCardList> {
     final atEnd = dy > 0 && p.pixels >= p.maxScrollExtent;
     if (!atTop && !atEnd) return;
     GestureBinding.instance.pointerSignalResolver.register(e, (_) {
+      _wheelPull = true;
       final over = atTop
           ? p.minScrollExtent - p.pixels
           : p.pixels - p.maxScrollExtent;
@@ -118,6 +125,7 @@ class _StretchCardListState extends State<StretchCardList> {
     if (n.depth != 0) return false;
     _queueMeasure();
     final m = n.metrics;
+    if (_wheelPull && !m.outOfRange) _wheelPull = false;
     _edges
       ..top = (m.minScrollExtent - m.pixels).clamp(0.0, double.infinity)
       ..bottom = (m.pixels - m.maxScrollExtent).clamp(0.0, double.infinity)
@@ -192,9 +200,7 @@ class _StretchCardListState extends State<StretchCardList> {
     final list = CustomScrollView(
       controller: _controller,
       shrinkWrap: widget.shrinkWrap,
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
+      physics: _physics,
       slivers: [
         if (widget.onRefresh != null)
           CupertinoSliverRefreshControl(
@@ -350,4 +356,24 @@ class _EdgePainter extends CustomPainter {
       old.bottom != bottom ||
       old.under != under ||
       old.bottomPadding != bottomPadding;
+}
+
+/// Bouncing physics that turn the scrollable's own wheel handling off while a
+/// wheel pull holds the list past an end (see [_StretchCardListState]).
+class _WheelPullPhysics extends BouncingScrollPhysics {
+  const _WheelPullPhysics(this.pulling)
+    : super(parent: const AlwaysScrollableScrollPhysics());
+
+  const _WheelPullPhysics._(this.pulling, ScrollPhysics? parent)
+    : super(parent: parent);
+
+  final bool Function() pulling;
+
+  @override
+  _WheelPullPhysics applyTo(ScrollPhysics? ancestor) =>
+      _WheelPullPhysics._(pulling, buildParent(ancestor));
+
+  @override
+  bool shouldAcceptUserOffset(ScrollMetrics position) =>
+      !pulling() && super.shouldAcceptUserOffset(position);
 }
