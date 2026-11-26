@@ -144,7 +144,11 @@ class NearbySheet extends StatelessWidget {
         // Two resting places for a drag (owner, 2026-11-23): stopping halfway
         // and then pulling again felt like friction. Half is still used when
         // a level opens programmatically, so the stop stays visible on the map.
-        snapSizes: oneScroll ? null : [kSheetPeek, maxSize ?? kSheetLarge],
+        // A STABLE list: the sheet compares snapSizes by identity on every
+        // rebuild and snaps when it differs, and the follow ticks rebuilds
+        // ~15×/s, so a fresh list each build cancelled every body drag (owner,
+        // 2026-11-26: the follow sheet moved only by its handle).
+        snapSizes: oneScroll ? null : _snapSizesFor(maxSize ?? kSheetLarge),
         builder: (context, scrollController) {
           // PointerInterceptor stops scroll/drag/taps on the sheet from falling
           // through to the MapLibre platform view underneath on web. No-op on
@@ -211,6 +215,13 @@ class NearbySheet extends StatelessWidget {
     );
   }
 }
+
+/// One list instance per top detent (see [NearbySheet]'s snapSizes).
+final Map<double, List<double>> _snapSizesCache = {};
+List<double> _snapSizesFor(double top) =>
+    (_snapSizesCache.length > 8 ? (_snapSizesCache..clear()) : _snapSizesCache)
+        .putIfAbsent(top, () => List.unmodifiable([kSheetPeek, top]));
+
 
 /// Vertical drags that land outside the sheet's scrollable move the sheet,
 /// and a release snaps to peek or large (by flick direction, else nearest).

@@ -5,6 +5,18 @@ history (what changed for riders and developers), not a commit log.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
+## 2026-11-26
+
+### Fixed
+- **Follow sheet drags by its body again.** Since the levels started rising as
+  high as Nearby, the sheet re-snapped on every follow refresh, so only the
+  handle could move it.
+- **Map point drag on iPhone.** The centre dot is now drawn by the map itself:
+  dragging the map no longer keeps dropping the dot after a short move, and a
+  dropped dot stays on its spot when the sheet moves.
+- **Pull to refresh** triggers after a shorter pull, reachable from the
+  resting sheet.
+
 ## 2026-11-25
 
 ### Changed (night)
