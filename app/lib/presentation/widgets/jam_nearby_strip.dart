@@ -7,16 +7,32 @@ import '../../domain/models/jam.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../../core/design/stize_icons.dart';
+import 'notice_strip.dart';
 
-/// A muted strip at the top of the Nearby list: one soft row per active jam that
-/// touches a line in the current Nearby context. Tap to expand the affected stop
-/// names. Observation tone, matching the stop banner; inert unless the flag is on
-/// and the feed is healthy.
+/// The jams that touch a line in the current Nearby context, the strip's
+/// content; empty when detection is off or the feed has nothing. Shared so the
+/// list knows the strip is there (its top stretch takes the strip's colour).
+List<Jam> nearbyJams(WidgetRef ref, Set<String> contextLines) {
+  if (!ref.watch(jamDetectionEnabledProvider)) return const [];
+  final board = ref.watch(jamsProvider).valueOrNull;
+  if (board == null) return const [];
+  final ctx = contextLines.map((l) => l.toLowerCase()).toSet();
+  return board.activeJams
+      .where((j) => ctx.contains(j.line.toLowerCase()))
+      .toList();
+}
+
+/// DS Banner, jam: `jam` at 13%.
+Color jamSurface(StizeColors c) => c.jam.withValues(alpha: 0.13);
+
+/// The jam notice at the top of the Nearby list: one NoticeStrip per active
+/// jam on a line the user could be waiting for. It opens the list and scrolls
+/// with it, like the guide strip; a tap shows the affected stops. Observation
+/// tone, matching the stop banner; inert unless the flag is on.
 class JamNearbyStrip extends ConsumerStatefulWidget {
   const JamNearbyStrip({super.key, required this.contextLines});
 
-  /// The line numbers currently shown in the Nearby list — the strip only
-  /// surfaces jams the user could actually be waiting for.
+  /// The line numbers currently shown in the Nearby list.
   final Set<String> contextLines;
 
   @override
@@ -28,15 +44,8 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
 
   @override
   Widget build(BuildContext context) {
-    if (!ref.watch(jamDetectionEnabledProvider)) return const SizedBox.shrink();
-    final board = ref.watch(jamsProvider).valueOrNull;
-    if (board == null) return const SizedBox.shrink();
-    final ctx = widget.contextLines.map((l) => l.toLowerCase()).toSet();
-    final jams = board.activeJams
-        .where((j) => ctx.contains(j.line.toLowerCase()))
-        .toList();
+    final jams = nearbyJams(ref, widget.contextLines);
     if (jams.isEmpty) return const SizedBox.shrink();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [for (final j in jams) _row(context, j)],
@@ -44,59 +53,22 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
   }
 
   Widget _row(BuildContext context, Jam jam) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final key = '${jam.line}|${jam.directionRouteId}';
     final open = _expanded.contains(key);
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      decoration: BoxDecoration(
-        color: StizeColors.of(context).jam.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => setState(() {
-              open ? _expanded.remove(key) : _expanded.add(key);
-            }),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  Icon(
-                    StizeIcons.hourglass,
-                    size: 16,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      l10n.jamNearbyDelay(jam.line),
-                      style: StizeText.of(
-                        context,
-                      ).caption.copyWith(color: theme.colorScheme.onSurface),
-                    ),
-                  ),
-                  Icon(
-                    open ? StizeIcons.chevronUp : StizeIcons.chevronDown,
-                    size: 18,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (open) _affectedStops(context, jam),
-        ],
-      ),
+    return NoticeStrip(
+      icon: StizeIcons.hourglass,
+      title: l10n.jamNearbyDelay(jam.line),
+      surface: jamSurface(StizeColors.of(context)),
+      open: open,
+      details: _affectedStops(context, jam),
+      onTap: () => setState(() {
+        open ? _expanded.remove(key) : _expanded.add(key);
+      }),
     );
   }
 
   Widget _affectedStops(BuildContext context, Jam jam) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     // Resolve affected stop ids → names from the offline GTFS cache (already
     // loaded; cheap). Best-effort — unknown ids are simply omitted.
@@ -109,26 +81,17 @@ class _JamNearbyStripState extends ConsumerState<JamNearbyStrip> {
             if (jam.affectedStopIds.contains(s.stopId)) s.name,
         ];
         if (names.isEmpty) return const SizedBox.shrink();
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(40, 0, 12, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.jamAffectedStopsTitle,
-                style: StizeText.of(
-                  context,
-                ).note.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                names.join(' · '),
-                style: StizeText.of(
-                  context,
-                ).caption.copyWith(color: theme.colorScheme.onSurface),
-              ),
-            ],
-          ),
+        final text = StizeText.of(context);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.jamAffectedStopsTitle, style: text.caption),
+            const SizedBox(height: StizeSpace.space1),
+            Text(
+              names.join(' · '),
+              style: text.body.copyWith(color: StizeColors.of(context).ink75),
+            ),
+          ],
         );
       },
     );

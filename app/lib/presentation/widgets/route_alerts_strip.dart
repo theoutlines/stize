@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'notice_strip.dart';
 import 'package:stize/core/design/stize_text.dart';
 
 import '../../core/design/stize_tokens.dart';
@@ -36,75 +38,59 @@ class _RouteAlertsStripState extends State<RouteAlertsStrip> {
   Widget build(BuildContext context) {
     final alerts = widget.alerts;
     if (alerts.isEmpty) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
+    final c = StizeColors.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
 
-    // A lone alert is never worth a collapse affordance — just show it.
+    // DS Banner, route alerts: calm, no red. An active disruption on
+    // `fill-14` with a warning icon and `ink`; an ordinary notice on
+    // `fill-08` with an info icon and `ink-75`. A flat NoticeStrip that opens
+    // the list (owner, 2026-11-26).
+    bool high(RouteAlert a) => a.isHighSeverity && a.isActiveNow;
+    IconData iconFor(RouteAlert a) => a.isUpcoming
+        ? StizeIcons.clock
+        : (high(a) ? StizeIcons.warning : StizeIcons.info);
+
+    // A lone alert is never worth a collapse affordance: its text shows.
     if (alerts.length == 1) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-        child: _AlertRow(alert: alerts.first),
+      final a = alerts.single;
+      return NoticeStrip(
+        icon: iconFor(a),
+        title: a.isUpcoming ? l10n.alertUpcomingLabel : l10n.alertActiveLabel,
+        surface: high(a) ? c.fill14 : c.fill08,
+        foreground: high(a) ? c.ink : c.ink75,
+        body: _AlertBody(alert: a, locale: locale),
       );
     }
 
-    final l10n = AppLocalizations.of(context);
-    final hasHigh = alerts.any((a) => a.isHighSeverity && a.isActiveNow);
-    // DS Badge warn: calm, no red. A disruption reads by its warning icon
-    // and the stronger `fill-14` ground; an ordinary notice sits on `fill-08`.
-    final c = StizeColors.of(context);
-    final headerColor = hasHigh ? c.fill14 : c.fill08;
-    final headerFg = hasHigh ? c.ink : c.ink75;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    final anyHigh = alerts.any(high);
+    return NoticeStrip(
+      icon: anyHigh ? StizeIcons.warning : StizeIcons.info,
+      title: '${l10n.alertsBannerTitle} · ${alerts.length}',
+      surface: anyHigh ? c.fill14 : c.fill08,
+      foreground: anyHigh ? c.ink : c.ink75,
+      open: _expanded,
+      onTap: () => setState(() => _expanded = !_expanded),
+      details: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: StizeSpace.space3,
         children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                color: headerColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    hasHigh ? StizeIcons.warning : StizeIcons.info,
-                    size: 18,
-                    color: headerFg,
+          for (final a in alerts)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  a.isUpcoming
+                      ? l10n.alertUpcomingLabel
+                      : l10n.alertActiveLabel,
+                  style: StizeText.of(context).control.copyWith(
+                    color: high(a) ? c.ink : c.ink75,
+                    fontWeight: FontWeight.w500,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${l10n.alertsBannerTitle} · ${alerts.length}',
-                      style: StizeText.of(context).label.copyWith(
-                        color: headerFg,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    _expanded ? StizeIcons.chevronUp : StizeIcons.chevronDown,
-                    color: headerFg,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_expanded)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final alert in alerts)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _AlertRow(alert: alert),
-                    ),
-                ],
-              ),
+                ),
+                const SizedBox(height: StizeSpace.space1),
+                _AlertBody(alert: a, locale: locale),
+              ],
             ),
         ],
       ),
@@ -112,77 +98,31 @@ class _RouteAlertsStripState extends State<RouteAlertsStrip> {
   }
 }
 
-/// One compact alert: a coloured status dot, the label + summary, and a
-/// read-more link. Calm surface unless the alert is high-severity and active.
-class _AlertRow extends StatelessWidget {
-  const _AlertRow({required this.alert});
+/// One alert's text in `body` and the link to the source.
+class _AlertBody extends StatelessWidget {
+  const _AlertBody({required this.alert, required this.locale});
 
   final RouteAlert alert;
+  final String locale;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final high = alert.isHighSeverity && alert.isActiveNow;
-
-    final Color bg;
-    final Color fg;
     final c = StizeColors.of(context);
-    if (high) {
-      bg = c.fill14;
-      fg = c.ink;
-    } else {
-      bg = c.fill08;
-      fg = c.ink75;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            alert.isUpcoming
-                ? StizeIcons.clock
-                : (high ? StizeIcons.warning : StizeIcons.info),
-            color: fg,
-            size: 18,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  alert.isUpcoming
-                      ? l10n.alertUpcomingLabel
-                      : l10n.alertActiveLabel,
-                  style: StizeText.of(
-                    context,
-                  ).control.copyWith(color: fg, fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  alert.localizedSummary(
-                    Localizations.localeOf(context).languageCode,
-                  ),
-                  style: StizeText.of(context).body.copyWith(color: fg),
-                ),
-                const SizedBox(height: StizeSpace.space3),
-                // The system tertiary button as is (owner, 2026-11-23: the
-                // zero-padding version hugged the label and looked crooked).
-                TextButton(
-                  onPressed: () => openExternalUrl(alert.url),
-                  child: Text(l10n.alertReadMore),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          alert.localizedSummary(locale),
+          style: StizeText.of(context).body.copyWith(color: c.ink75),
+        ),
+        // The system tertiary button as is (owner, 2026-11-23: the
+        // zero-padding version hugged the label and looked crooked).
+        TextButton(
+          onPressed: () => openExternalUrl(alert.url),
+          child: Text(l10n.alertReadMore),
+        ),
+      ],
     );
   }
 }
