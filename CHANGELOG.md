@@ -45,9 +45,10 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 ### Fixed (night)
 - **One locate button on desktop.** "Where am I" lives only in the search
   pill, as on mobile; the extra round button on the right is gone.
-- **Loading screen in Stiže colours.** The screen before the app starts uses
-  the design-system background (light #F4F4F2, dark #151515) instead of the
-  old green tint.
+- **Skeleton while the app loads.** Instead of a "Loading Stiže…" line on a
+  green-tinted screen, the first screen appears as a skeleton in its real
+  layout (buttons, search pill and sheet on phones; the left panel and right
+  controls on desktop) over the map background, in the theme the rider chose.
 - **Theme switch keeps the map working.** Switching light/dark with the new
   basemap no longer aborts the map setup: stop pins, vehicles and the
   location dot are replaced and re-tinted for the new theme.
