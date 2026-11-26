@@ -11,7 +11,14 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 - **Pull to refresh works again.** The stiffer stretch had made the refresh
   point unreachable with a trackpad and hard by finger; a deliberate pull now
   refreshes, and the spinner shows for at least a moment. The stop board and
-  the stop link page refresh on a pull too.
+  the stop link page refresh on a pull too. The refresh button is a white
+  circle that reads on any row.
+
+### Changed (evening, design system pass)
+- **Route alerts are calm.** No more red: a disruption shows on a stronger
+  grey with a warning icon, an ordinary notice on the light grey with an info
+  icon. The jam banner takes the system jam colour; the empty state icon and
+  the search pill icons sit on the system sizes.
 
 ### Changed (evening)
 - **Stiffer stretch everywhere.** Every list and sheet, outside sheets too,

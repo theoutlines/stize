@@ -46,14 +46,12 @@ class _RouteAlertsStripState extends State<RouteAlertsStrip> {
     }
 
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final hasHigh = alerts.any((a) => a.isHighSeverity && a.isActiveNow);
-    final headerColor = hasHigh
-        ? theme.colorScheme.errorContainer
-        : theme.colorScheme.surfaceContainerHighest;
-    final headerFg = hasHigh
-        ? theme.colorScheme.onErrorContainer
-        : theme.colorScheme.onSurfaceVariant;
+    // DS Badge warn: calm, no red. A disruption reads by its warning icon
+    // and the stronger `fill-14` ground; an ordinary notice sits on `fill-08`.
+    final c = StizeColors.of(context);
+    final headerColor = hasHigh ? c.fill14 : c.fill08;
+    final headerFg = hasHigh ? c.ink : c.ink75;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -123,18 +121,18 @@ class _AlertRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final high = alert.isHighSeverity && alert.isActiveNow;
 
     final Color bg;
     final Color fg;
+    final c = StizeColors.of(context);
     if (high) {
-      bg = theme.colorScheme.errorContainer;
-      fg = theme.colorScheme.onErrorContainer;
+      bg = c.fill14;
+      fg = c.ink;
     } else {
-      bg = theme.colorScheme.surfaceContainerHighest;
-      fg = theme.colorScheme.onSurfaceVariant;
+      bg = c.fill08;
+      fg = c.ink75;
     }
 
     return Container(

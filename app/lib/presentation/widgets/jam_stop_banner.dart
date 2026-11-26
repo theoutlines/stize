@@ -6,6 +6,7 @@ import '../../domain/models/route_alert.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../../core/design/stize_icons.dart';
+import '../../core/design/stize_tokens.dart';
 
 /// The soft delay banner shown on a stop board that is *downstream* of a detected
 /// tram jam, plus the neutral bus-substitution notice. Tone is deliberately an
@@ -93,9 +94,10 @@ class JamStopBanner extends ConsumerWidget {
     final scheme = theme.colorScheme;
     // Amber-tinted, matching the map jam colour; a confirmed alert reads a touch
     // stronger than our soft inference.
-    final tint = const Color(
-      0xFFE8A317,
-    ).withValues(alpha: official ? 0.20 : 0.13);
+    // DS `jam` token at 12-14% (20% when the city confirmed it).
+    final tint = StizeColors.of(
+      context,
+    ).jam.withValues(alpha: official ? 0.20 : 0.13);
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
