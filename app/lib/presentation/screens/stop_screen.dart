@@ -100,7 +100,10 @@ class _StopScreenState extends ConsumerState<StopScreen> {
       ),
       // The same list as the in-app board (design system: StretchList).
       body: StretchCardList(
-        onRefresh: () async => ref.invalidate(arrivalsProvider(widget.stopId)),
+        onRefresh: () async {
+          ref.invalidate(arrivalsProvider(widget.stopId));
+          await ref.read(arrivalsProvider(widget.stopId).future);
+        },
         children: [
           RouteAlertsStrip(alerts: relevantAlerts),
           JamStopBanner(

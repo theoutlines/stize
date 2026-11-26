@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -98,7 +100,7 @@ class _StretchCardListState extends State<StretchCardList> {
       // trigger takes a deliberate pull.
       final give = (1 - over / StizeOverscroll.wheelReach).clamp(0.0, 1.0);
       if (give <= 0) return;
-      p.jumpTo(p.pixels + dy * StizeOverscroll.wheelGain * give * give);
+      p.jumpTo(p.pixels + dy * StizeOverscroll.wheelGain * give * math.sqrt(give));
     });
   }
 
@@ -215,7 +217,12 @@ class _StretchCardListState extends State<StretchCardList> {
       slivers: [
         if (widget.onRefresh != null)
           CupertinoSliverRefreshControl(
-            onRefresh: widget.onRefresh,
+            // The spinner holds at least a moment: a fast fetch made the
+            // band snap shut before anyone saw it refresh (owner, 2026-11-26).
+            onRefresh: () => Future.wait([
+              widget.onRefresh!(),
+              Future<void>.delayed(StizeOverscroll.refreshMinHold),
+            ]),
             // Reachable within the resting sheet: bouncing friction makes 96 px
             // of stretch need a long finger travel (owner, 2026-11-26).
             refreshTriggerPullDistance: StizeOverscroll.refreshTrigger,

@@ -170,6 +170,11 @@ class _StopBoardState extends ConsumerState<StopBoard> {
           child: StretchCardList(
             controller: widget.scrollController,
             shrinkWrap: hug,
+            // Live data: pull to refresh, like Nearby (DS StretchList).
+            onRefresh: () async {
+              _refreshNow();
+              await ref.read(arrivalsProvider(widget.stopId).future);
+            },
             children: content,
           ),
         ),

@@ -11,17 +11,23 @@ abstract final class StizeOverscroll {
   static const double touchFriction = 0.28;
 
   /// Trackpad / wheel pull past an end: share of each scroll step, falling
-  /// with the square of how far it is already pulled.
-  static const double wheelGain = 0.22;
+  /// with the power 1.5 of how far it is already pulled (squared made the
+  /// refresh trigger unreachable, owner 2026-11-26).
+  static const double wheelGain = 0.3;
 
   /// Trackpad / wheel: the farthest a pull can stretch, in logical pixels.
-  static const double wheelReach = 80;
+  /// Well past [refreshTrigger], so a deliberate pull refreshes.
+  static const double wheelReach = 120;
 
   /// Pull to refresh: stretch at which letting go refreshes.
   static const double refreshTrigger = 64;
 
   /// Pull to refresh: the band held open while the list refreshes.
   static const double refreshHold = 52;
+
+  /// Pull to refresh: the spinner shows at least this long, so a fast fetch
+  /// still reads as a refresh.
+  static const Duration refreshMinHold = Duration(milliseconds: 600);
 }
 
 /// Bouncing with the system's stiffer resistance.
