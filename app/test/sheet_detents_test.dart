@@ -14,6 +14,7 @@ import 'package:stize/domain/models/nearby_arrival.dart';
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
 import 'package:stize/presentation/widgets/nearby_sheet.dart';
+import 'package:stize/presentation/widgets/nearby_view.dart';
 import 'package:stize/presentation/widgets/stop_sheet.dart';
 
 // Every mobile bottom sheet must cap at `large` (owner R2 #4 / R3 #3): dragged
@@ -152,9 +153,13 @@ void main() {
     await tester.pump();
     final list = find.byType(Scrollable).last;
     // Raise the sheet to its top by dragging the list.
+    final before = tester.state(find.byType(NearbyView));
     await tester.drag(list, const Offset(0, -900));
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
     expect(ctl.size, closeTo(kSheetLarge, 0.01));
+    // The list keeps its state when it takes its own scroll at the top (it
+    // used to be rebuilt and refetch, flashing "Finding lines").
+    expect(identical(tester.state(find.byType(NearbyView)), before), isTrue);
     // A slow pull at the list's top overscrolls the list, not the sheet.
     final at = tester.getCenter(find.byType(DraggableScrollableSheet));
     final g = await tester.startGesture(at);

@@ -7,6 +7,12 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Fixed (late evening)
+- **No "Finding lines" flash when the sheet moves.** Raising the Nearby sheet
+  to the top rebuilt the list and fetched it again; it keeps its data now.
+- **A flick down only puts the sheet away.** A quick flick at the top of the
+  full sheet collapses it without refreshing; a slow pull refreshes.
+
 ### Changed (late evening)
 - **Own refresh icon.** The pull to refresh button uses a refresh arrow from
   the Stiže icon set; no Material icons are left in the app.

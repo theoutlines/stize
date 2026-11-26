@@ -481,6 +481,7 @@ class _TopDetentScrollState extends State<_TopDetentScroll> {
                 // Keeps the sheet's controller attached while the list
                 // scrolls on its own, so the sheet can still be moved.
                 Positioned(
+                  key: const ValueKey('sheet-scroll'),
                   left: 0,
                   top: 0,
                   width: 0,
@@ -491,7 +492,14 @@ class _TopDetentScrollState extends State<_TopDetentScroll> {
                     child: const SizedBox.shrink(),
                   ),
                 ),
-              Positioned.fill(child: widget.builder(own ?? widget.sheetScroll)),
+              // Keyed: without it the list matched the slot the empty
+              // scrollable takes, lost its state on every swap and refetched
+              // ("Finding lines" flashed while the sheet moved, owner
+              // 2026-11-26).
+              Positioned.fill(
+                key: const ValueKey('list'),
+                child: widget.builder(own ?? widget.sheetScroll),
+              ),
             ],
           ),
         ),

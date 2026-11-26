@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
@@ -76,6 +77,41 @@ class _StretchCardListState extends State<StretchCardList> {
   /// showed instead (owner, 2026-11-26). At an end the signal pushes the list
   /// past it with growing resistance; each push springs back on its own, so
   /// the bounce settles as soon as the wheel goes quiet.
+  // Pull to refresh fires when the stretch passes the trigger, while the
+  // finger is still down. A slow pull means refresh; a quick flick down means
+  // "put the sheet away" (owner, 2026-11-26), so the refresh waits for the
+  // finger to lift and is dropped if it left with a flick.
+  int _pointers = 0;
+  Completer<bool>? _lift;
+  final VelocityTracker _velocity = VelocityTracker.withKind(
+    PointerDeviceKind.touch,
+  );
+
+  void _down(PointerDownEvent e) {
+    _pointers++;
+    _velocity.addPosition(e.timeStamp, e.position);
+  }
+
+  void _up(PointerEvent e) {
+    _pointers = (_pointers - 1).clamp(0, 99);
+    if (_pointers > 0) return;
+    final flick =
+        e is PointerUpEvent && _velocity.getVelocity().pixelsPerSecond.dy > 800;
+    _lift?.complete(!flick);
+    _lift = null;
+  }
+
+  Future<void> _pullRefresh() async {
+    if (_pointers > 0) {
+      _lift ??= Completer<bool>();
+      if (!await _lift!.future) return;
+    }
+    await Future.wait([
+      widget.onRefresh!(),
+      Future<void>.delayed(StizeOverscroll.refreshMinHold),
+    ]);
+  }
+
   // While the wheel holds the list past an end, the scrollable must not take
   // the next signal itself: it would clamp the list back to the end, and the
   // pull flickered between stretched and not (owner, 2026-11-26).
@@ -101,7 +137,9 @@ class _StretchCardListState extends State<StretchCardList> {
       // trigger takes a deliberate pull.
       final give = (1 - over / StizeOverscroll.wheelReach).clamp(0.0, 1.0);
       if (give <= 0) return;
-      p.jumpTo(p.pixels + dy * StizeOverscroll.wheelGain * give * math.sqrt(give));
+      p.jumpTo(
+        p.pixels + dy * StizeOverscroll.wheelGain * give * math.sqrt(give),
+      );
     });
   }
 
@@ -222,10 +260,7 @@ class _StretchCardListState extends State<StretchCardList> {
           CupertinoSliverRefreshControl(
             // The spinner holds at least a moment: a fast fetch made the
             // band snap shut before anyone saw it refresh (owner, 2026-11-26).
-            onRefresh: () => Future.wait([
-              widget.onRefresh!(),
-              Future<void>.delayed(StizeOverscroll.refreshMinHold),
-            ]),
+            onRefresh: _pullRefresh,
             // Reachable within the resting sheet: bouncing friction makes 96 px
             // of stretch need a long finger travel (owner, 2026-11-26).
             refreshTriggerPullDistance: StizeOverscroll.refreshTrigger,
@@ -272,7 +307,15 @@ class _StretchCardListState extends State<StretchCardList> {
             bottomPadding: widget.bottomPadding,
             coverLine: true,
           ),
-          child: Listener(onPointerSignal: _onSignal, child: list),
+          child: Listener(
+            onPointerSignal: _onSignal,
+            onPointerDown: _down,
+            onPointerMove: (e) =>
+                _velocity.addPosition(e.timeStamp, e.position),
+            onPointerUp: _up,
+            onPointerCancel: _up,
+            child: list,
+          ),
         ),
       ),
     );

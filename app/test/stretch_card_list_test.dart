@@ -97,4 +97,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(refreshed, 1);
   });
+
+  testWidgets('a quick flick down does not refresh', (tester) async {
+    var refreshed = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: StizeTheme.dark(),
+        home: Scaffold(
+          body: StretchCardList(
+            onRefresh: () async => refreshed++,
+            children: [
+              for (var i = 0; i < 30; i++)
+                SizedBox(height: 60, child: Text('$i')),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.flingFrom(
+      tester.getCenter(find.byType(StretchCardList)) - const Offset(0, 100),
+      const Offset(0, 400),
+      3000,
+    );
+    await tester.pumpAndSettle();
+    expect(refreshed, 0);
+  });
 }
