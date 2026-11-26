@@ -229,9 +229,10 @@ class _StretchCardListState extends State<StretchCardList> {
         child: CustomPaint(
           painter: _EdgePainter(
             _edges,
-            // With a refresh control the top band paints itself (and holds
-            // while refreshing).
-            top: widget.onRefresh == null ? solid(widget.topColor) : null,
+            // The whole pull is painted here; the refresh control's own band
+            // only covers the part it holds while refreshing, so on its own it
+            // left an empty strip above the first row (owner, 2026-11-26).
+            top: solid(widget.topColor),
             bottom: solid(widget.bottomColor),
             under: under,
             bottomPadding: widget.bottomPadding,
