@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/design/stize_icons.dart';
 import '../../core/design/stize_scroll.dart';
 import '../../core/design/stize_tokens.dart';
 
@@ -199,7 +200,7 @@ class _StretchCardListState extends State<StretchCardList> {
                       )
                     : Transform.rotate(
                         angle: progress * 3.14159 * 1.5,
-                        child: Icon(Icons.refresh, size: 22, color: c.bg),
+                        child: Icon(StizeIcons.refresh, size: 24, color: c.bg),
                       ),
               ),
             ),

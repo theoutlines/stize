@@ -7,6 +7,10 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Changed (late evening)
+- **Own refresh icon.** The pull to refresh button uses a refresh arrow from
+  the Stiže icon set; no Material icons are left in the app.
+
 ### Fixed (evening)
 - **Pull to refresh works again.** The stiffer stretch had made the refresh
   point unreachable with a trackpad and hard by finger; a deliberate pull now
