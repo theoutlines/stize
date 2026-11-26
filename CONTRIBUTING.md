@@ -68,6 +68,26 @@ touching the map stack or adding a backend route.
 - Code and comments: English.
 - Keep changes scoped — avoid unrelated refactors in the same PR.
 
+## Keep the code small
+
+CI runs `python3 tool/structure/check.py` (stdlib only, ~1 s; run it locally
+too). It reports, each with a short code:
+
+- `big-file`: a source file over 500 lines. The ones already over it are in
+  `tool/structure/baseline.json` with their size: they may shrink, never grow,
+  and no new file may cross the limit. Split by responsibility: a widget gets
+  what it shows plus callbacks; logic without Flutter goes to `core/` with a
+  test.
+- `dead-file`, `dead-widget`, `dead-export`, `unused-string`: code or UI
+  strings nothing uses. Delete them in the same change that made them dead.
+- `duplicate`: the same 12+ lines in two places. One pattern is one shared
+  function or component (design-system rule).
+
+The same job prints how many lines the branch adds and removes. A feature that
+adds thousands of lines should say why in its PR. Known debt is accepted by
+`--update-baseline`; do that only for a deliberate exception, never to make a
+warning go away.
+
 ## Keep the docs current
 
 - **Notable change → a line in [`CHANGELOG.md`](CHANGELOG.md)** (English,

@@ -740,7 +740,7 @@ extension _MapLayers on _HomeMapScreenState {
     // live means the city overview still shows the (sparse) vehicles already
     // around the viewport as dots instead of a blank map; the marker layer
     // degrades pills → dots at low zoom on its own. When even the
-    // bounded area is empty, a hint tells the user to zoom in (see _zoomHint).
+    // bounded area is empty, a hint tells the user to zoom in (see MapZoomHint).
     final center = ll.LatLng(camera.center.lat, camera.center.lon);
     final radius = _radiusForVisibleArea(
       camera,

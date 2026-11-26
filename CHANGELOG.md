@@ -5,6 +5,17 @@ history (what changed for riders and developers), not a commit log.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
+## 2026-11-27
+
+### Changed (developers)
+- **A check that keeps the code small.** CI now reports files over 500
+  lines (existing ones may not grow), dead files, widgets, exports and UI
+  strings, and copy-pasted blocks, and prints how many lines a branch adds.
+  See "Keep the code small" in CONTRIBUTING. First pass: about 1,000 lines of
+  dead code and 25 unused strings removed; the map's floating controls,
+  diagnostics box and vehicle layout moved out of the 6,000-line map screen
+  into small widgets and a tested class. Nothing changes for riders.
+
 ## 2026-11-26
 
 ### Added (late night)

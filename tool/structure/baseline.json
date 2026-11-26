@@ -1,0 +1,44 @@
+{
+  "big-file": {
+    "app/lib/core/design/stize_tokens.dart": 836,
+    "app/lib/core/map_style.dart": 787,
+    "app/lib/core/map_support.dart": 851,
+    "app/lib/core/timed_trajectory.dart": 863,
+    "app/lib/core/vehicle_track_animator.dart": 656,
+    "app/lib/presentation/screens/city_screen.dart": 1069,
+    "app/lib/presentation/screens/home_map/home_map_layers.dart": 1073,
+    "app/lib/presentation/screens/home_map/home_map_panels.dart": 1052,
+    "app/lib/presentation/screens/home_map/home_map_search.dart": 636,
+    "app/lib/presentation/screens/home_map_screen.dart": 1128,
+    "app/lib/presentation/widgets/fleet_model_card.dart": 536,
+    "app/lib/presentation/widgets/follow_view.dart": 815,
+    "app/lib/presentation/widgets/guide/belgrade_guide.dart": 543,
+    "app/lib/presentation/widgets/nearby_list.dart": 528,
+    "app/lib/presentation/widgets/nearby_sheet.dart": 509,
+    "app/lib/presentation/widgets/nearby_view.dart": 617,
+    "backend/src/index.ts": 750,
+    "backend/src/lib/analytics.ts": 913,
+    "backend/src/lib/jamDetector.ts": 597,
+    "backend/src/lib/sweep.ts": 650
+  },
+  "dead-file": [],
+  "dead-widget": [
+    "app/lib/presentation/widgets/context_shell.dart:ContextNavRow"
+  ],
+  "dead-export": [
+    "backend/src/lib/feedback.ts:StopReportCategory",
+    "backend/src/lib/gtfsData.ts:getLineDirections (tests only)",
+    "backend/src/lib/gtfsData.ts:nearestStop (tests only)",
+    "backend/src/lib/kvCache.ts:kvCacheClear (tests only)",
+    "backend/src/lib/schedule.ts:scheduledMapObjectsForRoute (tests only)"
+  ],
+  "unused-string": [],
+  "duplicate": [
+    "app/lib/presentation/screens/home_map/home_map_jams.dart:249 = app/lib/presentation/screens/home_map/home_map_jams.dart:274",
+    "app/lib/presentation/screens/map_screen.dart:23 = app/lib/presentation/screens/map_screen_args.dart:7",
+    "app/lib/presentation/screens/stop_screen.dart:52 = app/lib/presentation/widgets/stop_board.dart:93",
+    "app/lib/presentation/widgets/follow_view.dart:94 = app/lib/presentation/widgets/stize_transit_card.dart:375",
+    "app/lib/presentation/widgets/guide/belgrade_guide.dart:477 = app/lib/presentation/widgets/notice_strip.dart:52",
+    "app/lib/presentation/widgets/stop_sheet.dart:103 = app/lib/presentation/widgets/vehicle_detail_sheet.dart:70"
+  ]
+}

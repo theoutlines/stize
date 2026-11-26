@@ -31,6 +31,21 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm test
 
+  # Keeps the codebase from silently swelling: files over 500 lines may not
+  # grow, no dead files/widgets/exports/strings, no copy-pasted blocks. Known
+  # debt sits in tool/structure/baseline.json. Warnings only for now; switch
+  # the check to --strict once the baseline is down to what we accept.
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 tool/structure/check.py
+      - name: Lines this change adds and removes (app/lib, backend/src)
+        if: github.ref != 'refs/heads/main'
+        run: git diff --shortstat origin/main...HEAD -- app/lib backend/src ':!app/lib/l10n'
+
   app:
     runs-on: ubuntu-latest
     defaults:

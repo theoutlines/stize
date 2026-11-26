@@ -224,10 +224,9 @@ String movingObjectsGeoJson(Iterable<MovingObject> objects) =>
     jsonEncode(movingObjectsFeatureCollection(objects));
 
 // NB: arrangement of co-located vehicles (fan out stationary clusters; pass
-// moving ones through each other with a crossing fade) is *stateful* — it eases
-// across frames and reads the animator's per-vehicle motion — so it lives in the
-// map screen (`_arrangeVehicles`), not here. This module stays pure: model +
-// GeoJSON + layer specs.
+// moving ones through each other with a crossing fade) is *stateful*: it eases
+// across frames, so it lives in `VehicleArranger` (vehicle_arrangement.dart),
+// not here. This module stays pure: model + GeoJSON + layer specs.
 
 // ---- Source + layer specs ---------------------------------------------------
 
