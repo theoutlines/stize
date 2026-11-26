@@ -34,7 +34,8 @@ Future<void> showAppMenu(
     context: context,
     barrierDismissible: true,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-    barrierColor: Colors.black.withValues(alpha: 0.35),
+    // DS `scrim`: behind a modal.
+    barrierColor: StizeColors.of(context).scrim,
     transitionDuration: StizeMotion.fast,
     pageBuilder: (menuContext, _, _) => PointerInterceptor(
       child: AppMenuOverlay(

@@ -1,6 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/design/stize_scroll.dart';
+
 import 'animated_entries.dart';
 import 'flat_cards.dart';
 
@@ -73,7 +75,9 @@ class NearbyList extends StatelessWidget {
             : header == null && lines.isNotEmpty
             ? nearbySurface(c, lines.first.first)
             : null,
-        bottomColor: lines.isNotEmpty ? nearbySurface(c, lines.last.first) : null,
+        bottomColor: lines.isNotEmpty
+            ? nearbySurface(c, lines.last.first)
+            : null,
         onRefresh: onRefresh,
         children: [
           ?lead,
@@ -88,7 +92,7 @@ class NearbyList extends StatelessWidget {
       // the first card is inset equally from the island's top and sides.
       shrinkWrap: scrollController == null,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      physics: const BouncingScrollPhysics(
+      physics: const StizeBouncePhysics(
         parent: AlwaysScrollableScrollPhysics(),
       ),
       children: [
@@ -225,9 +229,7 @@ class NearbyCard extends StatelessWidget {
       approximate: stuck,
       etaMinutes: first?.etaMinutes,
       scheduled: scheduled,
-      next: scheduled
-          ? null
-          : ArrivalTile.laterLabel(l10n, localeName, later),
+      next: scheduled ? null : ArrivalTile.laterLabel(l10n, localeName, later),
       followUps: scheduled && later.isNotEmpty
           ? later.take(2).map((m) => clockAt(localeName, m)).join(' · ')
           : null,
@@ -301,6 +303,7 @@ class _LineDirectionsCarouselState extends State<LineDirectionsCarousel>
     // deactivated-ancestor lookup.
     _settle = AnimationController(vsync: this, duration: StizeMotion.fast);
   }
+
   Animation<double>? _to;
 
   @override

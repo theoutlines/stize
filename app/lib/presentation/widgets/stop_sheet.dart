@@ -29,9 +29,8 @@ Future<void> showStopSheet(
 }) {
   return showAppSheet<void>(
     context,
-    // A faint scrim so the map behind stays legible — this reads as an overlay
-    // on the same map, not a new screen.
-    barrierColor: Colors.black.withValues(alpha: 0.08),
+    // DS MapSheet: no scrim, the map above stays live.
+    barrierColor: Colors.transparent,
     builder: (_) => _StopSheet(
       stopId: stopId,
       initialStopName: stopName,

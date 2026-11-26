@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/design/stize_scroll.dart';
 import '../../core/design/stize_tokens.dart';
 
 /// An edge-to-edge card list whose first and last cards stretch when the list
@@ -93,12 +94,11 @@ class _StretchCardListState extends State<StretchCardList> {
           ? p.minScrollExtent - p.pixels
           : p.pixels - p.maxScrollExtent;
       // Stiff, like a drag's rubber band: the pull slows fast and tops out
-      // well short of the list (owner, 2026-11-26: half the screen took one
-      // flick). Reaching the refresh trigger takes a deliberate pull.
-      const reach = 96.0;
-      final give = (1 - over / reach).clamp(0.0, 1.0);
+      // well short of the list (owner, 2026-11-26). Reaching the refresh
+      // trigger takes a deliberate pull.
+      final give = (1 - over / StizeOverscroll.wheelReach).clamp(0.0, 1.0);
       if (give <= 0) return;
-      p.jumpTo(p.pixels + dy * 0.4 * give * give);
+      p.jumpTo(p.pixels + dy * StizeOverscroll.wheelGain * give * give);
     });
   }
 
@@ -218,8 +218,8 @@ class _StretchCardListState extends State<StretchCardList> {
             onRefresh: widget.onRefresh,
             // Reachable within the resting sheet: bouncing friction makes 96 px
             // of stretch need a long finger travel (owner, 2026-11-26).
-            refreshTriggerPullDistance: 64,
-            refreshIndicatorExtent: 52,
+            refreshTriggerPullDistance: StizeOverscroll.refreshTrigger,
+            refreshIndicatorExtent: StizeOverscroll.refreshHold,
             builder: _refresh,
           ),
         SliverPadding(
@@ -371,7 +371,7 @@ class _EdgePainter extends CustomPainter {
 
 /// Bouncing physics that turn the scrollable's own wheel handling off while a
 /// wheel pull holds the list past an end (see [_StretchCardListState]).
-class _WheelPullPhysics extends BouncingScrollPhysics {
+class _WheelPullPhysics extends StizeBouncePhysics {
   const _WheelPullPhysics(this.pulling)
     : super(parent: const AlwaysScrollableScrollPhysics());
 

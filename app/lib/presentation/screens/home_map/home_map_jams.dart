@@ -240,7 +240,7 @@ extension _MapJams on _HomeMapScreenState {
         child: Text(l10n.searchNoResults, textAlign: TextAlign.center),
       );
     }
-    return ListView(
+    return StretchCardList(
       shrinkWrap: true,
       children: [
         for (final stop in _resultStops)

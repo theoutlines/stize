@@ -14,6 +14,7 @@ import '../screens/map_screen_args.dart';
 import 'sheet_chrome.dart';
 import 'vehicle_icon.dart';
 import '../../core/design/stize_icons.dart';
+import 'stretch_card_list.dart';
 
 /// Slides up a Yandex-style detail panel for a tapped live vehicle: line +
 /// direction, movement state, and the ordered list of upcoming stops with
@@ -81,9 +82,9 @@ class _VehicleDetailSheet extends StatelessWidget {
               children: [
                 const SheetDragHandle(bottom: 4),
                 Expanded(
-                  child: ListView(
+                  child: StretchCardList(
                     controller: scrollController,
-                    padding: const EdgeInsets.only(bottom: 12),
+                    bottomPadding: 12,
                     children: [
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
