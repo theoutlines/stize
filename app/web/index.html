@@ -17,6 +17,15 @@
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
+  <script>
+    // Splash theme = the app's saved choice (shared_preferences stores it as a
+    // JSON string under "flutter.settings_theme_mode"); "system" or nothing
+    // falls through to prefers-color-scheme in the splash CSS.
+    try {
+      var t = JSON.parse(localStorage.getItem('flutter.settings_theme_mode') || 'null');
+      if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Stiže: Belgrade buses, trams and trolleybuses live on the map, with arrivals for every stop. Gradski prevoz Beograd uživo: dolasci, stanice, red vožnje.">
 
@@ -32,11 +41,11 @@
        surface — the sheet background — instead of the Flutter default blue
        (#0175C2), which showed as a blue strip above the map. Two values because
        the app follows the system theme (ThemeMode.system): light surface in
-       light mode, the dark sheet surface (#10140f) in dark. On iOS this is a
+       light mode, the dark sheet surface (#151515) in dark (Stiže design system bg). On iOS this is a
        no-op — black-translucent (below) keeps the status bar transparent over
        the full-bleed map. -->
-  <meta name="theme-color" content="#eef3f1" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#10140f" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f4f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#151515" media="(prefers-color-scheme: dark)">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -205,7 +214,7 @@
     html, body {
       height: 100%;
       margin: 0;
-      background: #eef3f1;
+      background: #f4f4f2;
     }
     /* Pin the app to the full visual viewport on iOS Safari (F3b). Without this
        the page can scroll/rubber-band and leave a strip of body background
@@ -221,29 +230,138 @@
       overscroll-behavior: none;
     }
     @media (prefers-color-scheme: dark) {
-      html, body { background: #10140f; }
+      html:not([data-theme="light"]), html:not([data-theme="light"]) body { background: #151515; }
     }
+    html[data-theme="dark"], html[data-theme="dark"] body { background: #151515; }
+    /* Skeleton of the first screen, shown until Flutter paints its first frame.
+       It mirrors the real layout (sizes from context_slot.dart and
+       nearby_sheet.dart) so the app appears in place instead of popping in:
+       mobile = round buttons, search pill, sheet at its 190px rest;
+       desktop (>= 840px, kContextPanelBreakpoint) = the left island panel
+       (12px inset, clamp(360, 28vw, 400)) and the right control stack.
+       The map area uses the basemap background, so tiles fade in seamlessly.
+       Theme: the app's saved choice (localStorage), else the system. Never
+       intercepts input; removed entirely on the first Flutter frame. */
     #stize-loading {
+      --map: #f3f0ec; --card: #ffffff; --sheet: #f4f4f2; --btn: #ffffff;
+      --btn-ink: #151515; --sk: rgba(21, 21, 21, 0.07); --sk-hi: rgba(21, 21, 21, 0.14);
+      --shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
       position: fixed;
       inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: #6b7a72;
-      font-size: 15px;
-      /* The Flutter view paints over this splash, but it must never intercept
-         input — otherwise this full-screen overlay silently eats every tap on
-         the map underneath. Removed entirely once Flutter's first frame lands. */
+      background: var(--map);
       pointer-events: none;
+      overflow: hidden;
+    }
+    html[data-theme="dark"] #stize-loading {
+      --map: #191d27; --card: #212121; --sheet: #1f1f1f; --btn: #212121;
+      --btn-ink: #2a2a2a; --sk: rgba(255, 255, 255, 0.07); --sk-hi: rgba(255, 255, 255, 0.14);
+      --shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
     }
     @media (prefers-color-scheme: dark) {
-      #stize-loading { color: #8a9992; }
+      html:not([data-theme="light"]) #stize-loading {
+        --map: #191d27; --card: #212121; --sheet: #1f1f1f; --btn: #212121;
+        --btn-ink: #2a2a2a; --sk: rgba(255, 255, 255, 0.07); --sk-hi: rgba(255, 255, 255, 0.14);
+        --shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+      }
+    }
+    #stize-loading .sk {
+      background: linear-gradient(90deg, var(--sk) 0%, var(--sk-hi) 50%, var(--sk) 100%);
+      background-size: 200% 100%;
+      animation: sk-shimmer 1.4s linear infinite;
+      border-radius: 6px;
+    }
+    @keyframes sk-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+    @media (prefers-reduced-motion: reduce) { #stize-loading .sk { animation: none; } }
+    #stize-loading .sk-btn {
+      position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px);
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--btn); box-shadow: var(--shadow);
+    }
+    #stize-loading .sk-btn.l { left: 12px; }
+    #stize-loading .sk-btn.r { right: 12px; background: var(--btn-ink); }
+    #stize-loading .sk-pill {
+      position: absolute; left: 16px; right: 16px; height: 52px;
+      bottom: calc(clamp(20dvh, 190px, 42dvh) + 17px);
+      border-radius: 16px; background: var(--card); box-shadow: var(--shadow);
+      display: flex; align-items: center; gap: 14px; padding: 0 16px;
+    }
+    #stize-loading .sk-ico { width: 24px; height: 24px; border-radius: 50%; flex: none; }
+    #stize-loading .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+    #stize-loading .sk-sheet {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: clamp(20dvh, 190px, 42dvh);
+      border-radius: 28px 28px 0 0; background: var(--sheet);
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      padding: 14px 16px; box-sizing: border-box;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    #stize-loading .sk-row { display: flex; align-items: center; gap: 12px; }
+    #stize-loading .sk-card {
+      background: var(--card); border-radius: 16px; padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    #stize-loading .sk-side { display: none; }
+    @media (min-width: 840px) {
+      #stize-loading .sk-pill, #stize-loading .sk-sheet, #stize-loading .sk-btn.l { display: none; }
+      #stize-loading .sk-btn.r { top: 12px; width: 40px; height: 40px; }
+      #stize-loading .sk-side {
+        display: flex; flex-direction: column; gap: 8px;
+        position: absolute; left: 12px; top: 12px;
+        width: clamp(360px, 28vw, 400px);
+      }
+      #stize-loading .sk-menu {
+        flex: none; width: 48px; height: 48px; border-radius: 50%;
+        background: var(--btn); box-shadow: var(--shadow);
+      }
+      #stize-loading .sk-search {
+        flex: 1; height: 48px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow);
+        display: flex; align-items: center; gap: 14px; padding: 0 16px;
+      }
+      #stize-loading .sk-zoom {
+        position: absolute; right: 12px; top: 100px; width: 40px; height: 80px;
+        border-radius: 20px; background: var(--btn); box-shadow: var(--shadow);
+      }
     }
   </style>
 </head>
 <body>
-  <div id="stize-loading">Loading Stiže…</div>
+  <div id="stize-loading" role="progressbar" aria-label="Loading Stiže">
+    <div class="sk-btn l"></div>
+    <div class="sk-btn r"></div>
+    <div class="sk-pill">
+      <div class="sk sk-ico"></div>
+      <div class="sk-lines"><div class="sk" style="width: 30%; height: 8px"></div><div class="sk" style="width: 75%; height: 11px"></div></div>
+      <div class="sk sk-ico"></div>
+    </div>
+    <div class="sk-sheet">
+      <div class="sk-row"><div class="sk sk-ico"></div><div class="sk-lines"><div class="sk" style="width: 62%; height: 11px"></div><div class="sk" style="width: 40%; height: 8px"></div></div></div>
+      <div class="sk-card">
+        <div class="sk-row"><div class="sk" style="width: 64px; height: 28px; border-radius: 8px"></div><div style="flex: 1"></div><div class="sk" style="width: 48px; height: 28px"></div></div>
+        <div class="sk" style="width: 55%; height: 11px"></div>
+      </div>
+    </div>
+    <div class="sk-side">
+      <div class="sk-row" style="gap: 8px">
+        <div class="sk-menu"></div>
+        <div class="sk-search">
+          <div class="sk sk-ico"></div>
+          <div class="sk-lines"><div class="sk" style="width: 30%; height: 8px"></div><div class="sk" style="width: 70%; height: 11px"></div></div>
+          <div class="sk sk-ico"></div>
+        </div>
+      </div>
+      <div class="sk-card">
+        <div class="sk-row"><div class="sk sk-ico"></div><div class="sk-lines"><div class="sk" style="width: 62%; height: 11px"></div><div class="sk" style="width: 40%; height: 8px"></div></div></div>
+      </div>
+      <div class="sk-card">
+        <div class="sk-row"><div class="sk" style="width: 64px; height: 28px; border-radius: 8px"></div><div style="flex: 1"></div><div class="sk" style="width: 48px; height: 28px"></div></div>
+        <div class="sk" style="width: 55%; height: 11px"></div>
+        <div style="height: 4px"></div>
+        <div class="sk-row"><div class="sk" style="width: 64px; height: 28px; border-radius: 8px"></div><div style="flex: 1"></div><div class="sk" style="width: 48px; height: 28px"></div></div>
+        <div class="sk" style="width: 45%; height: 11px"></div>
+      </div>
+    </div>
+    <div class="sk-zoom"></div>
+  </div>
   <script>
     // Drop the loading splash once Flutter paints its first frame, so it never
     // lingers over the app.
