@@ -1002,13 +1002,19 @@ extension _MapLayers on _HomeMapScreenState {
   /// Lazily fetches (once, cached) the route geometry for each given key so
   /// vehicles on it can be animated along the route. Keys are direction route_ids
   /// when [byRouteId] (fetched by route_id), else line numbers (fetched by
-  /// number). A failed lookup caches null — the vehicle then falls back to a
-  /// plain straight-line ease. Route_ids and line numbers don't collide, so the
-  /// one cache safely holds both across a flag flip.
+  /// number). A line with no shape caches null (raw GPS, owner R4 #2); a failed
+  /// lookup is retried after [_shapeRetryAfter]. Route_ids and line numbers don't
+  /// collide, so the one cache safely holds both.
   void _ensureShapesFor(Iterable<String> keys, {required bool byRouteId}) {
     final repo = ref.read(linesRepositoryProvider);
+    final now = DateTime.now();
     for (final key in keys.toSet()) {
       if (_shapeCache.containsKey(key) || _shapeFetching.contains(key)) {
+        continue;
+      }
+      final failed = _shapeFailedAt[key];
+      if (failed != null &&
+          now.difference(failed) < _HomeMapScreenState._shapeRetryAfter) {
         continue;
       }
       _shapeFetching.add(key);
@@ -1016,15 +1022,23 @@ extension _MapLayers on _HomeMapScreenState {
           .then((shape) {
             final path = RoutePath.fromLatLon(shape.polyline);
             _shapeCache[key] = path;
-            // The shape landed after the sync that needed it: re-apply the
-            // current set so any timed track still on the plan-point chord
-            // fallback upgrades to this road geometry now (~fetch latency)
-            // instead of driving straight "through buildings" until the next
-            // 30s poll. updatePlan re-anchors onto the new path without a jump.
-            if (path != null && path.isUsable) _scheduleVehicleResync();
+            _shapeFailedAt.remove(key);
+            if (path == null || !path.isUsable || !mounted) return;
+            // The shape landed after the sample that needed it: put every
+            // vehicle of this direction on the road now, whichever feed drew it
+            // (the viewport set, a stop's board, a followed vehicle), instead of
+            // leaving it at its raw fix until the next 30s poll.
+            if (byRouteId &&
+                _vehAnimator.adoptPath(key, path, _vehAnim.value)) {
+              if (!_paused && _vehAnimator.hasPendingMotion) {
+                _startVehDriver();
+              }
+              _paintVehicles();
+            }
+            _scheduleVehicleResync();
           })
           .catchError((_) {
-            _shapeCache[key] = null;
+            _shapeFailedAt[key] = DateTime.now();
           })
           .whenComplete(() => _shapeFetching.remove(key));
     }
@@ -1047,7 +1061,7 @@ extension _MapLayers on _HomeMapScreenState {
           type: v.vehicleType,
           heading: v.heading,
           // Stitch to the direction-resolved shape when available (fixes
-          // "through houses"); null key ⇒ no path ⇒ straight-line ease.
+          // "through houses"); without it the marker holds its raw GPS fix.
           path: shapeKeyOf(v) == null ? null : _shapeCache[shapeKeyOf(v)!],
           // Same resolved direction, so a marker-tap follow highlights the
           // correct-direction route + stops rather than the line default.
@@ -1064,7 +1078,7 @@ extension _MapLayers on _HomeMapScreenState {
 
   /// Debounced re-sync after a route shape finishes loading (see
   /// [_ensureShapesFor]). Coalesces a burst of shape loads into one animator
-  /// re-sync so a newly-fetched road geometry replaces the chord fallback
+  /// re-sync so a newly-fetched road geometry replaces the raw-fix fallback
   /// promptly, without resetting the 30s ease ramp (that would nudge fallback
   /// tracks) — timed tracks upgrade their path in place via updatePlan.
   void _scheduleVehicleResync() {

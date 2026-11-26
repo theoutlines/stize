@@ -7,6 +7,15 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Fixed (late night, vehicles)
+- **Vehicles stay on the road.** Until a route's shape had loaded, a vehicle
+  was driven in straight lines from stop to stop, across the blocks between
+  them; a vehicle on a stop board stayed on that line for up to 30 s even
+  after the shape arrived, and a shape that failed to load once was never
+  retried. Now a vehicle without its shape stands at its GPS fix, every
+  vehicle of a direction moves onto the road the moment its shape loads, and
+  a failed shape is fetched again.
+
 ### Fixed (night)
 - **Address search stays in Belgrade.** Desktop search no longer mixes in
   addresses from other countries ("830" used to bring Taiwan and the US):

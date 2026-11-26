@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart' as ll;
+import 'package:stize/core/route_path.dart';
 import 'package:stize/core/vehicle_track_animator.dart';
 import 'package:stize/domain/models/area_vehicle.dart';
 import 'package:stize/domain/models/trajectory_point.dart';
@@ -66,6 +67,10 @@ void main() {
             line: '2',
             type: VehicleType.tram,
             source: VehicleSource.scheduled,
+            path: RoutePath.fromLatLon(const [
+              [44.80, 20.50],
+              [44.80, 20.60],
+            ]),
             trajectory: const [
               TrajectoryPoint(44.80, 20.50, 0),
               TrajectoryPoint(44.80, 20.60, 100),

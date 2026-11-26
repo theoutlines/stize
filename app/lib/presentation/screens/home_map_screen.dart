@@ -318,9 +318,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   final Map<String, RoutePath?> _shapeCache = {};
   final Set<String> _shapeFetching = {};
 
+  /// When a shape lookup last failed. A failure (a network blip) is retried
+  /// after [_shapeRetryAfter] instead of being cached for the session, which
+  /// left that direction's vehicles off the road until a reload.
+  final Map<String, DateTime> _shapeFailedAt = {};
+  static const _shapeRetryAfter = Duration(seconds: 30);
+
   // The last vehicle set handed to the animator, kept so a route shape that
   // finishes loading *after* a sync can be re-applied immediately (upgrading a
-  // timed track from the plan-point chord fallback to the real road geometry)
+  // vehicle from its raw GPS fix onto the real road geometry)
   // instead of waiting for the next 30s poll. Debounced by [_shapeResyncTimer]
   // so a burst of shape loads (panning brings in many lines) coalesces into one
   // re-sync.

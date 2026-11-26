@@ -400,33 +400,44 @@ void main() {
       expect(half, lessThan(20.51));
     });
 
-    test('extrapolates along the plan when no route path is available yet', () {
-      var now = _t0;
-      final animator = VehicleTrackAnimator(clock: () => now);
-      // No GTFS shape yet — the plan alone still drives the vehicle (along its own
-      // station points) rather than standing at its fix.
-      animator.syncSamples(
-        [
-          VehicleSample(
-            key: 'P1',
-            position: const ll.LatLng(44.80, 20.500),
-            line: '2',
-            type: VehicleType.tram,
-            path: null,
-            trajectory: _eastPlan(),
-            asOf: _t0,
-          ),
-        ],
-        0,
-        now: now,
-      );
-      expect(animator.trackFor('P1')!.timed, isNotNull);
-      // Fresh: there's motion to render, and it moves forward.
-      now = _t0.add(const Duration(seconds: 5));
-      expect(animator.hasMotion('P1'), isTrue);
-      animator.advanceTimed(now);
-      expect(animator.positionOf('P1', 0).longitude, greaterThan(20.500));
-    });
+    test(
+      'without a road shape it holds the GPS fix, never plays stop to stop',
+      () {
+        var now = _t0;
+        final animator = VehicleTrackAnimator(clock: () => now);
+        animator.syncSamples(
+          [
+            VehicleSample(
+              key: 'P1',
+              position: const ll.LatLng(44.80, 20.500),
+              line: '2',
+              type: VehicleType.tram,
+              directionRouteId: 'R2',
+              trajectory: _eastPlan(),
+              asOf: _t0,
+            ),
+          ],
+          0,
+          now: now,
+        );
+        // The plan's points are stops: a straight chord between them crossed
+        // the blocks in between (owner, 2026-11-26). No shape, no timed mode.
+        expect(animator.trackFor('P1')!.timed, isNull);
+        now = _t0.add(const Duration(seconds: 5));
+        animator.advanceTimed(now);
+        expect(animator.positionOf('P1', 1).longitude, 20.500);
+
+        // The shape lands: the vehicle goes onto the road at once and its plan
+        // plays along it, with no new sample.
+        expect(animator.adoptPath('R2', _eastRoute(), 1, now: now), isTrue);
+        expect(animator.trackFor('P1')!.timed, isNotNull);
+        now = now.add(const Duration(seconds: 5));
+        animator.advanceTimed(now);
+        expect(animator.positionOf('P1', 0).longitude, greaterThan(20.500));
+        // A shape for another direction leaves it alone.
+        expect(animator.adoptPath('R9', _eastRoute(), 1, now: now), isFalse);
+      },
+    );
 
     test(
       'abandons timed mode (without rewinding) if the plan later drops out',
