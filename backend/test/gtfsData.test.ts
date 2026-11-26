@@ -34,17 +34,21 @@ describe("gtfsData (against the real built GTFS bundle)", () => {
     expect((await searchStops(env, "0830"))[0].stop_id).toBe("20830");
   });
 
-  it("narrows by number prefix while typing, exact number first", async () => {
-    const results = await searchStops(env, "83");
-    expect(stopCode(results[0].stop_id)).toBe("83");
-    const codes = results.slice(1, 11).map((s) => stopCode(s.stop_id));
-    expect(codes.every((c) => c !== null && c.startsWith("83"))).toBe(true);
+  it("from three digits, numbers that start with the query follow the exact one", async () => {
+    // No stop 124 exists; 1240…1249 do, in number order.
+    const codes = (await searchStops(env, "124")).map((s) => stopCode(s.stop_id));
+    expect(codes.slice(0, 3)).toEqual(["1240", "1241", "1242"]);
+    expect((await searchStops(env, "830")).map((s) => stopCode(s.stop_id))[0]).toBe("830");
   });
 
-  it("still matches names that contain the digits after the numbers", async () => {
-    // There is no stop 25, so the numbers starting with 25 lead.
+  it("two digits find only the exact number, never a pile of prefixes", async () => {
+    const results = await searchStops(env, "83");
+    expect(stopCode(results[0].stop_id)).toBe("83");
+    expect(results.some((s) => stopCode(s.stop_id) === "830")).toBe(false);
+  });
+
+  it("still matches names that contain the digits", async () => {
     const results = await searchStops(env, "25");
-    expect(stopCode(results[0].stop_id)?.startsWith("25")).toBe(true);
     expect(results.some((s) => s.name === "Blok 25")).toBe(true);
   });
 

@@ -240,15 +240,37 @@ extension _MapJams on _HomeMapScreenState {
         child: Text(l10n.searchNoResults, textAlign: TextAlign.center),
       );
     }
+    // An exact line number goes above the stops (core/search.dart).
+    final lines = splitExactLines(_resultLines, _searchController.text);
     return StretchCardList(
       shrinkWrap: true,
       children: [
+        for (final line in lines.exact)
+          ListTile(
+            leading: vehicleGlyph(
+              line.vehicleType,
+              size: 24,
+              color: vehicleColor(line.vehicleType),
+            ),
+            title: Text(line.line),
+            subtitle: Text('${line.origin} → ${line.destination}'),
+            trailing: IconButton(
+              icon: Icon(
+                _isLinePinned(line.line)
+                    ? StizeIcons.pinPushFilled
+                    : StizeIcons.pinPush,
+              ),
+              tooltip: l10n.pinLineTooltip,
+              onPressed: () => _togglePinLine(line),
+            ),
+            onTap: () => _openLine(line),
+          ),
         for (final stop in _resultStops)
           StopResultTile(
             stop: stop,
             onTap: () => _openStop(stop, source: Ev.srcSearch),
           ),
-        for (final line in _resultLines)
+        for (final line in lines.rest)
           ListTile(
             leading: vehicleGlyph(
               line.vehicleType,

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stize/core/design/stize_theme.dart';
 import 'package:stize/core/search.dart';
+import 'package:stize/domain/models/line_info.dart';
 import 'package:stize/domain/models/stop.dart';
+import 'package:stize/domain/models/vehicle_type.dart';
 import 'package:stize/presentation/widgets/stop_result_tile.dart';
 
 Stop _s(String id, String name) =>
@@ -30,17 +32,56 @@ void main() {
     expect(searchStopsLocal(stops, '0830').first.stopId, '20830');
   });
 
-  test('typing narrows by prefix, exact first, then name matches', () {
+  test('from three digits, numbers starting with the query follow', () {
     expect(searchStopsLocal(stops, '83').map((s) => s.stopId).toList(), [
       '20083',
-      '20830',
+    ]);
+    expect(searchStopsLocal(stops, '831').map((s) => s.stopId).toList(), [
       '20831',
     ]);
+    expect(
+      searchStopsLocal([
+        ...stops,
+        _s('28301', 'Far'),
+      ], '830').map((s) => s.stopId).toList(),
+      ['20830', '28301'],
+    );
+  });
+
+  test('two digits: the exact number, then names with the digits', () {
     expect(searchStopsLocal(stops, '25').map((s) => s.stopId).toList(), [
       '20025',
-      '20250',
-      '20844', // "Blok 25" by name
+      '20844', // "Blok 25" by name, not 250 by prefix
     ]);
+  });
+
+  test('an exact line number goes above the stops', () {
+    final lines = [
+      LineInfo(
+        line: '583',
+        vehicleType: VehicleType.bus,
+        routeId: 'a',
+        origin: 'A',
+        destination: 'B',
+      ),
+      LineInfo(
+        line: '83',
+        vehicleType: VehicleType.bus,
+        routeId: 'b',
+        origin: 'C',
+        destination: 'D',
+      ),
+    ];
+    final rows = mergeNearbyThenGlobal(
+      nearby: const [],
+      stops: [stops[4]],
+      lines: lines,
+      query: '83',
+    );
+    expect(rows[0], isA<LineSearchRow>());
+    expect((rows[0] as LineSearchRow).line.line, '83');
+    expect(rows[1], isA<StopSearchRow>());
+    expect((rows[2] as LineSearchRow).line.line, '583');
   });
 
   test('a name query is unchanged', () {

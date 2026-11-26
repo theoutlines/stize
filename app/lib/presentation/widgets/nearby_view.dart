@@ -382,6 +382,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
         nearby: _filtered, // filtered + live-first ordered nearby groups
         stops: _global.stops,
         lines: _global.lines,
+        query: _query,
       );
       if (rows.isEmpty) {
         return _scrollable(

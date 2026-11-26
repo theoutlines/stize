@@ -84,10 +84,13 @@ export function stopCode(stopId: string): string | null {
 
 const CODE_QUERY = /^\d{1,4}$/;
 const MAX_CODE_MATCHES = 10;
+// Number prefixes start at three digits: shorter numbers are line numbers far
+// more often, and 8 or 83 would list dozens of unrelated stops.
+const MIN_PREFIX_DIGITS = 3;
 
 /// Name substring search, plus sign-number search for an all-digit query: the
-/// exact number first, then numbers that start with it (so typing 8 → 83 → 830
-/// narrows live), then name matches ("Blok 25" for "25"). Shared contract with
+/// exact number first, then (from three digits) numbers that start with it
+/// (830 → 8300…8309), then name matches ("Blok 25" for "25"). Shared contract with
 /// the client's offline search (app/lib/core/search.dart searchStopsLocal).
 export function searchStopsIn(stops: StopDto[], query: string): StopDto[] {
   const q = query.trim().toLowerCase();
@@ -101,7 +104,7 @@ export function searchStopsIn(stops: StopDto[], query: string): StopDto[] {
       const code = stopCode(s.stop_id);
       if (code === null) continue;
       if (code === n) exact.push(s);
-      else if (code.startsWith(n)) prefix.push(s);
+      else if (q.length >= MIN_PREFIX_DIGITS && code.startsWith(n)) prefix.push(s);
     }
     prefix.sort((a, b) => Number(a.stop_id) - Number(b.stop_id));
     byCode.push(...exact, ...prefix.slice(0, MAX_CODE_MATCHES));

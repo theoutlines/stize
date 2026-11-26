@@ -16,6 +16,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
 import '../../core/context_slot.dart';
+import '../../core/search.dart';
 import '../../core/coverage_heatmap.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../core/fleet_matcher.dart';
