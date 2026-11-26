@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/route_alert.dart';
@@ -7,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../../core/design/stize_icons.dart';
 import '../../core/design/stize_tokens.dart';
+import 'notice_strip.dart';
 
 /// The soft delay banner shown on a stop board that is *downstream* of a detected
 /// tram jam, plus the neutral bus-substitution notice. Tone is deliberately an
@@ -90,35 +90,14 @@ class JamStopBanner extends ConsumerWidget {
     required String text,
     bool official = false,
   }) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    // Amber-tinted, matching the map jam colour; a confirmed alert reads a touch
-    // stronger than our soft inference.
-    // DS `jam` token at 12-14% (20% when the city confirmed it).
-    final tint = StizeColors.of(
-      context,
-    ).jam.withValues(alpha: official ? 0.20 : 0.13);
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: tint,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: scheme.onSurface),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: StizeText.of(
-                context,
-              ).caption.copyWith(color: scheme.onSurface),
-            ),
-          ),
-        ],
-      ),
+    // DS Banner, jam: `jam` at 13%, 20% when the city confirmed it. A flat
+    // NoticeStrip that opens the board's list, like the Nearby jam notice.
+    return NoticeStrip(
+      icon: icon,
+      title: text,
+      surface: StizeColors.of(
+        context,
+      ).jam.withValues(alpha: official ? 0.20 : 0.13),
     );
   }
 }

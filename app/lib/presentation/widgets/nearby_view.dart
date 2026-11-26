@@ -288,14 +288,10 @@ class NearbyViewState extends ConsumerState<NearbyView> {
 
   @override
   Widget build(BuildContext context) {
-    final contextLines = {
-      for (final g in _groups ?? const <NearbyGroup>[]) g.line,
-    };
     return Column(
       mainAxisSize: widget.hugContent ? MainAxisSize.min : MainAxisSize.max,
       children: [
         if (widget.showLocalSearch) _localSearch(Theme.of(context)),
-        if (contextLines.isNotEmpty) JamNearbyStrip(contextLines: contextLines),
         Flexible(
           fit: widget.hugContent ? FlexFit.loose : FlexFit.tight,
           child: _content(widget.scrollController),
@@ -456,9 +452,33 @@ class NearbyViewState extends ConsumerState<NearbyView> {
       onRefresh: _fetch,
       onTapGroup: widget.onTapGroup,
       header: _liveUnavailable ? const LiveUnavailableBanner() : null,
-      // The guide strip opens the list itself, mobile and desktop alike.
-      lead: _query.isEmpty ? widget.banner : null,
-      leadColor: GuideStrip.surface(StizeColors.of(context)),
+      // The jam notice and the guide strip open the list itself, mobile and
+      // desktop alike, and scroll with it (DS Banner, owner 2026-11-26).
+      lead: _query.isEmpty ? _lead() : null,
+      leadColor: _hasJams
+          ? jamSurface(StizeColors.of(context))
+          : GuideStrip.surface(StizeColors.of(context)),
+    );
+  }
+
+  Set<String> get _contextLines => {
+    for (final g in _groups ?? const <NearbyGroup>[]) g.line,
+  };
+
+  bool get _hasJams => nearbyJams(ref, _contextLines).isNotEmpty;
+
+  /// What opens the Nearby list: the jam notice, then the guide strip.
+  Widget? _lead() {
+    final parts = [
+      if (_hasJams) JamNearbyStrip(contextLines: _contextLines),
+      ?widget.banner,
+    ];
+    if (parts.isEmpty) return null;
+    if (parts.length == 1) return parts.single;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: FlatCards.of(context) ? 0 : StizeSpace.space1,
+      children: parts,
     );
   }
 

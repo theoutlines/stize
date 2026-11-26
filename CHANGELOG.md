@@ -7,6 +7,13 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Changed (late night)
+- **Notices open the list.** The delay notice in Nearby, the delay and bus
+  substitution notices on a stop board and the GSP route alerts are one flat
+  strip, edge to edge on mobile and rounded in the desktop island, like the
+  guide strip. They scroll with the list instead of sitting over it as an
+  inset card; a tap on a delay shows the affected stops.
+
 ### Fixed (night)
 - **Address search stays in Belgrade.** Desktop search no longer mixes in
   addresses from other countries ("830" used to bring Taiwan and the US):
