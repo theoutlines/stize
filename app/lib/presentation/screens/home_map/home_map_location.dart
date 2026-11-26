@@ -234,29 +234,33 @@ extension _MapLocation on _HomeMapScreenState {
     );
   }
 
-  Widget _mapCenterPoint(Size size) {
-    final c = _visibleCentre(size);
-    return Positioned(
-      left: c.dx - 20,
-      top: c.dy - 20,
-      child: IgnorePointer(
-        child: MapCenterPoint(lifted: _browseLifted, drop: _browseDrop),
-      ),
-    );
-  }
-
   /// A user drag started on the Nearby map: lift the dot.
   void _onBrowseDragStart() {
-    if (!_browseEligible || _browseLifted) return;
+    if (!_browseEligible) return;
+    // A new drag inside the settle window: the last idle was a pause, not the
+    // end of the gesture, so the dot stays up.
+    _browseIdleTimer?.cancel();
+    if (_browseLifted) return;
+    _browseDropTimer?.cancel();
+    _browseDropAt = null;
     _setState(() => _browseLifted = true);
+    _pushBrowseDot();
   }
 
-  /// The drag settled: drop the dot on the visible centre and make that
-  /// Nearby's point. A point within 40 m of your fix is just "around you".
+  /// The camera stopped. Wait a beat before dropping: on touch a gesture can
+  /// report an idle mid-way (a pause, the end of a flick before the next one).
   void _onBrowseIdle() {
     if (!_browseLifted) return;
+    _browseIdleTimer?.cancel();
+    _browseIdleTimer = Timer(const Duration(milliseconds: 280), _dropBrowseDot);
+  }
+
+  /// Drop the dot on the visible centre and make that Nearby's point. A point
+  /// within 40 m of your fix is just "around you".
+  void _dropBrowseDot() {
+    if (!_browseLifted || !mounted) return;
     final c = _controller;
-    if (c == null || !mounted) return;
+    if (c == null) return;
     final size = MediaQuery.sizeOf(context);
     final geo = c.toLngLat(_visibleCentre(size));
     final point = ll.LatLng(geo.lat, geo.lon);
@@ -266,8 +270,125 @@ extension _MapLocation on _HomeMapScreenState {
     _setState(() {
       _browseLifted = false;
       _browsePoint = home ? null : point;
-      _browseDrop++;
     });
+    // The bounce: a few tiny source updates over the drop, then still.
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    _browseDropTimer?.cancel();
+    if (home || still) {
+      _browseDropAt = null;
+      _pushBrowseDot();
+      return;
+    }
+    _browseDropAt = DateTime.now();
+    _pushBrowseDot();
+    _browseDropTimer = Timer.periodic(const Duration(milliseconds: 16), (t) {
+      final at = _browseDropAt;
+      if (!mounted ||
+          at == null ||
+          DateTime.now().difference(at) >= StizeMotion.medium) {
+        t.cancel();
+        _browseDropAt = null;
+      }
+      _pushBrowseDot();
+    });
+  }
+
+  /// How far up the dot rides right now, in px (lifted, or mid-bounce), and
+  /// its opacity.
+  (double, double) _browseDotLift() {
+    const lift = 14.0;
+    if (_browseLifted) return (lift, 0.6);
+    final at = _browseDropAt;
+    if (at == null) return (0, 1);
+    final t = (DateTime.now().difference(at).inMicroseconds /
+            StizeMotion.medium.inMicroseconds)
+        .clamp(0.0, 1.0);
+    final up = 1 - Curves.bounceOut.transform(t);
+    return (lift * up, 1 - 0.4 * up);
+  }
+
+  /// The dot as map features: your dot (primary with a white ring) and, while
+  /// lifted, its shadow on the spot it will land on. Empty when not browsing.
+  String _browseDotGeoJson() {
+    final c = _controller;
+    final features = <Map<String, Object?>>[];
+    if (c != null && mounted && _browseShowing) {
+      final Offset base;
+      if (_browseLifted) {
+        base = _visibleCentre(MediaQuery.sizeOf(context));
+      } else {
+        final p = _browsePoint;
+        base = p == null
+            ? _visibleCentre(MediaQuery.sizeOf(context))
+            : c.toScreenLocation(Geographic(lon: p.longitude, lat: p.latitude));
+      }
+      final (lift, opacity) = _browseDotLift();
+      Map<String, Object?> f(Offset px, Map<String, Object?> props) {
+        final g = c.toLngLat(px);
+        return {
+          'type': 'Feature',
+          'geometry': {
+            'type': 'Point',
+            'coordinates': [g.lon, g.lat],
+          },
+          'properties': props,
+        };
+      }
+
+      final primary = Theme.of(context).colorScheme.primary.toHexString();
+      if (_browseLifted) {
+        features.add(f(base + const Offset(0, 2), {
+          'r': 5.0,
+          'color': '#000000',
+          'opacity': 0.35,
+          'blur': 0.8,
+          'stroke': 0.0,
+        }));
+      }
+      features.add(f(base - Offset(0, lift), {
+        'r': 6.0,
+        'color': primary,
+        'opacity': opacity,
+        'blur': 0.0,
+        'stroke': 3.0,
+      }));
+    }
+    return jsonEncode({'type': 'FeatureCollection', 'features': features});
+  }
+
+  /// Puts the dot's current state on the map (adds the layer on first use).
+  Future<void> _pushBrowseDot() async {
+    final style = _style;
+    if (style == null) return;
+    final srcId = _stopSourceId(_HomeMapScreenState._browseDotLayerId);
+    try {
+      if (!_browseDotAdded) {
+        _browseDotAdded = true;
+        await style.addSource(
+          GeoJsonSource(id: srcId, data: _browseDotGeoJson()),
+        );
+        await style.addLayer(
+          CircleStyleLayer(
+            id: _HomeMapScreenState._browseDotLayerId,
+            sourceId: srcId,
+            paint: {
+              'circle-radius': ['get', 'r'],
+              'circle-color': ['get', 'color'],
+              'circle-opacity': ['get', 'opacity'],
+              'circle-blur': ['get', 'blur'],
+              'circle-stroke-width': ['get', 'stroke'],
+              'circle-stroke-color': '#ffffff',
+              'circle-stroke-opacity': ['get', 'opacity'],
+              'circle-pitch-alignment': 'map',
+            },
+          ),
+        );
+      } else {
+        await style.updateGeoJsonSource(id: srcId, data: _browseDotGeoJson());
+      }
+    } catch (_) {
+      _browseDotAdded = false;
+    }
   }
 
   /// The pill's place line: around you, or the stop nearest the map point.

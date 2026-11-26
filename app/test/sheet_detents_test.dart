@@ -129,4 +129,47 @@ void main() {
     expect(sheet.maxChildSize, kSheetLarge);
     expect(sheet.snapSizes, contains(kSheetLarge));
   });
+
+  testWidgets('full Nearby sheet: a slow pull down stays, a flick collapses', (
+    tester,
+  ) async {
+    final ctl = DraggableScrollableController();
+    await tester.pumpWidget(
+      _app(
+        NearbySheet(
+          controller: ctl,
+          oneScroll: true,
+          userLocation: ll.LatLng(44.8, 20.5),
+          locationDenied: false,
+          active: true,
+          onEnableLocation: () {},
+        ),
+        overrides: [
+          nearbyArrivalsRepositoryProvider.overrideWithValue(_EmptyNearby()),
+        ],
+      ),
+    );
+    await tester.pump();
+    final list = find.byType(Scrollable).last;
+    // Raise the sheet to its top by dragging the list.
+    await tester.drag(list, const Offset(0, -900));
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    expect(ctl.size, closeTo(kSheetLarge, 0.01));
+    // A slow pull at the list's top overscrolls the list, not the sheet.
+    final at = tester.getCenter(find.byType(DraggableScrollableSheet));
+    final g = await tester.startGesture(at);
+    for (var i = 0; i < 10; i++) {
+      await g.moveBy(const Offset(0, 12));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(ctl.size, closeTo(kSheetLarge, 0.01));
+    await g.up();
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    expect(ctl.size, closeTo(kSheetLarge, 0.01));
+    // A quick flick down collapses it.
+    await tester.flingFrom(at, const Offset(0, 60), 1500);
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    expect(ctl.size, lessThan(kSheetLarge - 0.1));
+    await tester.pumpWidget(const SizedBox());
+  });
 }

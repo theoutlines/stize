@@ -157,8 +157,10 @@ class _StretchCardListState extends State<StretchCardList> {
         if (widget.onRefresh != null)
           CupertinoSliverRefreshControl(
             onRefresh: widget.onRefresh,
-            refreshTriggerPullDistance: 96,
-            refreshIndicatorExtent: 64,
+            // Reachable within the resting sheet: bouncing friction makes 96 px
+            // of stretch need a long finger travel (owner, 2026-11-26).
+            refreshTriggerPullDistance: 64,
+            refreshIndicatorExtent: 52,
             builder: _refresh,
           ),
         SliverPadding(

@@ -52,7 +52,6 @@ import '../providers/providers.dart';
 import '../widgets/context_shell.dart';
 import '../widgets/stop_header_actions.dart';
 import '../widgets/fleet_model_card.dart';
-import '../widgets/map_center_point.dart';
 import '../widgets/follow_view.dart';
 import '../widgets/sheet_chrome.dart';
 import '../widgets/nearby_sheet.dart';
@@ -190,6 +189,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // timer that runs ONLY while a jam exists — an empty map spins nothing (thermal).
   static const _jamSegmentLayerId = 'stg-jam-segment';
   static const _jamGlowLayerId = 'stg-jam-glow';
+  static const _browseDotLayerId = 'stg-browse-dot';
   bool _jamLayersAdded = false;
   bool _jamsProcessing = false; // guards the async shape-load reentrancy
   List<List<ll.LatLng>> _jamSegments = const []; // amber polylines to draw
@@ -263,7 +263,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // you drag; null = around you.
   ll.LatLng? _browsePoint;
   bool _browseLifted = false;
-  int _browseDrop = 0;
+  // The centre point is a map layer, not a Flutter overlay: an overlay that
+  // appears over the map as a drag starts broke the drag on iPhone Safari, and
+  // an overlay tied to the visible centre slid over the map with the sheet
+  // (owner, 2026-11-26).
+  bool _browseDotAdded = false;
+  bool _browseDotShown = false;
+  Timer? _browseDropTimer;
+  Timer? _browseIdleTimer;
+  DateTime? _browseDropAt;
 
   /// The guide was opened on this device (ends the first-launch strip).
   bool _guideSeen = true;
@@ -534,6 +542,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _vehiclesTimer?.cancel();
     _shapeResyncTimer?.cancel();
     _jamPulseTimer?.cancel();
+    _browseDropTimer?.cancel();
+    _browseIdleTimer?.cancel();
     _stopVehDriver();
     _vehTicker?.dispose();
     _vehAnim.removeStatusListener(_onVehAnimStatus);
@@ -828,6 +838,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final mobileSheetShowing = showingNearbySheet;
     if (!mobileSheetShowing && _mobileSheetPx != 0) _mobileSheetPx = 0;
 
+    // The map-layer dot follows the browse state (a level opening hides it,
+    // the locate button clears it).
+    final dotShown = _browseShowing;
+    if (dotShown != _browseDotShown) {
+      _browseDotShown = dotShown;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _pushBrowseDot());
+    }
+
     final insets = _mapInsets;
     if (insets != _appliedInsets) {
       final first = _appliedInsets == null;
@@ -896,7 +914,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                             // is idle between fixes, so this only repaints while moving.
                             // While Nearby is around a map point, your dot is the
                             // centre point instead (drawn over the map below).
-                            if (_meTo != null && !_browseShowing)
+                            if (_meTo != null && _browsePoint == null)
                               AnimatedBuilder(
                                 animation: _meAnim,
                                 builder: (context, _) {
@@ -926,9 +944,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                     // Positioned like the real map, so tests see the same Stack
                     // sizing as production.
                     const Positioned.fill(child: SizedBox()),
-                  // Your dot on the visible centre while Nearby is around a
-                  // map point.
-                  if (_browseShowing) _mapCenterPoint(size),
                   // Round action buttons at the top: menu (left), recenter (right).
                   _pushedTopButtons(theme, size),
                   // Staging-only stop-render diagnostics (isStaging; invisible in prod).

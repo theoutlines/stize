@@ -66,11 +66,10 @@ void main() {
         ]);
 
         final rows = _rows(entries);
-        expect(
-          rows.map((r) => r.arrival.etaMinutes),
-          [2, 14],
-          reason: 'both live rows kept, sorted by ETA',
-        );
+        expect(rows.map((r) => r.arrival.etaMinutes), [
+          2,
+          14,
+        ], reason: 'both live rows kept, sorted by ETA');
 
         final cells = _cells(entries);
         expect(cells, hasLength(1));

@@ -108,6 +108,8 @@ extension _MapLayers on _HomeMapScreenState {
     // Re-add the focused-line layers (below the vehicle symbols) if a line is
     // focused across this style (re)load — e.g. a theme flip mid-follow.
     if (_focus != null) _syncFocusLayers();
+    _browseDotAdded = false;
+    _pushBrowseDot();
     _loadStopsForVisibleArea();
     _loadVehiclesForVisibleArea(force: true);
     // Rails + the line-type index are decoration, not the first answer: load
@@ -482,6 +484,9 @@ extension _MapLayers on _HomeMapScreenState {
       _loadStopsForVisibleArea();
       _loadVehiclesForVisibleArea();
       _reconcileCoverageLayer();
+    } else if (event is MapEventMoveCamera) {
+      // The lifted dot rides the visible centre while the map moves.
+      if (_browseLifted) _pushBrowseDot();
     } else if (event is MapEventClick) {
       _handleTap(event.point);
     } else if (event is MapEventStartMoveCamera) {
