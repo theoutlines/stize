@@ -12,6 +12,10 @@ and Google Play).
 
 ## Ground rules
 
+- This repo is public, history included. Never commit working notes (reports,
+  prompts, backlogs, status, a long CLAUDE.md): they live in the private
+  project. CI (`tool/public_guard.py`) fails on them, on env/key files, on
+  key-like strings and on personal email addresses.
 - Never commit secrets. Copy `.env.example` to a local `.env` (or use
   `wrangler secret put`) and keep real values out of the repo.
 - The app must only talk to its own backend (`backend/`) — never call the

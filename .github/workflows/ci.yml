@@ -15,6 +15,15 @@ permissions:
   contents: read
 
 jobs:
+  # This repo is public: nothing private may land in it (history included).
+  # Reports, prompts, backlogs, a long CLAUDE.md, env/key files, key-like
+  # strings and personal email addresses fail the build.
+  public-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tool/public_guard.py
+
   backend:
     runs-on: ubuntu-latest
     defaults:
