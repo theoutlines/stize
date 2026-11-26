@@ -90,7 +90,7 @@ class MapSearchPill extends StatelessWidget {
                               icon: Icon(
                                 away ? StizeIcons.nearMe : StizeIcons.locate,
                                 color: c.ink,
-                                size: 22,
+                                size: 24,
                               ),
                               onPressed: onLocate,
                             ),
@@ -201,7 +201,7 @@ class MapSearchPill extends StatelessWidget {
                       child: Icon(
                         active ? StizeIcons.close : StizeIcons.search,
                         key: ValueKey(active),
-                        size: active ? 20 : 22,
+                        size: active ? 20 : 24,
                         color: active ? c.ink60 : c.ink,
                       ),
                     ),

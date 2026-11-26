@@ -7,6 +7,12 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Changed (evening, design system pass)
+- **Route alerts are calm.** No more red: a disruption shows on a stronger
+  grey with a warning icon, an ordinary notice on the light grey with an info
+  icon. The jam banner takes the system jam colour; the empty state icon and
+  the search pill icons sit on the system sizes.
+
 ### Changed (evening)
 - **Stiffer stretch everywhere.** Every list and sheet, outside sheets too,
   bounces with one stiffer resistance, by touch and by trackpad; a flick no
