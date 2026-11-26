@@ -128,11 +128,26 @@ extension _MapLocation on _HomeMapScreenState {
       onError: _onLocationStreamError,
       cancelOnError: false,
     );
+    _startCompass();
   }
 
   void _stopLocationStream() {
     _positionSub?.cancel();
     _positionSub = null;
+    _compassSub?.cancel();
+    _compassSub = null;
+  }
+
+  /// Heading cone (DS LocationDot): listen to the compass while the location
+  /// streams. Only a turn over 2° repaints, so the dot is still at rest.
+  void _startCompass() {
+    _compassSub?.cancel();
+    _compassSub = compassHeadings().listen((h) {
+      final last = _heading.value;
+      if (last == null || headingDelta(last, h).abs() >= 2) {
+        _heading.value = h;
+      }
+    });
   }
 
   void _onLocationStreamError(Object error) {
@@ -172,6 +187,9 @@ extension _MapLocation on _HomeMapScreenState {
   }
 
   Future<void> _recenterOnMe() async {
+    // iPhone hands out the compass only from inside a tap, before any await:
+    // ask on the same Locate tap that asks for location (DS LocationDot).
+    unawaited(requestCompassPermission());
     // Recentring on the user is an explicit camera intent — it ends any follow
     // (the vehicle marker + route highlight stay put).
     _stopFollow();
@@ -300,9 +318,10 @@ extension _MapLocation on _HomeMapScreenState {
     if (_browseLifted) return (lift, 0.6);
     final at = _browseDropAt;
     if (at == null) return (0, 1);
-    final t = (DateTime.now().difference(at).inMicroseconds /
-            StizeMotion.medium.inMicroseconds)
-        .clamp(0.0, 1.0);
+    final t =
+        (DateTime.now().difference(at).inMicroseconds /
+                StizeMotion.medium.inMicroseconds)
+            .clamp(0.0, 1.0);
     final up = 1 - Curves.bounceOut.transform(t);
     return (lift * up, 1 - 0.4 * up);
   }
@@ -337,21 +356,25 @@ extension _MapLocation on _HomeMapScreenState {
 
       final primary = Theme.of(context).colorScheme.primary.toHexString();
       if (_browseLifted) {
-        features.add(f(base + const Offset(0, 2), {
-          'r': 5.0,
-          'color': '#000000',
-          'opacity': 0.35,
-          'blur': 0.8,
-          'stroke': 0.0,
-        }));
+        features.add(
+          f(base + const Offset(0, 2), {
+            'r': 5.0,
+            'color': '#000000',
+            'opacity': 0.35,
+            'blur': 0.8,
+            'stroke': 0.0,
+          }),
+        );
       }
-      features.add(f(base - Offset(0, lift), {
-        'r': 6.0,
-        'color': primary,
-        'opacity': opacity,
-        'blur': 0.0,
-        'stroke': 3.0,
-      }));
+      features.add(
+        f(base - Offset(0, lift), {
+          'r': 6.0,
+          'color': primary,
+          'opacity': opacity,
+          'blur': 0.0,
+          'stroke': 3.0,
+        }),
+      );
     }
     return jsonEncode({'type': 'FeatureCollection', 'features': features});
   }

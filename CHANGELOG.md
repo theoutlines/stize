@@ -7,6 +7,13 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Added (late night)
+- **Where you are facing.** On a phone your location dot shows a soft cone
+  in the direction the phone is pointing, like Yandex Maps, and it stays true
+  when the map is rotated. On iPhone the compass is asked for once, on the
+  same Locate tap as location; Android needs no ask. No compass (desktop, or
+  permission declined), no cone: the dot looks as before.
+
 ### Fixed (late night, vehicles)
 - **Vehicles stay on the road.** Until a route's shape had loaded, a vehicle
   was driven in straight lines from stop to stop, across the blocks between
