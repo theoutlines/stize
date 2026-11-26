@@ -3,7 +3,17 @@ import type { Env } from "../env";
 
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/search";
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // geocoding results for a street name barely change
-const BELGRADE_VIEWBOX = "20.2,44.95,20.65,44.65"; // lon1,lat1,lon2,lat2 — biases results, doesn't hard-filter
+// Every stop in the feed (Mladenovac in the south to Borča in the north) plus
+// about 2 km. Nominatim is asked to stay inside it (bounded=1, Serbia only),
+// and results are filtered against it again: a query like "830" used to bring
+// addresses from Taiwan and the US.
+export const BELGRADE_BOUNDS = { west: 20.07, south: 44.36, east: 20.75, north: 45.09 };
+const BELGRADE_VIEWBOX = `${BELGRADE_BOUNDS.west},${BELGRADE_BOUNDS.north},${BELGRADE_BOUNDS.east},${BELGRADE_BOUNDS.south}`;
+
+export function insideBelgrade(lat: number, lon: number): boolean {
+  const b = BELGRADE_BOUNDS;
+  return lat >= b.south && lat <= b.north && lon >= b.west && lon <= b.east;
+}
 
 export interface GeocodeResult {
   display_name: string;
@@ -29,7 +39,7 @@ export async function geocodeSearch(
   if (!normalized) return [];
 
   const cache = caches.default;
-  const cacheKey = new Request(`https://cache.stigla.internal/geocode/v3/${encodeURIComponent(normalized)}`);
+  const cacheKey = new Request(`https://cache.stigla.internal/geocode/v4/${encodeURIComponent(normalized)}`);
   const cached = await cache.match(cacheKey);
   if (cached) return (await cached.json()) as GeocodeResult[];
   if (!(await allowUpstream())) throw new GeocodeRateLimited(normalized);
@@ -39,7 +49,8 @@ export async function geocodeSearch(
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("limit", "10");
   url.searchParams.set("viewbox", BELGRADE_VIEWBOX);
-  url.searchParams.set("bounded", "0");
+  url.searchParams.set("bounded", "1");
+  url.searchParams.set("countrycodes", "rs");
   // Latin-script names and the address parts, so the result reads short:
   // "Knez Mihailova 5, Stari grad" instead of the full nine-part OSM line.
   url.searchParams.set("accept-language", "sr-Latn");
@@ -64,6 +75,7 @@ export async function geocodeSearch(
   const seen = new Set<string>();
   const results = body
     .map((r) => ({ display_name: shortAddress(r), lat: parseFloat(r.lat), lon: parseFloat(r.lon) }))
+    .filter((r) => insideBelgrade(r.lat, r.lon))
     .filter((r) => !seen.has(r.display_name) && seen.add(r.display_name));
 
   await cache.put(
