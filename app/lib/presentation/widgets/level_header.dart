@@ -39,7 +39,7 @@ class LevelHeader extends StatelessWidget {
     return Padding(
       // Right: 10 + the 44px tap box's 6px inset puts the 32px close circle on
       // the same 16px edge as the cards below.
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 10, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

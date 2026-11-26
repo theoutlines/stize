@@ -1,3 +1,4 @@
+import 'stretch_card_list.dart';
 import 'package:stize/core/design/stize_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:stize/core/design/stize_text.dart';
@@ -68,11 +69,10 @@ class VehicleView extends ConsumerWidget {
     // garage still shows with what we know.
     final showAbout = fleet != null && fleet.kind != FleetMatchKind.unknownJunk;
 
-    return ListView(
+    return StretchCardList(
       controller: scrollController,
       // Desktop island: hug the content.
       shrinkWrap: scrollController == null,
-      padding: EdgeInsets.zero,
       children: [
         if (jamAhead)
           Padding(
@@ -173,5 +173,4 @@ class VehicleView extends ConsumerWidget {
       ),
     );
   }
-
 }

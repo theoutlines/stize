@@ -111,6 +111,11 @@ class SheetCloseButton extends StatelessWidget {
   /// The tap target's side.
   static const double size = 44;
 
+  /// Gap between the tap target's edge and the drawn circle (32 px). A close
+  /// in a row shifts by it so the circle, not the target, lines up with the
+  /// content edge below.
+  static const double inset = (size - 32) / 2;
+
   final VoidCallback onPressed;
   final Color? background;
   final Color? color;

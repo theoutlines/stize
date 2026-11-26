@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/design/stize_tokens.dart';
@@ -20,6 +21,8 @@ class StretchCardList extends StatefulWidget {
     this.topColor,
     this.bottomColor,
     this.onRefresh,
+    this.shrinkWrap = false,
+    this.padding = EdgeInsets.zero,
   });
 
   final List<Widget> children;
@@ -33,6 +36,12 @@ class StretchCardList extends StatefulWidget {
   final Color? bottomColor;
   final Future<void> Function()? onRefresh;
 
+  /// Hug the content (desktop island) instead of filling the height.
+  final bool shrinkWrap;
+
+  /// Inset around the children, for lists of rows rather than cards.
+  final EdgeInsets padding;
+
   @override
   State<StretchCardList> createState() => _StretchCardListState();
 }
@@ -45,10 +54,49 @@ class _StretchCardListState extends State<StretchCardList> {
   // Marks where the last card ends; measured after layout.
   final _endKey = GlobalKey();
 
+  // Used when the host passes no controller: the wheel rubber band needs the
+  // position.
+  ScrollController? _ownController;
+  ScrollController get _controller =>
+      widget.controller ?? (_ownController ??= ScrollController());
+
   @override
   void dispose() {
+    _ownController?.dispose();
     _edges.dispose();
     super.dispose();
+  }
+
+  /// A mouse wheel or a trackpad on the web scrolls by pointer signals, which
+  /// stop dead at the ends: no stretch, and the browser's own page bounce
+  /// showed instead (owner, 2026-11-26). At an end the signal pushes the list
+  /// past it with growing resistance; each push springs back on its own, so
+  /// the bounce settles as soon as the wheel goes quiet.
+  // While the wheel holds the list past an end, the scrollable must not take
+  // the next signal itself: it would clamp the list back to the end, and the
+  // pull flickered between stretched and not (owner, 2026-11-26).
+  bool _wheelPull = false;
+  late final _physics = _WheelPullPhysics(() => _wheelPull);
+
+  void _onSignal(PointerSignalEvent e) {
+    if (e is! PointerScrollEvent) return;
+    final c = _controller;
+    if (!c.hasClients || c.positions.length != 1) return;
+    final p = c.position;
+    final dy = e.scrollDelta.dy;
+    final atTop = dy < 0 && p.pixels <= p.minScrollExtent;
+    final atEnd = dy > 0 && p.pixels >= p.maxScrollExtent;
+    if (!atTop && !atEnd) return;
+    GestureBinding.instance.pointerSignalResolver.register(e, (_) {
+      _wheelPull = true;
+      final over = atTop
+          ? p.minScrollExtent - p.pixels
+          : p.pixels - p.maxScrollExtent;
+      const reach = 140.0;
+      final give = (1 - over / reach).clamp(0.0, 1.0);
+      if (give <= 0) return;
+      p.jumpTo(p.pixels + dy * 0.9 * give);
+    });
   }
 
   void _measure() {
@@ -77,6 +125,7 @@ class _StretchCardListState extends State<StretchCardList> {
     if (n.depth != 0) return false;
     _queueMeasure();
     final m = n.metrics;
+    if (_wheelPull && !m.outOfRange) _wheelPull = false;
     _edges
       ..top = (m.minScrollExtent - m.pixels).clamp(0.0, double.infinity)
       ..bottom = (m.pixels - m.maxScrollExtent).clamp(0.0, double.infinity)
@@ -149,10 +198,9 @@ class _StretchCardListState extends State<StretchCardList> {
   Widget build(BuildContext context) {
     _queueMeasure();
     final list = CustomScrollView(
-      controller: widget.controller,
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
+      controller: _controller,
+      shrinkWrap: widget.shrinkWrap,
+      physics: _physics,
       slivers: [
         if (widget.onRefresh != null)
           CupertinoSliverRefreshControl(
@@ -164,7 +212,9 @@ class _StretchCardListState extends State<StretchCardList> {
             builder: _refresh,
           ),
         SliverPadding(
-          padding: EdgeInsets.only(bottom: widget.bottomPadding),
+          padding:
+              widget.padding.add(EdgeInsets.only(bottom: widget.bottomPadding))
+                  as EdgeInsets,
           sliver: SliverList.list(
             children: [
               ...widget.children,
@@ -185,9 +235,10 @@ class _StretchCardListState extends State<StretchCardList> {
         child: CustomPaint(
           painter: _EdgePainter(
             _edges,
-            // With a refresh control the top band paints itself (and holds
-            // while refreshing).
-            top: widget.onRefresh == null ? solid(widget.topColor) : null,
+            // The whole pull is painted here; the refresh control's own band
+            // only covers the part it holds while refreshing, so on its own it
+            // left an empty strip above the first row (owner, 2026-11-26).
+            top: solid(widget.topColor),
             bottom: solid(widget.bottomColor),
             under: under,
             bottomPadding: widget.bottomPadding,
@@ -200,7 +251,7 @@ class _StretchCardListState extends State<StretchCardList> {
             bottomPadding: widget.bottomPadding,
             coverLine: true,
           ),
-          child: list,
+          child: Listener(onPointerSignal: _onSignal, child: list),
         ),
       ),
     );
@@ -229,8 +280,7 @@ class StretchCardEdges extends InheritedWidget {
   final _Edges _edges;
 
   static void reportLast(BuildContext context, Color? color) {
-    final scope = context
-        .getInheritedWidgetOfExactType<StretchCardEdges>();
+    final scope = context.getInheritedWidgetOfExactType<StretchCardEdges>();
     if (scope == null || scope._edges.reportedBottom == color) return;
     scope._edges.reportedBottom = color;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -306,4 +356,24 @@ class _EdgePainter extends CustomPainter {
       old.bottom != bottom ||
       old.under != under ||
       old.bottomPadding != bottomPadding;
+}
+
+/// Bouncing physics that turn the scrollable's own wheel handling off while a
+/// wheel pull holds the list past an end (see [_StretchCardListState]).
+class _WheelPullPhysics extends BouncingScrollPhysics {
+  const _WheelPullPhysics(this.pulling)
+    : super(parent: const AlwaysScrollableScrollPhysics());
+
+  const _WheelPullPhysics._(this.pulling, ScrollPhysics? parent)
+    : super(parent: parent);
+
+  final bool Function() pulling;
+
+  @override
+  _WheelPullPhysics applyTo(ScrollPhysics? ancestor) =>
+      _WheelPullPhysics._(pulling, buildParent(ancestor));
+
+  @override
+  bool shouldAcceptUserOffset(ScrollMetrics position) =>
+      !pulling() && super.shouldAcceptUserOffset(position);
 }

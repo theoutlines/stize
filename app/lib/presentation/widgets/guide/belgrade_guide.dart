@@ -4,6 +4,7 @@ import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../stretch_card_list.dart';
 import '../../../core/design/stize_icons.dart';
 import '../../../core/design/stize_tokens.dart';
 import '../../../l10n/app_localizations.dart';
@@ -76,7 +77,7 @@ class GuideHome extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final t = now ?? DateTime.now();
-    return ListView(
+    return StretchCardList(
       controller: scrollController,
       shrinkWrap: scrollController == null,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -142,7 +143,7 @@ class GuideReadStop extends StatelessWidget {
       (StizeIcons.moon, l10n.guideReadStopNight),
     ];
     final theme = Theme.of(context);
-    return ListView(
+    return StretchCardList(
       controller: scrollController,
       shrinkWrap: scrollController == null,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
@@ -176,7 +177,7 @@ class GuidePlaces extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return StretchCardList(
       controller: scrollController,
       shrinkWrap: scrollController == null,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
@@ -492,7 +493,11 @@ class GuideStrip extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.only(right: StizeSpace.space3),
-                child: Icon(icon, size: 20, color: c.ink.withValues(alpha: 0.75)),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: c.ink.withValues(alpha: 0.75),
+                ),
               ),
               Expanded(
                 child: Column(

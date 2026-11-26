@@ -49,6 +49,7 @@ import '../../domain/models/vehicle_source.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import '../widgets/stretch_card_list.dart';
 import '../widgets/context_shell.dart';
 import '../widgets/stop_header_actions.dart';
 import '../widgets/fleet_model_card.dart';

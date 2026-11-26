@@ -168,7 +168,7 @@ extension _MapPanels on _HomeMapScreenState {
           banner: _guideBanner(l10n),
         );
       case ContextView.settings:
-        return ListView(
+        return StretchCardList(
           controller: scrollController,
           // Desktop panel (no sheet controller): hug the two settings rows
           // instead of stretching to the window height.
@@ -186,7 +186,7 @@ extension _MapPanels on _HomeMapScreenState {
           );
         }
         final formEnabled = ref.watch(feedbackFormEnabledProvider);
-        return ListView(
+        return StretchCardList(
           controller: scrollController,
           shrinkWrap: scrollController == null,
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -302,7 +302,8 @@ extension _MapPanels on _HomeMapScreenState {
               for (final a in siblings)
                 FollowVehicleOption(
                   etaMinutes: a.etaMinutes,
-                  selected: VehicleTrackAnimator.keyFor(a) == _selectedVehicleKey,
+                  selected:
+                      VehicleTrackAnimator.keyFor(a) == _selectedVehicleKey,
                   onTap: () => _focusVehicleFromArrival(
                     a,
                     board.updatedAt,
@@ -311,7 +312,8 @@ extension _MapPanels on _HomeMapScreenState {
                 ),
             ],
       caption: f.caption,
-      moving: _selectedVehicleKey != null && f.stuckMinutes == null && !scheduled,
+      moving:
+          _selectedVehicleKey != null && f.stuckMinutes == null && !scheduled,
       approximate: f.stuckMinutes != null,
       onClose: _panelActive ? _closeVehicleContext : null,
       showHandle: !_panelActive,
@@ -327,15 +329,16 @@ extension _MapPanels on _HomeMapScreenState {
     final board = ref.watch(arrivalsProvider(id)).valueOrNull;
     if (board == null) return const [];
     final dir = track?.directionRouteId;
-    final list = board.arrivals
-        .where(
-          (a) =>
-              a.line == line &&
-              arrivalHasLivePosition(a) &&
-              (dir == null || (a.directionRouteId ?? a.routeId) == dir),
-        )
-        .toList()
-      ..sort((a, b) => a.etaMinutes.compareTo(b.etaMinutes));
+    final list =
+        board.arrivals
+            .where(
+              (a) =>
+                  a.line == line &&
+                  arrivalHasLivePosition(a) &&
+                  (dir == null || (a.directionRouteId ?? a.routeId) == dir),
+            )
+            .toList()
+          ..sort((a, b) => a.etaMinutes.compareTo(b.etaMinutes));
     return list.take(3).toList();
   }
 

@@ -7,6 +7,15 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Changed (afternoon)
+- **One list on every platform.** The desktop island now scrolls with the
+  same list as the mobile sheet: Nearby, a stop board, a followed vehicle,
+  My stops, the guide, settings and feedback. The first and last cards
+  stretch past the ends and spring back on desktop too, including with a
+  trackpad, without the browser's own frozen page bounce.
+- **Close button lines up.** On desktop the close in the follow card and in
+  the level header sits on the same right edge as the times and cards below.
+
 ### Fixed
 - **Follow sheet drags by its body again.** Since the levels started rising as
   high as Nearby, the sheet re-snapped on every follow refresh, so only the
