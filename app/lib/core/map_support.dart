@@ -331,17 +331,109 @@ Widget _meDot(ColorScheme scheme) {
   );
 }
 
+/// The shortest signed turn from heading [from] to [to], in degrees
+/// (-180..180]: 350° to 10° is +20°, not -340°.
+double headingDelta(double from, double to) {
+  var d = (to - from) % 360;
+  if (d > 180) d -= 360;
+  if (d <= -180) d += 360;
+  return d;
+}
+
 /// The user's own-location dot as a standalone widget, for rendering via a
 /// [WidgetLayer] instead of a GL symbol. Drawn by Flutter, it can't be dropped
 /// by symbol collision/placement at low zoom, so "my position" stays visible at
 /// every zoom level (X2).
-class MeLocationDot extends StatelessWidget {
-  const MeLocationDot({super.key});
+///
+/// With a compass [heading] (degrees clockwise from north) a cone shows where
+/// the phone is facing, like Yandex Maps (DS LocationDot): a 70° sector, 48px,
+/// the dot's colour fading from 45% to nothing. The marker turns with the map,
+/// so the heading is drawn as is. It turns by the shortest way.
+class MeLocationDot extends StatefulWidget {
+  const MeLocationDot({super.key, this.heading});
 
-  static const Size markerSize = Size(24, 24);
+  final double? heading;
+
+  /// Room for the cone around the dot; the dot sits at the centre.
+  static const Size markerSize = Size(112, 112);
+
+  static const double coneRadius = 48;
+  static const double coneSweep = 70;
 
   @override
-  Widget build(BuildContext context) => _meDot(Theme.of(context).colorScheme);
+  State<MeLocationDot> createState() => _MeLocationDotState();
+}
+
+class _MeLocationDotState extends State<MeLocationDot> {
+  // Cumulative turns, so 350° → 10° animates +20° instead of spinning back.
+  double _turns = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _turns = (widget.heading ?? 0) / 360;
+  }
+
+  @override
+  void didUpdateWidget(covariant MeLocationDot old) {
+    super.didUpdateWidget(old);
+    final h = widget.heading;
+    final prev = old.heading;
+    if (h == null) return;
+    _turns = prev == null ? h / 360 : _turns + headingDelta(prev, h) / 360;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return IgnorePointer(
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (widget.heading != null)
+            AnimatedRotation(
+              turns: _turns,
+              duration: StizeMotion.fast,
+              curve: Curves.easeOut,
+              child: CustomPaint(
+                size: MeLocationDot.markerSize,
+                painter: _HeadingConePainter(color: scheme.primary),
+              ),
+            ),
+          _meDot(scheme),
+        ],
+      ),
+    );
+  }
+}
+
+/// The heading cone, pointing up (north) before rotation.
+class _HeadingConePainter extends CustomPainter {
+  const _HeadingConePainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    const r = MeLocationDot.coneRadius;
+    const sweep = MeLocationDot.coneSweep * math.pi / 180;
+    final rect = Rect.fromCircle(center: c, radius: r);
+    final path = Path()
+      ..moveTo(c.dx, c.dy)
+      ..arcTo(rect, -math.pi / 2 - sweep / 2, sweep, false)
+      ..close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [color.withValues(alpha: 0.45), color.withValues(alpha: 0)],
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_HeadingConePainter old) => old.color != color;
 }
 
 /// The cluster bubble background; the count is drawn on top via the layer's

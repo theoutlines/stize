@@ -36,6 +36,7 @@ import '../../core/vehicle_map_mode.dart';
 import '../../core/vehicle_route.dart';
 import '../../core/vehicle_track_animator.dart';
 import '../../data/analytics/event_logger.dart';
+import '../../data/compass/compass.dart';
 import '../../data/location/location_service.dart';
 import '../../domain/models/area_vehicle.dart';
 import '../../domain/models/arrival.dart';
@@ -279,6 +280,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// The guide was opened on this device (ends the first-launch strip).
   bool _guideSeen = true;
   StreamSubscription<geo.Position>? _positionSub;
+
+  /// The compass, for the location dot's heading cone (DS LocationDot). Runs
+  /// alongside the location stream; [_heading] holds the last heading the cone
+  /// was drawn at (null = no compass, no cone).
+  StreamSubscription<double>? _compassSub;
+  final ValueNotifier<double?> _heading = ValueNotifier<double?>(null);
   DateTime? _subscribedAt;
   DateTime? _lastFixAt;
   // The next fix should recenter the camera on the user (initial locate / the
@@ -545,6 +552,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _railsTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _positionSub?.cancel();
+    _compassSub?.cancel();
+    _heading.dispose();
     _meAnim.dispose();
     _searchDebounce?.cancel();
     _stopArrivalsSub?.close();
@@ -936,7 +945,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                                           lat: me.latitude,
                                         ),
                                         size: MeLocationDot.markerSize,
-                                        child: const MeLocationDot(),
+                                        // Turns with the map, so the cone's
+                                        // compass heading stays true on a
+                                        // rotated map.
+                                        rotate: true,
+                                        child: ValueListenableBuilder<double?>(
+                                          valueListenable: _heading,
+                                          builder: (context, h, _) =>
+                                              MeLocationDot(heading: h),
+                                        ),
                                       ),
                                     ],
                                   );
