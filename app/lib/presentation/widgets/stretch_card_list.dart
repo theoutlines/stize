@@ -88,7 +88,7 @@ class _StretchCardListState extends State<StretchCardList> {
       const reach = 140.0;
       final give = (1 - over / reach).clamp(0.0, 1.0);
       if (give <= 0) return;
-      p.jumpTo(p.pixels + dy * 0.45 * give);
+      p.jumpTo(p.pixels + dy * 0.9 * give);
     });
   }
 
