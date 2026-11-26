@@ -148,45 +148,53 @@ class _StretchCardListState extends State<StretchCardList> {
         mode == RefreshIndicatorMode.refresh ||
         mode == RefreshIndicatorMode.armed;
     return ClipRect(
-      child: OverflowBox(
-        maxHeight: double.infinity,
-        // One extra pixel tucks under the first card: no seam between the
-        // band and the card it stretches.
-        alignment: Alignment.topCenter,
-        child: Container(
-          height: pulled + 1,
-          color: widget.topColor == null
-              ? null
-              : Color.alphaBlend(
-                  widget.topColor!,
-                  Theme.of(context).colorScheme.surface,
+      child: LayoutBuilder(
+        builder: (context, box) => OverflowBox(
+          maxHeight: double.infinity,
+          // Fills the whole box the control gives it, which can be taller than
+          // the pull while it refreshes (a dark strip showed above the band,
+          // owner 2026-11-26), plus one pixel tucked under the first card so
+          // there is no seam.
+          alignment: Alignment.topCenter,
+          child: Container(
+            height:
+                (box.maxHeight.isFinite
+                    ? (box.maxHeight > pulled ? box.maxHeight : pulled)
+                    : pulled) +
+                1,
+            color: widget.topColor == null
+                ? null
+                : Color.alphaBlend(
+                    widget.topColor!,
+                    Theme.of(context).colorScheme.surface,
+                  ),
+            alignment: Alignment.center,
+            child: Opacity(
+              opacity: progress,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: c.raised,
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x33000000), blurRadius: 8),
+                  ],
                 ),
-          alignment: Alignment.center,
-          child: Opacity(
-            opacity: progress,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: c.raised,
-                shape: BoxShape.circle,
-                boxShadow: const [
-                  BoxShadow(color: Color(0x33000000), blurRadius: 8),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: busy
-                  ? SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        color: c.ink,
+                alignment: Alignment.center,
+                child: busy
+                    ? SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: c.ink,
+                        ),
+                      )
+                    : Transform.rotate(
+                        angle: progress * 3.14159 * 1.5,
+                        child: Icon(Icons.refresh, size: 22, color: c.ink),
                       ),
-                    )
-                  : Transform.rotate(
-                      angle: progress * 3.14159 * 1.5,
-                      child: Icon(Icons.refresh, size: 22, color: c.ink),
-                    ),
+              ),
             ),
           ),
         ),
