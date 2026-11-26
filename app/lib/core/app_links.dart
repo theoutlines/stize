@@ -10,6 +10,3 @@ const String kRepoUrl = 'https://github.com/theoutlines/stize';
 
 /// Public issue tracker for technical users.
 const String kRepoIssuesUrl = '$kRepoUrl/issues';
-
-/// The app's own license identifier (SPDX).
-const String kAppLicense = 'AGPL-3.0';

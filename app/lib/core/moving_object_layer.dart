@@ -147,13 +147,6 @@ class MovingObjectImages {
   static const glyphTram = 'stg-mo-glyph-tram';
   static const glyphTrolley = 'stg-mo-glyph-trolley';
 
-  /// The registered glyph id for a kind. Kinds without dedicated art yet fall
-  /// back to the bus glyph (their badge colour still tells them apart).
-  static String glyphFor(MovingObjectKind kind) => switch (kind) {
-    MovingObjectKind.tram => glyphTram,
-    MovingObjectKind.trolleybus => glyphTrolley,
-    _ => glyphBus,
-  };
 }
 
 // ---- Palette (mirrors map_support.dart and design/tokens) --------------------

@@ -116,12 +116,6 @@ abstract class AppLocalizations {
   /// **'My Stops'**
   String get navMyStops;
 
-  /// No description provided for @navAbout.
-  ///
-  /// In en, this message translates to:
-  /// **'About'**
-  String get navAbout;
-
   /// No description provided for @myStopsEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -152,18 +146,6 @@ abstract class AppLocalizations {
   /// **'More results'**
   String get searchMoreResults;
 
-  /// Tooltip on the desktop context-panel collapse tab (hides the panel)
-  ///
-  /// In en, this message translates to:
-  /// **'Collapse panel'**
-  String get panelCollapse;
-
-  /// Tooltip on the collapse tab once the panel is collapsed (restores it)
-  ///
-  /// In en, this message translates to:
-  /// **'Expand panel'**
-  String get panelExpand;
-
   /// No description provided for @locationDenied.
   ///
   /// In en, this message translates to:
@@ -188,18 +170,6 @@ abstract class AppLocalizations {
   /// **'Your location is unavailable right now. Try again in a moment.'**
   String get locationUnavailable;
 
-  /// No description provided for @nearbyStopsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Nearby stops'**
-  String get nearbyStopsTitle;
-
-  /// No description provided for @nearbyStopsEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'Turn on location, or search for a stop, street, or line above.'**
-  String get nearbyStopsEmpty;
-
   /// No description provided for @mapZoomInForVehicles.
   ///
   /// In en, this message translates to:
@@ -211,12 +181,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'By schedule — not a live position'**
   String get vehicleScheduled;
-
-  /// Row with a valid ETA but no live GPS position yet (placeholder vehicle)
-  ///
-  /// In en, this message translates to:
-  /// **'Expected'**
-  String get arrivalExpected;
 
   /// Shown when a followed vehicle drops out of the live feed
   ///
@@ -235,12 +199,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No live-tracked vehicles to map right now — see the arrivals below.'**
   String get noLiveVehiclesOnMap;
-
-  /// No description provided for @nearbySearchHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Filter lines nearby…'**
-  String get nearbySearchHint;
 
   /// No description provided for @nearbyDistanceMeters.
   ///
@@ -320,35 +278,11 @@ abstract class AppLocalizations {
   /// **'Now'**
   String get arrivalEtaNow;
 
-  /// No description provided for @arrivalScheduled.
-  ///
-  /// In en, this message translates to:
-  /// **'Scheduled'**
-  String get arrivalScheduled;
-
   /// No description provided for @arrivalStopsAway.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =0{At the stop} =1{1 stop away} other{{count} stops away}}'**
   String arrivalStopsAway(int count);
-
-  /// Caption on an arrival card: when the same line comes again, in minutes
-  ///
-  /// In en, this message translates to:
-  /// **'next in {minutes} min'**
-  String arrivalNextIn(int minutes);
-
-  /// Caption on an arrival card, after a repeat icon: the line's planned interval at this hour, from the timetable
-  ///
-  /// In en, this message translates to:
-  /// **'~{minutes} min'**
-  String arrivalEvery(int minutes);
-
-  /// Caption on an arrival card: when the same line comes again, as a 24h clock time
-  ///
-  /// In en, this message translates to:
-  /// **'next at {time}'**
-  String arrivalNextAt(String time);
 
   /// No description provided for @vehicleMoving.
   ///
@@ -403,18 +337,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nearby'**
   String get contextNearbyTitle;
-
-  /// Header of the Fleet-ID card in the followed-vehicle view
-  ///
-  /// In en, this message translates to:
-  /// **'About the vehicle'**
-  String get aboutVehicle;
-
-  /// CTA on the About-the-vehicle card, opens the vehicle model view
-  ///
-  /// In en, this message translates to:
-  /// **'View model details'**
-  String get viewModelDetails;
 
   /// Pill shown when following is interrupted (manual pan or the vehicle left the screen); recenters and resumes follow
   ///
@@ -512,24 +434,6 @@ abstract class AppLocalizations {
   /// **'Remove from My Stops'**
   String get removeFromFavorites;
 
-  /// No description provided for @pinnedRenameTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Custom name'**
-  String get pinnedRenameTitle;
-
-  /// No description provided for @pinnedCustomNameHint.
-  ///
-  /// In en, this message translates to:
-  /// **'e.g. Home, Work'**
-  String get pinnedCustomNameHint;
-
-  /// No description provided for @pinnedUseDefaultName.
-  ///
-  /// In en, this message translates to:
-  /// **'Default name'**
-  String get pinnedUseDefaultName;
-
   /// No description provided for @pinLineTooltip.
   ///
   /// In en, this message translates to:
@@ -553,12 +457,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Theme'**
   String get settingsTheme;
-
-  /// No description provided for @settingsThemeSystem.
-  ///
-  /// In en, this message translates to:
-  /// **'Match system'**
-  String get settingsThemeSystem;
 
   /// No description provided for @settingsThemeLight.
   ///
@@ -691,18 +589,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Comfort'**
   String get fleetSectionComfort;
-
-  /// No description provided for @fleetSectionAmenities.
-  ///
-  /// In en, this message translates to:
-  /// **'On board'**
-  String get fleetSectionAmenities;
-
-  /// No description provided for @fleetSectionDetails.
-  ///
-  /// In en, this message translates to:
-  /// **'Details'**
-  String get fleetSectionDetails;
 
   /// No description provided for @fleetAc.
   ///
@@ -865,24 +751,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'busier'**
   String get coverageLegendHigh;
-
-  /// No description provided for @coverageUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Coverage map is unavailable right now.'**
-  String get coverageUnavailable;
-
-  /// Drawer support banner headline; tapping the banner opens config:donate_url
-  ///
-  /// In en, this message translates to:
-  /// **'Support Stiže ♥'**
-  String get drawerDonateBannerTitle;
-
-  /// Drawer support banner secondary line (dimmed)
-  ///
-  /// In en, this message translates to:
-  /// **'Free and ad-free, built solo in Belgrade.'**
-  String get drawerDonateBannerSubtitle;
 
   /// Drawer footer list item that opens the feedback actions sheet
   ///
@@ -1094,12 +962,6 @@ abstract class AppLocalizations {
   /// **'Buses are running instead of trams on line {line}'**
   String jamSubstitutionNotice(String line);
 
-  /// No description provided for @jamStalledLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Possibly stopped'**
-  String get jamStalledLabel;
-
   /// No description provided for @jamModeTooltip.
   ///
   /// In en, this message translates to:
@@ -1135,12 +997,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Terminus'**
   String get arrivalTerminus;
-
-  /// No description provided for @stopReportEntry.
-  ///
-  /// In en, this message translates to:
-  /// **'Something wrong with this stop?'**
-  String get stopReportEntry;
 
   /// No description provided for @stopMore.
   ///
@@ -1297,12 +1153,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Auto follows your phone. Transport on the map is switched with the layers button on the map.'**
   String get settingsAutoHint;
-
-  /// No description provided for @stopBackTo.
-  ///
-  /// In en, this message translates to:
-  /// **'Back to {name}'**
-  String stopBackTo(String name);
 
   /// No description provided for @guideTitle.
   ///

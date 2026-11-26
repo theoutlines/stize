@@ -18,9 +18,6 @@ class AppLocalizationsSr extends AppLocalizations {
   String get navMyStops => 'Moja stajališta';
 
   @override
-  String get navAbout => 'O aplikaciji';
-
-  @override
   String get myStopsEmptyTitle => 'Još nemaš omiljena stajališta';
 
   @override
@@ -35,12 +32,6 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get searchMoreResults => 'Više rezultata';
-
-  @override
-  String get panelCollapse => 'Skupi panel';
-
-  @override
-  String get panelExpand => 'Proširi panel';
 
   @override
   String get locationDenied =>
@@ -59,20 +50,10 @@ class AppLocalizationsSr extends AppLocalizations {
       'Lokacija trenutno nije dostupna. Pokušaj za trenutak.';
 
   @override
-  String get nearbyStopsTitle => 'Stajališta u blizini';
-
-  @override
-  String get nearbyStopsEmpty =>
-      'Uključi lokaciju ili pretraži stajalište, ulicu ili liniju iznad.';
-
-  @override
   String get mapZoomInForVehicles => 'Uvećaj mapu da vidiš prevoz uživo';
 
   @override
   String get vehicleScheduled => 'Po redu vožnje — nije pozicija uživo';
-
-  @override
-  String get arrivalExpected => 'Očekuje se';
 
   @override
   String get vehicleLost => 'Vozilo se više ne prati';
@@ -83,9 +64,6 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get noLiveVehiclesOnMap =>
       'Trenutno nema vozila uživo na mapi — pogledaj dolaske ispod.';
-
-  @override
-  String get nearbySearchHint => 'Filtriraj linije u blizini…';
 
   @override
   String nearbyDistanceMeters(int meters) {
@@ -137,9 +115,6 @@ class AppLocalizationsSr extends AppLocalizations {
   String get arrivalEtaNow => 'Sada';
 
   @override
-  String get arrivalScheduled => 'Po redu vožnje';
-
-  @override
   String arrivalStopsAway(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -150,21 +125,6 @@ class AppLocalizationsSr extends AppLocalizations {
       zero: 'Na stajalištu',
     );
     return '$_temp0';
-  }
-
-  @override
-  String arrivalNextIn(int minutes) {
-    return 'sledeći za $minutes min';
-  }
-
-  @override
-  String arrivalEvery(int minutes) {
-    return '~$minutes min';
-  }
-
-  @override
-  String arrivalNextAt(String time) {
-    return 'sledeći u $time';
   }
 
   @override
@@ -195,12 +155,6 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get contextNearbyTitle => 'U blizini';
-
-  @override
-  String get aboutVehicle => 'O ovom vozilu';
-
-  @override
-  String get viewModelDetails => 'Detalji o modelu';
 
   @override
   String get backToVehicle => 'Nazad na vozilo';
@@ -256,15 +210,6 @@ class AppLocalizationsSr extends AppLocalizations {
   String get removeFromFavorites => 'Ukloni iz Mojih stajališta';
 
   @override
-  String get pinnedRenameTitle => 'Naziv po meri';
-
-  @override
-  String get pinnedCustomNameHint => 'npr. Kuća, Posao';
-
-  @override
-  String get pinnedUseDefaultName => 'Podrazumevano ime';
-
-  @override
   String get pinLineTooltip => 'Zakači liniju';
 
   @override
@@ -275,9 +220,6 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get settingsTheme => 'Tema';
-
-  @override
-  String get settingsThemeSystem => 'Prati sistem';
 
   @override
   String get settingsThemeLight => 'Svetla';
@@ -353,12 +295,6 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get fleetSectionComfort => 'Komfor';
-
-  @override
-  String get fleetSectionAmenities => 'U vozilu';
-
-  @override
-  String get fleetSectionDetails => 'Detalji';
 
   @override
   String get fleetAc => 'Klima';
@@ -451,16 +387,6 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get coverageLegendHigh => 'češće';
-
-  @override
-  String get coverageUnavailable => 'Mapa pokrivenosti trenutno nije dostupna.';
-
-  @override
-  String get drawerDonateBannerTitle => 'Podrži Stiže ♥';
-
-  @override
-  String get drawerDonateBannerSubtitle =>
-      'Besplatno i bez reklama, pravim sam u Beogradu.';
 
   @override
   String get drawerShareFeedback => 'Pošaljite utisak';
@@ -582,9 +508,6 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
-  String get jamStalledLabel => 'Izgleda da stoji';
-
-  @override
   String get jamModeTooltip => 'Prikaži zastoje';
 
   @override
@@ -605,9 +528,6 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get arrivalTerminus => 'Konačna';
-
-  @override
-  String get stopReportEntry => 'Nešto nije u redu sa ovom stanicom?';
 
   @override
   String get stopMore => 'Više';
@@ -695,11 +615,6 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get settingsAutoHint =>
       'Auto prati podešavanja telefona. Prevoz na mapi se uključuje dugmetom slojeva na mapi.';
-
-  @override
-  String stopBackTo(String name) {
-    return 'Nazad na $name';
-  }
 
   @override
   String get guideTitle => 'Vodič kroz Beograd';

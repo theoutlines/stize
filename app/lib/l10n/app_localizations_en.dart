@@ -18,9 +18,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navMyStops => 'My Stops';
 
   @override
-  String get navAbout => 'About';
-
-  @override
   String get myStopsEmptyTitle => 'No favorite stops yet';
 
   @override
@@ -35,12 +32,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchMoreResults => 'More results';
-
-  @override
-  String get panelCollapse => 'Collapse panel';
-
-  @override
-  String get panelExpand => 'Expand panel';
 
   @override
   String get locationDenied =>
@@ -59,20 +50,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your location is unavailable right now. Try again in a moment.';
 
   @override
-  String get nearbyStopsTitle => 'Nearby stops';
-
-  @override
-  String get nearbyStopsEmpty =>
-      'Turn on location, or search for a stop, street, or line above.';
-
-  @override
   String get mapZoomInForVehicles => 'Zoom in to see live transport';
 
   @override
   String get vehicleScheduled => 'By schedule — not a live position';
-
-  @override
-  String get arrivalExpected => 'Expected';
 
   @override
   String get vehicleLost => 'Vehicle no longer tracked';
@@ -83,9 +64,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get noLiveVehiclesOnMap =>
       'No live-tracked vehicles to map right now — see the arrivals below.';
-
-  @override
-  String get nearbySearchHint => 'Filter lines nearby…';
 
   @override
   String nearbyDistanceMeters(int meters) {
@@ -137,9 +115,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get arrivalEtaNow => 'Now';
 
   @override
-  String get arrivalScheduled => 'Scheduled';
-
-  @override
   String arrivalStopsAway(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -149,21 +124,6 @@ class AppLocalizationsEn extends AppLocalizations {
       zero: 'At the stop',
     );
     return '$_temp0';
-  }
-
-  @override
-  String arrivalNextIn(int minutes) {
-    return 'next in $minutes min';
-  }
-
-  @override
-  String arrivalEvery(int minutes) {
-    return '~$minutes min';
-  }
-
-  @override
-  String arrivalNextAt(String time) {
-    return 'next at $time';
   }
 
   @override
@@ -194,12 +154,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get contextNearbyTitle => 'Nearby';
-
-  @override
-  String get aboutVehicle => 'About the vehicle';
-
-  @override
-  String get viewModelDetails => 'View model details';
 
   @override
   String get backToVehicle => 'Back to vehicle';
@@ -255,15 +209,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get removeFromFavorites => 'Remove from My Stops';
 
   @override
-  String get pinnedRenameTitle => 'Custom name';
-
-  @override
-  String get pinnedCustomNameHint => 'e.g. Home, Work';
-
-  @override
-  String get pinnedUseDefaultName => 'Default name';
-
-  @override
   String get pinLineTooltip => 'Pin line';
 
   @override
@@ -274,9 +219,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsTheme => 'Theme';
-
-  @override
-  String get settingsThemeSystem => 'Match system';
 
   @override
   String get settingsThemeLight => 'Light';
@@ -352,12 +294,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fleetSectionComfort => 'Comfort';
-
-  @override
-  String get fleetSectionAmenities => 'On board';
-
-  @override
-  String get fleetSectionDetails => 'Details';
 
   @override
   String get fleetAc => 'Air conditioning';
@@ -450,16 +386,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coverageLegendHigh => 'busier';
-
-  @override
-  String get coverageUnavailable => 'Coverage map is unavailable right now.';
-
-  @override
-  String get drawerDonateBannerTitle => 'Support Stiže ♥';
-
-  @override
-  String get drawerDonateBannerSubtitle =>
-      'Free and ad-free, built solo in Belgrade.';
 
   @override
   String get drawerShareFeedback => 'Share feedback';
@@ -581,9 +507,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get jamStalledLabel => 'Possibly stopped';
-
-  @override
   String get jamModeTooltip => 'Show stalled segments';
 
   @override
@@ -604,9 +527,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get arrivalTerminus => 'Terminus';
-
-  @override
-  String get stopReportEntry => 'Something wrong with this stop?';
 
   @override
   String get stopMore => 'More';
@@ -694,11 +614,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsAutoHint =>
       'Auto follows your phone. Transport on the map is switched with the layers button on the map.';
-
-  @override
-  String stopBackTo(String name) {
-    return 'Back to $name';
-  }
 
   @override
   String get guideTitle => 'Belgrade guide';

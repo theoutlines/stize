@@ -89,16 +89,6 @@ Set<VehicleType> stopTypes(Stop stop) {
   return {for (final line in stop.lines) _lineTypeIndex.typeOf(line)};
 }
 
-/// A stop's single representative type for places that always want one colour
-/// (e.g. a favourite chip), never the mixed marker: tram, then trolley, else
-/// bus. Same authoritative type source as [stopTypes].
-VehicleType stopPrimaryType(Stop stop) {
-  final types = stopTypes(stop);
-  if (types.contains(VehicleType.tram)) return VehicleType.tram;
-  if (types.contains(VehicleType.trolleybus)) return VehicleType.trolleybus;
-  return VehicleType.bus;
-}
-
 /// The single marker type to draw for a stop, applying type priority.
 /// Returns `null` when the stop should use the unified "mixed" marker.
 ///
@@ -575,9 +565,6 @@ Future<void> registerStigmaImages(
     ),
   ]);
 }
-
-/// The image id for a moving-vehicle marker of a given type.
-String vehicleImageFor(VehicleType type) => MapImages.vehicle;
 
 // ---- Live vehicle markers ---------------------------------------------------
 
