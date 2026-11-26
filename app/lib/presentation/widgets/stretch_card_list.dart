@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -98,7 +100,7 @@ class _StretchCardListState extends State<StretchCardList> {
       // trigger takes a deliberate pull.
       final give = (1 - over / StizeOverscroll.wheelReach).clamp(0.0, 1.0);
       if (give <= 0) return;
-      p.jumpTo(p.pixels + dy * StizeOverscroll.wheelGain * give * give);
+      p.jumpTo(p.pixels + dy * StizeOverscroll.wheelGain * give * math.sqrt(give));
     });
   }
 
@@ -178,7 +180,9 @@ class _StretchCardListState extends State<StretchCardList> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: c.raised,
+                  // Inverted (`ink` with `bg` on it): `raised` vanished on
+                  // the grey guide band (owner, 2026-11-26).
+                  color: c.ink,
                   shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(color: Color(0x33000000), blurRadius: 8),
@@ -190,12 +194,12 @@ class _StretchCardListState extends State<StretchCardList> {
                         dimension: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.4,
-                          color: c.ink,
+                          color: c.bg,
                         ),
                       )
                     : Transform.rotate(
                         angle: progress * 3.14159 * 1.5,
-                        child: Icon(Icons.refresh, size: 22, color: c.ink),
+                        child: Icon(Icons.refresh, size: 22, color: c.bg),
                       ),
               ),
             ),
@@ -215,7 +219,12 @@ class _StretchCardListState extends State<StretchCardList> {
       slivers: [
         if (widget.onRefresh != null)
           CupertinoSliverRefreshControl(
-            onRefresh: widget.onRefresh,
+            // The spinner holds at least a moment: a fast fetch made the
+            // band snap shut before anyone saw it refresh (owner, 2026-11-26).
+            onRefresh: () => Future.wait([
+              widget.onRefresh!(),
+              Future<void>.delayed(StizeOverscroll.refreshMinHold),
+            ]),
             // Reachable within the resting sheet: bouncing friction makes 96 px
             // of stretch need a long finger travel (owner, 2026-11-26).
             refreshTriggerPullDistance: StizeOverscroll.refreshTrigger,

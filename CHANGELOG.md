@@ -7,6 +7,12 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Fixed (evening)
+- **Pull to refresh works again.** The stiffer stretch had made the refresh
+  point unreachable with a trackpad and hard by finger; a deliberate pull now
+  refreshes, and the spinner shows for at least a moment. The stop board and
+  the stop link page refresh on a pull too.
+
 ### Changed (evening)
 - **Stiffer stretch everywhere.** Every list and sheet, outside sheets too,
   bounces with one stiffer resistance, by touch and by trackpad; a flick no
