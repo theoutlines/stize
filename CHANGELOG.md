@@ -7,6 +7,11 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-26
 
+### Fixed (night)
+- **Address search stays in Belgrade.** Desktop search no longer mixes in
+  addresses from other countries ("830" used to bring Taiwan and the US):
+  places come only from the area our lines serve, Mladenovac to Borča.
+
 ### Added (night)
 - **Search by stop number.** Type the number from the stop's sign (830) and
   that stop comes first; from three digits, stops whose number starts with
