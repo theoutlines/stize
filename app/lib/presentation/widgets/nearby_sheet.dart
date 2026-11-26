@@ -256,38 +256,64 @@ class _SheetDragArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = controller;
     if (c == null) return child;
-    return GestureDetector(
+    return RawGestureDetector(
       behavior: HitTestBehavior.translucent,
-      onVerticalDragUpdate: (d) {
-        if (!c.isAttached) return;
-        final next = (c.size - (d.primaryDelta ?? 0) / viewport).clamp(
-          snap ? 0.12 : NearbySheet.oneScrollRestFor(viewport),
-          snap ? large : 1.0,
-        );
-        c.jumpTo(next);
-      },
-      onVerticalDragEnd: (d) {
-        if (!c.isAttached || !snap) return;
-        final v = d.primaryVelocity ?? 0;
-        final double target;
-        if (v < -300) {
-          target = large;
-        } else if (v > 300) {
-          target = c.size < kSheetPeek ? 0.12 : kSheetPeek;
-        } else {
-          target = (c.size - kSheetPeek).abs() < (c.size - large).abs()
-              ? kSheetPeek
-              : large;
-        }
-        c.animateTo(
-          target,
-          duration: StizeMotion.slow,
-          curve: StizeMotion.smoothOut,
-        );
+      gestures: {
+        _SheetDragRecognizer:
+            GestureRecognizerFactoryWithHandlers<_SheetDragRecognizer>(
+              () => _SheetDragRecognizer(debugOwner: this),
+              (r) {
+                r.onUpdate = (d) => _update(c, d);
+                r.onEnd = (d) => _end(c, d);
+              },
+            ),
       },
       child: child,
     );
   }
+
+  void _update(DraggableScrollableController c, DragUpdateDetails d) {
+    if (!c.isAttached) return;
+    final next = (c.size - (d.primaryDelta ?? 0) / viewport).clamp(
+      snap ? 0.12 : NearbySheet.oneScrollRestFor(viewport),
+      snap ? large : 1.0,
+    );
+    c.jumpTo(next);
+  }
+
+  void _end(DraggableScrollableController c, DragEndDetails d) {
+    if (!c.isAttached || !snap) return;
+    final v = d.primaryVelocity ?? 0;
+    final double target;
+    if (v < -300) {
+      target = large;
+    } else if (v > 300) {
+      target = c.size < kSheetPeek ? 0.12 : kSheetPeek;
+    } else {
+      target = (c.size - kSheetPeek).abs() < (c.size - large).abs()
+          ? kSheetPeek
+          : large;
+    }
+    c.animateTo(
+      target,
+      duration: StizeMotion.slow,
+      curve: StizeMotion.smoothOut,
+    );
+  }
+}
+
+/// Pointers the Nearby list took at the top detent ([_TopDetentScroll]): the
+/// sheet's drag area leaves them to the list, so a pull at the list's top
+/// refreshes instead of moving the sheet.
+final Set<int> _listOwnedPointers = {};
+
+class _SheetDragRecognizer extends VerticalDragGestureRecognizer {
+  _SheetDragRecognizer({super.debugOwner});
+
+  @override
+  bool isPointerAllowed(PointerEvent event) =>
+      !_listOwnedPointers.contains(event.pointer) &&
+      super.isPointerAllowed(event);
 }
 
 /// At the top detent the Nearby list scrolls on a controller of its own, so a
@@ -359,7 +385,9 @@ class _TopDetentScrollState extends State<_TopDetentScroll> {
   }
 
   bool _onScroll(ScrollNotification n) {
-    if (n is ScrollEndNotification) _settle();
+    // The end is announced before the position stops reporting "scrolling",
+    // so look again once this notification has run.
+    if (n is ScrollEndNotification) Future.microtask(_settle);
     return false;
   }
 
@@ -397,6 +425,7 @@ class _TopDetentScrollState extends State<_TopDetentScroll> {
 
   void _down(PointerDownEvent e) {
     _pointers++;
+    if (_detached) _listOwnedPointers.add(e.pointer);
     _velocity.addPosition(e.timeStamp, e.position);
     _downY = e.position.dy;
     final own = _own;
@@ -405,6 +434,7 @@ class _TopDetentScrollState extends State<_TopDetentScroll> {
 
   void _up(PointerEvent e) {
     _pointers = (_pointers - 1).clamp(0, 99);
+    _listOwnedPointers.remove(e.pointer);
     if (e is PointerUpEvent && _detached && _downAtTop) {
       final v = _velocity.getVelocity().pixelsPerSecond.dy;
       if (v > 800 && e.position.dy - _downY > 12) {
@@ -445,11 +475,16 @@ class _TopDetentScrollState extends State<_TopDetentScroll> {
           onPointerUp: _up,
           onPointerCancel: _up,
           child: Stack(
+            // Positioned children only: the Stack takes the list's full size.
             children: [
               if (own != null)
                 // Keeps the sheet's controller attached while the list
                 // scrolls on its own, so the sheet can still be moved.
-                SizedBox.shrink(
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  width: 0,
+                  height: 0,
                   child: SingleChildScrollView(
                     controller: widget.sheetScroll,
                     physics: const NeverScrollableScrollPhysics(),
