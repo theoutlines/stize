@@ -233,32 +233,17 @@ export async function getLineByNumber(env: Env, line: string): Promise<LineDto |
   return lines.find((l) => l.line.toLowerCase() === line.toLowerCase()) ?? null;
 }
 
-// route_id -> LineDto and line number -> route_ids, both cached for the isolate.
-// Used to turn a viewport's stop lines into candidate route ids for scheduled
-// map objects, and to label each object with its line/vehicle_type.
-let routeMetaCache: { byRoute: Map<string, LineDto>; byLine: Map<string, string[]> } | null = null;
-async function routeMaps(env: Env) {
+// route_id -> LineDto, cached for the isolate. Labels each scheduled map
+// object with its line/vehicle_type.
+let routeMetaCache: Map<string, LineDto> | null = null;
+async function routeMeta(env: Env): Promise<Map<string, LineDto>> {
   if (routeMetaCache) return routeMetaCache;
   const lines = await loadLines(env);
-  const byRoute = new Map<string, LineDto>();
-  const byLine = new Map<string, string[]>();
-  for (const l of lines) {
-    byRoute.set(l.route_id, l);
-    const arr = byLine.get(l.line) ?? [];
-    arr.push(l.route_id);
-    byLine.set(l.line, arr);
-  }
-  routeMetaCache = { byRoute, byLine };
+  routeMetaCache = new Map(lines.map((l) => [l.route_id, l] as const));
   return routeMetaCache;
 }
 export async function getLineDtoByRouteId(env: Env, routeId: string): Promise<LineDto | undefined> {
-  return (await routeMaps(env)).byRoute.get(routeId);
-}
-export async function getRouteIdsForLines(env: Env, lineNumbers: Iterable<string>): Promise<string[]> {
-  const { byLine } = await routeMaps(env);
-  const out = new Set<string>();
-  for (const ln of lineNumbers) for (const rid of byLine.get(ln) ?? []) out.add(rid);
-  return [...out];
+  return (await routeMeta(env)).get(routeId);
 }
 
 // Per-line terminal coordinates for each direction, derived once from lines.json

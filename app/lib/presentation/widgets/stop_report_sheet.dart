@@ -31,48 +31,6 @@ String stopReportLabel(AppLocalizations l10n, String category) =>
       _ => l10n.stopReportOther,
     };
 
-/// The quiet entry at the end of a stop board: "Something wrong with this
-/// stop?". Opens [showStopReportSheet].
-class StopReportEntry extends StatelessWidget {
-  const StopReportEntry({
-    super.key,
-    required this.stopId,
-    required this.stopName,
-  });
-
-  final String stopId;
-  final String stopName;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StizeColors.of(context);
-    final l10n = AppLocalizations.of(context);
-    return Align(
-      alignment: Alignment.centerLeft,
-      // The system's tertiary button: 40px, fill-06, radius-md, label 16/500,
-      // 16px icon on the text's centre line.
-      child: TextButton.icon(
-        style: TextButton.styleFrom(
-          foregroundColor: c.ink80,
-          backgroundColor: c.fill06,
-          minimumSize: const Size(0, StizeSize.buttonSmallH),
-          padding: const EdgeInsets.symmetric(horizontal: StizeSpace.space4),
-          textStyle: StizeType.label,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(
-              Radius.circular(StizeRadius.radiusMd),
-            ),
-          ),
-        ),
-        onPressed: () =>
-            showStopReportSheet(context, stopId: stopId, stopName: stopName),
-        icon: const Icon(StizeIcons.flag, size: 16),
-        label: Text(l10n.stopReportEntry),
-      ),
-    );
-  }
-}
-
 Future<void> showStopReportSheet(
   BuildContext context, {
   required String stopId,

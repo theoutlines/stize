@@ -6,7 +6,6 @@
   },
   "navHome": "Map",
   "navMyStops": "My Stops",
-  "navAbout": "About",
   "myStopsEmptyTitle": "No favorite stops yet",
   "myStopsEmptySubtitle": "Search for a stop, street, or line and add it here.",
   "searchHint": "Search stops, streets, or lines…",
@@ -15,26 +14,12 @@
   "@searchMoreResults": {
     "description": "Section label between nearby matches and global stop/line results in the unified mobile search"
   },
-  "panelCollapse": "Collapse panel",
-  "@panelCollapse": {
-    "description": "Tooltip on the desktop context-panel collapse tab (hides the panel)"
-  },
-  "panelExpand": "Expand panel",
-  "@panelExpand": {
-    "description": "Tooltip on the collapse tab once the panel is collapsed (restores it)"
-  },
   "locationDenied": "Location access is denied. Allow it in your browser or settings to see where you are.",
   "locationServicesOff": "Location services are off. Turn them on in your device settings.",
   "locationTimeout": "Couldn't get your location in time. Check your connection and try again.",
   "locationUnavailable": "Your location is unavailable right now. Try again in a moment.",
-  "nearbyStopsTitle": "Nearby stops",
-  "nearbyStopsEmpty": "Turn on location, or search for a stop, street, or line above.",
   "mapZoomInForVehicles": "Zoom in to see live transport",
   "vehicleScheduled": "By schedule — not a live position",
-  "arrivalExpected": "Expected",
-  "@arrivalExpected": {
-    "description": "Row with a valid ETA but no live GPS position yet (placeholder vehicle)"
-  },
   "vehicleLost": "Vehicle no longer tracked",
   "followingVehicle": "Following",
   "@followingVehicle": {
@@ -44,7 +29,6 @@
     "description": "Shown when a followed vehicle drops out of the live feed"
   },
   "noLiveVehiclesOnMap": "No live-tracked vehicles to map right now — see the arrivals below.",
-  "nearbySearchHint": "Filter lines nearby…",
   "nearbyDistanceMeters": "{meters} m",
   "@nearbyDistanceMeters": {
     "placeholders": {
@@ -89,39 +73,11 @@
     "description": "The 'min' unit under the big ETA number on an arrival card"
   },
   "arrivalEtaNow": "Now",
-  "arrivalScheduled": "Scheduled",
   "arrivalStopsAway": "{count, plural, =0{At the stop} =1{1 stop away} other{{count} stops away}}",
   "@arrivalStopsAway": {
     "placeholders": {
       "count": {
         "type": "int"
-      }
-    }
-  },
-  "arrivalNextIn": "next in {minutes} min",
-  "@arrivalNextIn": {
-    "description": "Caption on an arrival card: when the same line comes again, in minutes",
-    "placeholders": {
-      "minutes": {
-        "type": "int"
-      }
-    }
-  },
-  "arrivalEvery": "~{minutes} min",
-  "@arrivalEvery": {
-    "description": "Caption on an arrival card, after a repeat icon: the line's planned interval at this hour, from the timetable",
-    "placeholders": {
-      "minutes": {
-        "type": "int"
-      }
-    }
-  },
-  "arrivalNextAt": "next at {time}",
-  "@arrivalNextAt": {
-    "description": "Caption on an arrival card: when the same line comes again, as a 24h clock time",
-    "placeholders": {
-      "time": {
-        "type": "String"
       }
     }
   },
@@ -143,14 +99,6 @@
   "contextNearbyTitle": "Nearby",
   "@contextNearbyTitle": {
     "description": "Title/back-chip label for the nearby view of the adaptive context slot"
-  },
-  "aboutVehicle": "About the vehicle",
-  "@aboutVehicle": {
-    "description": "Header of the Fleet-ID card in the followed-vehicle view"
-  },
-  "viewModelDetails": "View model details",
-  "@viewModelDetails": {
-    "description": "CTA on the About-the-vehicle card, opens the vehicle model view"
   },
   "backToVehicle": "Back to vehicle",
   "@backToVehicle": {
@@ -185,14 +133,10 @@
   "retry": "Try again",
   "addToFavorites": "Add to My Stops",
   "removeFromFavorites": "Remove from My Stops",
-  "pinnedRenameTitle": "Custom name",
-  "pinnedCustomNameHint": "e.g. Home, Work",
-  "pinnedUseDefaultName": "Default name",
   "pinLineTooltip": "Pin line",
   "settingsTitle": "Settings",
   "settingsLanguage": "Language",
   "settingsTheme": "Theme",
-  "settingsThemeSystem": "Match system",
   "settingsThemeLight": "Light",
   "settingsThemeDark": "Dark",
   "vehicleModeOnDemand": "On demand",
@@ -253,8 +197,6 @@
   },
   "fleetUnknownModel": "Model unknown",
   "fleetSectionComfort": "Comfort",
-  "fleetSectionAmenities": "On board",
-  "fleetSectionDetails": "Details",
   "fleetAc": "Air conditioning",
   "fleetNoAc": "No air conditioning",
   "fleetLowFloor": "Low floor",
@@ -323,15 +265,6 @@
   "coverageLegendTitle": "Transit density",
   "coverageLegendLow": "rarer",
   "coverageLegendHigh": "busier",
-  "coverageUnavailable": "Coverage map is unavailable right now.",
-  "drawerDonateBannerTitle": "Support Stiže ♥",
-  "@drawerDonateBannerTitle": {
-    "description": "Drawer support banner headline; tapping the banner opens config:donate_url"
-  },
-  "drawerDonateBannerSubtitle": "Free and ad-free, built solo in Belgrade.",
-  "@drawerDonateBannerSubtitle": {
-    "description": "Drawer support banner secondary line (dimmed)"
-  },
   "drawerShareFeedback": "Share feedback",
   "@drawerShareFeedback": {
     "description": "Drawer footer list item that opens the feedback actions sheet"
@@ -384,7 +317,6 @@
       }
     }
   },
-  "jamStalledLabel": "Possibly stopped",
   "jamModeTooltip": "Show stalled segments",
   "jamNearbyDelay": "Possible delay on line {line}",
   "@jamNearbyDelay": {
@@ -412,7 +344,6 @@
   "@arrivalTerminus": {
     "description": "Destination label when the line ends at the stop being viewed."
   },
-  "stopReportEntry": "Something wrong with this stop?",
   "stopMore": "More",
   "stopReportProblem": "Report a problem",
   "stopInMyStops": "In My Stops",
@@ -459,14 +390,6 @@
   "menuClose": "Close menu",
   "settingsAuto": "Auto",
   "settingsAutoHint": "Auto follows your phone. Transport on the map is switched with the layers button on the map.",
-  "stopBackTo": "Back to {name}",
-  "@stopBackTo": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "guideTitle": "Belgrade guide",
   "guideFree": "City transport is free: buses, trams, trolleybuses",
   "guideGettingAround": "Getting around",

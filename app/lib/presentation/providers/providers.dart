@@ -9,7 +9,6 @@ import '../../core/fleet_photos.dart';
 import '../../core/search.dart';
 import '../../core/vehicle_map_mode.dart';
 import '../../data/analytics/event_logger.dart';
-import '../../core/offline_schedule.dart';
 import '../../data/api/stigla_api_client.dart';
 import '../../data/device/device_id_service.dart';
 import '../../data/local/gtfs_offline_cache.dart';
@@ -346,28 +345,6 @@ final arrivalsProvider = FutureProvider.family
       return ref.watch(arrivalsRepositoryProvider).getArrivals(stopId);
     });
 
-/// Planned interval per direction (`route_id` -> minutes) at a stop for the
-/// current hour, from the stop's static timetable (`/gtfs/schedule/<stop>.json`,
-/// an asset served without the API worker). Feeds the "every ~N min" caption
-/// on arrival cards. Best-effort: any failure yields an empty map.
-final stopPlannedHeadwaysProvider = FutureProvider.family
-    .autoDispose<Map<String, int>, String>((ref, stopId) async {
-      try {
-        final client = ref.watch(apiClientProvider);
-        final meta = await (_scheduleMetaFuture ??= client.getJson(
-          '/gtfs/schedule/_meta.json',
-        ));
-        final schedule = await client.getJson(
-          '/gtfs/schedule/${Uri.encodeComponent(stopId)}.json',
-        );
-        return plannedHeadways(schedule, meta, belgradeNow(DateTime.now()));
-      } catch (_) {
-        _scheduleMetaFuture = null;
-        return const {};
-      }
-    });
-Future<Map<String, dynamic>>? _scheduleMetaFuture;
-
 /// Looks up a stop's coordinates from the on-device GTFS mirror, for the
 /// live-tracking mini map — the arrivals contract itself doesn't carry the
 /// stop's own lat/lon, only the vehicles'.
@@ -497,11 +474,6 @@ class CustomNamesController extends AsyncNotifier<Map<String, String>> {
   @override
   Future<Map<String, String>> build() {
     return ref.watch(pinnedFavoritesRepositoryProvider).getCustomNames();
-  }
-
-  Future<void> setName(String key, String? name) async {
-    await ref.read(pinnedFavoritesRepositoryProvider).setCustomName(key, name);
-    ref.invalidateSelf();
   }
 }
 

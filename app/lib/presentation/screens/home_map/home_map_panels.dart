@@ -601,125 +601,10 @@ extension _MapPanels on _HomeMapScreenState {
   /// really draws at a real stop's pixel (catches "layer present, data pushed,
   /// but nothing rendered"). Keep it: it is what broke the multi-round
   /// stop-render investigation open.
-  // One diagnostics line for the followed vehicle's catch-up: live gap (metres
-  // behind the plan's predicted-now spot) and display speed (m/s). Reads the
-  // timed player directly; falls back to a dash when nothing is being followed.
-  String _catchUpDiagLine() {
-    final key = _selectedVehicleKey;
-    final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
-    if (timed == null) return 'VEH catchUp gap - plan - vel - age -';
-    final now = DateTime.now();
-    // `plan` vs `vel` is the pair that diagnoses jitter: the plan's own speed
-    // against the marker's. Tracking is healthy when they sit on top of each
-    // other with gap ≈ 0. `vel` swinging around a steady `plan` means the
-    // catch-up loop is oscillating; both swinging together means the plan is.
-    //
-    // `age` is the live board age driving the staleness gate; `HOLD` means it
-    // has passed 45 s, so this marker has stopped predicting and stands still.
-    final age = timed.boardAgeSeconds(now);
-    return 'VEH catchUp gap ${timed.catchUpGap(now).toStringAsFixed(2)}m '
-        'plan ${timed.planSpeed(now).toStringAsFixed(2)} '
-        'vel ${timed.displaySpeed.toStringAsFixed(2)}m/s '
-        'age ${age.toStringAsFixed(0)}s${timed.isStale(now) ? " HOLD" : ""}';
-  }
-
-  // The pause gate's decision for the followed vehicle's next few stops, so the
-  // owner sees on screen WHY a pause fires (or doesn't): `+42m` ahead, projection
-  // moved off its true spot by `off8m`, on/off-shape, and DWELL vs glide.
-  String _dwellDiagLine() {
-    final key = _selectedVehicleKey;
-    final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
-    if (timed == null) return 'VEH dwell -';
-    final stops = timed.upcomingStopDiag();
-    if (stops.isEmpty) return 'VEH dwell (no stops ahead)';
-    final parts = stops.map(
-      (s) =>
-          '+${s.aheadM.toStringAsFixed(0)}m off${s.offShapeM.toStringAsFixed(0)}m '
-          '${s.onShape ? "on" : "OFF"}→${s.dwells ? "DWELL" : "glide"}',
-    );
-    return 'VEH dwell ${parts.join("  ")}';
-  }
-
-  // The followed marker's standstill, explained as an EVENT: the instant its
-  // display speed drops below 0.5 m/s, name the CAUSE so nobody has to guess
-  // why a bus is parked mid-block. The four causes are mutually exclusive and
-  // ordered by precedence:
-  //   HOLD    — the board is stale (>45 s), so the target is pinned to the last
-  //             fix and the marker legitimately stops until a fresh board.
-  //   spent   — the plan is exhausted (reached its end / the distance horizon).
-  //   DWELL   — the plan ITSELF predicts a standstill here (plan speed ≈ 0):
-  //             a real pause at the named stop.
-  //   CONTOUR — the plan is still moving but the marker is not: the catch-up /
-  //             gap-contour fault (a mid-block standstill with NO dwell — this
-  //             is the "stopped but every upcoming stop shows glide" case).
-  String _stopCauseDiagLine() {
-    final key = _selectedVehicleKey;
-    final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
-    if (timed == null) return 'VEH stopWhy -';
-    final now = DateTime.now();
-    final vel = timed.displaySpeed;
-    final pos = timed.position;
-    final at =
-        '@${pos.latitude.toStringAsFixed(5)},'
-        '${pos.longitude.toStringAsFixed(5)}';
-    if (vel >= 0.5) return 'VEH stopWhy moving ${vel.toStringAsFixed(2)}m/s';
-    final plan = timed.planSpeed(now);
-    final gap = timed.catchUpGap(now);
-    final ahead = timed.upcomingStopDiag(count: 1);
-    final near = ahead.isEmpty ? null : ahead.first;
-    final String cause;
-    if (timed.isStale(now)) {
-      cause =
-          'HOLD stale board '
-          '(age ${timed.boardAgeSeconds(now).toStringAsFixed(0)}s>45) — pinned to fix';
-    } else if (timed.isGliding(now)) {
-      cause =
-          'GLIDE-END coasting to rest at plan end '
-          '(vel ${vel.toStringAsFixed(2)}m/s, buffering a late board)';
-    } else if (!timed.isPlaying(now)) {
-      cause = 'plan spent (end/horizon reached)';
-    } else if (plan < 0.5) {
-      cause = near == null
-          ? 'DWELL: plan standstill (no stop info)'
-          : 'DWELL: plan stopped +${near.aheadM.toStringAsFixed(0)}m '
-                'off${near.offShapeM.toStringAsFixed(0)}m '
-                '${near.dwells ? "dwell" : "glide?!"}';
-    } else {
-      cause =
-          'CONTOUR: plan ${plan.toStringAsFixed(2)}m/s but vel '
-          '${vel.toStringAsFixed(2)}, gap ${gap.toStringAsFixed(1)}m — parked off-plan';
-    }
-    return 'VEH stopWhy $cause $at';
-  }
-
-  // How stale the vehicles' REAL fixes are, against how stale their boards
-  // claim to be. `as_of` is the backend's last successful *fetch*, so re-fetching
-  // a board the upstream hasn't refreshed re-stamps it young while the fix
-  // underneath is minutes old — and the whole prediction hangs off that stamp.
-  // Measured live: two views of one bus 121 m apart from GPS fixes identical to
-  // the metre, purely because their as_of differed by 36 s.
-  //
-  // Read-only evidence for a later call on whether the backend should stop
-  // re-stamping. Low numbers → the root fix is painless; high → the feed itself
-  // is the conversation.
-  String _fixAgeDiagLine() {
-    final s = _vehAnimator.fixAgeStats();
-    if (s.total == 0) return 'VEH fixAge -';
-    return 'VEH fixAge >45s ${s.over45}/${s.total} '
-        '>90s ${s.over90}/${s.total} (real fix age, not as_of)';
-  }
-
-  // How old each recent board was when it landed, and how many of those doomed
-  // the marker to a freeze before the next one (> 15 s; see the field's note).
-  String _boardAgeDiagLine() {
-    if (_boardAgePolls.isEmpty) return 'VEH boardAge@poll -';
-    final doomed = _boardAgePolls.where((a) => a > 15).length;
-    final worst = _boardAgePolls.reduce((a, b) => a > b ? a : b);
-    return 'VEH boardAge@poll ${_boardAgePolls.join(",")} '
-        'max ${worst}s freeze-bound $doomed/${_boardAgePolls.length}';
-  }
-
   Widget _stopDiagnosticsOverlay(ThemeData theme) {
+    final key = _selectedVehicleKey;
+    final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
+    final now = DateTime.now();
     final center = _lastFetchCenter;
     final controller = _controller;
     final style = _style;
@@ -820,9 +705,9 @@ extension _MapPanels on _HomeMapScreenState {
       // plan's predicted-now spot the marker is (gap) and how fast it's moving
       // to close it (vel). A smooth catch-up shows the gap easing to ~0 with vel
       // ramping up then settling to the plan speed — never a spike then a crawl.
-      _catchUpDiagLine(),
-      _dwellDiagLine(),
-      _stopCauseDiagLine(),
+      catchUpDiagLine(timed, now),
+      dwellDiagLine(timed),
+      stopCauseDiagLine(timed, now),
       'FOCUS layersAdded $_focusLayersAdded stops ${_focus?.stops.length ?? 0} '
           'err ${_focusLayerError ?? "-"}',
       // The real test for the followed line's stop pins: of the focus stops in
@@ -830,96 +715,19 @@ extension _MapPanels on _HomeMapScreenState {
       // = layer & source are fine but nothing paints (image not resolved for the
       // layer, or z-order); `focus:8/8` = pins ARE there (trust this over eyes).
       'FOCUS render ${renderStats('focus', (_focus?.stops ?? const <Stop>[]).map((s) => (lat: s.lat, lon: s.lon)))}',
-      _boardAgeDiagLine(),
-      _fixAgeDiagLine(),
+      boardAgeDiagLine(_boardAgePolls),
+      fixAgeDiagLine(_vehAnimator.fixAgeStats()),
     ];
 
-    return SafeArea(
-      child: Align(
-        // Bottom-right (owner, 2026-11-23): out of the way of the panel, the
-        // search and the top-right controls. On mobile it sits above the sheet.
-        alignment: Alignment.bottomRight,
-        child: IgnorePointer(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 360),
-            margin: EdgeInsets.only(
-              right: 12,
-              bottom: _panelActive
-                  ? 12
-                  : _mobileSheetPx +
-                        (_oneScrollRoot ? MapSearchPill.height + 32 : 8),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.72),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final line in lines)
-                  Text(
-                    line,
-                    // ds-ok: staging-only diagnostics overlay.
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      height: 1.35,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return DiagnosticsOverlay(
+      lines: lines,
+      bottomMargin: _panelActive
+          ? 12
+          : _mobileSheetPx + (_oneScrollRoot ? MapSearchPill.height + 32 : 8),
     );
   }
 
-  /// A small top-centered hint shown at far-out zoom when no live vehicles are
-  /// in the bounded fetch area — the "zoom in to see transport" nudge (F5).
-  Widget _zoomHint(AppLocalizations l10n, ThemeData theme) {
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: Padding(
-          // Clear of the top buttons.
-          padding: const EdgeInsets.only(top: 72),
-          child: PointerInterceptor(
-            child: Material(
-              elevation: 2,
-              borderRadius: BorderRadius.circular(20),
-              color: theme.colorScheme.surface.withValues(alpha: 0.92),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      StizeIcons.zoomIn,
-                      size: 18,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      l10n.mapZoomInForVehicles,
-                      style: StizeText.of(context).caption,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _focusPanel(ThemeData theme) {
+  Widget _focusPanel() {
     // The follow bar must appear the instant follow starts, from ANY source —
     // not only once the route shape has loaded (async, and it sets `_focus`).
     // A follow entered from the persistent Nearby sheet used to leave `_focus`
@@ -934,105 +742,12 @@ extension _MapPanels on _HomeMapScreenState {
     final subtitle = focus != null
         ? '${focus.origin} → ${focus.destination}'
         : null;
-    final scheduled = focus?.scheduled ?? false;
-    final color = vehicleColor(type);
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: PointerInterceptor(
-          child: Container(
-            margin: const EdgeInsets.all(12),
-            padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              // Stiže: the floating map-control shadow; OFF keeps the prior soft
-              // drop shadow (killswitch).
-              boxShadow: StizeShadow.shadowMapControl,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      vehicleGlyph(
-                        type,
-                        size: 16,
-                        color: StizeColors.of(context).onTransit,
-                      ),
-                      const SizedBox(width: 8),
-                      Builder(
-                        builder: (context) {
-                          final stize = StizeColors.of(context);
-                          return Text(
-                            line,
-                            style: StizeType.lineNumber.copyWith(
-                              color: stize.onTransit,
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        // Route terminals once the shape is loaded; until then
-                        // (or on a shape that failed to load) a neutral label so
-                        // the bar is still complete and exitable.
-                        subtitle ??
-                            AppLocalizations.of(context).followingVehicle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: StizeText.of(context).body,
-                      ),
-                      // A tapped schedule-predicted object honestly says so — its
-                      // position is a GTFS estimate, not a live fix.
-                      if (scheduled)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              StizeIcons.clock,
-                              size: 13,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                AppLocalizations.of(context).vehicleScheduled,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: StizeText.of(context).note.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                SheetCloseButton(onPressed: _closeVehicleContext),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return FollowBar(
+      line: line,
+      type: type,
+      subtitle: subtitle,
+      scheduled: focus?.scheduled ?? false,
+      onClose: _closeVehicleContext,
     );
   }
 
@@ -1078,8 +793,7 @@ extension _MapPanels on _HomeMapScreenState {
             if (_panelActive)
               const SizedBox.shrink()
             else
-              _roundButton(
-                theme,
+              MapRoundButton(
                 icon: StizeIcons.menu,
                 tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
                 onTap: widget.onOpenDrawer,
@@ -1096,7 +810,7 @@ extension _MapPanels on _HomeMapScreenState {
                 // Jam-mode toggle: shows ONLY while the city has active jams; a
                 // toggle of the same map (fit to all jams / back), with a red count
                 // badge. No jams → not in the tree at all.
-                _jamModeButton(theme),
+                _jamModeButton(),
                 // Hides itself — gap and all — while the flag is off, so the
                 // killswitch leaves this stack exactly as production has it.
                 const VehicleModeToggle(),
@@ -1105,34 +819,12 @@ extension _MapPanels on _HomeMapScreenState {
                 // same pill since 2026-11-25: no second round button here.
                 if (_showZoomControls) ...[
                   const SizedBox(height: 12),
-                  _zoomControl(theme),
+                  MapZoomControl(
+                    onZoomIn: () => _zoomBy(1),
+                    onZoomOut: () => _zoomBy(-1),
+                  ),
                 ],
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _zoomControl(ThemeData theme) {
-    return PointerInterceptor(
-      child: Material(
-        color: theme.colorScheme.surface,
-        elevation: 3,
-        borderRadius: BorderRadius.circular(24),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(StizeIcons.plus),
-              onPressed: () => _zoomBy(1),
-            ),
-            Divider(height: 1, thickness: 1, color: theme.dividerColor),
-            IconButton(
-              icon: const Icon(StizeIcons.minus),
-              onPressed: () => _zoomBy(-1),
             ),
           ],
         ),
@@ -1147,7 +839,7 @@ extension _MapPanels on _HomeMapScreenState {
   /// relevant to the user's context — near them, on the followed vehicle's line,
   /// or at the open stop. Jams elsewhere keep the button present but QUIET (muted,
   /// no badge). No jams → no button. The count badge shows the relevant count.
-  Widget _jamModeButton(ThemeData theme) {
+  Widget _jamModeButton() {
     if (!ref.watch(jamDetectionEnabledProvider)) return const SizedBox.shrink();
     final board = ref.watch(jamsProvider).valueOrNull;
     final jams = board?.activeJams ?? const <Jam>[];
@@ -1172,66 +864,10 @@ extension _MapPanels on _HomeMapScreenState {
           ),
         )
         .length;
-    final loud = relevant > 0;
-    final l10n = AppLocalizations.of(context);
-    final iconColor = _jamModeOn
-        ? Colors.white
-        : (loud
-              ? StizeColors.of(context).jam
-              : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.55));
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: PointerInterceptor(
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Material(
-              color: _jamModeOn
-                  ? StizeColors.of(context).jam
-                  : theme.colorScheme.surface,
-              elevation: 3,
-              shape: const CircleBorder(),
-              clipBehavior: Clip.antiAlias,
-              child: IconButton(
-                // Round ink on a round button (the theme's icon-button shape
-                // is a 12px square, which showed as a square inside the circle).
-                style: IconButton.styleFrom(shape: const CircleBorder()),
-                icon: Icon(StizeIcons.warning, color: iconColor),
-                tooltip: l10n.jamModeTooltip,
-                onPressed: () => _setJamMode(!_jamModeOn),
-              ),
-            ),
-            // Red count badge ONLY for context-relevant jams — a far-away jam
-            // never lights it up.
-            if (loud)
-              Positioned(
-                right: -2,
-                top: -2,
-                child: IgnorePointer(
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(
-                      minWidth: 20,
-                      minHeight: 20,
-                    ),
-                    decoration: BoxDecoration(
-                      color: StizeColors.of(context).alertCount,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '$relevant',
-                      textAlign: TextAlign.center,
-                      style: StizeType.control.copyWith(
-                        color: Colors.white,
-                        height: 1.0,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+    return JamModeButton(
+      on: _jamModeOn,
+      relevantCount: relevant,
+      onToggle: () => _setJamMode(!_jamModeOn),
     );
   }
 
@@ -1301,33 +937,6 @@ extension _MapPanels on _HomeMapScreenState {
       );
     });
   }
-
-  Widget _roundButton(
-    ThemeData theme, {
-    required IconData icon,
-    String? tooltip,
-    VoidCallback? onTap,
-  }) {
-    return PointerInterceptor(
-      child: Material(
-        color: theme.colorScheme.surface,
-        elevation: 3,
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: IconButton(icon: Icon(icon), tooltip: tooltip, onPressed: onTap),
-      ),
-    );
-  }
-
-  // No declarative layers. The ambient stop layers AND the focused-line view are
-  // both added imperatively (see [_addStopLayers] / [_syncFocusLayers]) to dodge
-  // maplibre 0.3.5's positional LayerManager, which reconciles the declarative
-  // list by index with unawaited add/remove and deterministically dropped whole
-  // layers (a pure-bus stop lost its pin on prod). Going imperative also lets the
-  // focus route be inserted *below* the vehicle symbols (belowLayerId), so it
-  // never paints over the coin being followed. "My position" is a WidgetLayer
-  // marker (in build) so it can't be culled at low zoom (X2).
-  List<Layer> _buildLayers() => const [];
 
   /// (Re)build the focused-line layers imperatively: the route line (in its type
   /// colour) and that line's own stops, both inserted *below* the vehicle badge

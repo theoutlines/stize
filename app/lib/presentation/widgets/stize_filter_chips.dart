@@ -26,19 +26,6 @@ Map<String, VehicleType> stizeTypeByLine(Iterable<Arrival> arrivals) {
   return m;
 }
 
-/// The ETA (minutes) of the next arrival of [current]'s line after it — the
-/// "next in N min" caption on a card. Matches by line (the grouped view already
-/// folds direction), taking the smallest ETA strictly greater than this one.
-int? stizeNextEtaForLine(List<Arrival> all, Arrival current) {
-  int? best;
-  for (final a in all) {
-    if (a.line != current.line) continue;
-    if (a.etaMinutes <= current.etaMinutes) continue;
-    if (best == null || a.etaMinutes < best) best = a.etaMinutes;
-  }
-  return best;
-}
-
 /// Line-filter chip (owner pick C, 2026-11-24). Unpicked: the neutral
 /// `fill-07` chip with the number in `ink-75`, like "All lines" at rest, so a
 /// row of lines never reads as "all picked". Picked: the whole chip turns the

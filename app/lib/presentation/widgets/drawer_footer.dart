@@ -5,11 +5,9 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_links.dart';
-import '../../core/external_link.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
-import '../../core/design/stize_icons.dart';
 
 /// Pushes Flutter's licence page with the app's AGPL header + repo link.
 void openLicensesPage(
@@ -42,52 +40,6 @@ void openLicensesPage(
           applicationLegalese: '${l10n.licensesLegalese}\n$kRepoUrl',
         ),
       ),
-    ),
-  );
-}
-
-/// The two-action feedback sheet: the in-app form ("Write to me", gated by the
-/// `feedback_form` flag) and a link to the public GitHub issues (technical
-/// users). The contact email is deliberately never shown.
-void showFeedbackSheet(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    builder: (ctx) => PointerInterceptor(
-      child: ((sheetContext) => Consumer(
-        builder: (context, ref, _) {
-          final l10n = AppLocalizations.of(context);
-          final formEnabled = ref.watch(feedbackFormEnabledProvider);
-          return SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // The form action disappears entirely when the killswitch is off.
-                if (formEnabled)
-                  ListTile(
-                    leading: const Icon(StizeIcons.edit),
-                    title: Text(l10n.feedbackWriteToMe),
-                    subtitle: Text(l10n.feedbackWriteToMeSubtitle),
-                    onTap: () {
-                      Navigator.of(sheetContext).pop();
-                      showFeedbackForm(context);
-                    },
-                  ),
-                ListTile(
-                  leading: const Icon(StizeIcons.bug),
-                  title: Text(l10n.feedbackGithubIssues),
-                  subtitle: Text(l10n.feedbackGithubIssuesSubtitle),
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    openExternalUrl(kRepoIssuesUrl);
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          );
-        },
-      ))(ctx),
     ),
   );
 }

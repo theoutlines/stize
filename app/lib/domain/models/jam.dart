@@ -139,11 +139,6 @@ class JamsBoard {
   /// nothing). Drives the jam-mode toggle's visibility and count.
   List<Jam> get activeJams => feedHealthy ? jams : const [];
 
-  /// Jams affecting a given line number (any direction).
-  List<Jam> jamsForLine(String line) => activeJams
-      .where((j) => j.line.toLowerCase() == line.toLowerCase())
-      .toList();
-
   /// The jam affecting a given stop (within its stalled span or downstream), if
   /// any — drives the stop-board delay banner and the stop glow.
   Jam? affectedJamAt(String stopId, {String? line}) {

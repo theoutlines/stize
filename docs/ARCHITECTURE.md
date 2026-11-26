@@ -109,7 +109,8 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
   console** still catches real exceptions (`JSON.parse`/`SyntaxError`, tile/style
   errors) — a whole class of "the layer exists but has no features / nothing
   renders" bugs sits there as a red error; (2) a **staging-only stop diagnostics
-  overlay** (`home_map_screen._stopDiagnosticsOverlay`, gated on `isStaging`,
+  overlay** (`home_map_screen._stopDiagnosticsOverlay` drawing `DiagnosticsOverlay`,
+  lines from `core/vehicle_diagnostics.dart`, gated on `isStaging`,
   invisible in prod) prints the render pipeline from inside the app — gate flags,
   viewport fetch, marker counts, which stop layers are on the map, and whether
   each type actually draws at a stop's pixel. It reads state Flutter won't expose
