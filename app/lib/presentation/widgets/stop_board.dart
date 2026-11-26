@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'flat_cards.dart';
 import 'stretch_card_list.dart';
 import 'package:stize/core/design/stize_text.dart';
 
@@ -138,28 +137,25 @@ class _StopBoardState extends ConsumerState<StopBoard> {
     // the island's height, then scrolls inside (owner, 2026-11-25).
     final hug = widget.scrollController == null && !widget.showHeader;
     final content = <Widget>[
-              RouteAlertsStrip(alerts: relevantAlerts),
-              JamStopBanner(
-                stopId: widget.stopId,
-                lines: stopLocation?.lines ?? const [],
-              ),
-              board.when(
-                loading: () => EmptyState(
-                  icon: StizeIcons.transit,
-                  title: l10n.loadingArrivals,
-                ),
-                error: (err, _) =>
-                    stopArrivalsErrorState(l10n, err, _refreshNow),
-                data: (b) => StopArrivalsList(
-                  stopId: widget.stopId,
-                  board: b,
-                  stopLines: stopLocation?.lines ?? const [],
-                  onRetry: _refreshNow,
-                  onFocusVehicle: widget.onFocusVehicle,
-                  onOpenFleetCard: widget.onOpenFleetCard,
-                ),
-              ),
-];
+      RouteAlertsStrip(alerts: relevantAlerts),
+      JamStopBanner(
+        stopId: widget.stopId,
+        lines: stopLocation?.lines ?? const [],
+      ),
+      board.when(
+        loading: () =>
+            EmptyState(icon: StizeIcons.transit, title: l10n.loadingArrivals),
+        error: (err, _) => stopArrivalsErrorState(l10n, err, _refreshNow),
+        data: (b) => StopArrivalsList(
+          stopId: widget.stopId,
+          board: b,
+          stopLines: stopLocation?.lines ?? const [],
+          onRetry: _refreshNow,
+          onFocusVehicle: widget.onFocusVehicle,
+          onOpenFleetCard: widget.onOpenFleetCard,
+        ),
+      ),
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: hug ? MainAxisSize.min : MainAxisSize.max,
@@ -168,19 +164,14 @@ class _StopBoardState extends ConsumerState<StopBoard> {
         if (widget.showHeader) const Divider(height: 1),
         Flexible(
           fit: hug ? FlexFit.loose : FlexFit.tight,
-          child: hug || !FlatCards.of(context)
-              ? ListView(
-                  controller: widget.scrollController,
-                  shrinkWrap: hug,
-                  padding: EdgeInsets.zero,
-                  children: content,
-                )
-              // Mobile sheet: the last card stretches past the bottom and
-              // springs back, like Nearby (owner, 2026-11-25).
-              : StretchCardList(
-                  controller: widget.scrollController,
-                  children: content,
-                ),
+          // One list on every platform (owner, 2026-11-26): the last card
+          // stretches past the bottom and springs back, on the mobile sheet
+          // and in the desktop island alike.
+          child: StretchCardList(
+            controller: widget.scrollController,
+            shrinkWrap: hug,
+            children: content,
+          ),
         ),
       ],
     );

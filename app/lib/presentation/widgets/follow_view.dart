@@ -152,11 +152,18 @@ class FollowHeader extends StatelessWidget {
               const Spacer(),
               ?time,
               if (onClose != null) ...[
-                const SizedBox(width: StizeSpace.space3),
-                SheetCloseButton(
-                  onPressed: onClose!,
-                  background: Colors.black.withValues(alpha: 0.2),
-                  color: on,
+                const SizedBox(
+                  width: StizeSpace.space3 - SheetCloseButton.inset,
+                ),
+                // The circle sits flush with the card's content edge, like the
+                // times in the lists below (owner, 2026-11-26).
+                Transform.translate(
+                  offset: const Offset(SheetCloseButton.inset, 0),
+                  child: SheetCloseButton(
+                    onPressed: onClose!,
+                    background: Colors.black.withValues(alpha: 0.2),
+                    color: on,
+                  ),
                 ),
               ],
             ],
@@ -216,7 +223,10 @@ class FollowHeader extends StatelessWidget {
               // sits in the first row.
               if (onClose != null)
                 const SizedBox(
-                  width: StizeSpace.space3 + SheetCloseButton.size,
+                  width:
+                      StizeSpace.space3 +
+                      SheetCloseButton.size -
+                      2 * SheetCloseButton.inset,
                 ),
             ],
           ),
@@ -227,7 +237,9 @@ class FollowHeader extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.only(
                   right: onClose != null
-                      ? StizeSpace.space3 + SheetCloseButton.size
+                      ? StizeSpace.space3 +
+                            SheetCloseButton.size -
+                            2 * SheetCloseButton.inset
                       : 0,
                 ),
                 child: Wrap(

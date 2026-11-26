@@ -1,3 +1,4 @@
+import 'stretch_card_list.dart';
 import 'dart:async';
 import 'package:stize/core/design/stize_text.dart';
 
@@ -478,13 +479,10 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     }
     // Cards run edge to edge like every list; the stop/line rows keep a
     // 16px inset of their own.
-    return ListView(
+    return StretchCardList(
       controller: controller,
       shrinkWrap: widget.hugContent,
-      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
+      bottomPadding: MediaQuery.paddingOf(context).bottom,
       children: children,
     );
   }
@@ -587,10 +585,9 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   // Wrap a non-list state so a sheet still drags (it needs a scrollable child)
   // and pull-to-refresh still works where relevant.
   Widget _scrollable(ScrollController? controller, Widget child) {
-    return ListView(
+    return StretchCardList(
       controller: controller,
       shrinkWrap: widget.hugContent,
-      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         // The guide strip leads empty and loading states too.
         if (widget.banner != null && _query.isEmpty)
