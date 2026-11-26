@@ -123,6 +123,20 @@ class VehicleSample {
   /// last fix. Requires [path] to be projected onto the road geometry.
   final List<TrajectoryPoint>? trajectory;
   final DateTime? asOf;
+
+  /// The same sample on [p], for a road shape that landed after it was taken.
+  VehicleSample withPath(RoutePath p) => VehicleSample(
+    key: key,
+    position: position,
+    line: line,
+    type: type,
+    heading: heading,
+    path: p,
+    trajectory: trajectory,
+    asOf: asOf,
+    directionRouteId: directionRouteId,
+    source: source,
+  );
 }
 
 /// Pure interpolation logic behind the live-tracking map, kept separate from
@@ -179,6 +193,10 @@ class VehicleTrackAnimator {
   // (route re-match, long feed gap): snap to the real fix rather than crawl for
   // minutes.
   static const _snapMeters = 2000.0;
+
+  /// Each vehicle's latest sample, replayed by [adoptPath] when its road shape
+  /// lands after the sample did.
+  final Map<String, VehicleSample> _lastSample = {};
 
   static String keyFor(Arrival a) => a.garageNo ?? '${a.line}-${a.routeId}';
 
@@ -268,6 +286,7 @@ class VehicleTrackAnimator {
     final seen = <String>{};
     for (final s in samples) {
       seen.add(s.key);
+      _lastSample[s.key] = s;
       final existing = _tracks[s.key];
       if (existing == null) {
         final track = VehicleTrack(
@@ -378,28 +397,24 @@ class VehicleTrackAnimator {
     _tracks.removeWhere(
       (key, t) => !seen.contains(key) && t.missingCount > _graceThreshold,
     );
+    _lastSample.removeWhere((key, _) => !_tracks.containsKey(key));
   }
 
   /// Build or refresh a track's timed-trajectory player from a sample, returning
-  /// whether timed mode is active afterwards. Needs a plan and its as-of time.
+  /// whether timed mode is active afterwards. Needs a plan, its as-of time and
+  /// the road-accurate GTFS shape.
   ///
-  /// The route geometry the plan plays along is the road-accurate GTFS shape when
-  /// the caller has it; **otherwise the plan's own station points** — so a
-  /// vehicle keeps *moving* (extrapolating forward by wall-clock) the moment its
-  /// plan arrives, instead of standing at its last fix until the shape loads a
-  /// refetch later. When the real shape does arrive on a later sample it upgrades
-  /// in place (the player re-anchors onto it without a jump). This is what makes
-  /// "keep predicting when fixes run out" the default rather than standing still.
+  /// Without the shape there is no timed mode (owner, 2026-11-26): the plan's
+  /// own points are stops, and playing it straight from stop to stop drove the
+  /// marker through the blocks between them. Until the shape lands the marker
+  /// stays at its GPS fix (5 to 10 m from the road in the live feed); the shape
+  /// usually arrives within a second, and [adoptPath] then starts the plan on
+  /// the road at once.
   bool _applyTimedPlan(VehicleTrack track, VehicleSample s, DateTime at) {
     final plan = s.trajectory;
     if (plan == null || plan.length < 2 || s.asOf == null) return false;
-    final realPath = (s.path != null && s.path!.isUsable) ? s.path : null;
-    final path =
-        realPath ??
-        RoutePath.fromLatLon([
-          for (final p in plan) [p.lat, p.lon],
-        ]);
-    if (path == null || !path.isUsable) return false;
+    final path = (s.path != null && s.path!.isUsable) ? s.path! : null;
+    if (path == null) return false;
     final existing = track.timed;
     if (existing == null) {
       final built = TimedTrajectory.build(
@@ -426,9 +441,9 @@ class VehicleTrackAnimator {
       // dropping to a jump — timed mode stays active either way.
       existing.updatePlan(path: path, plan: plan, asOf: s.asOf!, now: at);
     }
-    // Remember the real road shape (not the plan-point fallback) for the
-    // conservative path should timed mode ever drop.
-    if (realPath != null) track.path = realPath;
+    // Remember the road shape for the conservative path should timed mode
+    // ever drop.
+    track.path = path;
     // Only a plan that still projects motion counts as "moved" — a vehicle
     // parked at the end of its plan ages toward "looks stuck" as before.
     if (track.timed!.hasForwardMotion(at)) track.lastMovedAt = at;
@@ -541,13 +556,42 @@ class VehicleTrackAnimator {
   /// Drop every track immediately, bypassing the grace period — for a hard
   /// reset like zooming out past the vehicle layer, where holding stale markers
   /// would be wrong.
-  void clear() => _tracks.clear();
+  void clear() {
+    _tracks.clear();
+    _lastSample.clear();
+  }
 
   /// Keep only [keys], dropping the rest immediately (no grace period) — the
   /// on-demand switch, where the background set must go at once but the context
   /// the user is watching (a followed vehicle) has to survive it.
   void retainOnly(Set<String> keys) {
     _tracks.removeWhere((key, _) => !keys.contains(key));
+    _lastSample.removeWhere((key, _) => !keys.contains(key));
+  }
+
+  /// The road shape for direction [directionRouteId] just loaded: move every
+  /// vehicle of that direction still without one onto it now, whichever feed
+  /// it came from (the viewport set, a stop's board, a followed vehicle),
+  /// instead of waiting up to a poll for its next sample. Its last sample is
+  /// replayed on [path], so a timed plan starts playing along the road.
+  /// Returns whether any track changed.
+  bool adoptPath(
+    String directionRouteId,
+    RoutePath path,
+    double currentT, {
+    DateTime? now,
+  }) {
+    if (!path.isUsable) return false;
+    final upgraded = [
+      for (final e in _tracks.entries)
+        if (e.value.directionRouteId == directionRouteId &&
+            e.value.path == null &&
+            _lastSample[e.key] != null)
+          _lastSample[e.key]!.withPath(path),
+    ];
+    if (upgraded.isEmpty) return false;
+    syncSamples(upgraded, currentT, now: now, prune: false);
+    return true;
   }
 
   /// Drop [key]'s timed plan so the marker is driven by its raw fixes (the
