@@ -14,8 +14,10 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 - **Map point drag on iPhone.** The centre dot is now drawn by the map itself:
   dragging the map no longer keeps dropping the dot after a short move, and a
   dropped dot stays on its spot when the sheet moves.
-- **Pull to refresh** triggers after a shorter pull, reachable from the
-  resting sheet.
+- **Pull to refresh on the full Nearby sheet.** At the top detent a pull down
+  at the top of the list now stretches the first card and refreshes instead
+  of shrinking the sheet; a quick flick down collapses it. The pull is also
+  shorter.
 
 ## 2026-11-25
 

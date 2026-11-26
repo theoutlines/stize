@@ -1,4 +1,6 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
@@ -179,28 +181,37 @@ class NearbySheet extends StatelessWidget {
                         : BorderRadius.zero,
                     child: Column(
                       children: [
-                        if (!oneScroll && !headerOwnsHandle) const SheetDragHandle(),
+                        if (!oneScroll && !headerOwnsHandle)
+                          const SheetDragHandle(),
                         if (levelBody != null) ...[
                           ?levelHeader,
                           Expanded(child: levelBody!(scrollController)),
                         ] else
                           Expanded(
-                            child: NearbyView(
-                              userLocation: userLocation,
-                              locationDenied: locationDenied,
-                              active: active,
-                              onEnableLocation: onEnableLocation,
-                              onTapGroup: onTapGroup,
-                              onSelectStop: onSelectStop,
-                              onSelectLine: onSelectLine,
-                              scrollController: scrollController,
-                              banner: banner,
-                              showLocalSearch: !oneScroll,
-                              externalSearch: searchController,
-                              externalSearchActive: searchActive,
-                              onSearchFocus: () =>
-                                  _toDetent(maxSize ?? kSheetLarge),
-                              onSearchCancel: _restoreDetent,
+                            child: _TopDetentScroll(
+                              sheetScroll: scrollController,
+                              controller: controller,
+                              top: maxSize ?? kSheetLarge,
+                              rest: oneScroll
+                                  ? oneScrollRestFor(viewport)
+                                  : kSheetPeek,
+                              builder: (scrollController) => NearbyView(
+                                userLocation: userLocation,
+                                locationDenied: locationDenied,
+                                active: active,
+                                onEnableLocation: onEnableLocation,
+                                onTapGroup: onTapGroup,
+                                onSelectStop: onSelectStop,
+                                onSelectLine: onSelectLine,
+                                scrollController: scrollController,
+                                banner: banner,
+                                showLocalSearch: !oneScroll,
+                                externalSearch: searchController,
+                                externalSearchActive: searchActive,
+                                onSearchFocus: () =>
+                                    _toDetent(maxSize ?? kSheetLarge),
+                                onSearchCancel: _restoreDetent,
+                              ),
                             ),
                           ),
                       ],
@@ -221,7 +232,6 @@ final Map<double, List<double>> _snapSizesCache = {};
 List<double> _snapSizesFor(double top) =>
     (_snapSizesCache.length > 8 ? (_snapSizesCache..clear()) : _snapSizesCache)
         .putIfAbsent(top, () => List.unmodifiable([kSheetPeek, top]));
-
 
 /// Vertical drags that land outside the sheet's scrollable move the sheet,
 /// and a release snaps to peek or large (by flick direction, else nearest).
@@ -276,6 +286,181 @@ class _SheetDragArea extends StatelessWidget {
         );
       },
       child: child,
+    );
+  }
+}
+
+/// At the top detent the Nearby list scrolls on a controller of its own, so a
+/// pull down at its top stretches the first card and refreshes (owner,
+/// 2026-11-26, option 1) instead of shrinking the sheet, which is what the
+/// sheet's own scroll position does with every downward drag at its top.
+///
+/// The sheet's controller then rests on an empty scrollable, so the handle,
+/// the header and [DraggableScrollableController] calls keep moving the sheet,
+/// and a quick flick down from the list's top collapses it to [rest].
+///
+/// Swaps wait for the fingers to lift and the list to stop, so a drag or a
+/// fling is never cut halfway.
+class _TopDetentScroll extends StatefulWidget {
+  const _TopDetentScroll({
+    required this.sheetScroll,
+    required this.controller,
+    required this.top,
+    required this.rest,
+    required this.builder,
+  });
+
+  final ScrollController sheetScroll;
+  final DraggableScrollableController? controller;
+
+  /// The top detent, as a fraction of the screen.
+  final double top;
+
+  /// Where a flick down collapses the sheet to.
+  final double rest;
+
+  final Widget Function(ScrollController scrollController) builder;
+
+  @override
+  State<_TopDetentScroll> createState() => _TopDetentScrollState();
+}
+
+class _TopDetentScrollState extends State<_TopDetentScroll> {
+  /// The list's own controller while the sheet sits at its top detent.
+  ScrollController? _own;
+  bool _want = false;
+  bool _collapsing = false;
+  int _pointers = 0;
+  final VelocityTracker _velocity = VelocityTracker.withKind(
+    PointerDeviceKind.touch,
+  );
+  double _downY = 0;
+  bool _downAtTop = false;
+
+  bool get _detached => _own != null;
+
+  @override
+  void dispose() {
+    _own?.dispose();
+    super.dispose();
+  }
+
+  bool _onExtent(DraggableScrollableNotification n) {
+    // Hysteresis: hold the list at the top a hair below the detent so the end
+    // of a snap animation does not flip it back.
+    final want = _detached
+        ? n.extent >= widget.top - 0.02
+        : n.extent >= widget.top - 0.01;
+    if (want != _want) {
+      _want = want;
+      _settle();
+    }
+    return false;
+  }
+
+  bool _onScroll(ScrollNotification n) {
+    if (n is ScrollEndNotification) _settle();
+    return false;
+  }
+
+  bool _scrolling() {
+    final c = _detached ? _own! : widget.sheetScroll;
+    return c.hasClients && c.positions.any((p) => p.isScrollingNotifier.value);
+  }
+
+  /// Apply [_want] once nothing is in motion under a finger.
+  void _settle() {
+    if (!mounted || _collapsing || _pointers > 0 || _want == _detached) return;
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _settle());
+      return;
+    }
+    if (_want) {
+      if (_scrolling()) return;
+      final s = widget.sheetScroll;
+      final offset = s.hasClients && s.positions.length == 1 ? s.offset : 0.0;
+      setState(() => _own = ScrollController(initialScrollOffset: offset));
+      // A snap cut a hair short of the detent finishes on the empty scrollable.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final c = widget.controller;
+        if (mounted && c != null && c.isAttached && c.size < widget.top) {
+          c.jumpTo(widget.top);
+        }
+      });
+    } else {
+      final old = _own;
+      setState(() => _own = null);
+      WidgetsBinding.instance.addPostFrameCallback((_) => old?.dispose());
+    }
+  }
+
+  void _down(PointerDownEvent e) {
+    _pointers++;
+    _velocity.addPosition(e.timeStamp, e.position);
+    _downY = e.position.dy;
+    final own = _own;
+    _downAtTop = own != null && own.hasClients && own.offset <= 0;
+  }
+
+  void _up(PointerEvent e) {
+    _pointers = (_pointers - 1).clamp(0, 99);
+    if (e is PointerUpEvent && _detached && _downAtTop) {
+      final v = _velocity.getVelocity().pixelsPerSecond.dy;
+      if (v > 800 && e.position.dy - _downY > 12) {
+        _collapse();
+        return;
+      }
+    }
+    _settle();
+  }
+
+  Future<void> _collapse() async {
+    final c = widget.controller;
+    if (c == null || !c.isAttached) return;
+    _collapsing = true;
+    try {
+      await c.animateTo(
+        widget.rest,
+        duration: StizeMotion.medium,
+        curve: StizeMotion.smoothOut,
+      );
+    } finally {
+      _collapsing = false;
+      _want = c.isAttached && c.size >= widget.top - 0.01;
+      _settle();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final own = _own;
+    return NotificationListener<DraggableScrollableNotification>(
+      onNotification: _onExtent,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onScroll,
+        child: Listener(
+          onPointerDown: _down,
+          onPointerMove: (e) => _velocity.addPosition(e.timeStamp, e.position),
+          onPointerUp: _up,
+          onPointerCancel: _up,
+          child: Stack(
+            children: [
+              if (own != null)
+                // Keeps the sheet's controller attached while the list
+                // scrolls on its own, so the sheet can still be moved.
+                SizedBox.shrink(
+                  child: SingleChildScrollView(
+                    controller: widget.sheetScroll,
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: const SizedBox.shrink(),
+                  ),
+                ),
+              Positioned.fill(child: widget.builder(own ?? widget.sheetScroll)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
