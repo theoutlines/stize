@@ -34,6 +34,7 @@ import '../../core/route_path.dart';
 import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_map_mode.dart';
 import '../../core/vehicle_route.dart';
+import '../../core/vehicle_diagnostics.dart';
 import '../../core/vehicle_track_animator.dart';
 import '../../data/analytics/event_logger.dart';
 import '../../data/compass/compass.dart';
@@ -67,6 +68,9 @@ import 'settings_screen.dart';
 import '../widgets/drawer_footer.dart';
 import '../widgets/guide/belgrade_guide.dart';
 import '../widgets/level_header.dart';
+import '../widgets/map/diagnostics_overlay.dart';
+import '../widgets/map/follow_bar.dart';
+import '../widgets/map/map_controls.dart';
 import '../widgets/map_search_pill.dart';
 import '../widgets/my_stops_list.dart';
 import '../widgets/vehicle_icon.dart';
@@ -923,7 +927,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                           onMapCreated: _onMapCreated,
                           onStyleLoaded: _onStyleLoaded,
                           onEvent: _onEvent,
-                          layers: _buildLayers(),
+                          // No declarative layers: stops, the focused line and
+                          // vehicles are added imperatively (maplibre 0.3.5's
+                          // positional LayerManager dropped whole layers; see
+                          // _addStopLayers / _syncFocusLayers).
+                          layers: const [],
                           children: [
                             const CompactAttribution(),
                             // "My position" as a widget marker so it survives every zoom
@@ -984,7 +992,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                       !_onDemand &&
                       _currentZoom < _minVehiclesZoom &&
                       !_hasVehicles)
-                    _zoomHint(l10n, theme),
+                    const MapZoomHint(),
                   // Bottom UI. On desktop with the flag ON the three views live in the
                   // persistent left panel. On mobile (and flag OFF) we fall through to
                   // today's independent bottom cluster, UNTOUCHED — the panel is a
@@ -996,7 +1004,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   // *replaces* the search bar), else the normal search + favourites. A
                   // stop arrivals sheet suppresses the whole cluster (#7).
                   else if (_lineOnlyFocus)
-                    _focusPanel(theme)
+                    _focusPanel()
                   else
                     NearbySheet(
                       controller: _sheetCtl,
