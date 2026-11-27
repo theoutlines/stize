@@ -60,27 +60,20 @@ export function buildCoveragePoints(
   opts?: { stepMetres?: number; coordPrecision?: number },
 ): CoveragePointFeatureCollection;
 
-export interface CoverageDotShape {
+export interface CoverageFlowShape {
+  routeId: string;
   vehicleType: string;
   tripsPerDay: number;
   polyline: number[][];
 }
 
-export interface CoverageDotFeature {
+export interface CoverageFlowFeature {
   type: "Feature";
-  properties: { type: string };
-  geometry: { type: "MultiPoint"; coordinates: number[][] };
+  properties: { type: string; trips: number };
+  geometry: { type: "LineString"; coordinates: number[][] };
 }
 
-export function buildCoverageDots(
-  shapes: CoverageDotShape[],
-  opts?: {
-    budget?: number;
-    dotsPerTripKm?: number;
-    jitterMetres?: number;
-    strayShare?: number;
-    strayMetres?: number;
-    coordPrecision?: number;
-    seed?: number;
-  },
-): { type: "FeatureCollection"; features: CoverageDotFeature[] };
+export function buildCoverageFlow(
+  shapes: CoverageFlowShape[],
+  opts?: { grid?: number; simplifyEpsilon?: number; coordPrecision?: number },
+): { type: "FeatureCollection"; features: CoverageFlowFeature[] };

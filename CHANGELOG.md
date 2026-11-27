@@ -44,13 +44,14 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   whole city and hides stops and vehicles; back returns the camera. The level
   holds the type filters (All, Tram, Trolleybus, Bus, now with the vehicle
   icons and the app's chip style, scrolling sideways) and a short density key.
-- **Coverage as a dot cloud.** Every city route is scattered with fine dots
-  in proportion to its weekday trips, a little off the street; where many
-  trips share a street a tight glow lights up from the type's colour to a
-  light tint (bus blue to cyan, trolleybus orange to yellow, tram red to
-  coral). The basemap turns into a quiet grey data-viz variant while Coverage
-  is open; tram rails hide. Data: backend `build-coverage-dots.mjs` →
-  `/api/v1/coverage/dots` (~1 MB gzip, rebuilt with the GTFS).
+- **Coverage as flow lines.** Per vehicle type, city routes collapse into
+  corridors that carry their weekday trips; trips set the stroke: a few trips
+  is a hairline in the type's deep tone, a street with hundreds a day is a
+  thick stroke that runs to a light tint (bus blue to cyan, trolleybus orange
+  to yellow, tram red to coral) with a soft glow under it. The basemap turns
+  into a quiet grey data-viz variant while Coverage is open; tram rails hide.
+  Data: backend `build-coverage-flow.mjs` → `/api/v1/coverage/flow` (~340 KB
+  gzip, rebuilt with the GTFS).
 - **One mark for "no stop here".** "No stops nearby" and "Can't find that
   stop" now share a crossed-out stop sign instead of a crossed-out arrow and
   a crossed-out crosshair; a stop that can't be found shows no ⋯ menu.

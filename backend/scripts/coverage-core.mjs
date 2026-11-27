@@ -331,84 +331,59 @@ export function buildCoveragePoints(shapes, opts = {}) {
 }
 
 /**
- * Build the coverage-mode *dot cloud*: every route's shape scattered with dots
- * in proportion to how often it runs, a little jittered off the street (the
- * look of a GPS-trace map). Busy corridors fill in and glow; a route with a few
- * trips a day stays a sparse trail.
+ * Build coverage mode's *flow lines*: per vehicle type, the routes' shapes
+ * collapsed into shared corridors (same grid identity and centroid smoothing
+ * as buildCoverage), each carrying `trips`: the weekday trips of every route
+ * direction along it. The client turns `trips` into line width and glow, so a
+ * street with hundreds of trams a day reads heavier than a lone night bus.
  *
- * Per route, dots per km = trips/day × `dotsPerTripKm`, scaled down as a whole
- * when the total would pass `budget`. Each dot sits at a random point of a
- * segment, nudged by a gaussian of `jitterMetres`; a few (`strayShare`) stray
- * further (`strayMetres`), the noise around busy streets.
+ * Types are collapsed separately (a tram corridor stays a tram corridor even
+ * where buses share the street) and features come out lightest first, so the
+ * busiest corridors draw on top.
  *
- * Output is one MultiPoint per vehicle type (`properties.type`), coordinates at
- * `coordPrecision` decimals, so the file stays small. Seeded, so a rebuild of
- * the same data gives the same file.
+ * @param {Array<{routeId:string, vehicleType:string, tripsPerDay:number, polyline:number[][]}>} shapes
+ * @param {{grid?:number, simplifyEpsilon?:number, coordPrecision?:number}} opts
  */
-export function buildCoverageDots(shapes, opts = {}) {
-  const budget = opts.budget ?? 220000;
-  const dotsPerTripKm = opts.dotsPerTripKm ?? 2;
-  const jitter = opts.jitterMetres ?? 5;
-  const strayShare = opts.strayShare ?? 0.1;
-  const stray = opts.strayMetres ?? 45;
-  const precision = opts.coordPrecision ?? 5;
-  let seed = opts.seed ?? 20261127;
-  const rnd = () => {
-    seed = (seed * 16807) % 2147483647;
-    return seed / 2147483647;
-  };
-  const gauss = () => {
-    const u = rnd() || 1e-9;
-    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd());
-  };
+export function buildCoverageFlow(shapes, opts = {}) {
+  const grid = opts.grid ?? DEFAULT_GRID_DEG;
+  const simplifyEpsilon = opts.simplifyEpsilon ?? grid * 0.4;
+  const coordPrecision = opts.coordPrecision ?? 5;
+  const round = (v) => Number(v.toFixed(coordPrecision));
+  const trips = new Map(shapes.map((s) => [s.routeId, s.tripsPerDay ?? 0]));
 
-  // Total trip-km sets the scale so the whole city fits the budget.
-  let tripKm = 0;
-  const usable = [];
-  for (const s of shapes) {
-    const poly = s.polyline;
-    if (!Array.isArray(poly) || poly.length < 2 || !(s.tripsPerDay > 0)) continue;
-    let km = 0;
-    for (let i = 1; i < poly.length; i++) km += metresBetween(poly[i - 1], poly[i]) / 1000;
-    tripKm += km * s.tripsPerDay;
-    usable.push(s);
-  }
-  const scale = Math.min(1, budget / Math.max(1, tripKm * dotsPerTripKm));
-  const perTripKm = dotsPerTripKm * scale;
-
-  const round = (v) => Number(v.toFixed(precision));
-  const byType = new Map();
-  for (const s of usable) {
-    const out = byType.get(s.vehicleType) ?? [];
-    byType.set(s.vehicleType, out);
-    const poly = s.polyline;
-    const perMetre = (s.tripsPerDay * perTripKm) / 1000;
-    let carry = 0; // fractional dots roll over to the next segment
-    for (let i = 1; i < poly.length; i++) {
-      const a = poly[i - 1];
-      const b = poly[i];
-      const want = metresBetween(a, b) * perMetre + carry;
-      const n = Math.floor(want);
-      carry = want - n;
-      const mLat = M_PER_DEG_LAT;
-      const mLon = metresPerDegLon((a[0] + b[0]) / 2);
-      for (let k = 0; k < n; k++) {
-        const t = rnd();
-        const sd = rnd() < strayShare ? stray : jitter;
-        const lat = a[0] + (b[0] - a[0]) * t + (gauss() * sd) / mLat;
-        const lon = a[1] + (b[1] - a[1]) * t + (gauss() * sd) / mLon;
-        out.push([round(lon), round(lat)]);
+  const features = [];
+  for (const type of TYPE_ORDER) {
+    const ofType = shapes
+      .filter((s) => s.vehicleType === type && (s.tripsPerDay ?? 0) > 0)
+      .map((s) => ({ line: s.routeId, vehicleType: type, polyline: s.polyline }));
+    if (ofType.length === 0) continue;
+    const { segments, nodeCoord } = accumulate(ofType, grid);
+    const groups = new Map();
+    for (const seg of segments.values()) {
+      const sig = signatureOf(seg);
+      let group = groups.get(sig);
+      if (!group) {
+        let sum = 0;
+        for (const id of seg.lines) sum += trips.get(id) ?? 0;
+        group = { edges: [], trips: sum };
+        groups.set(sig, group);
+      }
+      group.edges.push({ a: seg.a, b: seg.b });
+    }
+    for (const group of groups.values()) {
+      for (const chain of chainEdges(group.edges)) {
+        const latLon = simplify(
+          chain.map((node) => nodeCoord.get(nodeKey(node))),
+          simplifyEpsilon,
+        );
+        features.push({
+          type: "Feature",
+          properties: { type, trips: group.trips },
+          geometry: { type: "LineString", coordinates: latLon.map(([lat, lon]) => [round(lon), round(lat)]) },
+        });
       }
     }
   }
-  const features = [];
-  for (const [type, coords] of byType) {
-    if (coords.length === 0) continue;
-    features.push({
-      type: "Feature",
-      properties: { type },
-      geometry: { type: "MultiPoint", coordinates: coords },
-    });
-  }
+  features.sort((a, b) => a.properties.trips - b.properties.trips);
   return { type: "FeatureCollection", features };
 }

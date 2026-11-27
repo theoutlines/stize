@@ -336,7 +336,7 @@ extension _MapLayers on _HomeMapScreenState {
     await _refreshCoverageModeLayers();
   }
 
-  /// (Re)draws the dot cloud for the picked types: removed when coverage
+  /// (Re)draws the corridors for the picked types: removed when coverage
   /// mode is off. Swaps layers rather than restyling them (the 0.3.x style
   /// controller has no setFilter); the source stays, so nothing refetches.
   Future<void> _refreshCoverageModeLayers() async {
@@ -351,18 +351,18 @@ extension _MapLayers on _HomeMapScreenState {
     }
     if (!_cov.mode || !mounted) return;
     try {
-      await style.addSource(coverageDotsSource());
+      await style.addSource(coverageFlowSource());
     } catch (_) {
-      // Already there: the cloud is fetched once per style.
+      // Already there: the corridors are fetched once per style.
     }
     final picked = ref.read(coverageTypesProvider);
     // Under the stop and vehicle layers, so a focus left over can't hide
-    // beneath the cloud. Per type: dots, then the glow over them.
+    // beneath the corridors. Per type: the glow, then the stroke over it.
     for (final type in coverageTypes) {
       if (picked.isNotEmpty && !picked.contains(type)) continue;
       for (final layer in [
-        coverageDotsLayer(type: type, dark: dark),
-        coverageGlowLayer(type: type),
+        coverageGlowLayer(type: type, dark: dark),
+        coverageFlowLayer(type: type),
       ]) {
         try {
           await style.addLayer(layer, belowLayerId: _LayerIds.coverageModeBelow);

@@ -226,11 +226,11 @@ export function transitRoutes(app: App): void {
     });
   });
 
-  // Coverage mode's dot cloud (build-coverage-dots.mjs → coverage-dots.geojson):
-  // route shapes scattered with dots by weekday trips. Same serving rules as
+  // Coverage mode's flow lines (build-coverage-flow.mjs → coverage-flow.geojson):
+  // per-type corridors carrying weekday `trips`. Same serving rules as
   // /api/v1/coverage above.
-  app.get("/api/v1/coverage/dots", async (c) => {
-    const res = await c.env.ASSETS.fetch(new URL("/gtfs/coverage-dots.geojson", "https://assets.internal"));
+  app.get("/api/v1/coverage/flow", async (c) => {
+    const res = await c.env.ASSETS.fetch(new URL("/gtfs/coverage-flow.geojson", "https://assets.internal"));
     if (!res.ok) return c.json({ error: "coverage data unavailable" }, 404);
     return c.newResponse(res.body, 200, {
       "content-type": "application/json",

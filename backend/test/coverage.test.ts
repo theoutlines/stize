@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accumulateSegments, buildCoverage, buildCoverageDots, buildCoveragePoints } from "../scripts/coverage-core.mjs";
+import { accumulateSegments, buildCoverage, buildCoverageFlow, buildCoveragePoints } from "../scripts/coverage-core.mjs";
 
 // A straight west→east run of points along one latitude, spaced ~1 grid cell
 // apart at grid=0.001 so each pair lands in a distinct cell.
@@ -225,47 +225,46 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
     expect(gj.features).toHaveLength(0);
   });
 
-  describe("buildCoverageDots", () => {
-    const dotCount = (gj: any, type: string) =>
-      gj.features.find((f: any) => f.properties.type === type)?.geometry.coordinates.length ?? 0;
-
-    it("scatters dots in proportion to trips per day, one MultiPoint per type", () => {
-      const line = horizontalLine(44.8, 20.4, 20); // ~1.6 km
-      const gj = buildCoverageDots(
+  describe("buildCoverageFlow", () => {
+    it("sums trips of every route along a shared corridor, per type", () => {
+      const geom = horizontalLine(44.8, 20.4, 4);
+      const gj = buildCoverageFlow(
         [
-          { vehicleType: "bus", tripsPerDay: 200, polyline: line },
-          { vehicleType: "tram", tripsPerDay: 20, polyline: line },
+          { routeId: "2", vehicleType: "tram", tripsPerDay: 100, polyline: geom },
+          { routeId: "2-1", vehicleType: "tram", tripsPerDay: 90, polyline: [...geom].reverse() },
+          { routeId: "26", vehicleType: "bus", tripsPerDay: 40, polyline: geom },
         ],
-        { budget: 1e9, dotsPerTripKm: 1 },
+        { grid: GRID, simplifyEpsilon: 0 },
       );
-      expect(gj.features.map((f: any) => f.geometry.type)).toEqual(["MultiPoint", "MultiPoint"]);
-      const bus = dotCount(gj, "bus");
-      const tram = dotCount(gj, "tram");
-      expect(bus).toBeGreaterThan(250);
-      expect(bus / tram).toBeGreaterThan(8);
-      expect(bus / tram).toBeLessThan(12);
+      const tram = gj.features.filter((f: any) => f.properties.type === "tram");
+      const bus = gj.features.filter((f: any) => f.properties.type === "bus");
+      expect(tram).toHaveLength(1);
+      expect(tram[0].properties.trips).toBe(190);
+      expect(bus).toHaveLength(1);
+      expect(bus[0].properties.trips).toBe(40);
+      // Lightest first, so the busiest corridor draws on top.
+      expect(gj.features.map((f: any) => f.properties.trips)).toEqual([40, 190]);
     });
 
-    it("keeps the whole cloud within the budget", () => {
-      const line = horizontalLine(44.8, 20.4, 20);
-      const gj = buildCoverageDots([{ vehicleType: "bus", tripsPerDay: 5000, polyline: line }], { budget: 500 });
-      expect(dotCount(gj, "bus")).toBeLessThanOrEqual(500);
-    });
-
-    it("is deterministic and keeps dots near the route", () => {
-      const line = horizontalLine(44.8, 20.4, 10);
-      const shapes = [{ vehicleType: "bus", tripsPerDay: 100, polyline: line }];
-      const a = buildCoverageDots(shapes, { budget: 1e9, dotsPerTripKm: 1 });
-      const b = buildCoverageDots(shapes, { budget: 1e9, dotsPerTripKm: 1 });
-      expect(a).toEqual(b);
-      // Strays reach ~45 m (σ); nothing should land kilometres away.
-      for (const [, lat] of a.features[0].geometry.coordinates) expect(Math.abs(lat - 44.8)).toBeLessThan(0.003);
+    it("weights a corridor only by the routes that use it", () => {
+      const shared = horizontalLine(44.8, 20.4, 2);
+      const branch = [...shared, [44.801, 20.402], [44.802, 20.402]];
+      const gj = buildCoverageFlow(
+        [
+          { routeId: "a", vehicleType: "bus", tripsPerDay: 10, polyline: shared },
+          { routeId: "b", vehicleType: "bus", tripsPerDay: 30, polyline: branch },
+        ],
+        { grid: GRID, simplifyEpsilon: 0 },
+      );
+      const trips = gj.features.map((f: any) => f.properties.trips).sort((x: number, y: number) => x - y);
+      expect(trips).toEqual([30, 40]);
     });
 
     it("skips routes without trips", () => {
-      const gj = buildCoverageDots([{ vehicleType: "bus", tripsPerDay: 0, polyline: horizontalLine(44.8, 20.4, 5) }]);
+      const gj = buildCoverageFlow([
+        { routeId: "x", vehicleType: "bus", tripsPerDay: 0, polyline: horizontalLine(44.8, 20.4, 3) },
+      ]);
       expect(gj.features).toHaveLength(0);
     });
   });
 });
-

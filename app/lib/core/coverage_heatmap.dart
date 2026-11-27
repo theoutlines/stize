@@ -194,46 +194,45 @@ HeatmapStyleLayer coverageMainLayer({required bool dark}) => HeatmapStyleLayer(
 
 // ---- Coverage mode (the menu's Coverage, over the home map) ---------------
 //
-// A dot cloud on the grey data-viz basemap, after the taxi-trip maps: every
-// route scattered with dots in proportion to its weekday trips, a little off
-// the street. A rare route is a sparse trail of dots; where many trips share a
-// street a tight glow lights up under the dots and runs from the type's colour
-// to a light tint, the way Manhattan turns cyan on the reference.
+// Flow lines on the grey data-viz basemap: per vehicle type, routes collapse
+// into corridors that carry their weekday trips. Trips set the weight: a lone
+// night bus is a hairline in the type's deep tone; a street with hundreds of
+// trams a day is a thick stroke that runs to the type's light tint and glows.
 
 /// Coverage mode takes in the whole city.
 const coverageOverviewCenter = Geographic(lon: 20.46, lat: 44.80);
 const coverageOverviewZoom = 11.4;
 
-/// The dot cloud (backend `build-coverage-dots.mjs`): one MultiPoint per type.
-const coverageDotsSourceId = 'coverage-dots-src';
-const coverageDotsUrl = '$apiBaseUrl/api/v1/coverage/dots?rev=1';
+/// Corridors with `type` and `trips` (backend `build-coverage-flow.mjs`).
+const coverageFlowSourceId = 'coverage-flow-src';
+const coverageFlowUrl = '$apiBaseUrl/api/v1/coverage/flow?rev=1';
 
-GeoJsonSource coverageDotsSource() =>
-    GeoJsonSource(id: coverageDotsSourceId, data: coverageDotsUrl);
+GeoJsonSource coverageFlowSource() =>
+    GeoJsonSource(id: coverageFlowSourceId, data: coverageFlowUrl);
 
 /// The coverage `type` values, bottom layer first: bus (the widest network)
 /// lowest, tram on top.
 const coverageTypes = <String>['bus', 'trolleybus', 'tram'];
 
-/// Per type: the dot colour, then the glow from its start to its peak. The
-/// middle stop is the type's transit colour; deep and light tints keep the
-/// three hues glowing together (blue to cyan, orange to yellow, red to coral)
-/// instead of muddying where they cross. Tuned live on staging, 2026-11-27.
+/// Per type: deep tone, transit colour, bright tint, peak tint. The middle
+/// stop is the type's transit colour; the tints keep the three hues glowing
+/// together (blue to cyan, orange to yellow, red to coral) instead of muddying
+/// where they cross. Tuned on staging, 2026-11-27.
 const _coverageRamps = <String, List<String>>{
   'bus': ['#123FA8', '#2278E6', '#38B6FF', '#B8F2FF'],
   'trolleybus': ['#8A3D00', '#EA7000', '#FFB020', '#FFF0B0'],
   'tram': ['#8A1018', '#E4312F', '#FF6A4D', '#FFD6C8'],
 };
 
-/// Glow intensity at the overview zoom. Bus has by far the most dots, so it
-/// runs coolest; tram and trolleybus run hot enough that a busy line glows.
-const _coverageGlowIntensity = {
-  'bus': 0.03,
-  'trolleybus': 0.05,
-  'tram': 0.045,
+/// Trips/day where each type reaches its ramp stops. Bus corridors run far
+/// busier (up to ~4000 a day on the bridges) than tram or trolleybus (~1400).
+const _coverageTripStops = <String, List<num>>{
+  'bus': [20, 300, 1200, 3000],
+  'trolleybus': [50, 250, 700, 1100],
+  'tram': [50, 250, 700, 1300],
 };
 
-String coverageDotsLayerId(String type) => 'coverage-dots-$type';
+String coverageFlowLayerId(String type) => 'coverage-flow-$type';
 String coverageGlowLayerId(String type) => 'coverage-glow-$type';
 
 List<Object> _isType(String type) => [
@@ -242,77 +241,72 @@ List<Object> _isType(String type) => [
   type,
 ];
 
-/// The dots of one [type]: tiny, crisp, slightly see-through.
-CircleStyleLayer coverageDotsLayer({required String type, required bool dark}) {
+/// Line width by trips at the city view, times [k]: a hairline for a few
+/// trips, ~6.5 px for the busiest corridor.
+List<Object> _widthByTrips(double k) => [
+  'interpolate',
+  ['linear'],
+  ['get', 'trips'],
+  1,
+  0.4 * k,
+  50,
+  0.9 * k,
+  300,
+  2 * k,
+  1000,
+  3.6 * k,
+  4000,
+  6.5 * k,
+];
+
+/// The width over zoom: as above at the city view, about twice up close.
+List<Object> _width(double k) => [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  11,
+  _widthByTrips(k),
+  15,
+  _widthByTrips(k * 2.2),
+];
+
+/// Colour by trips along the type's ramp.
+List<Object> _colorByTrips(String type) {
   final r = _coverageRamps[type]!;
-  return CircleStyleLayer(
-    id: coverageDotsLayerId(type),
-    sourceId: coverageDotsSourceId,
-    filter: _isType(type),
-    paint: {
-      'circle-radius': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        11,
-        0.6,
-        15,
-        1.6,
-      ],
-      'circle-color': r[0],
-      'circle-opacity': dark ? 0.7 : 0.5,
-    },
-  );
+  final t = _coverageTripStops[type]!;
+  return [
+    'interpolate',
+    ['linear'],
+    ['get', 'trips'],
+    t[0], r[0], t[1], r[1], t[2], r[2], t[3], r[3], //
+  ];
 }
 
-/// The glow of one [type]: a tight heatmap that stays clear on a lone route
-/// and lights up only where dots pile up.
-HeatmapStyleLayer coverageGlowLayer({required String type}) {
-  final r = _coverageRamps[type]!;
-  final i = _coverageGlowIntensity[type] ?? 0.08;
-  return HeatmapStyleLayer(
-    id: coverageGlowLayerId(type),
-    sourceId: coverageDotsSourceId,
-    filter: _isType(type),
-    paint: {
-      'heatmap-radius': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        11,
-        3.5,
-        15,
-        9,
-      ],
-      'heatmap-intensity': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        11,
-        i,
-        13,
-        i * 3,
-        15,
-        i * 10,
-      ],
-      'heatmap-color': [
-        'interpolate',
-        ['linear'],
-        ['heatmap-density'],
-        0,
-        'rgba(0,0,0,0)',
-        0.2,
-        'rgba(0,0,0,0)',
-        0.35,
-        '${r[1]}99',
-        0.6,
-        r[1],
-        0.8,
-        r[2],
-        1,
-        r[3],
-      ],
-      'heatmap-opacity': 0.9,
-    },
-  );
-}
+/// The crisp stroke of one [type]'s corridors.
+LineStyleLayer coverageFlowLayer({required String type}) => LineStyleLayer(
+  id: coverageFlowLayerId(type),
+  sourceId: coverageFlowSourceId,
+  filter: _isType(type),
+  layout: const {'line-cap': 'round', 'line-join': 'round'},
+  paint: {
+    'line-color': _colorByTrips(type),
+    'line-width': _width(1),
+    'line-opacity': 0.9,
+  },
+);
+
+/// The glow under one [type]'s corridors: wide and soft, so busy streets
+/// shine and the city view melts into corridors.
+LineStyleLayer coverageGlowLayer({required String type, required bool dark}) =>
+    LineStyleLayer(
+      id: coverageGlowLayerId(type),
+      sourceId: coverageFlowSourceId,
+      filter: _isType(type),
+      layout: const {'line-cap': 'round', 'line-join': 'round'},
+      paint: {
+        'line-color': _colorByTrips(type),
+        'line-width': _width(4),
+        'line-blur': _width(3),
+        'line-opacity': dark ? 0.22 : 0.16,
+      },
+    );
