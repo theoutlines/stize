@@ -66,8 +66,10 @@ source into a stable versioned API under `/api/v1`. Key pieces:
   analytics reads), `admin`. The cron is `cron.ts`. Transport analytics live in `lib/analytics/`
   (`shared`, `observe` on the request path, `aggregate` and `aggregateParts`
   for the hourly roll-up, `read` for the app) and the stop sweep in
-  `lib/sweep/` (`config`, `tick`, `status`, `state`); `lib/analytics.ts` and
-  `lib/sweep.ts` re-export them, so import from those.
+  `lib/sweep/` (`config`, `tick`, `status`, `state`), jam detection in
+  `lib/jam/` (`config`, `fixes`, `types`, `compute`, `journal`);
+  `lib/analytics.ts`, `lib/sweep.ts` and `lib/jamDetector.ts` re-export them,
+  so import from those.
 
 ## App — layered Flutter (`app/lib/`)
 
