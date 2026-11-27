@@ -37,7 +37,7 @@ extension _MapLayers on _HomeMapScreenState {
   }
 
   void _refreshFollowPanel() {
-    if (!_panelActive || _selectedVehicleKey == null || _slotModel != null) {
+    if (!_panelActive || _selectedVehicleKey == null) {
       return;
     }
     final now = DateTime.now();

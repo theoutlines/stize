@@ -203,14 +203,10 @@ extension _MapContext on _HomeMapScreenState {
   /// unobscured strip to the right of the panel. On mobile / flag-OFF the panel
   /// is inactive → returns [target] unchanged (prod camera behaviour untouched).
   ///
-  /// Back one step up the chain (model → vehicle → stop → nearby). The panel's
+  /// Back one step up the chain (vehicle → stop → nearby). The panel's
   /// single nav-row back arrow and Android back both route here; there is NO
   /// separate × — back IS the exit (owner R1 #4).
   void _slotBack() {
-    if (_slotModel != null) {
-      _setState(() => _slotModel = null);
-      return;
-    }
     switch (_activeView) {
       case ContextView.vehicle:
         _closeVehicleContext();
@@ -223,19 +219,6 @@ extension _MapContext on _HomeMapScreenState {
       case ContextView.nearby:
         break;
     }
-  }
-
-  /// Open the Fleet model as a leaf sub-view INSIDE the panel (desktop) — never
-  /// a second surface over it (owner R1 #3). On mobile this isn't used (the
-  /// legacy modal card runs instead).
-  void _openSlotModel(
-    FleetVehicle fleet, {
-    String? garageNo,
-    required VehicleType type,
-  }) {
-    _setState(
-      () => _slotModel = (fleet: fleet, garageNo: garageNo, type: type),
-    );
   }
 
   /// The "Back to vehicle" pill: recenter on the vehicle (in the visible strip)
@@ -318,7 +301,6 @@ extension _MapContext on _HomeMapScreenState {
     _setState(() {
       _focus = null;
       _selectedVehicleKey = null;
-      _slotModel = null; // the model leaf belongs to the vehicle view
       _follow.noRouteData = false;
     });
     _pushStopSources(); // restore the ambient stop layers

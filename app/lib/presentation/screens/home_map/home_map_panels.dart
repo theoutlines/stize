@@ -99,19 +99,8 @@ extension _MapPanels on _HomeMapScreenState {
   /// The header of the current level; null on Nearby (root). One control per
   /// level: a "← `previous`" back link when there is a previous level, else a ×
   /// that closes back to Nearby. Same on the mobile sheet and the desktop panel.
-  /// The model leaf takes precedence; the vehicle view keeps its line row.
+  /// The vehicle view keeps its line row.
   Widget? _slotNavRow(AppLocalizations l10n) {
-    final model = _slotModel;
-    if (model != null) {
-      return LevelHeader(
-        title: model.fleet.modelName ?? l10n.fleetUnknownModel,
-        backLabel: switch (_levels.top) {
-          null => l10n.followingVehicle,
-          final top => _levelTitle(top, l10n),
-        },
-        onBack: _slotBack,
-      );
-    }
     switch (_activeView) {
       case ContextView.nearby:
         return null;
@@ -147,16 +136,6 @@ extension _MapPanels on _HomeMapScreenState {
     AppLocalizations l10n, {
     ScrollController? scrollController,
   }) {
-    final model = _slotModel;
-    if (model != null) {
-      return FleetModelView(
-        showTitle: false,
-        fleet: model.fleet,
-        fallbackType: model.type,
-        garageNo: model.garageNo,
-        scrollController: scrollController,
-      );
-    }
     switch (_activeView) {
       case ContextView.nearby:
         return NearbyView(
@@ -244,9 +223,6 @@ extension _MapPanels on _HomeMapScreenState {
           showHeader: false,
           onFocusVehicle: (a, asOf) =>
               _focusVehicleFromArrival(a, asOf, source: Ev.srcSheet),
-          // A row's Fleet badge opens the model INSIDE the slot (no modal).
-          onOpenFleetCard: (fleet, garageNo, type) =>
-              _openSlotModel(fleet, garageNo: garageNo, type: type),
         );
       case ContextView.vehicle:
         final track = _selectedVehicleKey == null
@@ -280,8 +256,7 @@ extension _MapPanels on _HomeMapScreenState {
     // chrome) is slid away, so the persistent search is the only place left to
     // reach the drawer (owner A#2: burger reachable in both states).
     final showBurger =
-        _panelCollapsed ||
-        (_slotModel == null && _activeView == ContextView.nearby);
+        _panelCollapsed || _activeView == ContextView.nearby;
     // Owner R2 #1: no shared container behind the row — the burger is its OWN
     // round button with its own backdrop, the search is its OWN floating pill.
     return Row(

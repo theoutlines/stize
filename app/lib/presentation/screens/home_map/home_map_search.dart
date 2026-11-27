@@ -151,7 +151,7 @@ extension _MapSearch on _HomeMapScreenState {
     // return from a vehicle follow) doesn't push it twice.
     _levels.open(StopLevel(stopId, stopName));
     ref.read(openStopNameProvider.notifier).state = stopName;
-    _setState(() => _slotModel = null); // a fresh stop clears any model leaf
+    _setState(() {});
     _raiseSheetToHalf();
   }
 
@@ -330,8 +330,7 @@ extension _MapSearch on _HomeMapScreenState {
       !_panelActive &&
       _focus == null &&
       _selectedVehicleKey == null &&
-      _levels.isEmpty &&
-      _slotModel == null;
+      _levels.isEmpty;
 
   /// Where the pinned pill sits: just under the status bar.
   double _pillPinnedTop() =>

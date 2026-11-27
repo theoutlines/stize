@@ -92,8 +92,10 @@ Ikarbus), 5 = the newest classes. In the UI it's not a number but five dots or a
 
 ## 5. UI behaviour
 
-- In the arrivals list, compact next to the time: type icon + ❄️/♿ + age badge.
-  Tap → model card with a visual (see §8), nickname, note, full attributes.
+- The arrivals board carries no fleet details: a board card only says how to
+  catch the vehicle. Model, photo, age, amenities and the note live in the
+  compact vehicle card on the follow-vehicle screen. (A separate full-screen
+  model card existed until 2026-11-27; it lost its entry point and was removed.)
 - If UNKNOWN, invent nothing: just type and number. For UNKNOWN_JUNK, don't show
   the number at all.
 - "Which one to ride" comparison: when ≥2 vehicles of different classes are
@@ -127,7 +129,7 @@ manual roster comparison.
 
 ## 8. Card visual
 
-The card's main visual is **the vehicle model, not a photo**. Production is
+The vehicle card's main visual is **the vehicle model, not a photo**. Production is
 AI-assisted, not hand-drawn:
 
 - **Step 1 — interior diagram**: top view (seats, doors, low-floor zone,

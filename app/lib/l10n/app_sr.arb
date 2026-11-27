@@ -85,14 +85,6 @@
   "vehicleTypeBus": "Autobus",
   "vehicleTypeTram": "Tramvaj",
   "vehicleTypeTrolleybus": "Trolejbus",
-  "fleetAgeYears": "{years} god.",
-  "@fleetAgeYears": {
-    "placeholders": {
-      "years": {
-        "type": "int"
-      }
-    }
-  },
   "fleetVehicleNumber": "#{number}",
   "@fleetVehicleNumber": {
     "placeholders": {
@@ -102,70 +94,11 @@
     }
   },
   "fleetUnknownModel": "Model nepoznat",
-  "fleetSectionComfort": "Komfor",
   "fleetAc": "Klima",
-  "fleetNoAc": "Bez klime",
-  "fleetLowFloor": "Niski pod",
-  "fleetHighFloor": "Stepenice na ulazu",
-  "fleetArticulated": "Zglobni",
-  "fleetUsb": "USB punjenje",
-  "fleetElectric": "Električni",
   "fleetHybrid": "Hibrid",
-  "fleetCng": "Na gas (CNG)",
-  "fleetTrolley": "Trolejbus",
-  "fleetTram": "Tramvaj",
-  "fleetDiesel": "Dizel",
-  "fleetAge": "Starost",
-  "fleetAgeApprox": "~{years} god. (proizvedeno {from}–{to})",
-  "@fleetAgeApprox": {
-    "placeholders": {
-      "years": {
-        "type": "int"
-      },
-      "from": {
-        "type": "int"
-      },
-      "to": {
-        "type": "int"
-      }
-    }
-  },
-  "fleetCapacity": "Prima ~{count}",
-  "@fleetCapacity": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "fleetLength": "Dužina {meters} m",
-  "@fleetLength": {
-    "placeholders": {
-      "meters": {
-        "type": "String"
-      }
-    }
-  },
-  "fleetOperator": "Prevoznik: {name}",
-  "@fleetOperator": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "fleetManufacturer": "Proizvođač: {value}",
-  "@fleetManufacturer": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "fleetComfortRetro": "retro",
   "fleetComfortOk": "ok",
   "fleetComfortComfy": "komfor",
-  "fleetApproxNote": "„~” označava vrednosti procenjene po prevozniku, ne potvrđene za baš ovo vozilo.",
   "navCoverage": "Pokrivenost",
   "coverageFilterAll": "Sve",
   "coverageLegendTitle": "Gustina prevoza",
@@ -210,7 +143,6 @@
   "jamNearbyDelay": "Moguće kašnjenje na liniji {line}",
   "jamAffectedStopsTitle": "Pogođene stanice",
   "jamFollowAhead": "Moguće kašnjenje ispred na trasi",
-  "fleetPhotoCredit": "Foto: {author}, {license}, Wikimedia Commons",
   "arrivalTerminus": "Konačna",
   "stopMore": "Više",
   "stopReportProblem": "Prijavi problem",

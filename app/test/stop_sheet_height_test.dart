@@ -15,7 +15,7 @@ import 'package:stize/presentation/providers/providers.dart';
 import 'package:stize/presentation/widgets/stop_board.dart';
 import 'package:stize/presentation/widgets/stop_sheet.dart';
 
-// One AC/low-floor tram so a Fleet-ID badge is tappable → opens the fleet card.
+// One AC/low-floor tram with a matched Fleet-ID, so the board renders a real row.
 const _catalogJson = '''
 {
  "classes": [
@@ -50,7 +50,7 @@ ArrivalsBoard _board() => ArrivalsBoard.fromJson({
       'stops_remaining': 5,
       'route_id': '00012',
       'gps': null,
-      'garage_no': 'P81540', // Bozankaya, has AC → tappable badge
+      'garage_no': 'P81540', // Bozankaya
     },
   ],
   'service_status': 'ok',

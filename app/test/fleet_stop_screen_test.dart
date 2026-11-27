@@ -15,10 +15,9 @@ import 'package:stize/presentation/screens/stop_screen.dart';
 import 'package:stize/presentation/widgets/stop_sheet.dart';
 import 'package:stize/presentation/widgets/follow_view.dart';
 import 'package:stize/domain/models/vehicle_type.dart';
-import 'package:stize/core/design/stize_icons.dart';
 
 // A tiny, deterministic catalog: two tram classes with very different comfort,
-// so we exercise badges, the model card and the comfort sort without depending
+// so we exercise the board's fleet handling without depending
 // on the full production asset.
 const _catalogJson = '''
 {
@@ -140,7 +139,6 @@ void main() {
       expect(find.text('12'), findsWidgets);
       expect(find.text('3'), findsOneWidget);
       // No fleet badges, no comfort sort, no crash.
-      expect(find.byIcon(StizeIcons.snowflake), findsNothing);
       expect(find.text('By comfort'), findsNothing);
       expect(tester.takeException(), isNull);
     },
@@ -155,8 +153,6 @@ void main() {
 
     // Model, age and amenities moved to the follow screen (owner,
     // 2026-11-25): a board card only says how to catch the vehicle.
-    expect(find.byIcon(StizeIcons.snowflake), findsNothing);
-    expect(find.byIcon(StizeIcons.accessible), findsNothing);
     expect(find.text('By comfort'), findsNothing);
     expect(find.text('By time'), findsNothing);
     expect(find.textContaining('P5'), findsNothing);
@@ -262,7 +258,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Batutova'), findsWidgets);
-    expect(find.byIcon(StizeIcons.snowflake), findsNothing);
     expect(find.text('By comfort'), findsNothing);
     expect(find.textContaining('P5'), findsNothing); // junk hidden
   });

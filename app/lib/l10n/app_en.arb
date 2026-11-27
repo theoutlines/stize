@@ -179,14 +179,6 @@
   "vehicleTypeBus": "Bus",
   "vehicleTypeTram": "Tram",
   "vehicleTypeTrolleybus": "Trolleybus",
-  "fleetAgeYears": "{years} yr",
-  "@fleetAgeYears": {
-    "placeholders": {
-      "years": {
-        "type": "int"
-      }
-    }
-  },
   "fleetVehicleNumber": "#{number}",
   "@fleetVehicleNumber": {
     "placeholders": {
@@ -196,70 +188,11 @@
     }
   },
   "fleetUnknownModel": "Model unknown",
-  "fleetSectionComfort": "Comfort",
   "fleetAc": "Air conditioning",
-  "fleetNoAc": "No air conditioning",
-  "fleetLowFloor": "Low floor",
-  "fleetHighFloor": "Steps at the door",
-  "fleetArticulated": "Articulated (bendy)",
-  "fleetUsb": "USB charging",
-  "fleetElectric": "Electric",
   "fleetHybrid": "Hybrid",
-  "fleetCng": "Runs on gas (CNG)",
-  "fleetTrolley": "Trolleybus",
-  "fleetTram": "Tram",
-  "fleetDiesel": "Diesel",
-  "fleetAge": "Age",
-  "fleetAgeApprox": "~{years} yr (built {from}–{to})",
-  "@fleetAgeApprox": {
-    "placeholders": {
-      "years": {
-        "type": "int"
-      },
-      "from": {
-        "type": "int"
-      },
-      "to": {
-        "type": "int"
-      }
-    }
-  },
-  "fleetCapacity": "Holds ~{count}",
-  "@fleetCapacity": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "fleetLength": "{meters} m long",
-  "@fleetLength": {
-    "placeholders": {
-      "meters": {
-        "type": "String"
-      }
-    }
-  },
-  "fleetOperator": "Operator: {name}",
-  "@fleetOperator": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "fleetManufacturer": "Manufacturer: {value}",
-  "@fleetManufacturer": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "fleetComfortRetro": "retro",
   "fleetComfortOk": "ok",
   "fleetComfortComfy": "comfort",
-  "fleetApproxNote": "“~” marks values estimated for this operator, not confirmed for this exact vehicle.",
   "navCoverage": "Coverage",
   "coverageFilterAll": "All",
   "coverageLegendTitle": "Transit density",
@@ -328,18 +261,6 @@
   },
   "jamAffectedStopsTitle": "Affected stops",
   "jamFollowAhead": "Possible delay ahead on the route",
-  "fleetPhotoCredit": "Photo: {author}, {license}, Wikimedia Commons",
-  "@fleetPhotoCredit": {
-    "description": "Credit line under a fleet model photo (licence requires author + licence + source).",
-    "placeholders": {
-      "author": {
-        "type": "String"
-      },
-      "license": {
-        "type": "String"
-      }
-    }
-  },
   "arrivalTerminus": "Terminus",
   "@arrivalTerminus": {
     "description": "Destination label when the line ends at the stop being viewed."

@@ -566,11 +566,6 @@ abstract class AppLocalizations {
   /// **'Trolleybus'**
   String get vehicleTypeTrolleybus;
 
-  /// No description provided for @fleetAgeYears.
-  ///
-  /// In en, this message translates to:
-  /// **'{years} yr'**
-  String fleetAgeYears(int years);
 
   /// No description provided for @fleetVehicleNumber.
   ///
@@ -584,11 +579,6 @@ abstract class AppLocalizations {
   /// **'Model unknown'**
   String get fleetUnknownModel;
 
-  /// No description provided for @fleetSectionComfort.
-  ///
-  /// In en, this message translates to:
-  /// **'Comfort'**
-  String get fleetSectionComfort;
 
   /// No description provided for @fleetAc.
   ///
@@ -596,41 +586,11 @@ abstract class AppLocalizations {
   /// **'Air conditioning'**
   String get fleetAc;
 
-  /// No description provided for @fleetNoAc.
-  ///
-  /// In en, this message translates to:
-  /// **'No air conditioning'**
-  String get fleetNoAc;
 
-  /// No description provided for @fleetLowFloor.
-  ///
-  /// In en, this message translates to:
-  /// **'Low floor'**
-  String get fleetLowFloor;
 
-  /// No description provided for @fleetHighFloor.
-  ///
-  /// In en, this message translates to:
-  /// **'Steps at the door'**
-  String get fleetHighFloor;
 
-  /// No description provided for @fleetArticulated.
-  ///
-  /// In en, this message translates to:
-  /// **'Articulated (bendy)'**
-  String get fleetArticulated;
 
-  /// No description provided for @fleetUsb.
-  ///
-  /// In en, this message translates to:
-  /// **'USB charging'**
-  String get fleetUsb;
 
-  /// No description provided for @fleetElectric.
-  ///
-  /// In en, this message translates to:
-  /// **'Electric'**
-  String get fleetElectric;
 
   /// No description provided for @fleetHybrid.
   ///
@@ -638,65 +598,15 @@ abstract class AppLocalizations {
   /// **'Hybrid'**
   String get fleetHybrid;
 
-  /// No description provided for @fleetCng.
-  ///
-  /// In en, this message translates to:
-  /// **'Runs on gas (CNG)'**
-  String get fleetCng;
 
-  /// No description provided for @fleetTrolley.
-  ///
-  /// In en, this message translates to:
-  /// **'Trolleybus'**
-  String get fleetTrolley;
 
-  /// No description provided for @fleetTram.
-  ///
-  /// In en, this message translates to:
-  /// **'Tram'**
-  String get fleetTram;
 
-  /// No description provided for @fleetDiesel.
-  ///
-  /// In en, this message translates to:
-  /// **'Diesel'**
-  String get fleetDiesel;
 
-  /// No description provided for @fleetAge.
-  ///
-  /// In en, this message translates to:
-  /// **'Age'**
-  String get fleetAge;
 
-  /// No description provided for @fleetAgeApprox.
-  ///
-  /// In en, this message translates to:
-  /// **'~{years} yr (built {from}–{to})'**
-  String fleetAgeApprox(int years, int from, int to);
 
-  /// No description provided for @fleetCapacity.
-  ///
-  /// In en, this message translates to:
-  /// **'Holds ~{count}'**
-  String fleetCapacity(int count);
 
-  /// No description provided for @fleetLength.
-  ///
-  /// In en, this message translates to:
-  /// **'{meters} m long'**
-  String fleetLength(String meters);
 
-  /// No description provided for @fleetOperator.
-  ///
-  /// In en, this message translates to:
-  /// **'Operator: {name}'**
-  String fleetOperator(String name);
 
-  /// No description provided for @fleetManufacturer.
-  ///
-  /// In en, this message translates to:
-  /// **'Manufacturer: {value}'**
-  String fleetManufacturer(String value);
 
   /// No description provided for @fleetComfortRetro.
   ///
@@ -716,11 +626,6 @@ abstract class AppLocalizations {
   /// **'comfort'**
   String get fleetComfortComfy;
 
-  /// No description provided for @fleetApproxNote.
-  ///
-  /// In en, this message translates to:
-  /// **'“~” marks values estimated for this operator, not confirmed for this exact vehicle.'**
-  String get fleetApproxNote;
 
   /// No description provided for @navCoverage.
   ///
@@ -985,12 +890,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Possible delay ahead on the route'**
   String get jamFollowAhead;
-
-  /// Credit line under a fleet model photo (licence requires author + licence + source).
-  ///
-  /// In en, this message translates to:
-  /// **'Photo: {author}, {license}, Wikimedia Commons'**
-  String fleetPhotoCredit(String author, String license);
 
   /// Destination label when the line ends at the stop being viewed.
   ///

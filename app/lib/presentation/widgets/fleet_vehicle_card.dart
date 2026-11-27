@@ -8,7 +8,7 @@ import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'fleet_badges.dart';
-import 'fleet_model_card.dart';
+import '../../core/fleet_country.dart';
 import 'vehicle_icon.dart';
 
 /// "This tram" (owner, 2026-11-25, variant A): the vehicle's photo with its
@@ -69,7 +69,7 @@ class FleetVehicleCard extends ConsumerWidget {
         : l10n.fleetMadeBy(
             fleet.country == null
                 ? fleet.manufacturer!
-                : '${fleet.manufacturer}, ${FleetModelView.localizedCountry(fleet.country!, lang)}',
+                : '${fleet.manufacturer}, ${localizedFleetCountry(fleet.country!, lang)}',
           );
     final runBy = fleet.operatorName == null
         ? null

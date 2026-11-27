@@ -9,7 +9,7 @@ extension _MapLevels on _HomeMapScreenState {
   void _openMyStopsLevel() {
     _expandPanelIfCollapsed();
     _levels.open(const MyStopsLevel());
-    _setState(() => _slotModel = null);
+    _setState(() {});
     _raiseSheetToHalf();
   }
 
@@ -17,7 +17,7 @@ extension _MapLevels on _HomeMapScreenState {
   void _pushLevel(SheetLevel level) {
     _expandPanelIfCollapsed();
     _levels.open(level);
-    _setState(() => _slotModel = null);
+    _setState(() {});
     _raiseSheetToHalf();
   }
 
@@ -25,10 +25,7 @@ extension _MapLevels on _HomeMapScreenState {
   void _openGuideLevel(GuidePage page) {
     _expandPanelIfCollapsed();
     _levels.open(GuideLevel(page));
-    _setState(() {
-      _slotModel = null;
-      _guideSeen = true;
-    });
+    _setState(() => _guideSeen = true);
     _raiseSheetToHalf();
     markGuideOpened();
   }
@@ -66,7 +63,7 @@ extension _MapLevels on _HomeMapScreenState {
       ref.read(openStopNameProvider.notifier).state = null;
       if (top == null) _restorePreStopCamera();
     }
-    _setState(() => _slotModel = null);
+    _setState(() {});
   }
 
   /// Close every level (the × on the first level, or a swipe below peek):
@@ -79,7 +76,7 @@ extension _MapLevels on _HomeMapScreenState {
     _levels.clear();
     ref.read(openStopNameProvider.notifier).state = null;
     _restorePreStopCamera();
-    _setState(() => _slotModel = null);
+    _setState(() {});
   }
 
   /// Mobile sheet height feed: the geometry owner gets it as before; dragging
@@ -90,7 +87,7 @@ extension _MapLevels on _HomeMapScreenState {
     final h = MediaQuery.sizeOf(context).height;
     if (h <= 0) return;
     final following = _selectedVehicleKey != null;
-    final hasLevel = _levels.isNotEmpty || _slotModel != null || following;
+    final hasLevel = _levels.isNotEmpty || following;
     if (hasLevel && px / h < kSheetPeek - 0.1) {
       if (following) {
         _closeVehicleContext();
