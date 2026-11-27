@@ -6,6 +6,7 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/context_slot.dart';
 import '../../core/design/stize_tokens.dart';
+import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../domain/models/stop.dart';
@@ -32,6 +33,7 @@ class NearbySheet extends StatelessWidget {
     this.onTapGroup,
     this.onSelectStop,
     this.onSelectLine,
+    this.onSelectPlace,
     this.onHeightChanged,
     this.controller,
     this.banner,
@@ -44,8 +46,7 @@ class NearbySheet extends StatelessWidget {
     this.headerOwnsHandle = false,
   });
 
-  /// The level header draws the grabber itself (the follow card, on its line
-  /// colour), so the sheet skips its own.
+  /// The level header draws its own grabber (the follow card's line colour).
   final bool headerOwnsHandle;
 
   /// Drives the sheet's height from the host (open a level at half, close back
@@ -106,19 +107,17 @@ class NearbySheet extends StatelessWidget {
   /// The map tab is visible and the app is foregrounded — pause polling when not.
   final bool active;
 
-  /// Ask for a location fix (prompts on first use) — wired to the map's recenter
-  /// action, the only place we request permission from a gesture.
+  /// Ask for a location fix: the map's recenter, our only permission gesture.
   final VoidCallback onEnableLocation;
 
   final void Function(NearbyGroup group)? onTapGroup;
 
-  /// Selecting a GLOBAL search result (stop / line) in the unified search —
-  /// opens that context, like the desktop search (owner C#3).
+  /// A search result tapped: open that stop, line or place (owner C#3).
   final void Function(Stop stop)? onSelectStop;
   final void Function(LineInfo line)? onSelectLine;
+  final void Function(GeocodeResult place)? onSelectPlace;
 
-  /// Reports the sheet's current pixel height on every layout/drag frame, so the
-  /// map's geometry owner can keep a followed vehicle above the sheet. Optional.
+  /// The sheet's pixel height on every frame, to keep a followed vehicle above.
   final ValueChanged<double>? onHeightChanged;
 
   @override
@@ -203,6 +202,7 @@ class NearbySheet extends StatelessWidget {
                                 onTapGroup: onTapGroup,
                                 onSelectStop: onSelectStop,
                                 onSelectLine: onSelectLine,
+                                onSelectPlace: onSelectPlace,
                                 scrollController: scrollController,
                                 banner: banner,
                                 showLocalSearch: !oneScroll,

@@ -6,14 +6,10 @@ import 'sheet_chrome.dart';
 import 'stop_board.dart';
 
 /// Opens a stop's live arrivals as a bottom sheet *over the current map*, with
-/// no screen navigation. This is the seamless replacement for pushing a whole
-/// new StopScreen (which spun up a second map and re-drew the attribution): the
-/// map stays put behind the sheet and the user can dismiss straight back to it.
-///
-/// StopScreen still exists for `/stop/:id` deep links; the in-app tap path uses
-/// this sheet. The board itself is the shared [StopBoard] (the desktop context
-/// panel hosts the very same widget), so the arrivals rendering lives in one
-/// place.
+/// no screen navigation: the map stays put behind the sheet and the user can
+/// dismiss straight back to it. The board itself is the shared [StopBoard] (the
+/// desktop context panel hosts the very same widget), so the arrivals rendering
+/// lives in one place.
 Future<void> showStopSheet(
   BuildContext context, {
   required String stopId,

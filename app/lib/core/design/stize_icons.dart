@@ -8,7 +8,6 @@ abstract final class StizeIcons {
   static const _family = 'StizeIcons';
 
   static const IconData back = IconData(0xE003, fontFamily: _family);
-  static const IconData bug = IconData(0xE004, fontFamily: _family);
   static const IconData bus = IconData(0xE006, fontFamily: _family);
   static const IconData busMultiple = IconData(0xE007, fontFamily: _family);
   static const IconData chat = IconData(0xE008, fontFamily: _family);
@@ -20,8 +19,6 @@ abstract final class StizeIcons {
   static const IconData close = IconData(0xE00F, fontFamily: _family);
   static const IconData compass = IconData(0xE011, fontFamily: _family);
   static const IconData document = IconData(0xE013, fontFamily: _family);
-  static const IconData dot = IconData(0xE014, fontFamily: _family);
-  static const IconData edit = IconData(0xE015, fontFamily: _family);
   static const IconData error = IconData(0xE016, fontFamily: _family);
   static const IconData flag = IconData(0xE018, fontFamily: _family);
   static const IconData forward = IconData(0xE019, fontFamily: _family);
@@ -43,8 +40,6 @@ abstract final class StizeIcons {
   static const IconData offline = IconData(0xE02D, fontFamily: _family);
   static const IconData pause = IconData(0xE02E, fontFamily: _family);
   static const IconData pin = IconData(0xE02F, fontFamily: _family);
-  static const IconData pinPush = IconData(0xE030, fontFamily: _family);
-  static const IconData pinPushFilled = IconData(0xE031, fontFamily: _family);
   static const IconData plus = IconData(0xE032, fontFamily: _family);
   static const IconData refresh = IconData(0xE033, fontFamily: _family);
   static const IconData repeat = IconData(0xE034, fontFamily: _family);
@@ -57,9 +52,6 @@ abstract final class StizeIcons {
   static const IconData stats = IconData(0xE040, fontFamily: _family);
   static const IconData train = IconData(0xE044, fontFamily: _family);
   static const IconData tram = IconData(0xE045, fontFamily: _family);
-  static const IconData transit = IconData(0xE046, fontFamily: _family);
   static const IconData trolleybus = IconData(0xE048, fontFamily: _family);
-  static const IconData walk = IconData(0xE04A, fontFamily: _family);
   static const IconData warning = IconData(0xE04B, fontFamily: _family);
-  static const IconData zoomIn = IconData(0xE04C, fontFamily: _family);
 }

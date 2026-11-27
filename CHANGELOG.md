@@ -7,6 +7,29 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-27
 
+### Changed (afternoon)
+- **One search on phone and desktop.** Desktop search now shows the same
+  results as the phone: nearby matches first, then lines with their coloured
+  badge, stops, and streets and places. Phones now find streets and places
+  too (Knez Mihailova, Kalemegdan); tapping one centres the map on it.
+- **Feedback opens the form.** "Share feedback" in the menu goes straight to
+  the message form; the extra screen with a GitHub Issues link is gone.
+- **Stop links open on the map.** A `/stop/<id>` link opens the home map with
+  that stop in its sheet (phone) or panel (desktop), the same view as a tap
+  on the map. The old standalone stop page with its own small map is gone.
+- **A skeleton while a stop loads.** The stop board shows the shape of its
+  cards while arrivals load, instead of an icon and "Checking what's on the
+  way…".
+- **One locate button.** The button left of the search is always the
+  crosshair; it no longer turns into an arrow after the map is moved.
+
+### Removed (afternoon)
+- Pinning a line from search (pinned lines were saved but never shown
+  anywhere), the "zoom in to see transport" hint, the vehicle model card that
+  had lost its entry point, and 30 icons nothing used any more. The font now
+  holds 47 icons; codepoints are pinned in `tool/icons/codes.json`, so
+  adding or removing an icon never shifts the others.
+
 ### Changed
 - **Faster web app.** The site is now built for WebAssembly: on Safari 18.2+
   and current Chrome and Firefox the map's sheets and menus animate more

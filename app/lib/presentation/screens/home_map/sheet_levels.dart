@@ -20,9 +20,9 @@ class SettingsLevel extends SheetLevel {
   const SettingsLevel();
 }
 
+/// The feedback form ("Write to me"), opened straight from the menu.
 class FeedbackLevel extends SheetLevel {
-  const FeedbackLevel({this.form = false});
-  final bool form;
+  const FeedbackLevel();
 }
 
 class GuideLevel extends SheetLevel {
@@ -57,8 +57,8 @@ class SheetLevelStack {
   };
 
   /// Open [level] unless the same level is already on top. Two levels are the
-  /// same when they are of one kind with the same content (stop id, guide page,
-  /// feedback form or list).
+  /// same when they are of one kind with the same content (stop id, guide
+  /// page).
   void open(SheetLevel level) {
     if (_same(top, level)) return;
     _levels.add(level);
@@ -68,7 +68,7 @@ class SheetLevelStack {
   static bool _same(SheetLevel? a, SheetLevel b) => switch ((a, b)) {
     (StopLevel(id: final x), StopLevel(id: final y)) => x == y,
     (GuideLevel(page: final x), GuideLevel(page: final y)) => x == y,
-    (FeedbackLevel(form: final x), FeedbackLevel(form: final y)) => x == y,
+    (FeedbackLevel(), FeedbackLevel()) => true,
     (MyStopsLevel(), MyStopsLevel()) => true,
     (SettingsLevel(), SettingsLevel()) => true,
     _ => false,

@@ -14,6 +14,7 @@ import '../../core/nearby_focus.dart';
 import '../../core/search.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart' show ServiceStatus;
+import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../domain/models/stop.dart';
@@ -67,6 +68,7 @@ class NearbyView extends ConsumerStatefulWidget {
     this.onTapGroup,
     this.onSelectStop,
     this.onSelectLine,
+    this.onSelectPlace,
     this.scrollController,
     this.showLocalSearch = true,
     this.banner,
@@ -90,6 +92,7 @@ class NearbyView extends ConsumerStatefulWidget {
   /// unified search is shown (the mobile nearby sheet).
   final void Function(Stop stop)? onSelectStop;
   final void Function(LineInfo line)? onSelectLine;
+  final void Function(GeocodeResult place)? onSelectPlace;
 
   /// Provided by a scrolling container (the sheet); null lets the view scroll
   /// itself (the fixed-height desktop panel).

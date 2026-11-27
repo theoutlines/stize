@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../../core/design/stize_icons.dart';
-import '../../../core/design/stize_text.dart';
 import '../../../core/design/stize_tokens.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -68,54 +67,6 @@ class MapZoomControl extends StatelessWidget {
               onPressed: onZoomOut,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// A small top-centred hint shown at far-out zoom when no live vehicles are
-/// in the bounded fetch area: the "zoom in to see transport" nudge (F5).
-class MapZoomHint extends StatelessWidget {
-  const MapZoomHint({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: Padding(
-          // Clear of the top buttons.
-          padding: const EdgeInsets.only(top: 72),
-          child: PointerInterceptor(
-            child: Material(
-              elevation: 2,
-              borderRadius: BorderRadius.circular(20),
-              color: theme.colorScheme.surface.withValues(alpha: 0.92),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      StizeIcons.zoomIn,
-                      size: 18,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      AppLocalizations.of(context).mapZoomInForVehicles,
-                      style: StizeText.of(context).caption,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
         ),
       ),
     );

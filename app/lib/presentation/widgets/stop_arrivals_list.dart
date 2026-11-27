@@ -24,8 +24,8 @@ import 'stretch_card_list.dart';
 import '../../core/arrival_display.dart';
 import '../../core/design/stize_icons.dart';
 
-/// THE arrivals list of a stop, shared by both shutters: the in-app sheet
-/// ([StopBoard]) and the `/stop/:id` deep-link screen ([StopScreen]). Owns the
+/// THE arrivals list of a stop, hosted by [StopBoard] in the mobile sheet and
+/// the desktop panel. Owns the
 /// line filter, the line×direction folding, the ETA-change
 /// badges and the card wiring, so a change to how arrivals render is made once.
 ///

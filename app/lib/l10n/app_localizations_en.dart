@@ -49,8 +49,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get locationUnavailable =>
       'Your location is unavailable right now. Try again in a moment.';
 
-  @override
-  String get mapZoomInForVehicles => 'Zoom in to see live transport';
 
   @override
   String get vehicleScheduled => 'By schedule — not a live position';
@@ -61,9 +59,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get followingVehicle => 'Following';
 
-  @override
-  String get noLiveVehiclesOnMap =>
-      'No live-tracked vehicles to map right now — see the arrivals below.';
 
   @override
   String nearbyDistanceMeters(int meters) {
@@ -126,31 +121,13 @@ class AppLocalizationsEn extends AppLocalizations {
     return '$_temp0';
   }
 
-  @override
-  String get vehicleMoving => 'On the move';
 
-  @override
-  String get vehicleStuck => 'Looks stopped';
 
-  @override
-  String get vehicleNextStop => 'Next stop';
 
-  @override
-  String get vehicleUpcomingStops => 'Rest of the route';
 
-  @override
-  String get vehicleYourStop => 'your stop';
 
-  @override
-  String get vehicleEtaApprox => 'Arrival times are approximate';
 
-  @override
-  String get vehicleShowRoute => 'Show route on map';
 
-  @override
-  String vehicleEtaMinutesApprox(int minutes) {
-    return '≈ $minutes min';
-  }
 
   @override
   String get contextNearbyTitle => 'Nearby';
@@ -208,8 +185,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get removeFromFavorites => 'Remove from My Stops';
 
-  @override
-  String get pinLineTooltip => 'Pin line';
 
   @override
   String get settingsTitle => 'Settings';
@@ -345,18 +320,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get drawerFeedbackSheetTitle => 'Feedback';
 
-  @override
-  String get feedbackWriteToMe => 'Write to me';
 
   @override
   String get feedbackWriteToMeSubtitle =>
       'Send a message: bugs, ideas, anything.';
 
-  @override
-  String get feedbackGithubIssues => 'GitHub Issues';
 
-  @override
-  String get feedbackGithubIssuesSubtitle => 'For technical reports (public).';
 
   @override
   String get feedbackFormTitle => 'Write to me';

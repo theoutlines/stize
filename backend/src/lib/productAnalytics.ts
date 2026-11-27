@@ -24,7 +24,7 @@ export const PRODUCT_EVENT_SCHEMA = {
   // Is the on-demand default accepted, or do people switch back to the aquarium?
   mode_toggle: { to: ["on_demand", "aquarium"] },
   // The main entry into the product, tagged by how the stop was reached.
-  stop_open: { source: ["pin", "nearby", "favorites", "search"] },
+  stop_open: { source: ["pin", "nearby", "favorites", "search", "guide", "link"] },
   // Is "follow" — a core feature — actually used, and from where?
   vehicle_follow: { source: ["sheet", "nearby", "marker"] },
   // Do people want the Fleet-ID comfort sort (pillar check)?

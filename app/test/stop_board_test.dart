@@ -14,7 +14,7 @@ import 'package:stize/domain/repositories/arrivals_repository.dart';
 import 'package:stize/domain/repositories/favorites_repository.dart';
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
-import 'package:stize/presentation/screens/stop_screen.dart';
+import 'helpers/stop_board_page.dart';
 import 'package:stize/core/design/stize_icons.dart';
 
 const _batutovaStop = Stop(
@@ -104,8 +104,8 @@ Widget _wrap(
 }
 
 void main() {
-  // MapLibre (the live-vehicles mini-map) has no platform impl under
-  // `flutter test`; render it as a placeholder so StopScreen can be pumped.
+  // MapLibre has no platform impl under `flutter test`; keep maps as
+  // placeholders.
   setUp(() => kMapRenderingEnabled = false);
   tearDown(() => kMapRenderingEnabled = true);
 
@@ -114,7 +114,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       _wrap(
-        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+        const StopBoardPage(stopId: '20091', initialStopName: 'Batutova'),
         arrivals: _FakeArrivalsRepository(_sampleBoard),
         favorites: _FakeFavoritesRepository(),
       ),
@@ -125,50 +125,6 @@ void main() {
     expect(find.text('79'), findsOneWidget);
     expect(find.text('11'), findsOneWidget); // big ETA (unit drawn separately)
     expect(find.text('6 stops away'), findsOneWidget);
-  });
-
-  testWidgets('live_position_only: an all-placeholder stop shows the explained '
-      'hint instead of a map, but still lists the line', (tester) async {
-    // One arrival, a schedule placeholder: junk garage P1 with GPS pinned to the
-    // stop's own coordinate — exactly the upstream shape that used to draw a
-    // motionless marker on the stop.
-    final placeholderBoard = ArrivalsBoard.fromJson({
-      'stop_id': '20091',
-      'stop_name': 'Batutova',
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-      'arrivals': [
-        {
-          'line': '79',
-          'vehicle_type': 'bus',
-          'eta_minutes': 4,
-          'stops_remaining': 1,
-          'route_id': '00079',
-          'gps': {'lat': 44.795374, 'lon': 20.499713}, // == stop coordinate
-          'garage_no': 'P1', // junk placeholder pool
-        },
-      ],
-      'service_status': 'ok',
-    });
-
-    await tester.pumpWidget(
-      _wrap(
-        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
-        arrivals: _FakeArrivalsRepository(placeholderBoard),
-        favorites: _FakeFavoritesRepository(),
-        livePositionOnly: true,
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    // The line stays in the arrivals list (its ETA is valid) ...
-    expect(find.text('79'), findsOneWidget);
-    // ... but the map slot is replaced by the explained empty state.
-    expect(
-      find.text(
-        'No live-tracked vehicles to map right now — see the arrivals below.',
-      ),
-      findsOneWidget,
-    );
   });
 
   testWidgets('renders a scheduled (timetable) arrival marked as such', (
@@ -195,7 +151,7 @@ void main() {
 
     await tester.pumpWidget(
       _wrap(
-        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+        const StopBoardPage(stopId: '20091', initialStopName: 'Batutova'),
         arrivals: _FakeArrivalsRepository(board),
         favorites: _FakeFavoritesRepository(),
       ),
@@ -226,7 +182,7 @@ void main() {
 
     await tester.pumpWidget(
       _wrap(
-        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+        const StopBoardPage(stopId: '20091', initialStopName: 'Batutova'),
         arrivals: _FakeArrivalsRepository(emptyBoard),
         favorites: _FakeFavoritesRepository(),
       ),
@@ -249,7 +205,7 @@ void main() {
 
     await tester.pumpWidget(
       _wrap(
-        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+        const StopBoardPage(stopId: '20091', initialStopName: 'Batutova'),
         arrivals: _FakeArrivalsRepository(killedBoard),
         favorites: _FakeFavoritesRepository(),
       ),
@@ -262,7 +218,7 @@ void main() {
   testWidgets('shows the offline state on a network failure', (tester) async {
     await tester.pumpWidget(
       _wrap(
-        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+        const StopBoardPage(stopId: '20091', initialStopName: 'Batutova'),
         arrivals: _FakeArrivalsRepository(const NetworkException('offline')),
         favorites: _FakeFavoritesRepository(),
       ),
@@ -290,7 +246,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrap(
-          const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+          const StopBoardPage(stopId: '20091', initialStopName: 'Batutova'),
           arrivals: _FakeArrivalsRepository(_sampleBoard),
           favorites: _FakeFavoritesRepository(),
           alerts: [alert],
@@ -319,7 +275,7 @@ void main() {
 
     await tester.pumpWidget(
       _wrap(
-        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+        const StopBoardPage(stopId: '20091', initialStopName: 'Batutova'),
         arrivals: _FakeArrivalsRepository(_sampleBoard),
         favorites: _FakeFavoritesRepository(),
         alerts: [alert],
@@ -394,7 +350,7 @@ void main() {
 
     await tester.pumpWidget(
       _wrap(
-        const StopScreen(stopId: '20091', initialStopName: 'Baćevac'),
+        const StopBoardPage(stopId: '20091', initialStopName: 'Baćevac'),
         arrivals: _FakeArrivalsRepository(board),
         favorites: _FakeFavoritesRepository(),
         stopLocation: bacevac,
@@ -471,7 +427,7 @@ void main() {
     final favorites = _FakeFavoritesRepository();
     await tester.pumpWidget(
       _wrap(
-        const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+        const StopBoardPage(stopId: '20091', initialStopName: 'Batutova'),
         arrivals: _FakeArrivalsRepository(_sampleBoard),
         favorites: favorites,
       ),

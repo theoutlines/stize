@@ -49,8 +49,6 @@ class AppLocalizationsSr extends AppLocalizations {
   String get locationUnavailable =>
       'Lokacija trenutno nije dostupna. Pokušaj za trenutak.';
 
-  @override
-  String get mapZoomInForVehicles => 'Uvećaj mapu da vidiš prevoz uživo';
 
   @override
   String get vehicleScheduled => 'Po redu vožnje — nije pozicija uživo';
@@ -61,9 +59,6 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get followingVehicle => 'Praćenje';
 
-  @override
-  String get noLiveVehiclesOnMap =>
-      'Trenutno nema vozila uživo na mapi — pogledaj dolaske ispod.';
 
   @override
   String nearbyDistanceMeters(int meters) {
@@ -127,31 +122,13 @@ class AppLocalizationsSr extends AppLocalizations {
     return '$_temp0';
   }
 
-  @override
-  String get vehicleMoving => 'U pokretu';
 
-  @override
-  String get vehicleStuck => 'Izgleda da stoji';
 
-  @override
-  String get vehicleNextStop => 'Sledeća stanica';
 
-  @override
-  String get vehicleUpcomingStops => 'Dalje na ruti';
 
-  @override
-  String get vehicleYourStop => 'vaša stanica';
 
-  @override
-  String get vehicleEtaApprox => 'Vremena dolaska su okvirna';
 
-  @override
-  String get vehicleShowRoute => 'Prikaži rutu na mapi';
 
-  @override
-  String vehicleEtaMinutesApprox(int minutes) {
-    return '≈ $minutes min';
-  }
 
   @override
   String get contextNearbyTitle => 'U blizini';
@@ -209,8 +186,6 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get removeFromFavorites => 'Ukloni iz Mojih stajališta';
 
-  @override
-  String get pinLineTooltip => 'Zakači liniju';
 
   @override
   String get settingsTitle => 'Podešavanja';
@@ -346,18 +321,12 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get drawerFeedbackSheetTitle => 'Utisci';
 
-  @override
-  String get feedbackWriteToMe => 'Piši mi';
 
   @override
   String get feedbackWriteToMeSubtitle =>
       'Pošalji poruku: greške, ideje, bilo šta.';
 
-  @override
-  String get feedbackGithubIssues => 'GitHub Issues';
 
-  @override
-  String get feedbackGithubIssuesSubtitle => 'Za tehničke prijave (javno).';
 
   @override
   String get feedbackFormTitle => 'Piši mi';

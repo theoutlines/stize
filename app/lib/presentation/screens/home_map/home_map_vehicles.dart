@@ -25,8 +25,7 @@ extension _MapVehicles on _HomeMapScreenState {
     // of zoom, so a zoomed-out view never fans the source out wider. Keeping it
     // live means the city overview still shows the (sparse) vehicles already
     // around the viewport as dots instead of a blank map; the marker layer
-    // degrades pills → dots at low zoom on its own. When even the
-    // bounded area is empty, a hint tells the user to zoom in (see MapZoomHint).
+    // degrades pills → dots at low zoom on its own.
     final center = ll.LatLng(camera.center.lat, camera.center.lon);
     final radius = _radiusForVisibleArea(
       camera,
@@ -119,9 +118,6 @@ extension _MapVehicles on _HomeMapScreenState {
       // it doesn't self-heal on every rebuild — so the set membership must be
       // written on every sync.
       _paintVehicles();
-      // Reflect the animator's set (which may still hold briefly-missing
-      // vehicles during their grace period), not just this response (X6).
-      _setState(() => _hasVehicles = _vehAnimator.tracks.isNotEmpty);
     } catch (_) {
       // Keep whatever is shown on a transient failure.
     }

@@ -8,14 +8,13 @@ import '../../domain/models/arrival.dart';
 import '../../domain/models/route_alert.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
-import 'empty_state.dart';
+import 'arrivals_skeleton.dart';
 import 'stop_arrivals_list.dart';
 import 'jam_stop_banner.dart';
 import 'route_alerts_strip.dart';
 import 'sheet_chrome.dart';
 import 'stop_header_actions.dart';
 import 'stop_live_refresh.dart';
-import '../../core/design/stize_icons.dart';
 
 /// The reusable "stop" view — a stop's live arrivals board, with no assumption
 /// about its container. It is hosted BY three shells that only add chrome:
@@ -103,8 +102,7 @@ class _StopBoardState extends ConsumerState<StopBoard> with StopLiveRefresh {
         lines: stopLocation?.lines ?? const [],
       ),
       board.when(
-        loading: () =>
-            EmptyState(icon: StizeIcons.transit, title: l10n.loadingArrivals),
+        loading: () => ArrivalsSkeleton(label: l10n.loadingArrivals),
         error: (err, _) => stopArrivalsErrorState(l10n, err, refreshStopNow),
         data: (b) => StopArrivalsList(
           stopId: widget.stopId,

@@ -85,7 +85,6 @@ extension _MapContext on _HomeMapScreenState {
       _vehAnim.value = 1;
     }
     _paintVehicles();
-    _setState(() => _hasVehicles = _vehAnimator.tracks.isNotEmpty);
   }
 
   /// Leave stop context. Drops the subscription; clears the markers only when no
@@ -97,7 +96,6 @@ extension _MapContext on _HomeMapScreenState {
     if (_selectedVehicleKey == null) {
       _vehAnimator.clear();
       _paintVehicles();
-      _setState(() => _hasVehicles = false);
     }
   }
 
@@ -120,7 +118,6 @@ extension _MapContext on _HomeMapScreenState {
         _applyStopContextMarkers(board);
       } else {
         _paintVehicles();
-        _setState(() => _hasVehicles = _vehAnimator.tracks.isNotEmpty);
       }
     } else {
       // Left on-demand → repopulate the background set for the viewport.

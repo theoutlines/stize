@@ -107,11 +107,10 @@ class _StopsState {
   Timer? railsTimer;
 }
 
-/// Search results and the search session (home_map_search.dart).
+/// The desktop search session (home_map_search.dart).
 class _SearchState {
-  /// Search mode, the results and which answer may land (see [SearchSession]).
+  /// Search mode and the once-per-session log (see [SearchSession]).
   final SearchSession session = SearchSession();
-  Timer? debounce;
 }
 
 /// Following one vehicle: where it was opened from, the camera that tracks it,

@@ -11,7 +11,7 @@ import 'package:stize/domain/repositories/arrivals_repository.dart';
 import 'package:stize/domain/repositories/favorites_repository.dart';
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
-import 'package:stize/presentation/screens/stop_screen.dart';
+import 'helpers/stop_board_page.dart';
 import 'package:stize/presentation/widgets/stop_sheet.dart';
 import 'package:stize/presentation/widgets/follow_view.dart';
 import 'package:stize/domain/models/vehicle_type.dart';
@@ -120,7 +120,7 @@ Widget _wrap({required FleetCatalog? catalog, Locale? locale}) {
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+      home: const StopBoardPage(stopId: '20091', initialStopName: 'Batutova'),
     ),
   );
 }
@@ -220,7 +220,7 @@ void main() {
   });
 
   // The *in-app* tap path opens the map's bottom sheet (stop_sheet.dart), not
-  // the full StopScreen: same cards there, no fleet badges either.
+  // the full board page: same cards there, no fleet badges either.
   testWidgets('map stop sheet shows the same badge-free cards', (tester) async {
     final catalog = FleetCatalog.tryParse(_catalogJson)!;
     await tester.pumpWidget(

@@ -10,7 +10,7 @@ import 'package:stize/domain/repositories/arrivals_repository.dart';
 import 'package:stize/domain/repositories/favorites_repository.dart';
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
-import 'package:stize/presentation/screens/stop_screen.dart';
+import 'helpers/stop_board_page.dart';
 
 const _stop = Stop(
   stopId: '20091',
@@ -83,7 +83,7 @@ Widget _wrap(ArrivalsBoard board) => ProviderScope(
   child: const MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: StopScreen(stopId: '20091', initialStopName: 'Batutova'),
+    home: StopBoardPage(stopId: '20091', initialStopName: 'Batutova'),
   ),
 );
 

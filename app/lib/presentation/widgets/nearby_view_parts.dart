@@ -74,6 +74,7 @@ extension _NearbyRows on NearbyViewState {
         nearby: _filtered, // filtered + live-first ordered nearby groups
         stops: _global.stops,
         lines: _global.lines,
+        places: _global.places,
         query: _query,
       );
       if (rows.isEmpty) {
@@ -218,6 +219,15 @@ extension _NearbyRows on NearbyViewState {
         return _stopTile(stop);
       case LineSearchRow(:final line):
         return _lineTile(line);
+      case PlaceSearchRow(:final place):
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          leading: const Icon(StizeIcons.map),
+          title: Text(place.displayName),
+          onTap: widget.onSelectPlace == null
+              ? null
+              : () => widget.onSelectPlace!(place),
+        );
     }
   }
 

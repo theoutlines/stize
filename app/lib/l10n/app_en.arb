@@ -18,7 +18,6 @@
   "locationServicesOff": "Location services are off. Turn them on in your device settings.",
   "locationTimeout": "Couldn't get your location in time. Check your connection and try again.",
   "locationUnavailable": "Your location is unavailable right now. Try again in a moment.",
-  "mapZoomInForVehicles": "Zoom in to see live transport",
   "vehicleScheduled": "By schedule — not a live position",
   "vehicleLost": "Vehicle no longer tracked",
   "followingVehicle": "Following",
@@ -28,7 +27,6 @@
   "@vehicleLost": {
     "description": "Shown when a followed vehicle drops out of the live feed"
   },
-  "noLiveVehiclesOnMap": "No live-tracked vehicles to map right now — see the arrivals below.",
   "nearbyDistanceMeters": "{meters} m",
   "@nearbyDistanceMeters": {
     "placeholders": {
@@ -81,21 +79,6 @@
       }
     }
   },
-  "vehicleMoving": "On the move",
-  "vehicleStuck": "Looks stopped",
-  "vehicleNextStop": "Next stop",
-  "vehicleUpcomingStops": "Rest of the route",
-  "vehicleYourStop": "your stop",
-  "vehicleEtaApprox": "Arrival times are approximate",
-  "vehicleShowRoute": "Show route on map",
-  "vehicleEtaMinutesApprox": "≈ {minutes} min",
-  "@vehicleEtaMinutesApprox": {
-    "placeholders": {
-      "minutes": {
-        "type": "int"
-      }
-    }
-  },
   "contextNearbyTitle": "Nearby",
   "@contextNearbyTitle": {
     "description": "Title/back-chip label for the nearby view of the adaptive context slot"
@@ -133,7 +116,6 @@
   "retry": "Try again",
   "addToFavorites": "Add to My Stops",
   "removeFromFavorites": "Remove from My Stops",
-  "pinLineTooltip": "Pin line",
   "settingsTitle": "Settings",
   "settingsLanguage": "Language",
   "settingsTheme": "Theme",
@@ -203,10 +185,6 @@
     "description": "Drawer footer list item that opens the feedback actions sheet"
   },
   "drawerFeedbackSheetTitle": "Feedback",
-  "feedbackWriteToMe": "Write to me",
-  "feedbackWriteToMeSubtitle": "Send a message: bugs, ideas, anything.",
-  "feedbackGithubIssues": "GitHub Issues",
-  "feedbackGithubIssuesSubtitle": "For technical reports (public).",
   "feedbackFormTitle": "Write to me",
   "feedbackMessageLabel": "Your message",
   "feedbackMessageHint": "A bug, an idea, a kind word…",

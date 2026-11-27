@@ -28,11 +28,11 @@ import '../../data/repositories/vehicles_repository_impl.dart';
 import '../../domain/models/app_config.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/favorite_stop.dart';
+import '../../domain/models/geocode_result.dart';
 import '../../domain/models/feed_meta.dart';
 import '../../domain/models/city_analytics.dart';
 import '../../domain/models/line_analytics.dart';
 import '../../domain/models/jam.dart';
-import '../../domain/models/pinned_line.dart';
 import '../../domain/models/route_alert.dart';
 import '../../domain/models/stop.dart';
 import '../../domain/repositories/alerts_repository.dart';
@@ -324,7 +324,13 @@ class GlobalSearch {
   Future<GlobalSearchResults> run(String query) async {
     final stops = await _ref.read(stopsRepositoryProvider).search(query);
     final lines = await _ref.read(linesRepositoryProvider).search(query);
-    return GlobalSearchResults(stops: stops, lines: lines);
+    var places = const <GeocodeResult>[];
+    try {
+      places = await _ref.read(geocodeRepositoryProvider).search(query);
+    } catch (_) {
+      // Geocoding is best-effort: stops and lines still answer without it.
+    }
+    return GlobalSearchResults(stops: stops, lines: lines, places: places);
   }
 }
 
@@ -439,35 +445,11 @@ final favoriteStopLocationsProvider = FutureProvider.autoDispose<List<Stop>>((
   ];
 });
 
-// ---- Carousel favourites: pinned lines + custom names (P3) -----------------
+// ---- Custom names for favourites --------------------------------------------
 
 final pinnedFavoritesRepositoryProvider = Provider<PinnedFavoritesRepository>(
   (ref) => PinnedFavoritesRepositoryImpl(),
 );
-
-class PinnedLinesController extends AsyncNotifier<List<PinnedLine>> {
-  @override
-  Future<List<PinnedLine>> build() {
-    return ref.watch(pinnedFavoritesRepositoryProvider).getLines();
-  }
-
-  Future<void> add(PinnedLine line) async {
-    await ref.read(pinnedFavoritesRepositoryProvider).addLine(line);
-    ref.read(eventLoggerProvider).log(Ev.favoriteAdd);
-    ref.invalidateSelf();
-  }
-
-  Future<void> remove(String line) async {
-    await ref.read(pinnedFavoritesRepositoryProvider).removeLine(line);
-    ref.read(eventLoggerProvider).log(Ev.favoriteRemove);
-    ref.invalidateSelf();
-  }
-}
-
-final pinnedLinesControllerProvider =
-    AsyncNotifierProvider<PinnedLinesController, List<PinnedLine>>(
-      PinnedLinesController.new,
-    );
 
 /// Custom display names keyed by `stop:<id>` / `line:<number>` / `route:<id>`.
 class CustomNamesController extends AsyncNotifier<Map<String, String>> {
@@ -481,6 +463,11 @@ final customNamesControllerProvider =
     AsyncNotifierProvider<CustomNamesController, Map<String, String>>(
       CustomNamesController.new,
     );
+
+/// A stop to open on the home map, set by a `/stop/:id` link. The map opens it
+/// as soon as its style is ready, then clears it.
+final linkedStopProvider =
+    StateProvider<({String id, String? name})?>((ref) => null);
 
 /// Bumped by the menu's "My stops": the home map opens the saved stops as a
 /// level in its sheet / panel (not a separate screen).

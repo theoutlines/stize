@@ -9,7 +9,7 @@ import 'screens/map_screen.dart';
 import 'screens/map_screen_args.dart';
 import 'screens/root_screen.dart';
 import 'screens/settings_screen.dart';
-import 'screens/stop_screen.dart';
+import 'screens/linked_stop_screen.dart';
 
 final appRouter = GoRouter(
   routes: [
@@ -19,9 +19,11 @@ final appRouter = GoRouter(
       pageBuilder: (context, state) {
         final stopId = state.pathParameters['stopId']!;
         final stopName = state.uri.queryParameters['name'];
-        return adaptivePage(
+        // A shared stop link opens the home map with that stop in its sheet
+        // (mobile) or panel (desktop), the same surface as a tap on the map.
+        return NoTransitionPage(
           key: state.pageKey,
-          child: StopScreen(stopId: stopId, initialStopName: stopName),
+          child: LinkedStopScreen(stopId: stopId, stopName: stopName),
         );
       },
     ),

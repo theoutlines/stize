@@ -30,8 +30,10 @@ extension _MapPanels on _HomeMapScreenState {
       navRow: _slotNavRow(l10n),
       borderRadius: BorderRadius.circular(16), // island corners
       hug: true,
+      // One search for both breakpoints: the results are the same view the
+      // mobile pill drives (nearby matches, lines, stops, places).
       child: _search.session.active
-          ? _searchResultsList(l10n)
+          ? _nearbyView(l10n, searching: true)
           : _slotContent(l10n),
     );
 
@@ -87,8 +89,7 @@ extension _MapPanels on _HomeMapScreenState {
           ref.watch(stopLocationProvider(id)).valueOrNull?.name ?? name ?? '',
         MyStopsLevel() => l10n.navMyStops,
         SettingsLevel() => l10n.settingsTitle,
-        FeedbackLevel(:final form) =>
-          form ? l10n.feedbackFormTitle : l10n.drawerFeedbackSheetTitle,
+        FeedbackLevel() => l10n.drawerFeedbackSheetTitle,
         GuideLevel(:final page) => switch (page) {
           GuidePage.home => l10n.guideTitle,
           GuidePage.readStop => l10n.guideReadStop,
@@ -129,6 +130,28 @@ extension _MapPanels on _HomeMapScreenState {
     }
   }
 
+  /// The desktop panel's Nearby list. While [searching], the persistent search
+  /// above the panel drives it, exactly like the mobile pill drives the sheet.
+  Widget _nearbyView(AppLocalizations l10n, {bool searching = false}) {
+    return NearbyView(
+      userLocation: _browse.point ?? _meTo,
+      locationDenied: _locationDenied,
+      active: _tabActive && _appResumed,
+      onEnableLocation: _recenterOnMe,
+      onTapGroup: _focusNearbyVehicle,
+      onSelectStop: (stop) => _openStop(stop, source: Ev.srcSearch),
+      onSelectLine: _openLine,
+      onSelectPlace: _openPlace,
+      // The persistent global search above the panel replaces the local
+      // "filter lines nearby" field (decision #6).
+      showLocalSearch: false,
+      hugContent: true,
+      banner: searching ? null : _guideBanner(l10n),
+      externalSearch: searching ? _searchController : null,
+      externalSearchActive: searching,
+    );
+  }
+
   /// The active level's content (no header — the level header owns the title).
   /// [scrollController] is the mobile sheet's, so dragging the content drags
   /// the sheet; null on the desktop panel.
@@ -138,18 +161,7 @@ extension _MapPanels on _HomeMapScreenState {
   }) {
     switch (_activeView) {
       case ContextView.nearby:
-        return NearbyView(
-          userLocation: _browse.point ?? _meTo,
-          locationDenied: _locationDenied,
-          active: _tabActive && _appResumed,
-          onEnableLocation: _recenterOnMe,
-          onTapGroup: _focusNearbyVehicle,
-          // The persistent global search above the panel replaces the local
-          // "filter lines nearby" field (decision #6).
-          showLocalSearch: false,
-          hugContent: true,
-          banner: _guideBanner(l10n),
-        );
+        return _nearbyView(l10n);
       case ContextView.settings:
         return StretchCardList(
           controller: scrollController,
@@ -160,34 +172,10 @@ extension _MapPanels on _HomeMapScreenState {
           children: const [SettingsPanel()],
         );
       case ContextView.feedback:
-        final fb = _levels.top! as FeedbackLevel;
-        if (fb.form) {
-          return SingleChildScrollView(
-            controller: scrollController,
-            padding: const EdgeInsets.only(top: 8),
-            child: FeedbackForm(showTitle: false, onSent: _popLevel),
-          );
-        }
-        final formEnabled = ref.watch(feedbackFormEnabledProvider);
-        return StretchCardList(
+        return SingleChildScrollView(
           controller: scrollController,
-          shrinkWrap: scrollController == null,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          children: [
-            if (formEnabled)
-              GuideRow(
-                icon: StizeIcons.edit,
-                title: l10n.feedbackWriteToMe,
-                subtitle: l10n.feedbackWriteToMeSubtitle,
-                onTap: () => _pushLevel(const FeedbackLevel(form: true)),
-              ),
-            GuideRow(
-              icon: StizeIcons.bug,
-              title: l10n.feedbackGithubIssues,
-              subtitle: l10n.feedbackGithubIssuesSubtitle,
-              onTap: () => openExternalUrl(kRepoIssuesUrl),
-            ),
-          ],
+          padding: const EdgeInsets.only(top: 8),
+          child: FeedbackForm(showTitle: false, onSent: _popLevel),
         );
       case ContextView.guide:
         final page = (_levels.top! as GuideLevel).page;
@@ -283,7 +271,6 @@ extension _MapPanels on _HomeMapScreenState {
             focusNode: _focusNode,
             active: _deskSearchActive || _search.session.active,
             placeLabel: _browsePlaceLabel(l10n),
-            away: _browse.point != null,
             onLocate: _recenterOnMe,
             onChanged: _onSearchChanged,
             onActivate: () => _setState(() => _deskSearchActive = true),
