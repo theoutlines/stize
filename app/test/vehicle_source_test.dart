@@ -32,8 +32,8 @@ void main() {
       'lat': 44.80,
       'lon': 20.46,
       'heading': 90,
-      if (source != null) 'source': source,
-      if (tripId != null) 'trip_id': tripId,
+      'source': ?source,
+      'trip_id': ?tripId,
     };
 
     test('defaults to live when the backend does not mark the source', () {

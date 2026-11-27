@@ -126,30 +126,6 @@ class TimedTrajectory {
   // ≈ 4.5 m); the display ticks far finer in practice.
   static const double _glideEnterMeters = 6.0;
 
-  // Continuous prediction while the board is fresh, hard-stopped once it isn't.
-  //
-  // The plan is a forward (position, eta) table anchored at `as_of`; the marker
-  // chases `plan[now - as_of]` — the vehicle's *predicted current* spot — so on
-  // healthy 30s data it moves continuously across the whole poll interval (the
-  // reference apps do exactly this) instead of leading a short bridge and then
-  // sitting until the next batch, which read as the whole city freezing and
-  // reviving in lockstep.
-  //
-  // The upstream board's `as_of` can go badly stale (upstream 503s under load →
-  // SWR serves a frozen board, so `now - as_of` grows unbounded). Predicting
-  // that unbounded gap from a frozen anchor is exactly what made markers "fly
-  // while the vehicle is parked". The defence is NOT a short prediction window —
-  // it's the [_stalenessSeconds] gate: while the fix is fresh we predict the
-  // full elapsed time; once it's older than the gate (the board isn't
-  // refreshing) we stop predicting and hold at the fix. The gate (45s) sits
-  // above the 30s poll cadence, so healthy data never touches it (continuous
-  // motion) while a frozen board is caught within one gate-width (hold, never
-  // fly). [_maxAheadMeters] is the matching distance belt — the furthest the
-  // marker may lead within that window, so an implausibly fast plan can't
-  // outrun the gate.
-  static const double _stalenessSeconds = 45;
-  static const double _maxAheadMeters = 900;
-
   // The elapsed time used to place the *target* along the plan: the full time
   // since the fix while it's fresh (continuous prediction), and zero (sit at the
   // fix) once it's stale. This — not the raw `now - as_of` used unconditionally —
@@ -157,12 +133,6 @@ class TimedTrajectory {
   // moment the fix ages past the gate the target collapses back to the fix and
   // the forward-only [advance] simply holds (never lurches or rewinds).
   double _targetElapsed(DateTime now) => _gatedElapsed(_asOf, now);
-
-  static double _gatedElapsed(DateTime asOf, DateTime now) {
-    final age = _elapsedSeconds(asOf, now);
-    if (age > _stalenessSeconds) return 0; // stale board: don't predict, hold
-    return age; // fresh board: predict the full elapsed time (continuous)
-  }
 
   /// Builds a player, or null when the plan/path can't form a usable monotone
   /// distance-vs-time table (needs a usable path and ≥2 strictly-forward points).
@@ -472,8 +442,9 @@ class TimedTrajectory {
   // station, so it doesn't count.
   bool _nearStation(double dist) {
     for (var i = 1; i < _waypoints.length; i++) {
-      if ((dist - _waypoints[i].dist).abs() <= _stationRadiusMeters)
+      if ((dist - _waypoints[i].dist).abs() <= _stationRadiusMeters) {
         return true;
+      }
     }
     return false;
   }
@@ -510,8 +481,9 @@ class TimedTrajectory {
   /// second, flipping this true often enough to keep the ticker alive and the
   /// fan flickering: markers shoving apart and snapping back as they converge.
   bool hasForwardMotion(DateTime now) {
-    if (_isGliding(now))
+    if (_isGliding(now)) {
       return true; // coasting out the plan end IS moving forward
+    }
     if (_dispDist >= _horizonDist - _epsilonMeters) return false;
     return _targetSpeed(now) > _minMotionSpeed;
   }
@@ -537,8 +509,9 @@ class TimedTrajectory {
   /// is simply whether the plan is still live and unfinished. "Idle = zero
   /// frames" is intact — a stale board and a spent plan both still park it.
   bool isPlaying(DateTime now) {
-    if (_isGliding(now))
+    if (_isGliding(now)) {
       return true; // keep the ticker alive through the glide-out
+    }
     if (_dispDist >= _horizonDist - _epsilonMeters) return false;
     // Gate on staleness, NOT on `elapsed <= 0`. `_targetElapsed` returns 0 in
     // TWO cases: a stale board (held at the fix — correctly not playing) AND a

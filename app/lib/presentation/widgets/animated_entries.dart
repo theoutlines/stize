@@ -133,7 +133,8 @@ class _AnimatedEntriesState extends State<AnimatedEntries>
                 parent: _entries[i].controller,
                 curve: StizeMotion.smoothOut,
               ),
-              axisAlignment: -1,
+              // Was axisAlignment: -1 (vertical): grow from the top.
+              alignment: Alignment.topLeft,
               child: FadeTransition(
                 opacity: _entries[i].controller,
                 child: Padding(

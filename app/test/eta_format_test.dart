@@ -18,7 +18,7 @@ void main() {
     });
 
     test(
-      'at/beyond ${kFarEtaMinutes} min it becomes a 24h clock arrival time',
+      'at/beyond $kFarEtaMinutes min it becomes a 24h clock arrival time',
       () {
         final now = DateTime(2026, 7, 17, 1, 15); // 01:15
         expect(etaLabel(l10n, 'en', 90, now: now), '02:45'); // +90m
@@ -27,7 +27,7 @@ void main() {
     );
 
     test(
-      'the threshold is exactly ${kFarEtaMinutes} (59 → min, 60 → time)',
+      'the threshold is exactly $kFarEtaMinutes (59 → min, 60 → time)',
       () {
         final now = DateTime(2026, 7, 17, 12, 0);
         expect(etaLabel(l10n, 'en', 59, now: now), '59 min');

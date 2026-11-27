@@ -110,7 +110,7 @@ extension _MapContext on _HomeMapScreenState {
       // tick stops fetching it — see mapRefreshAction). The contexts survive:
       // a followed vehicle keeps its own marker (§C, works in both modes)…
       final followed = _selectedVehicleKey;
-      _vehAnimator.retainOnly({if (followed != null) followed});
+      _vehAnimator.retainOnly({?followed});
       // …and a stop context repaints from the board already in hand instead of
       // waiting out the next 30s tick.
       final board = _stopContextId == null
@@ -175,8 +175,9 @@ extension _MapContext on _HomeMapScreenState {
   /// a tapped Fleet model (leaf) → model; a followed vehicle → vehicle; a slot
   /// stop → stop; else nearby. Desktop-only (the panel).
   ContextView get _activeView {
-    if (_selectedVehicleKey != null || _focus != null)
+    if (_selectedVehicleKey != null || _focus != null) {
       return ContextView.vehicle;
+    }
     return switch (_levels.top) {
       null => ContextView.nearby,
       MyStopsLevel() => ContextView.myStops,

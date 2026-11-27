@@ -95,8 +95,9 @@ bool isJamRelevant(
       jam.line.toLowerCase() == followedLine.toLowerCase()) {
     return true;
   }
-  if (openStopId != null && jam.affectedStopIds.contains(openStopId))
+  if (openStopId != null && jam.affectedStopIds.contains(openStopId)) {
     return true;
+  }
   if (userLocation != null) {
     final pts = <ll.LatLng>[
       for (final v in jam.vehicles) v.position,
@@ -123,8 +124,9 @@ bool isJamAhead({
   required RoutePath? path,
   required double vehicleAlong,
 }) {
-  if (jam.directionRouteId == null || vehicleDirectionRouteId == null)
+  if (jam.directionRouteId == null || vehicleDirectionRouteId == null) {
     return false;
+  }
   if (jam.directionRouteId != vehicleDirectionRouteId) return false;
   if (path == null || !path.isUsable) return false;
   final anchors = <ll.LatLng>[

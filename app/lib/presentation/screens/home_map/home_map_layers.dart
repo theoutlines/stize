@@ -37,12 +37,14 @@ extension _MapLayers on _HomeMapScreenState {
   }
 
   void _refreshFollowPanel() {
-    if (!_panelActive || _selectedVehicleKey == null || _slotModel != null)
+    if (!_panelActive || _selectedVehicleKey == null || _slotModel != null) {
       return;
+    }
     final now = DateTime.now();
     final last = _follow.lastPanelRefreshAt;
-    if (last != null && now.difference(last) < const Duration(seconds: 1))
+    if (last != null && now.difference(last) < const Duration(seconds: 1)) {
       return;
+    }
     _follow.lastPanelRefreshAt = now;
     if (mounted) _setState(() {});
   }

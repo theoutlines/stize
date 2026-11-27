@@ -103,8 +103,9 @@ extension _MapSearch on _HomeMapScreenState {
       );
       return;
     }
-    if (_onDemand)
+    if (_onDemand) {
       _enterStopContext(group.stopId); // keep the vehicle refreshed
+    }
     _focusVehicleFromArrival(match, board.updatedAt, source: Ev.srcNearby);
     _returnToStopId = null; // came from Nearby → close returns to the viewport
   }

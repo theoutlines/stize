@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stize/core/design/stize_theme.dart';
-import 'package:stize/core/design/stize_tokens.dart';
 import 'package:stize/domain/models/arrival.dart';
 import 'package:stize/domain/models/vehicle_type.dart';
 import 'package:stize/l10n/app_localizations.dart';

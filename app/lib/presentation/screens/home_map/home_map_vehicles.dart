@@ -37,8 +37,9 @@ extension _MapVehicles on _HomeMapScreenState {
         _lastVehiclesCenter!,
         center,
       );
-      if (moved < radius * 0.3)
+      if (moved < radius * 0.3) {
         return; // viewport barely changed — skip refetch
+      }
     }
     final seq = ++_vehiclesRequestSeq;
     _lastVehiclesCenter = center;

@@ -320,3 +320,34 @@ class _Segment {
     }
   }
 }
+
+// Continuous prediction while the board is fresh, hard-stopped once it isn't.
+//
+// The plan is a forward (position, eta) table anchored at `as_of`; the marker
+// chases `plan[now - as_of]` — the vehicle's *predicted current* spot — so on
+// healthy 30s data it moves continuously across the whole poll interval (the
+// reference apps do exactly this) instead of leading a short bridge and then
+// sitting until the next batch, which read as the whole city freezing and
+// reviving in lockstep.
+//
+// The upstream board's `as_of` can go badly stale (upstream 503s under load →
+// SWR serves a frozen board, so `now - as_of` grows unbounded). Predicting
+// that unbounded gap from a frozen anchor is exactly what made markers "fly
+// while the vehicle is parked". The defence is NOT a short prediction window —
+// it's the [_stalenessSeconds] gate: while the fix is fresh we predict the
+// full elapsed time; once it's older than the gate (the board isn't
+// refreshing) we stop predicting and hold at the fix. The gate (45s) sits
+// above the 30s poll cadence, so healthy data never touches it (continuous
+// motion) while a frozen board is caught within one gate-width (hold, never
+// fly). [_maxAheadMeters] is the matching distance belt — the furthest the
+// marker may lead within that window, so an implausibly fast plan can't
+// outrun the gate.
+const double _stalenessSeconds = 45;
+
+const double _maxAheadMeters = 900;
+
+double _gatedElapsed(DateTime asOf, DateTime now) {
+  final age = _elapsedSeconds(asOf, now);
+  if (age > _stalenessSeconds) return 0; // stale board: don't predict, hold
+  return age; // fresh board: predict the full elapsed time (continuous)
+}

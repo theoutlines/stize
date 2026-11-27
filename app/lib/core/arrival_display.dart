@@ -63,8 +63,9 @@ ArrivalProximity arrivalProximity({
   required int etaMinutes,
   int hereEtaMinutes = kHereEtaMinutes,
 }) {
-  if (stopsRemaining == null || stopsRemaining < 0)
+  if (stopsRemaining == null || stopsRemaining < 0) {
     return ArrivalProximity.unknown;
+  }
   if (stopsRemaining == 0) {
     return etaMinutes <= hereEtaMinutes
         ? ArrivalProximity.here

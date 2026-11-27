@@ -31,19 +31,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _imagesReady = false;
 
   Geographic get _initialCenter {
-    if (widget.args.center != null)
+    if (widget.args.center != null) {
       return Geographic(
         lon: widget.args.center!.longitude,
         lat: widget.args.center!.latitude,
       );
+    }
     final poly = widget.args.polyline;
-    if (poly != null && poly.isNotEmpty)
+    if (poly != null && poly.isNotEmpty) {
       return Geographic(lon: poly.first[1], lat: poly.first[0]);
-    if (widget.args.stops.isNotEmpty)
+    }
+    if (widget.args.stops.isNotEmpty) {
       return Geographic(
         lon: widget.args.stops.first.lon,
         lat: widget.args.stops.first.lat,
       );
+    }
     return _belgradeCenter;
   }
 

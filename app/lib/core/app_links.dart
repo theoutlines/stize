@@ -1,6 +1,7 @@
 /// Canonical outward links for the app. The public repository URL is the git
 /// origin (`github.com/theoutlines/stize`); the private feedback-triage repo is
 /// intentionally NOT referenced here (it's a backend secret path).
+library;
 
 /// The public source repository (AGPL-3.0). Used by the licenses page header and
 /// the "GitHub Issues" drawer action. The repo is renamed stigla → stize at the
