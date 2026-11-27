@@ -5,10 +5,6 @@ import 'package:latlong2/latlong.dart' as ll;
 
 import 'package:stize/core/context_slot.dart';
 import 'package:stize/domain/models/arrival.dart';
-import 'package:stize/domain/models/favorite_stop.dart';
-import 'package:stize/domain/models/stop.dart';
-import 'package:stize/domain/repositories/arrivals_repository.dart';
-import 'package:stize/domain/repositories/favorites_repository.dart';
 import 'package:stize/domain/repositories/nearby_arrivals_repository.dart';
 import 'package:stize/domain/models/nearby_arrival.dart';
 import 'package:stize/l10n/app_localizations.dart';
@@ -27,30 +23,6 @@ class _EmptyNearby implements NearbyArrivalsRepository {
     required double lon,
     double radiusMeters = 500,
   }) async => const NearbyResult(groups: [], serviceStatus: ServiceStatus.ok);
-}
-
-class _FakeArrivals implements ArrivalsRepository {
-  @override
-  Future<ArrivalsBoard> getArrivals(String stopId) async =>
-      ArrivalsBoard.fromJson({
-        'stop_id': stopId,
-        'stop_name': 'Batutova',
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-        'arrivals': const [],
-        'service_status': 'ok',
-      });
-}
-
-class _FakeFavorites implements FavoritesRepository {
-  final _s = <FavoriteStop>[];
-  @override
-  Future<void> add(FavoriteStop stop) async => _s.add(stop);
-  @override
-  Future<List<FavoriteStop>> getFavorites() async => List.unmodifiable(_s);
-  @override
-  Future<bool> isFavorite(String id) async => _s.any((s) => s.stopId == id);
-  @override
-  Future<void> remove(String id) async => _s.removeWhere((s) => s.stopId == id);
 }
 
 Widget _app(Widget home, {List<Override> overrides = const []}) =>

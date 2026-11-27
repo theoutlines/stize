@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
-import '../../core/context_slot.dart';
 import '../../core/design/stize_icons.dart';
-import '../../core/design/stize_tokens.dart';
 
 /// Shared bottom-sheet chrome, so every mobile sheet (nearby / stop / vehicle /
 /// the in-sheet fleet-card subview) uses ONE width + handle + surface treatment

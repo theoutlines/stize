@@ -3,7 +3,7 @@ H='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 2
 F='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">'
 I={
 'close':'<path d="M6 6l12 12M18 6L6 18"/>',
-'back':'<path d="M20 12H5M11 5l-7 7 7 7"/>',
+'back':'<path d="M15 5l-7 7 7 7"/>',
 'forward':'<path d="M4 12h15M13 5l7 7-7 7"/>',
 'menu':'<path d="M4 7h16M4 12h16M4 17h16"/>',
 'search':'<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.2 15.2L21 21"/>',
