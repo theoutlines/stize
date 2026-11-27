@@ -217,16 +217,27 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
         }
       }
     }
-    // Live is down: say so where the live vehicles would be, right above the
-    // timetable that stands in for them (owner, 2026-11-27).
-    if (board.serviceStatus == ServiceStatus.unavailable) {
+    // Live is down: say so where the live vehicles would be. With a
+    // timetable below, the note IS its header (one line, the offline mark),
+    // not a second line over "By timetable" (owner, 2026-11-27).
+    final liveDown = board.serviceStatus == ServiceStatus.unavailable;
+    if (liveDown && timetable.isEmpty) {
       tiles.add(
         const LiveUnavailableBanner(key: ValueKey('live-unavailable')),
       );
     }
     if (timetable.isNotEmpty) {
       tiles.add(
-        TimetableHeader(key: const ValueKey('timetable'), label: l10n.arrivalByTimetable),
+        liveDown
+            ? TimetableHeader(
+                key: const ValueKey('timetable'),
+                label: l10n.liveUnavailableBanner,
+                icon: StizeIcons.offline,
+              )
+            : TimetableHeader(
+                key: const ValueKey('timetable'),
+                label: l10n.arrivalByTimetable,
+              ),
       );
       tiles.addAll(timetable);
     }

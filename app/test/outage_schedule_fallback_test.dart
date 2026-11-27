@@ -99,11 +99,13 @@ void main() {
 
       // The schedule row is shown...
       expect(find.text('12'), findsWidgets);
-      // ...with the "live unavailable — timetable" banner above it...
+      // ...headed by the "live unavailable — timetable" note, which stands in
+      // for "By timetable" rather than sitting above it...
       expect(
         find.text('Live data temporarily unavailable — timetable'),
         findsOneWidget,
       );
+      expect(find.text('By timetable'), findsNothing);
       // ...and NOT the "short break" wall.
       expect(find.text("We're taking a short break"), findsNothing);
     },

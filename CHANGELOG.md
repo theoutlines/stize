@@ -16,7 +16,8 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   a street or address shows a neutral grey one, and a stop shows its map
   pin (type colour and glyph) instead of a generic pin.
 - **"Live unavailable" sits where live vehicles would be.** On a stop board
-  the note now stands right above "By timetable" instead of at the top.
+  the note now heads the timetable itself (one line with the offline mark)
+  instead of a separate strip at the top over "By timetable".
 - **Feedback opens the form.** "Share feedback" in the menu goes straight to
   the message form; the extra screen with a GitHub Issues link is gone.
 - **Stop links open on the map.** A `/stop/<id>` link opens the home map with
