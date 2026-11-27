@@ -55,6 +55,9 @@ jobs:
       - name: Publish a data branch if anything changed
         run: |
           cd ..
+          # Every build stamps built_at; a file whose only change is that
+          # stamp is put back, so an unchanged feed publishes nothing.
+          python3 .github/scripts/drop_stamp_only.py backend/public
           if git diff --quiet -- backend/public; then
             echo "Bundle unchanged: nothing to publish."; exit 0
           fi
