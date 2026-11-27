@@ -23,17 +23,16 @@ void main() {
     expect(s.length, 4);
   });
 
-  test('a different stop, page or form is a new level', () {
+  test('a different stop or page is a new level', () {
     final s = SheetLevelStack()
       ..open(const StopLevel('20001', 'Lion'))
       ..open(const StopLevel('20002', 'Batutova'))
       ..open(const GuideLevel(GuidePage.home))
       ..open(const GuideLevel(GuidePage.places))
-      ..open(const FeedbackLevel())
-      ..open(const FeedbackLevel(form: true));
-    expect(s.length, 6);
-    expect((s.top! as FeedbackLevel).form, isTrue);
-    expect(s.below, isA<FeedbackLevel>());
+      ..open(const FeedbackLevel());
+    expect(s.length, 5);
+    expect(s.top, isA<FeedbackLevel>());
+    expect(s.below, isA<GuideLevel>());
   });
 
   test('back returns to the level below; the stop on top is known', () {
