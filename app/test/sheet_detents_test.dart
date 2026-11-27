@@ -15,7 +15,6 @@ import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
 import 'package:stize/presentation/widgets/nearby_sheet.dart';
 import 'package:stize/presentation/widgets/nearby_view.dart';
-import 'package:stize/presentation/widgets/stop_sheet.dart';
 
 // Every mobile bottom sheet must cap at `large` (owner R2 #4 / R3 #3): dragged
 // to the top it stops at kSheetLarge, leaving a strip of map — never fullscreen.
@@ -95,40 +94,6 @@ void main() {
     expect(sheet.snapSizes, contains(kSheetLarge));
     expect(sheet.snapSizes!.every((s) => s <= kSheetLarge), isTrue);
     await tester.pumpWidget(const SizedBox()); // cancel the 30s timer
-  });
-
-  testWidgets('Stop sheet caps at large', (tester) async {
-    const stop = Stop(
-      stopId: '20091',
-      name: 'Batutova',
-      lat: 44.79,
-      lon: 20.49,
-      lines: ['79'],
-    );
-    late BuildContext ctx;
-    await tester.pumpWidget(
-      _app(
-        Builder(
-          builder: (c) {
-            ctx = c;
-            return const SizedBox();
-          },
-        ),
-        overrides: [
-          arrivalsRepositoryProvider.overrideWithValue(_FakeArrivals()),
-          favoritesRepositoryProvider.overrideWithValue(_FakeFavorites()),
-          alertsProvider.overrideWith((ref) async => const []),
-          stopLocationProvider('20091').overrideWith((ref) async => stop),
-          fleetCatalogProvider.overrideWith((ref) async => null),
-        ],
-      ),
-    );
-    showStopSheet(ctx, stopId: '20091', stopName: 'Batutova');
-    await tester.pump();
-    await tester.pump();
-    final sheet = _theSheet(tester);
-    expect(sheet.maxChildSize, kSheetLarge);
-    expect(sheet.snapSizes, contains(kSheetLarge));
   });
 
   testWidgets('full Nearby sheet: a slow pull down stays, a flick collapses', (

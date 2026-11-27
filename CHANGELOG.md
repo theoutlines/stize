@@ -29,6 +29,15 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 - **One locate button.** The button left of the search is always the
   crosshair; it no longer turns into an arrow after the map is moved.
 
+- **A line from search opens on the map.** Its route and stops are drawn on
+  the home map with the line bar to close it, like a followed line, instead
+  of a separate route screen. Closing returns to where you were.
+
+### Fixed (afternoon)
+- **Closing the search lowers the sheet again.** On phones the Nearby sheet
+  used to stop near the top after the search was closed; it now settles back
+  to its resting height.
+
 ### Removed (afternoon)
 - Pinning a line from search (pinned lines were saved but never shown
   anywhere), the "zoom in to see transport" hint, the vehicle model card that

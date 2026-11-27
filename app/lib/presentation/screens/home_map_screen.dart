@@ -9,7 +9,6 @@ import '../../core/design/stize_icons.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart' as geo show Position;
-import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:maplibre/maplibre.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
@@ -77,7 +76,6 @@ import '../widgets/vehicle_mode_toggle.dart';
 import '../widgets/vehicle_view.dart';
 import 'home_map/search_session.dart';
 import 'home_map/sheet_levels.dart';
-import 'map_screen_args.dart';
 
 part 'home_map/home_map_layers.dart';
 part 'home_map/home_map_location.dart';

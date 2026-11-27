@@ -12,7 +12,6 @@ import 'package:stize/domain/repositories/favorites_repository.dart';
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/providers/providers.dart';
 import 'helpers/stop_board_page.dart';
-import 'package:stize/presentation/widgets/stop_sheet.dart';
 import 'package:stize/presentation/widgets/follow_view.dart';
 import 'package:stize/domain/models/vehicle_type.dart';
 
@@ -217,48 +216,5 @@ void main() {
     expect(find.textContaining('Турчин'), findsNothing);
     expect(find.text('Articulated'), findsOneWidget);
     expect(find.text('~218 people'), findsOneWidget);
-  });
-
-  // The *in-app* tap path opens the map's bottom sheet (stop_sheet.dart), not
-  // the full board page: same cards there, no fleet badges either.
-  testWidgets('map stop sheet shows the same badge-free cards', (tester) async {
-    final catalog = FleetCatalog.tryParse(_catalogJson)!;
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          arrivalsRepositoryProvider.overrideWithValue(_FakeArrivals(_board())),
-          favoritesRepositoryProvider.overrideWithValue(_FakeFavorites()),
-          alertsProvider.overrideWith((ref) async => const []),
-          stopLocationProvider('20091').overrideWith((ref) async => _stop),
-          fleetCatalogProvider.overrideWith((ref) async => catalog),
-        ],
-        child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => Center(
-                child: ElevatedButton(
-                  onPressed: () => showStopSheet(
-                    context,
-                    stopId: '20091',
-                    stopName: 'Batutova',
-                  ),
-                  child: const Text('open'),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Batutova'), findsWidgets);
-    expect(find.text('By comfort'), findsNothing);
-    expect(find.textContaining('P5'), findsNothing); // junk hidden
   });
 }

@@ -17,10 +17,8 @@ import 'stop_header_actions.dart';
 import 'stop_live_refresh.dart';
 
 /// The reusable "stop" view — a stop's live arrivals board, with no assumption
-/// about its container. It is hosted BY three shells that only add chrome:
-///
-///  * the mobile bottom sheet ([showStopSheet] → `_StopSheet`);
-///  * the desktop context panel ([ContextPanel]).
+/// about its container. The home map hosts it as the stop level of its one
+/// sheet (mobile) and of the context panel ([ContextPanel], desktop).
 ///
 /// Extracting it here is exactly the "no duplication of lists/sheets" the
 /// context-panel task requires (and progresses the CLAUDE.md shared-board
