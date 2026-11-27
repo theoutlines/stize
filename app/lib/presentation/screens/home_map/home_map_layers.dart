@@ -345,6 +345,7 @@ extension _MapLayers on _HomeMapScreenState {
     // Colours and theme are read before the first await (no context after).
     final c = StizeColors.of(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = c.bg.toARGB32();
     final colors = {
       'bus': c.transitBus.toARGB32(),
       'trolleybus': c.transitTrolleybus.toARGB32(),
@@ -360,7 +361,14 @@ extension _MapLayers on _HomeMapScreenState {
     await _ensureCoverageSource(style);
     final picked = ref.read(coverageTypesProvider);
     // Under the stop and vehicle layers, so a focus left over can't hide
-    // beneath the heat.
+    // beneath the heat; the veil goes first, under the heat.
+    try {
+      await style.addLayer(
+        coverageModeVeil(bgArgb: bg, dark: dark),
+        belowLayerId: _LayerIds.coverageModeBelow,
+      );
+      _cov.modeLayers.add(coverageModeVeilId);
+    } catch (_) {}
     for (final type in coverageTypes) {
       if (picked.isNotEmpty && !picked.contains(type)) continue;
       final id = coverageModeLayerId(type);

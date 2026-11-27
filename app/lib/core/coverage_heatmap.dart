@@ -1,20 +1,14 @@
-// Shared coverage-heatmap source and style, used by BOTH the Coverage tab
-// (`presentation/screens/coverage_screen.dart`) and the main map's zoomed-out
-// overlay (`presentation/screens/home_map_screen.dart`).
+// Shared coverage-heatmap source and style for the home map: the zoomed-out
+// backdrop and coverage mode (the menu's Coverage level).
 //
-// The two surfaces must render the *same* layer from the *same* data — a
-// divergence in source id, colour ramp or radius/intensity expressions between
-// the two would be a bug by definition (spec). So all of that lives here only;
-// each screen just tunes its own intensity/opacity for its context.
+// Both draw from the one source here; each tunes its own look.
 
 import 'package:maplibre/maplibre.dart';
 
 import 'api_config.dart';
 
-/// GeoJSON source id. Both maps use the same id (they live in separate
-/// `StyleController`s, so there is no collision) fed by the same URL, so the
-/// HTTP/browser cache dedupes the actual download — there is no second network
-/// fetch even though each style needs its own source object.
+/// GeoJSON source id, shared by the backdrop and coverage mode in the one
+/// style (added once, fetched once).
 const coverageSourceId = 'coverage-src';
 
 /// `?rev=` busts any longer-lived CDN/browser cache entry when the data model
@@ -92,58 +86,6 @@ List<Object> coverageRadiusExpression() => [
   18,
   6,
 ];
-
-// ---- Coverage tab (foreground infographic) --------------------------------
-
-/// `heatmap-intensity` for the standalone Coverage tab. Low at the overview so
-/// only the densest corridors reach white, then rising ~2× per zoom level to
-/// counter the point cloud thinning out per pixel as you zoom in (so corridors
-/// stay lit and the gradation — dim single lines → orange corridors → white
-/// core — holds).
-List<Object> coverageTabIntensityExpression() => [
-  'interpolate',
-  ['linear'],
-  ['zoom'],
-  11,
-  0.024,
-  13,
-  0.07,
-  15,
-  0.28,
-  18,
-  1.0,
-];
-
-/// `heatmap-opacity` for the Coverage tab — mostly opaque, a slight fade when
-/// zoomed right in so the base map shows through.
-List<Object> coverageTabOpacityExpression() => [
-  'interpolate',
-  ['linear'],
-  ['zoom'],
-  11,
-  0.9,
-  16,
-  0.85,
-  18,
-  0.65,
-];
-
-/// The heatmap layer for the Coverage tab. [filter] narrows the vehicle types.
-HeatmapStyleLayer coverageTabLayer({
-  required String id,
-  required bool dark,
-  List<Object>? filter,
-}) => HeatmapStyleLayer(
-  id: id,
-  sourceId: coverageSourceId,
-  filter: filter,
-  paint: {
-    'heatmap-color': coverageColorExpression(dark),
-    'heatmap-radius': coverageRadiusExpression(),
-    'heatmap-intensity': coverageTabIntensityExpression(),
-    'heatmap-opacity': coverageTabOpacityExpression(),
-  },
-);
 
 // ---- Main-map overlay (passive background at zoom-out) ---------------------
 //
@@ -301,26 +243,63 @@ List<Object> coverageTypeColorExpression(int argb, {required bool dark}) => [
   0.7,
   _rgba(argb, 0.95),
   0.9,
-  _rgba(_shade(argb, dark ? 0.35 : -0.25), 1),
+  _rgba(_shade(argb, dark ? 0.35 : -0.1), 1),
   1.0,
-  _rgba(_shade(argb, dark ? 0.7 : -0.5), 1),
+  _rgba(_shade(argb, dark ? 0.7 : -0.25), 1),
 ];
 
-/// Intensity per type: the tab's ramp, a little hotter, because each layer
-/// sees only its own type's points.
-List<Object> coverageModeIntensityExpression() => [
+/// Intensity per type at the city overview. Bus covers the most ground, so
+/// it runs cooler; tram and trolleybus, with few lines each, run hotter so a
+/// single line still reaches its full colour. Tuned live on staging
+/// (2026-11-27).
+const _coverageModeBaseIntensity = {
+  'bus': 0.05,
+  'trolleybus': 0.12,
+  'tram': 0.12,
+};
+
+/// Intensity over zoom for one type: rises as the points thin out per pixel.
+List<Object> coverageModeIntensityExpression(String type) {
+  final i = _coverageModeBaseIntensity[type] ?? 0.08;
+  return [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    11,
+    i,
+    13,
+    i * 2.6,
+    15,
+    i * 9,
+    18,
+    i * 30,
+  ];
+}
+
+/// Narrow strands, so each route reads as a line (the refs: fine traces that
+/// add up to bright corridors) rather than a cloud.
+List<Object> coverageModeRadiusExpression() => [
   'interpolate',
   ['linear'],
   ['zoom'],
   11,
-  0.035,
-  13,
-  0.1,
+  6,
   15,
-  0.36,
-  18,
-  1.2,
+  7,
 ];
+
+/// Layer id of the veil that mutes the base map under the heat.
+const coverageModeVeilId = 'coverage-mode-veil';
+
+/// A veil in the page colour over the base map, under the heat, so the
+/// transit colours never sink into the map's own blues and greens.
+BackgroundStyleLayer coverageModeVeil({
+  required int bgArgb,
+  required bool dark,
+}) => BackgroundStyleLayer(
+  id: coverageModeVeilId,
+  paint: {'background-color': _rgba(bgArgb, dark ? 0.55 : 0.7)},
+);
 
 /// The heat layer for one [type] in coverage mode.
 HeatmapStyleLayer coverageModeLayer({
@@ -337,8 +316,8 @@ HeatmapStyleLayer coverageModeLayer({
   ],
   paint: {
     'heatmap-color': coverageTypeColorExpression(argb, dark: dark),
-    'heatmap-radius': coverageRadiusExpression(),
-    'heatmap-intensity': coverageModeIntensityExpression(),
+    'heatmap-radius': coverageModeRadiusExpression(),
+    'heatmap-intensity': coverageModeIntensityExpression(type),
     'heatmap-opacity': 0.85,
   },
 );
