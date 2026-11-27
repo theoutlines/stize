@@ -242,54 +242,35 @@ extension _MapJams on _HomeMapScreenState {
     }
     // An exact line number goes above the stops (core/search.dart).
     final lines = splitExactLines(_resultLines, _searchController.text);
+    Widget lineTile(LineInfo line) => ListTile(
+      leading: vehicleGlyph(
+        line.vehicleType,
+        size: 24,
+        color: vehicleColor(line.vehicleType),
+      ),
+      title: Text(line.line),
+      subtitle: Text('${line.origin} → ${line.destination}'),
+      trailing: IconButton(
+        icon: Icon(
+          _isLinePinned(line.line)
+              ? StizeIcons.pinPushFilled
+              : StizeIcons.pinPush,
+        ),
+        tooltip: l10n.pinLineTooltip,
+        onPressed: () => _togglePinLine(line),
+      ),
+      onTap: () => _openLine(line),
+    );
     return StretchCardList(
       shrinkWrap: true,
       children: [
-        for (final line in lines.exact)
-          ListTile(
-            leading: vehicleGlyph(
-              line.vehicleType,
-              size: 24,
-              color: vehicleColor(line.vehicleType),
-            ),
-            title: Text(line.line),
-            subtitle: Text('${line.origin} → ${line.destination}'),
-            trailing: IconButton(
-              icon: Icon(
-                _isLinePinned(line.line)
-                    ? StizeIcons.pinPushFilled
-                    : StizeIcons.pinPush,
-              ),
-              tooltip: l10n.pinLineTooltip,
-              onPressed: () => _togglePinLine(line),
-            ),
-            onTap: () => _openLine(line),
-          ),
+        for (final line in lines.exact) lineTile(line),
         for (final stop in _resultStops)
           StopResultTile(
             stop: stop,
             onTap: () => _openStop(stop, source: Ev.srcSearch),
           ),
-        for (final line in lines.rest)
-          ListTile(
-            leading: vehicleGlyph(
-              line.vehicleType,
-              size: 24,
-              color: vehicleColor(line.vehicleType),
-            ),
-            title: Text(line.line),
-            subtitle: Text('${line.origin} → ${line.destination}'),
-            trailing: IconButton(
-              icon: Icon(
-                _isLinePinned(line.line)
-                    ? StizeIcons.pinPushFilled
-                    : StizeIcons.pinPush,
-              ),
-              tooltip: l10n.pinLineTooltip,
-              onPressed: () => _togglePinLine(line),
-            ),
-            onTap: () => _openLine(line),
-          ),
+        for (final line in lines.rest) lineTile(line),
         for (final place in _resultPlaces)
           ListTile(
             leading: const Icon(StizeIcons.map),

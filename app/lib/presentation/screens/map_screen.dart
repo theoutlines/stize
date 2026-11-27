@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:latlong2/latlong.dart' as ll;
 import 'package:maplibre/maplibre.dart';
 
 import '../../core/map_style.dart';
 import '../../core/map_support.dart';
 import '../../data/analytics/event_logger.dart';
+import 'map_screen_args.dart';
 import '../../domain/models/route_alert.dart';
-import '../../domain/models/stop.dart';
 import '../providers/providers.dart';
 import '../widgets/route_alerts_strip.dart';
 import '../widgets/stop_sheet.dart';
@@ -18,22 +17,10 @@ const _belgradeCenter = Geographic(lon: 20.4612, lat: 44.8125);
 /// center point (a geocoded street/place) and/or a route polyline (a line's
 /// full trace).
 class MapScreen extends ConsumerStatefulWidget {
-  const MapScreen({
-    super.key,
-    required this.stops,
-    this.center,
-    this.centerLabel,
-    this.title,
-    this.polyline,
-    this.lineNumber,
-  });
+  const MapScreen({super.key, required this.args});
 
-  final List<Stop> stops;
-  final ll.LatLng? center;
-  final String? centerLabel;
-  final String? title;
-  final List<List<double>>? polyline;
-  final String? lineNumber;
+  /// What to show: stops, an optional centre point and an optional line trace.
+  final MapScreenArgs args;
 
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
@@ -44,18 +31,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _imagesReady = false;
 
   Geographic get _initialCenter {
-    if (widget.center != null)
+    if (widget.args.center != null)
       return Geographic(
-        lon: widget.center!.longitude,
-        lat: widget.center!.latitude,
+        lon: widget.args.center!.longitude,
+        lat: widget.args.center!.latitude,
       );
-    final poly = widget.polyline;
+    final poly = widget.args.polyline;
     if (poly != null && poly.isNotEmpty)
       return Geographic(lon: poly.first[1], lat: poly.first[0]);
-    if (widget.stops.isNotEmpty)
+    if (widget.args.stops.isNotEmpty)
       return Geographic(
-        lon: widget.stops.first.lon,
-        lat: widget.stops.first.lat,
+        lon: widget.args.stops.first.lon,
+        lat: widget.args.stops.first.lat,
       );
     return _belgradeCenter;
   }
@@ -80,9 +67,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     for (final f in features) {
       final stopId = f.properties['stopId'];
       if (stopId is String) {
-        final stop = widget.stops.firstWhere(
+        final stop = widget.args.stops.firstWhere(
           (s) => s.stopId == stopId,
-          orElse: () => widget.stops.first,
+          orElse: () => widget.args.stops.first,
         );
         // Overlay arrivals on this same map (A1) rather than pushing a screen.
         ref
@@ -97,14 +84,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final alerts = widget.lineNumber == null
+    final alerts = widget.args.lineNumber == null
         ? const <RouteAlert>[]
         : (ref.watch(alertsProvider).valueOrNull ?? const <RouteAlert>[])
-              .where((a) => !a.isExpired && a.matchesLine(widget.lineNumber!))
+              .where(
+                (a) => !a.isExpired && a.matchesLine(widget.args.lineNumber!),
+              )
               .toList();
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title ?? widget.centerLabel ?? '')),
+      appBar: AppBar(
+        title: Text(widget.args.title ?? widget.args.centerLabel ?? ''),
+      ),
       body: Column(
         children: [
           RouteAlertsStrip(alerts: alerts),
@@ -132,7 +123,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   List<Layer> _buildLayers(ThemeData theme) {
-    final poly = widget.polyline;
+    final poly = widget.args.polyline;
     return [
       if (poly != null && poly.length >= 2)
         PolylineLayer(
@@ -149,7 +140,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       if (_imagesReady) ...[
         MarkerLayer(
           points: [
-            for (final s in widget.stops)
+            for (final s in widget.args.stops)
               Feature<Point>(
                 geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
                 // Only `stopId` (the tap handler looks the name up from it). A
@@ -164,14 +155,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           iconSize: 0.5,
           iconAllowOverlap: true,
         ),
-        if (widget.center != null)
+        if (widget.args.center != null)
           MarkerLayer(
             points: [
               Feature<Point>(
                 geometry: Point(
                   Geographic(
-                    lon: widget.center!.longitude,
-                    lat: widget.center!.latitude,
+                    lon: widget.args.center!.longitude,
+                    lat: widget.args.center!.latitude,
                   ),
                 ),
               ),

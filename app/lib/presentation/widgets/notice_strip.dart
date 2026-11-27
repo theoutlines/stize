@@ -43,10 +43,82 @@ class NoticeStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = FlatCards.of(context);
     final c = StizeColors.of(context);
     final text = StizeText.of(context);
     final fg = foreground ?? c.ink;
+    return StripFrame(
+      surface: surface,
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2, right: StizeSpace.space3),
+            child: Icon(icon, size: 20, color: fg),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: text.label.copyWith(
+                    color: fg,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (body != null) ...[
+                  const SizedBox(height: StizeSpace.space1),
+                  body!,
+                ],
+                if (open && details != null) ...[
+                  const SizedBox(height: StizeSpace.space2),
+                  details!,
+                ],
+              ],
+            ),
+          ),
+          if (details != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: StizeSpace.space2,
+                vertical: 2,
+              ),
+              child: Icon(
+                open ? StizeIcons.chevronUp : StizeIcons.chevronDown,
+                size: 20,
+                color: c.ink50,
+              ),
+            )
+          else
+            const SizedBox(width: StizeSpace.space2),
+        ],
+      ),
+    );
+  }
+}
+
+/// The shell every strip in a list shares (NoticeStrip, the guide strip): a
+/// row in the cards' own language. In a flat list (mobile) it is flush with a
+/// hairline under it; on the desktop island it is rounded like the island's
+/// cards. Tappable as a whole; padding 12 × 16, 8 on the right where the
+/// chevron or close sits.
+class StripFrame extends StatelessWidget {
+  const StripFrame({
+    super.key,
+    required this.surface,
+    required this.child,
+    this.onTap,
+  });
+
+  final Color surface;
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final flat = FlatCards.of(context);
+    final c = StizeColors.of(context);
     return Material(
       color: surface,
       shape: flat
@@ -64,54 +136,7 @@ class NoticeStrip extends StatelessWidget {
             StizeSpace.space2,
             StizeSpace.space3,
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(
-                  top: 2,
-                  right: StizeSpace.space3,
-                ),
-                child: Icon(icon, size: 20, color: fg),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: text.label.copyWith(
-                        color: fg,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (body != null) ...[
-                      const SizedBox(height: StizeSpace.space1),
-                      body!,
-                    ],
-                    if (open && details != null) ...[
-                      const SizedBox(height: StizeSpace.space2),
-                      details!,
-                    ],
-                  ],
-                ),
-              ),
-              if (details != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: StizeSpace.space2,
-                    vertical: 2,
-                  ),
-                  child: Icon(
-                    open ? StizeIcons.chevronUp : StizeIcons.chevronDown,
-                    size: 20,
-                    color: c.ink50,
-                  ),
-                )
-              else
-                const SizedBox(width: StizeSpace.space2),
-            ],
-          ),
+          child: child,
         ),
       ),
     );

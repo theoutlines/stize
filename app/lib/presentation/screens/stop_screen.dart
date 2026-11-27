@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:stize/core/design/stize_text.dart';
 
 import 'package:flutter/material.dart';
@@ -6,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:latlong2/latlong.dart' as ll;
 
-import '../../core/api_config.dart';
-import '../../core/foreground.dart';
 import '../../core/live_position.dart';
 import '../../data/analytics/event_logger.dart';
 import '../../domain/models/route_alert.dart';
@@ -20,6 +17,7 @@ import '../widgets/stop_arrivals_list.dart';
 import '../widgets/jam_stop_banner.dart';
 import '../widgets/live_vehicles_map.dart';
 import '../widgets/route_alerts_strip.dart';
+import '../widgets/stop_live_refresh.dart';
 import '../../core/design/stize_icons.dart';
 
 class StopScreen extends ConsumerStatefulWidget {
@@ -32,41 +30,19 @@ class StopScreen extends ConsumerStatefulWidget {
   ConsumerState<StopScreen> createState() => _StopScreenState();
 }
 
-class _StopScreenState extends ConsumerState<StopScreen> {
-  Timer? _refreshTimer;
-  late final ForegroundResumeListener _resume = ForegroundResumeListener(() {
-    if (mounted) _refreshNow();
-  });
+class _StopScreenState extends ConsumerState<StopScreen> with StopLiveRefresh {
+  @override
+  String get liveStopId => widget.stopId;
+
   @override
   void initState() {
     super.initState();
-    _scheduleRefresh();
     // This full screen is reached only via the /stop/:id route — the "My Stops"
     // (favorites) list and external deep links — so the open is tagged as such.
     // (The in-app tap path uses the bottom sheet, which tags its own source.)
     ref
         .read(eventLoggerProvider)
         .log(Ev.stopOpen, props: {'source': Ev.srcFavorites});
-  }
-
-  void _scheduleRefresh() {
-    _refreshTimer?.cancel();
-    _resume; // start listening for foreground returns
-    _refreshTimer = Timer.periodic(kLiveRefreshInterval, (_) {
-      if (appInForeground) _refreshNow();
-    });
-  }
-
-  void _refreshNow() {
-    ref.invalidate(arrivalsProvider(widget.stopId));
-    if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);
-  }
-
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    _resume.dispose();
-    super.dispose();
   }
 
   @override
@@ -115,7 +91,8 @@ class _StopScreenState extends ConsumerState<StopScreen> {
               icon: StizeIcons.transit,
               title: l10n.loadingArrivals,
             ),
-            error: (err, st) => stopArrivalsErrorState(l10n, err, _refreshNow),
+            error: (err, st) =>
+                stopArrivalsErrorState(l10n, err, refreshStopNow),
             data: (b) {
               // Schedule-derived placeholder rows (GPS pinned to this stop)
               // stay off the mini map, or they'd stack on the stop pin.
@@ -126,7 +103,7 @@ class _StopScreenState extends ConsumerState<StopScreen> {
                 stopId: widget.stopId,
                 board: b,
                 stopLines: stopLocation?.lines ?? const [],
-                onRetry: _refreshNow,
+                onRetry: refreshStopNow,
                 aboveFreshness: stopLocation == null
                     ? null
                     : mapVehicles.isNotEmpty

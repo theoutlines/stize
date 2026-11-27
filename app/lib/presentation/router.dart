@@ -31,14 +31,7 @@ final appRouter = GoRouter(
         final args = state.extra as MapScreenArgs;
         return adaptivePage(
           key: state.pageKey,
-          child: MapScreen(
-            stops: args.stops,
-            center: args.center,
-            centerLabel: args.centerLabel,
-            title: args.title,
-            polyline: args.polyline,
-            lineNumber: args.lineNumber,
-          ),
+          child: MapScreen(args: args),
         );
       },
     ),

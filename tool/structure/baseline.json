@@ -11,8 +11,8 @@
     "app/lib/presentation/screens/home_map/home_map_search.dart": 636,
     "app/lib/presentation/screens/home_map_screen.dart": 1128,
     "app/lib/presentation/widgets/fleet_model_card.dart": 536,
-    "app/lib/presentation/widgets/follow_view.dart": 815,
-    "app/lib/presentation/widgets/guide/belgrade_guide.dart": 543,
+    "app/lib/presentation/widgets/follow_view.dart": 754,
+    "app/lib/presentation/widgets/guide/belgrade_guide.dart": 511,
     "app/lib/presentation/widgets/nearby_list.dart": 528,
     "app/lib/presentation/widgets/nearby_sheet.dart": 509,
     "app/lib/presentation/widgets/nearby_view.dart": 617,
@@ -33,12 +33,5 @@
     "backend/src/lib/schedule.ts:scheduledMapObjectsForRoute (tests only)"
   ],
   "unused-string": [],
-  "duplicate": [
-    "app/lib/presentation/screens/home_map/home_map_jams.dart:249 = app/lib/presentation/screens/home_map/home_map_jams.dart:274",
-    "app/lib/presentation/screens/map_screen.dart:23 = app/lib/presentation/screens/map_screen_args.dart:7",
-    "app/lib/presentation/screens/stop_screen.dart:52 = app/lib/presentation/widgets/stop_board.dart:93",
-    "app/lib/presentation/widgets/follow_view.dart:94 = app/lib/presentation/widgets/stize_transit_card.dart:375",
-    "app/lib/presentation/widgets/guide/belgrade_guide.dart:477 = app/lib/presentation/widgets/notice_strip.dart:52",
-    "app/lib/presentation/widgets/stop_sheet.dart:103 = app/lib/presentation/widgets/vehicle_detail_sheet.dart:70"
-  ]
+  "duplicate": []
 }
