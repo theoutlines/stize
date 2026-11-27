@@ -27,6 +27,10 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   sweep (650) are now folders of small modules; vehicle movement, the follow
   sheet and the Nearby list each lost 200 to 300 lines to their own files.
   The old import paths still work. Nothing changes for riders.
+- **No backend file over 500 lines.** The worker's routes moved out of
+  `index.ts` into `routes/` (transit, write, city, admin) and jam detection
+  into `lib/jam/`; the map's images, vehicle marker and style palettes are
+  their own files. The size check skips generated files (the design tokens).
 
 ## 2026-11-26
 
