@@ -307,6 +307,6 @@ LineStyleLayer coverageGlowLayer({required String type, required bool dark}) =>
         'line-color': _colorByTrips(type),
         'line-width': _width(4),
         'line-blur': _width(3),
-        'line-opacity': dark ? 0.22 : 0.16,
+        'line-opacity': dark ? 0.07 : 0.05,
       },
     );
