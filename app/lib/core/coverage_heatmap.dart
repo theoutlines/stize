@@ -227,7 +227,11 @@ const _coverageRamps = <String, List<String>>{
 
 /// Glow intensity at the overview zoom. Bus has by far the most dots, so it
 /// runs coolest; tram and trolleybus run hot enough that a busy line glows.
-const _coverageGlowIntensity = {'bus': 0.045, 'trolleybus': 0.11, 'tram': 0.11};
+const _coverageGlowIntensity = {
+  'bus': 0.03,
+  'trolleybus': 0.05,
+  'tram': 0.045,
+};
 
 String coverageDotsLayerId(String type) => 'coverage-dots-$type';
 String coverageGlowLayerId(String type) => 'coverage-glow-$type';
@@ -253,7 +257,7 @@ CircleStyleLayer coverageDotsLayer({required String type, required bool dark}) {
         11,
         0.6,
         15,
-        1.2,
+        1.6,
       ],
       'circle-color': r[0],
       'circle-opacity': dark ? 0.7 : 0.5,
@@ -278,7 +282,7 @@ HeatmapStyleLayer coverageGlowLayer({required String type}) {
         11,
         3.5,
         15,
-        7,
+        9,
       ],
       'heatmap-intensity': [
         'interpolate',
@@ -286,8 +290,10 @@ HeatmapStyleLayer coverageGlowLayer({required String type}) {
         ['zoom'],
         11,
         i,
+        13,
+        i * 3,
         15,
-        i * 4.6,
+        i * 10,
       ],
       'heatmap-color': [
         'interpolate',
