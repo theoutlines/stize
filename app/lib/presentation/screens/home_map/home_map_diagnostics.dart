@@ -90,7 +90,7 @@ extension _MapDiagnostics on _HomeMapScreenState {
       'STOP DIAGNOSTICS (staging)',
       'zoom ${_currentZoom.toStringAsFixed(2)}  minStops $_minStopsZoom  indiv $_individualZoom',
       // The gates that decide whether ANY stop layer is built/drawn.
-      'imagesReady $_imagesReady  stopLayers $_stops.layersAdded  style ${style != null}  focus ${_focus != null}',
+      'imagesReady $_imagesReady  stopLayers ${_stops.layersAdded}  style ${style != null}  focus ${_focus != null}',
       center == null
           ? 'last fetch: none yet (zoom < $_minStopsZoom?)'
           : 'fetch @ ${center.latitude.toStringAsFixed(5)},${center.longitude.toStringAsFixed(5)} r=${_stops.lastFetchRadius.toStringAsFixed(0)}m',
@@ -116,7 +116,7 @@ extension _MapDiagnostics on _HomeMapScreenState {
       _diag.routeAhead,
       // Vehicle-animation state (on-demand context / follow diagnosis).
       'VEH onDemand $_onDemand stopCtx ${_stopContextId ?? "-"} '
-          'following $_follow.active sel ${_selectedVehicleKey ?? "-"}',
+          'following ${_follow.active} sel ${_selectedVehicleKey ?? "-"}',
       'VEH tracks ${_vehAnimator.tracks.length} '
           'timed ${_vehAnimator.tracks.values.where((t) => t.timed != null).length} '
           'movingNow ${_vehAnimator.tracks.keys.where(_vehAnimator.hasMotion).length} '
@@ -126,9 +126,9 @@ extension _MapDiagnostics on _HomeMapScreenState {
       // N` it reads as a symptom ("the animation is stuck at 0") while being
       // simply unused. Dropped; `plan`/`vel` below is the real motion read-out.
       'VEH ticker ${_vehTicker?.isActive ?? false} '
-          'paused $_paused refreshTicks $_diag.refreshTicks pumps $_diag.pumpCount',
+          'paused $_paused refreshTicks ${_diag.refreshTicks} pumps ${_diag.pumpCount}',
       'VEH lastCtx ageSec ${_diag.ctxBoardAgeSec ?? "-"} '
-          'live $_diag.ctxLive withTraj $_diag.ctxWithTraj',
+          'live ${_diag.ctxLive} withTraj ${_diag.ctxWithTraj}',
       // Catch-up instrumentation for the followed vehicle: how far behind the
       // plan's predicted-now spot the marker is (gap) and how fast it's moving
       // to close it (vel). A smooth catch-up shows the gap easing to ~0 with vel

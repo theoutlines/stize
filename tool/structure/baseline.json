@@ -29,5 +29,6 @@
     "backend/src/lib/schedule.ts:scheduledMapObjectsForRoute (tests only)"
   ],
   "unused-string": [],
-  "duplicate": []
+  "duplicate": [],
+  "interp-member": []
 }
