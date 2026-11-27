@@ -125,6 +125,8 @@ extension _MapLayers on _HomeMapScreenState {
       });
     }
     _reconcileCoverageLayer();
+    _cov.veil = false; // a new style has no veil
+    _syncCoverageVeil();
     _openLinkedStop();
   }
 
@@ -331,6 +333,30 @@ extension _MapLayers on _HomeMapScreenState {
     _pushStopSources();
     _writeVehiclesToSource();
     await _reconcileCoverageLayer();
+    await _syncCoverageVeil();
+  }
+
+  /// The grey veil over the basemap while Coverage is open: the city keeps
+  /// its shape but gives up its colours, so the routes are the only colour
+  /// on screen. Under our own layers.
+  Future<void> _syncCoverageVeil() async {
+    final style = _style;
+    if (style == null || !mounted) return;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    if (_cov.veil) {
+      try {
+        await style.removeLayer(coverageVeilId);
+      } catch (_) {}
+      _cov.veil = false;
+    }
+    if (!_cov.mode) return;
+    try {
+      await style.addLayer(
+        coverageVeil(dark: dark),
+        belowLayerId: _LayerIds.rails,
+      );
+      _cov.veil = true;
+    } catch (_) {}
   }
 
   /// Fetches the tram lines' route shapes once and keeps them as thin rail

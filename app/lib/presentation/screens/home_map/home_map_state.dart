@@ -58,7 +58,7 @@ class _CoverageState {
   // Coverage mode (the menu's Coverage level): the map hides stops and
   // vehicles; CoverageTracesLayer draws the routes over it.
   bool mode = false;
-  bool styleDataviz = false; // the style on the map is the data-viz variant
+  bool veil = false; // the grey veil over the basemap is on the map
   Geographic? preCenter; // camera to return to when the level closes
   double? preZoom;
 }

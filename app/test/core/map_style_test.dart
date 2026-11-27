@@ -38,18 +38,5 @@ void main() {
         File('$out/style-${b.name}.json').writeAsStringSync(jsonEncode(style));
       }
     });
-
-    test('the ${b.name} data-viz variant keeps the layers but drops POIs', () {
-      final style =
-          jsonDecode(MapStyle.forBrightness(b, dataviz: true))
-              as Map<String, dynamic>;
-      final ids = [for (final l in style['layers'] as List) (l as Map)['id']];
-      expect(ids, containsAll(['bg', 'water', 'building-3d']));
-      expect(ids.where((id) => '$id'.startsWith('poi-tier')), isEmpty);
-      expect(
-        MapStyle.forBrightness(b, dataviz: true),
-        isNot(MapStyle.forBrightness(b)),
-      );
-    });
   }
 }

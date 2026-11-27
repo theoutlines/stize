@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
-part 'map_style_dataviz.dart';
 part 'map_style_palette.dart';
 
 /// The Stiže basemap ("Stiže Standard"): our own MapLibre style on MapTiler
@@ -28,15 +27,12 @@ class MapStyle {
   /// Whether a MapTiler key was provided at build time.
   static bool get hasKey => _key.isNotEmpty;
 
-  static final _json = <(bool, bool), String>{};
+  static final _json = <bool, String>{};
 
-  /// The style for the app's light/dark theme; [dataviz] is the grey variant
-  /// Coverage draws on (no POIs, no colour).
-  static String forBrightness(Brightness b, {bool dataviz = false}) {
+  /// The style for the app's light/dark theme.
+  static String forBrightness(Brightness b) {
     final dark = b == Brightness.dark;
-    return _json[(dark, dataviz)] ??= jsonEncode(
-      _style(dark: dark, dataviz: dataviz),
-    );
+    return _json[dark] ??= jsonEncode(_style(dark: dark));
   }
 
   /// Where the POI sprite is served from. On web it is the app's own origin
@@ -48,13 +44,8 @@ class MapStyle {
 
   // ── Style ──────────────────────────────────────────────────────────────────
 
-  static Map<String, Object?> _style({
-    required bool dark,
-    bool dataviz = false,
-  }) {
-    final c = dataviz
-        ? (dark ? _darkDataviz : _lightDataviz)
-        : (dark ? _dark : _light);
+  static Map<String, Object?> _style({required bool dark}) {
+    final c = dark ? _dark : _light;
     const name = [
       'coalesce',
       ['get', 'name:sr-Latn'],
@@ -528,7 +519,7 @@ class MapStyle {
           },
           'paint': {'text-color': c.road, ...label},
         },
-        for (var i = 0; i < (dataviz ? 0 : tiers.length); i++)
+        for (var i = 0; i < tiers.length; i++)
           {
             'id': 'poi-tier-$i',
             'type': 'symbol',

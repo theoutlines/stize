@@ -199,3 +199,17 @@ HeatmapStyleLayer coverageMainLayer({required bool dark}) => HeatmapStyleLayer(
 /// Coverage mode takes in the whole city.
 const coverageOverviewCenter = Geographic(lon: 20.46, lat: 44.80);
 const coverageOverviewZoom = 11.4;
+
+/// Layer id of Coverage's grey veil over the basemap.
+const coverageVeilId = 'coverage-veil';
+
+/// A veil in the page colour over the basemap: water, parks and labels fade
+/// to quiet greys, so the routes are the only colour on screen.
+BackgroundStyleLayer coverageVeil({required bool dark}) => BackgroundStyleLayer(
+  id: coverageVeilId,
+  paint: {
+    'background-color': dark ? '#0E0F14' : '#EDEEF0',
+    'background-opacity': 0.82,
+  },
+);
+
