@@ -4,7 +4,8 @@
 Zero dependencies (stdlib only), runs in CI and locally:
 
     python3 tool/structure/check.py            # report findings
-    python3 tool/structure/check.py --strict   # exit 1 on any new finding
+    python3 tool/structure/check.py --strict   # exit 1 on any new finding, or a
+                                               # baseline that still lists fixed debt
     python3 tool/structure/check.py --update-baseline
 
 Checks (each finding has a short code, like a linter):
@@ -256,6 +257,7 @@ def main() -> int:
 
     base = json.loads(BASELINE.read_text(encoding="utf-8")) if BASELINE.exists() else {}
     new_findings = 0
+    stale: list[str] = []
     for code, items in now.items():
         known = base.get(code, {} if code == "big-file" else [])
         if code == "big-file":
@@ -269,15 +271,24 @@ def main() -> int:
             fresh = [i for i in items if i not in known]
             debt = len(items)
         for f in fresh:
-            print(f"::warning::{code}: {f}" if not args.strict else f"error {code}: {f}")
+            print(f"::warning::{code}: {f}" if not args.strict else f"::error::{code}: {f}")
         new_findings += len(fresh)
+        # Paid-off debt still listed in the baseline would let it come back:
+        # strict mode asks for the baseline to be lowered in the same change.
+        if code == "big-file":
+            stale += [f for f, n in known.items() if items.get(f, 0) < n]
+        else:
+            stale += [i for i in known if i not in items]
         print(f"{code}: {debt} total, {len(fresh)} new")
 
     total_lines = sum(line_count(f) for f in sources())
     print(f"source lines (app/lib + backend/src, no l10n): {total_lines}")
     if new_findings:
         print(f"{new_findings} new finding(s): fix them or, if deliberate, run --update-baseline")
-    return 1 if (args.strict and new_findings) else 0
+    if stale:
+        msg = f"baseline lists {len(stale)} item(s) already fixed or smaller: run --update-baseline to lock that in"
+        print(f"::error::{msg}" if args.strict else msg)
+    return 1 if (args.strict and (new_findings or stale)) else 0
 
 
 if __name__ == "__main__":

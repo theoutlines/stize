@@ -42,15 +42,16 @@ jobs:
 
   # Keeps the codebase from silently swelling: files over 500 lines may not
   # grow, no dead files/widgets/exports/strings, no copy-pasted blocks. Known
-  # debt sits in tool/structure/baseline.json. Warnings only for now; switch
-  # the check to --strict once the baseline is down to what we accept.
+  # debt sits in tool/structure/baseline.json. Strict: a new finding fails the
+  # build, and so does a baseline that still lists debt already paid off.
+  # Adding debt on purpose means editing baseline.json, which shows in review.
   structure:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - run: python3 tool/structure/check.py
+      - run: python3 tool/structure/check.py --strict
       - name: Lines this change adds and removes (app/lib, backend/src)
         if: github.ref != 'refs/heads/main'
         run: git diff --shortstat origin/main...HEAD -- app/lib backend/src ':!app/lib/l10n'

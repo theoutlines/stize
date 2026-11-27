@@ -31,6 +31,9 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   `index.ts` into `routes/` (transit, write, city, admin) and jam detection
   into `lib/jam/`; the map's images, vehicle marker and style palettes are
   their own files. The size check skips generated files (the design tokens).
+- **The structure check is now strict.** CI fails on a new oversize file,
+  dead code, an unused string or a copy-pasted block, and on a baseline that
+  still lists debt already paid off.
 
 ## 2026-11-26
 

@@ -90,10 +90,14 @@ too). It reports, each with a short code:
 - `interp-member`: `'$_name.field'` in a Dart string (Dart interpolates only
   `_name`); write `${_name.field}`.
 
-The same job prints how many lines the branch adds and removes. A feature that
-adds thousands of lines should say why in its PR. Known debt is accepted by
-`--update-baseline`; do that only for a deliberate exception, never to make a
-warning go away.
+The check runs strict in CI: any new finding fails the build. So does paid-off
+debt still listed in the baseline (a file that shrank, a dead export removed):
+run `python3 tool/structure/check.py --update-baseline` in the same change so
+the lower number is locked in. The same command accepts new debt; do that only
+for a deliberate exception, never to make a failure go away, since the
+`baseline.json` diff shows in review. The job also prints how many lines the
+branch adds and removes; a feature that adds thousands of lines should say why
+in its PR.
 
 ## Keep the docs current
 
