@@ -34,6 +34,9 @@ import '../../core/route_path.dart';
 import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_map_mode.dart';
 import '../../core/vehicle_route.dart';
+import '../../core/map/jam_overlay.dart';
+import '../../core/map/route_shape_cache.dart';
+import '../../core/map/stop_markers.dart';
 import '../../core/vehicle_arrangement.dart';
 import '../../core/vehicle_diagnostics.dart';
 import '../../core/vehicle_track_animator.dart';
@@ -250,12 +253,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   bool _locationDenied = false;
   bool _tabActive = true; // is the map the selected IndexedStack child
 
-  // A camera target that resolved (e.g. from geolocation) before the map
-  // controller was ready; applied in [_onMapCreated].
+  // A camera target known before the map was ready; set in [_onMapCreated].
   Geographic? _pendingCenter;
   double? _pendingZoom;
-
-  static const _shapeRetryAfter = Duration(seconds: 30);
 
   Geographic? _pinnedPlace;
 

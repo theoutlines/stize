@@ -130,26 +130,15 @@ extension _MapVehicles on _HomeMapScreenState {
   /// vehicles on it can be animated along the route. Keys are direction route_ids
   /// when [byRouteId] (fetched by route_id), else line numbers (fetched by
   /// number). A line with no shape caches null (raw GPS, owner R4 #2); a failed
-  /// lookup is retried after [_shapeRetryAfter]. Route_ids and line numbers don't
+  /// lookup is retried after [RouteShapeCache.retryAfter]. Route_ids and line numbers don't
   /// collide, so the one cache safely holds both.
   void _ensureShapesFor(Iterable<String> keys, {required bool byRouteId}) {
     final repo = ref.read(linesRepositoryProvider);
-    final now = DateTime.now();
-    for (final key in keys.toSet()) {
-      if (_shapes.byLine.containsKey(key) || _shapes.fetching.contains(key)) {
-        continue;
-      }
-      final failed = _shapes.failedAt[key];
-      if (failed != null &&
-          now.difference(failed) < _HomeMapScreenState._shapeRetryAfter) {
-        continue;
-      }
-      _shapes.fetching.add(key);
+    for (final key in _shapes.cache.claim(keys, DateTime.now())) {
       (byRouteId ? repo.getShapeByRouteId(key) : repo.getShapeByLineNumber(key))
           .then((shape) {
             final path = RoutePath.fromLatLon(shape.polyline);
-            _shapes.byLine[key] = path;
-            _shapes.failedAt.remove(key);
+            _shapes.cache.resolved(key, path);
             if (path == null || !path.isUsable || !mounted) return;
             // The shape landed after the sample that needed it: put every
             // vehicle of this direction on the road now, whichever feed drew it
@@ -165,9 +154,8 @@ extension _MapVehicles on _HomeMapScreenState {
             _scheduleVehicleResync();
           })
           .catchError((_) {
-            _shapes.failedAt[key] = DateTime.now();
-          })
-          .whenComplete(() => _shapes.fetching.remove(key));
+            _shapes.cache.failed(key, DateTime.now());
+          });
     }
   }
 
@@ -189,7 +177,7 @@ extension _MapVehicles on _HomeMapScreenState {
           heading: v.heading,
           // Stitch to the direction-resolved shape when available (fixes
           // "through houses"); without it the marker holds its raw GPS fix.
-          path: shapeKeyOf(v) == null ? null : _shapes.byLine[shapeKeyOf(v)!],
+          path: shapeKeyOf(v) == null ? null : _shapes.cache[shapeKeyOf(v)!],
           // Same resolved direction, so a marker-tap follow highlights the
           // correct-direction route + stops rather than the line default.
           directionRouteId: shapeKeyOf(v),
@@ -276,7 +264,7 @@ extension _MapVehicles on _HomeMapScreenState {
           .toList();
       // Cache the geometry so the focused line's vehicles ease along the road.
       if (shape.polyline.length >= 2) {
-        _shapes.byLine[line] = RoutePath.fromLatLon(shape.polyline);
+        _shapes.cache.put(line, RoutePath.fromLatLon(shape.polyline));
       }
       _setState(() {
         _focus = _LineFocus(

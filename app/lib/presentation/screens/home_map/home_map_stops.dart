@@ -277,79 +277,21 @@ extension _MapStops on _HomeMapScreenState {
   /// 0.3.x GeoJsonSource has no native clustering).
   void _rebuildMarkerFeatures() {
     final controller = _controller;
-    final favoriteIds = _favoriteIds;
-    final visibleStops = [
-      for (final s in _stops.area)
-        if (!favoriteIds.contains(s.stopId)) s,
-    ];
-
-    final clusters = <Feature<Point>>[];
-    final bus = <Feature<Point>>[];
-    final tram = <Feature<Point>>[];
-    final trolley = <Feature<Point>>[];
-    final mixed = <Feature<Point>>[];
-
-    void addIndividual(Stop s) {
-      final feature = Feature<Point>(
-        geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
-        properties: {'stopId': s.stopId, 'name': s.name},
-      );
-      final type = stopMarkerType(s);
-      if (type == null) {
-        mixed.add(feature); // one unified marker for multi-type stops (D2)
-        return;
-      }
-      switch (type) {
-        case VehicleType.tram:
-          tram.add(feature);
-        case VehicleType.trolleybus:
-          trolley.add(feature);
-        case VehicleType.bus:
-          bus.add(feature);
-      }
-    }
-
-    final zoom = controller?.getCamera().zoom ?? 14;
-    if (controller == null || zoom >= _individualZoom) {
-      for (final s in visibleStops) {
-        addIndividual(s);
-      }
-    } else {
-      const cell = 66.0;
-      final buckets = <String, List<Stop>>{};
-      for (final s in visibleStops) {
-        final off = controller.toScreenLocation(
-          Geographic(lon: s.lon, lat: s.lat),
-        );
-        final key = '${(off.dx / cell).floor()}:${(off.dy / cell).floor()}';
-        buckets.putIfAbsent(key, () => []).add(s);
-      }
-      for (final bucket in buckets.values) {
-        if (bucket.length == 1) {
-          addIndividual(bucket.first);
-        } else {
-          var lat = 0.0, lon = 0.0;
-          for (final s in bucket) {
-            lat += s.lat;
-            lon += s.lon;
-          }
-          clusters.add(
-            Feature<Point>(
-              geometry: Point(
-                Geographic(lon: lon / bucket.length, lat: lat / bucket.length),
-              ),
-              properties: {'cluster': true, 'point_count': bucket.length},
-            ),
-          );
-        }
-      }
-    }
-
-    _stops.clusterPts = clusters;
-    _stops.busPts = bus;
-    _stops.tramPts = tram;
-    _stops.trolleyPts = trolley;
-    _stops.mixedPts = mixed;
+    final m = StopMarkers.build(
+      stops: _stops.area,
+      favoriteIds: _favoriteIds,
+      zoom: controller?.getCamera().zoom ?? 14,
+      individualZoom: _individualZoom,
+      toScreen: controller == null
+          ? null
+          : (lat, lon) =>
+                controller.toScreenLocation(Geographic(lon: lon, lat: lat)),
+    );
+    _stops.clusterPts = m.clusters;
+    _stops.busPts = m.bus;
+    _stops.tramPts = m.tram;
+    _stops.trolleyPts = m.trolley;
+    _stops.mixedPts = m.mixed;
     _pushStopSources();
   }
 

@@ -155,7 +155,7 @@ extension _MapFollow on _HomeMapScreenState {
       line: a.line,
       type: a.vehicleType,
       heading: a.heading,
-      path: _shapes.byLine[shapeKey],
+      path: _shapes.cache[shapeKey],
       trajectory: a.trajectory,
       asOf: asOf,
       // [shapeKey] IS the resolved direction route_id the marker moves along, so

@@ -189,7 +189,7 @@ extension _MapLayers on _HomeMapScreenState {
           // track key is the garage number for a real vehicle.
           stuck:
               _vehAnimator.isStuck(entry.key) ||
-              _jam.jammedGarages.contains(entry.key),
+              _jam.overlay.jammedGarages.contains(entry.key),
           // Fade a vanishing/stale vehicle over its grace period (X6), and dim a
           // schedule-predicted object so it reads as "by schedule, not live".
           opacity:
