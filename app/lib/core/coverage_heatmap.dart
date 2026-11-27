@@ -205,7 +205,7 @@ const coverageOverviewZoom = 11.4;
 
 /// Corridors with `type` and `trips` (backend `build-coverage-flow.mjs`).
 const coverageFlowSourceId = 'coverage-flow-src';
-const coverageFlowUrl = '$apiBaseUrl/api/v1/coverage/flow?rev=7';
+const coverageFlowUrl = '$apiBaseUrl/api/v1/coverage/flow?rev=8';
 
 GeoJsonSource coverageFlowSource() =>
     GeoJsonSource(id: coverageFlowSourceId, data: coverageFlowUrl);

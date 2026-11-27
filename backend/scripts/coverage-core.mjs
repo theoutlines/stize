@@ -355,6 +355,7 @@ export function buildCoverageFlow(shapes, opts = {}) {
   const grid = opts.grid ?? 0.00025;
   const passes = opts.smoothPasses ?? 2;
   const simplifyEpsilon = opts.simplifyEpsilon ?? 0.00004; // ~4 m
+  const reach = opts.reach ?? 2; // cells, ~50 m
   const coordPrecision = opts.coordPrecision ?? 5;
   const round = (v) => Number(v.toFixed(coordPrecision));
   const trips = new Map(shapes.map((s) => [s.routeId, s.tripsPerDay ?? 0]));
@@ -366,11 +367,37 @@ export function buildCoverageFlow(shapes, opts = {}) {
       .map((s) => ({ line: s.routeId, vehicleType: type, polyline: s.polyline }));
     if (ofType.length === 0) continue;
     const { segments, nodeCoord } = accumulate(ofType, grid);
+    // Routes through each node, then the routes within a node's reach
+    // (`reach` cells around it): a street's two directions or two close
+    // carriageways land a cell apart, and must count together everywhere,
+    // or the weight would flicker from stretch to stretch.
+    const routesAt = new Map();
+    for (const seg of segments.values()) {
+      for (const n of [seg.a, seg.b]) {
+        const k = nodeKey(n);
+        if (!routesAt.has(k)) routesAt.set(k, new Set());
+        for (const id of seg.lines) routesAt.get(k).add(id);
+      }
+    }
+    const nodeTrips = new Map();
+    const tripsNear = (n) => {
+      const k = nodeKey(n);
+      if (nodeTrips.has(k)) return nodeTrips.get(k);
+      const ids = new Set();
+      for (let dy = -reach; dy <= reach; dy++) {
+        for (let dx = -reach; dx <= reach; dx++) {
+          for (const id of routesAt.get(`${n[0] + dy},${n[1] + dx}`) ?? []) ids.add(id);
+        }
+      }
+      let sum = 0;
+      for (const id of ids) sum += trips.get(id) ?? 0;
+      nodeTrips.set(k, sum);
+      return sum;
+    };
     const groups = new Map(); // trips step -> edges
     for (const seg of segments.values()) {
-      let sum = 0;
-      for (const id of seg.lines) sum += trips.get(id) ?? 0;
-      const step = bucketTrips(sum);
+      // The quieter end: a junction node also reaches the crossing street.
+      const step = bucketTrips(Math.min(tripsNear(seg.a), tripsNear(seg.b)));
       if (!groups.has(step)) groups.set(step, []);
       groups.get(step).push({ a: seg.a, b: seg.b });
     }

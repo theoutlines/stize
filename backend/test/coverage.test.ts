@@ -248,7 +248,7 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
 
     it("weights a corridor only by the routes that use it", () => {
       const shared = horizontalLine(44.8, 20.4, 2);
-      const branch = [...shared, [44.801, 20.402], [44.802, 20.402]];
+      const branch = [...shared, ...Array.from({ length: 12 }, (_, i) => [44.8 + (i + 1) * 0.0003, 20.402])];
       const gj = buildCoverageFlow(
         [
           { routeId: "a", vehicleType: "bus", tripsPerDay: 100, polyline: shared },

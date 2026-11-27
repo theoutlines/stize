@@ -75,7 +75,7 @@ export interface CoverageFlowFeature {
 
 export function buildCoverageFlow(
   shapes: CoverageFlowShape[],
-  opts?: { grid?: number; smoothPasses?: number; simplifyEpsilon?: number; coordPrecision?: number },
+  opts?: { grid?: number; smoothPasses?: number; simplifyEpsilon?: number; reach?: number; coordPrecision?: number },
 ): { type: "FeatureCollection"; features: CoverageFlowFeature[] };
 
 export function buildCoverageGlow(
