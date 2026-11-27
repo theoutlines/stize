@@ -59,7 +59,11 @@ source into a stable versioned API under `/api/v1`. Key pieces:
 - **Feature flags** live in KV and flip without a redeploy
   (`backend/src/lib/featureFlags.ts`).
 
-- **Code map (backend)**. Transport analytics live in `lib/analytics/`
+- **Code map (backend)**. `index.ts` sets up CORS, the admin check and error
+  handling, then registers the routes from `routes/`: `transit` (read-only
+  config, stops, lines, arrivals, vehicles, coverage, geocode), `write` (events,
+  stop reports, feedback under the per-IP limit), `city` (alerts, jams,
+  analytics reads), `admin`. The cron is `cron.ts`. Transport analytics live in `lib/analytics/`
   (`shared`, `observe` on the request path, `aggregate` and `aggregateParts`
   for the hourly roll-up, `read` for the app) and the stop sweep in
   `lib/sweep/` (`config`, `tick`, `status`, `state`); `lib/analytics.ts` and
