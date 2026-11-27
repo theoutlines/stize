@@ -332,16 +332,15 @@ export function buildCoveragePoints(shapes, opts = {}) {
 
 /**
  * Build coverage mode's *flow lines*: the routes' own street geometry, each
- * stretch drawn once and carrying `trips`: the weekday trips of every route
+ * piece carrying `trips`: the weekday trips of every route
  * direction of that vehicle type along it. The client turns `trips` into line
  * width and colour, so a street with hundreds of trams a day reads heavier
  * than a lone night bus.
  *
- * The grid is used only to *count*: a stretch's identity is the pair of grid
- * cells it crosses between (so both directions and every route on a street
- * add up). The geometry is never snapped: busiest routes go first and lend
- * their real points to each stretch; a stretch already drawn is skipped, and
- * consecutive stretches with the same total join into one line.
+ * The grid is used only to *count*: trips are summed per ~90 m cell, so both
+ * directions and every route on a street add up. The geometry is never
+ * snapped: each route draws its own path, split where the weight changes,
+ * and routes on one street get the same weight, so they overlap as one line.
  *
  * @param {Array<{routeId:string, vehicleType:string, tripsPerDay:number, polyline:number[][]}>} shapes
  * @param {{grid?:number, simplifyEpsilon?:number, coordPrecision?:number}} opts
@@ -397,7 +396,6 @@ export function buildCoverageFlow(shapes, opts = {}) {
     const stretchTripsAt = (a, b) => Math.min(cellTrips.get(countCell(a)), cellTrips.get(countCell(b)));
 
     // Pass 2: draw each stretch once, in real geometry.
-    const drawn = new Set();
     for (const s of ofType) {
       let run = null; // { trips, points }
       const flush = () => {
@@ -422,17 +420,15 @@ export function buildCoverageFlow(shapes, opts = {}) {
           if (run) run.points.push(pt);
           continue;
         }
-        const k = segmentKey(prevCell, cell);
-        if (drawn.has(k)) {
-          flush();
-        } else {
-          drawn.add(k);
-          const trips = stretchTripsAt(s.polyline[i - 1], pt);
-          if (run && run.trips !== trips) flush();
-          // A new line starts with the route's points in the cell it leaves.
-          if (!run) run = { trips, points: [...inCell] };
-          run.points.push(pt);
-        }
+        // Every route draws its whole path: routes on one street share the
+        // street's weight, so their strokes coincide and read as one line.
+        // (Skipping stretches another route already drew left dashes where
+        // two routes' points ran a few metres apart.)
+        const trips = stretchTripsAt(s.polyline[i - 1], pt);
+        if (run && run.trips !== trips) flush();
+        // A new line starts with the route's points in the cell it leaves.
+        if (!run) run = { trips, points: [...inCell] };
+        run.points.push(pt);
         prevCell = cell;
         inCell = [pt];
       }
