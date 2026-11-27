@@ -75,8 +75,8 @@ void main() {
   group('BackToVehiclePill (follow-lost, decision #8)', () {
     testWidgets('EN / SR-latin pair', (tester) async {
       for (final entry in {
-        'en': 'Back to vehicle',
-        'sr': 'Nazad na vozilo',
+        'en': 'Back to',
+        'sr': 'Nazad na',
       }.entries) {
         await tester.pumpWidget(
           _wrap(
@@ -90,6 +90,8 @@ void main() {
           findsOneWidget,
           reason: 'locale ${entry.key}',
         );
+        // The line rides in its badge, right after the label.
+        expect(find.text('79'), findsOneWidget);
       }
     });
 
@@ -98,8 +100,14 @@ void main() {
       await tester.pumpWidget(
         _wrap(BackToVehiclePill(line: '5', onTap: () => tapped = true)),
       );
-      await tester.tap(find.text('Back to vehicle'));
+      await tester.tap(find.text('Back to'));
       expect(tapped, isTrue);
+    });
+
+    testWidgets('no line falls back to the full label', (tester) async {
+      await tester.pumpWidget(_wrap(BackToVehiclePill(line: '', onTap: () {})));
+      await tester.pump();
+      expect(find.text('Back to vehicle'), findsOneWidget);
     });
   });
 }
