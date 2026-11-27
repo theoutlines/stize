@@ -205,7 +205,7 @@ const coverageOverviewZoom = 11.4;
 
 /// Corridors with `type` and `trips` (backend `build-coverage-flow.mjs`).
 const coverageFlowSourceId = 'coverage-flow-src';
-const coverageFlowUrl = '$apiBaseUrl/api/v1/coverage/flow?rev=2';
+const coverageFlowUrl = '$apiBaseUrl/api/v1/coverage/flow?rev=3';
 
 GeoJsonSource coverageFlowSource() =>
     GeoJsonSource(id: coverageFlowSourceId, data: coverageFlowUrl);
@@ -259,7 +259,7 @@ List<Object> _widthByTrips(double k) => [
   6.5 * k,
 ];
 
-/// The width over zoom: as above at the city view, about twice up close.
+/// The width over zoom: as above at the city view, 1.6× up close.
 List<Object> _width(double k) => [
   'interpolate',
   ['linear'],
@@ -267,7 +267,7 @@ List<Object> _width(double k) => [
   11,
   _widthByTrips(k),
   15,
-  _widthByTrips(k * 2.2),
+  _widthByTrips(k * 1.6),
 ];
 
 /// Colour by trips along the type's ramp.

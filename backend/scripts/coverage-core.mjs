@@ -392,8 +392,9 @@ export function buildCoverageFlow(shapes, opts = {}) {
       for (const id of ids) sum += tripsOf.get(id);
       cellTrips.set(c, bucketTrips(sum));
     }
-    // A stretch weighs what the busier of its two ends does.
-    const stretchTripsAt = (a, b) => Math.max(cellTrips.get(countCell(a)), cellTrips.get(countCell(b)));
+    // A stretch weighs what the quieter of its two ends does: at a junction
+    // the cell also counts the crossing street's routes, the next one doesn't.
+    const stretchTripsAt = (a, b) => Math.min(cellTrips.get(countCell(a)), cellTrips.get(countCell(b)));
 
     // Pass 2: draw each stretch once, in real geometry.
     const drawn = new Set();
