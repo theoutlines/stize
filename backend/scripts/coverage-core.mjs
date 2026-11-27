@@ -398,27 +398,29 @@ export function buildCoverageFlow(shapes, opts = {}) {
         run = null;
       };
       let prevCell = cellOf(s.polyline[0]);
-      let prevPt = s.polyline[0];
+      let inCell = [s.polyline[0]]; // the route's points inside the current cell
       for (let i = 1; i < s.polyline.length; i++) {
         const pt = s.polyline[i];
         const cell = cellOf(pt);
         if (cell === prevCell) {
           // Still inside the cell: the point belongs to whatever is running.
+          inCell.push(pt);
           if (run) run.points.push(pt);
-        } else {
-          const k = segmentKey(prevCell, cell);
-          if (drawn.has(k)) {
-            flush();
-          } else {
-            drawn.add(k);
-            const trips = stretchTrips.get(k);
-            if (run && run.trips !== trips) flush();
-            if (!run) run = { trips, points: [prevPt] };
-            run.points.push(pt);
-          }
-          prevCell = cell;
+          continue;
         }
-        prevPt = pt;
+        const k = segmentKey(prevCell, cell);
+        if (drawn.has(k)) {
+          flush();
+        } else {
+          drawn.add(k);
+          const trips = stretchTrips.get(k);
+          if (run && run.trips !== trips) flush();
+          // A new line starts with the route's points in the cell it leaves.
+          if (!run) run = { trips, points: [...inCell] };
+          run.points.push(pt);
+        }
+        prevCell = cell;
+        inCell = [pt];
       }
       flush();
     }
