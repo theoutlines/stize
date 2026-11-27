@@ -23,6 +23,7 @@ import '../providers/providers.dart';
 import 'empty_state.dart';
 import 'jam_nearby_strip.dart';
 import 'live_unavailable_banner.dart';
+import 'arrivals_skeleton.dart';
 import 'nearby_list.dart';
 import 'place_badge.dart';
 import 'stop_result_tile.dart';

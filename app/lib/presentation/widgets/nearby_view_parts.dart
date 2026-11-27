@@ -106,7 +106,7 @@ extension _NearbyRows on NearbyViewState {
     if (_loading && _groups == null) {
       return _scrollable(
         controller,
-        EmptyState(icon: StizeIcons.nearMe, title: l10n.nearbyLoading),
+        ArrivalsSkeleton(label: l10n.nearbyLoading),
       );
     }
 
