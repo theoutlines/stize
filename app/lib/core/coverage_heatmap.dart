@@ -259,7 +259,7 @@ List<Object> _widthByTrips(double k) => [
   6.5 * k ,
 ];
 
-/// The width over zoom: as above at the city view, 1.6× up close.
+/// The width over zoom: as above at the city view, a touch wider up close.
 List<Object> _width() => [
   'interpolate',
   ['linear'],
@@ -267,7 +267,7 @@ List<Object> _width() => [
   11,
   _widthByTrips(1),
   15,
-  _widthByTrips(1.6),
+  _widthByTrips(1.1),
 ];
 
 /// Colour by trips along the type's ramp.
@@ -334,9 +334,9 @@ HeatmapStyleLayer coverageGlowLayer({required String type, required bool dark}) 
         13,
         11,
         15,
-        22,
+        16,
         18,
-        90,
+        40,
       ],
       'heatmap-intensity': [
         'interpolate',
@@ -345,7 +345,7 @@ HeatmapStyleLayer coverageGlowLayer({required String type, required bool dark}) 
         11,
         0.5,
         15,
-        0.7,
+        0.35,
       ],
       'heatmap-color': [
         'interpolate',
