@@ -89,6 +89,12 @@ too). It reports, each with a short code:
   function or component (design-system rule).
 - `interp-member`: `'$_name.field'` in a Dart string (Dart interpolates only
   `_name`); write `${_name.field}`.
+- `unused-dep`: a package in `pubspec.yaml` or `package.json` that no source
+  imports. Drop it; a package only pulled in by another stays transitive.
+- `unused-asset`: a file under `app/assets` that no Dart code or font entry
+  names. It still ships in every build, so delete it.
+
+`flutter analyze` runs with `--fatal-infos` in CI: keep it at zero issues.
 
 The check runs strict in CI: any new finding fails the build. So does paid-off
 debt still listed in the baseline (a file that shrank, a dead export removed):

@@ -109,6 +109,8 @@ extension _MapJams on _HomeMapScreenState {
     final below = _stops.layersAdded
         ? _LayerIds.bus
         : focusInsertBelowLayerId(vehicleLayersAdded: _vehLayerAdded);
+    // Read the theme before the first await: the screen may be gone after it.
+    final jamHex = StizeColors.of(context).jam.toHexString();
     try {
       if (!_jam.layersAdded) {
         // Glow first (lowest), then the segment on top of it.
@@ -123,7 +125,7 @@ extension _MapJams on _HomeMapScreenState {
             id: _LayerIds.jamGlow,
             sourceId: _stopSourceId(_LayerIds.jamGlow),
             paint: {
-              'circle-color': StizeColors.of(context).jam.toHexString(),
+              'circle-color': jamHex,
               'circle-radius': 13.0,
               'circle-blur': 0.9,
               'circle-opacity': ['get', 'opacity'],
@@ -143,7 +145,7 @@ extension _MapJams on _HomeMapScreenState {
             sourceId: _stopSourceId(_LayerIds.jamSegment),
             layout: {'line-cap': 'round', 'line-join': 'round'},
             paint: {
-              'line-color': StizeColors.of(context).jam.toHexString(),
+              'line-color': jamHex,
               'line-width': 4.0, // thinner than the route line (5)
               'line-opacity': ['get', 'opacity'],
             },

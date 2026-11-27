@@ -21,6 +21,8 @@ Checks (each finding has a short code, like a linter):
   unused-string   an l10n key (app_en.arb) no Dart code reads.
   duplicate       the same 12+ normalised lines in two places: a pattern that
                   should be one shared function or component.
+  unused-dep      a package in pubspec.yaml or package.json no source imports.
+  unused-asset    a file under app/assets that no Dart code or font entry names.
   interp-member   `'$_name.field'` in a Dart string: Dart interpolates only
                   `_name` there, so the text reads "Instance of ...".field;
                   write `${_name.field}`.
@@ -229,6 +231,55 @@ def interp_members() -> list[str]:
     return sorted(out)
 
 
+# ---- unused-dep / unused-asset ----------------------------------------------
+
+APP = ROOT / "app"
+BACKEND = ROOT / "backend"
+
+
+def _pubspec_section(text: str, name: str) -> str:
+    m = re.search(rf"^{name}:\n(.*?)(?=^\S)", text, re.M | re.S)
+    return m.group(1) if m else ""
+
+
+def unused_deps() -> list[str]:
+    """Direct dependencies no source imports (SDK packages are skipped)."""
+    out = []
+    pub = (APP / "pubspec.yaml").read_text(encoding="utf-8")
+    dart = "\n".join(
+        f.read_text(encoding="utf-8") for d in ("lib", "web") for f in (APP / d).rglob("*.dart")
+    )
+    for section, extra in (("dependencies", ""), ("dev_dependencies", "test")):
+        body = _pubspec_section(pub, section)
+        text = dart + ("\n".join(f.read_text(encoding="utf-8") for f in (APP / extra).rglob("*.dart")) if extra else "")
+        for name, rest in re.findall(r"^  (\w+):(.*(?:\n    .*)*)", body, re.M):
+            if "sdk:" in rest or name in ("flutter_lints",):  # lints load from analysis_options
+                continue
+            if f"package:{name}/" not in text:
+                out.append(f"app/pubspec.yaml:{name}")
+    pkg = json.loads((BACKEND / "package.json").read_text(encoding="utf-8"))
+    ts = "\n".join(f.read_text(encoding="utf-8") for f in BACKEND_SRC.rglob("*.ts"))
+    for name in pkg.get("dependencies", {}):
+        if f'from "{name}' not in ts and f"from '{name}" not in ts:
+            out.append(f"backend/package.json:{name}")
+    return sorted(out)
+
+
+def unused_assets() -> list[str]:
+    """Files under app/assets that neither Dart code nor pubspec's fonts name."""
+    pub = (APP / "pubspec.yaml").read_text(encoding="utf-8")
+    fonts = set(re.findall(r"asset:\s*(\S+)", pub))
+    dart = "\n".join(f.read_text(encoding="utf-8") for f in APP_LIB.rglob("*.dart"))
+    out = []
+    for f in sorted((APP / "assets").rglob("*")):
+        if not f.is_file() or f.name.startswith("."):
+            continue
+        path = f.relative_to(APP).as_posix()
+        if path not in fonts and path not in dart:
+            out.append(rel(f))
+    return out
+
+
 # ---- driver ------------------------------------------------------------------------
 
 def collect() -> dict:
@@ -240,6 +291,8 @@ def collect() -> dict:
         "unused-string": unused_strings(),
         "duplicate": duplicates(),
         "interp-member": interp_members(),
+        "unused-dep": unused_deps(),
+        "unused-asset": unused_assets(),
     }
 
 

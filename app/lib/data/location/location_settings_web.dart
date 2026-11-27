@@ -1,5 +1,4 @@
 import 'package:geolocator/geolocator.dart';
-import 'package:geolocator_web/geolocator_web.dart' show WebSettings;
 
 /// Web: accept a cached position up to a few minutes old (`maximumAge`). The
 /// browser's default is 0 = always fetch a fresh fix, which can block for many

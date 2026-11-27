@@ -53,8 +53,9 @@ class AreaVehicle {
   /// collide on the same key.
   String get key {
     if (garageNo != null) return garageNo!;
-    if (source == VehicleSource.scheduled && tripId != null)
+    if (source == VehicleSource.scheduled && tripId != null) {
       return 'sched:$tripId';
+    }
     return '$line:${lat.toStringAsFixed(5)}:${lon.toStringAsFixed(5)}';
   }
 
