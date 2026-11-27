@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/context_slot.dart';
-import '../../core/fleet_matcher.dart';
 import '../../domain/models/arrival.dart';
-import '../../domain/models/vehicle_type.dart';
-import '../../l10n/app_localizations.dart';
-import 'fleet_model_card.dart';
 import 'sheet_chrome.dart';
 import 'stop_board.dart';
 
@@ -43,13 +39,7 @@ Future<void> showStopSheet(
 /// The legacy (flag-OFF) mobile bottom-sheet shell around [StopBoard]: a
 /// draggable sheet with a handle. Tapping a live row closes the sheet first,
 /// then hands the arrival to the map.
-///
-/// "About the vehicle" opens as an **in-sheet subview** (owner B): tapping a
-/// Fleet-ID badge swaps the sheet's content to the shared [FleetModelView] with
-/// a back arrow that returns to the arrivals board — no second modal, no
-/// close-and-reopen flash, and the sheet's detent/height stay continuous through
-/// the swap (same [DraggableScrollableSheet], only its child changes).
-class _StopSheet extends StatefulWidget {
+class _StopSheet extends StatelessWidget {
   const _StopSheet({
     required this.stopId,
     this.initialStopName,
@@ -73,62 +63,31 @@ class _StopSheet extends StatefulWidget {
   final ValueChanged<double>? onHeightChanged;
 
   @override
-  State<_StopSheet> createState() => _StopSheetState();
-}
-
-class _StopSheetState extends State<_StopSheet> {
-  // The fleet-card leaf currently shown over the board, or null for the board.
-  ({FleetVehicle fleet, String? garageNo, VehicleType type})? _leaf;
-
-  @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final leaf = _leaf;
     final viewport = MediaQuery.sizeOf(context).height;
     return NotificationListener<DraggableScrollableNotification>(
       onNotification: (n) {
-        widget.onHeightChanged?.call(n.extent * viewport);
+        onHeightChanged?.call(n.extent * viewport);
         return false;
       },
       child: MapSheetFrame(
         // Opens at the nearby sheet's resting height when given.
-        initialSize: widget.initialSize,
+        initialSize: initialSize,
         childBuilder: (context, scrollController) => [
-          if (leaf != null) ...[
-            // Subview: the shared fleet card, with a back arrow returning
-            // to the exact board it came from.
-            SheetBackHeader(
-              title: leaf.fleet.modelName ?? l10n.fleetUnknownModel,
-              onBack: () => setState(() => _leaf = null),
+          Expanded(
+            child: StopBoard(
+              stopId: stopId,
+              initialStopName: initialStopName,
+              scrollController: scrollController,
+              onClose: () => Navigator.of(context).maybePop(),
+              onFocusVehicle: onFocusVehicle == null
+                  ? null
+                  : (arrival, asOf) {
+                      Navigator.of(context).maybePop();
+                      onFocusVehicle!.call(arrival, asOf);
+                    },
             ),
-            Expanded(
-              child: FleetModelView(
-                fleet: leaf.fleet,
-                fallbackType: leaf.type,
-                garageNo: leaf.garageNo,
-                scrollController: scrollController,
-              ),
-            ),
-          ] else
-            Expanded(
-              child: StopBoard(
-                stopId: widget.stopId,
-                initialStopName: widget.initialStopName,
-                scrollController: scrollController,
-                onClose: () => Navigator.of(context).maybePop(),
-                // Swap to the in-sheet fleet card instead of stacking a
-                // separate modal (owner B#2).
-                onOpenFleetCard: (fleet, garageNo, type) => setState(
-                  () => _leaf = (fleet: fleet, garageNo: garageNo, type: type),
-                ),
-                onFocusVehicle: widget.onFocusVehicle == null
-                    ? null
-                    : (arrival, asOf) {
-                        Navigator.of(context).maybePop();
-                        widget.onFocusVehicle!.call(arrival, asOf);
-                      },
-              ),
-            ),
+          ),
         ],
       ),
     );

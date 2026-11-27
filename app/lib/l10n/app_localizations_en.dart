@@ -279,10 +279,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get vehicleTypeTrolleybus => 'Trolleybus';
 
-  @override
-  String fleetAgeYears(int years) {
-    return '$years yr';
-  }
 
   @override
   String fleetVehicleNumber(String number) {
@@ -292,72 +288,28 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get fleetUnknownModel => 'Model unknown';
 
-  @override
-  String get fleetSectionComfort => 'Comfort';
 
   @override
   String get fleetAc => 'Air conditioning';
 
-  @override
-  String get fleetNoAc => 'No air conditioning';
 
-  @override
-  String get fleetLowFloor => 'Low floor';
 
-  @override
-  String get fleetHighFloor => 'Steps at the door';
 
-  @override
-  String get fleetArticulated => 'Articulated (bendy)';
 
-  @override
-  String get fleetUsb => 'USB charging';
 
-  @override
-  String get fleetElectric => 'Electric';
 
   @override
   String get fleetHybrid => 'Hybrid';
 
-  @override
-  String get fleetCng => 'Runs on gas (CNG)';
 
-  @override
-  String get fleetTrolley => 'Trolleybus';
 
-  @override
-  String get fleetTram => 'Tram';
 
-  @override
-  String get fleetDiesel => 'Diesel';
 
-  @override
-  String get fleetAge => 'Age';
 
-  @override
-  String fleetAgeApprox(int years, int from, int to) {
-    return '~$years yr (built $from–$to)';
-  }
 
-  @override
-  String fleetCapacity(int count) {
-    return 'Holds ~$count';
-  }
 
-  @override
-  String fleetLength(String meters) {
-    return '$meters m long';
-  }
 
-  @override
-  String fleetOperator(String name) {
-    return 'Operator: $name';
-  }
 
-  @override
-  String fleetManufacturer(String value) {
-    return 'Manufacturer: $value';
-  }
 
   @override
   String get fleetComfortRetro => 'retro';
@@ -520,10 +472,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get jamFollowAhead => 'Possible delay ahead on the route';
 
-  @override
-  String fleetPhotoCredit(String author, String license) {
-    return 'Photo: $author, $license, Wikimedia Commons';
-  }
 
   @override
   String get arrivalTerminus => 'Terminus';

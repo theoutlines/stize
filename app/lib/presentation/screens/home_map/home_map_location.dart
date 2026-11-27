@@ -235,7 +235,6 @@ extension _MapLocation on _HomeMapScreenState {
       _selectedVehicleKey == null &&
       _focus == null &&
       _levels.isEmpty &&
-      _slotModel == null &&
       !_pillActive;
 
   /// The centre point is drawn (dragging now, or a point chosen).

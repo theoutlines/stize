@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:stize/core/design/stize_text.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import '../../core/context_slot.dart';
 import '../../core/design/stize_icons.dart';
@@ -65,38 +64,6 @@ class SheetDragHandle extends StatelessWidget {
 const BorderRadius kSheetRadius = BorderRadius.vertical(
   top: Radius.circular(24), // radius-hero: the top of the bottom sheet
 );
-
-/// A `[← back] [title]` header row for an in-sheet subview, matching the sheets'
-/// horizontal padding and title style. Back walks up the sheet's own view chain.
-class SheetBackHeader extends StatelessWidget {
-  const SheetBackHeader({super.key, required this.title, required this.onBack});
-
-  final String title;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 16, 4),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(StizeIcons.back),
-            onPressed: onBack,
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          ),
-          Expanded(
-            child: Text(
-              title,
-              style: StizeText.of(context).label,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// The one close button of a sheet level: a 32px circle in a 44px tap target.
 /// Used inside a header row where the close lives in the panel (desktop

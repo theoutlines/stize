@@ -7,13 +7,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/arrival_grouping.dart';
 import '../../core/design/stize_tokens.dart';
-import '../../core/fleet_matcher.dart';
 import '../../core/live_position.dart';
 import '../../core/movement_tracker.dart';
 import '../../data/analytics/event_logger.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart';
-import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'arrival_tile.dart';
@@ -43,7 +41,6 @@ class StopArrivalsList extends ConsumerStatefulWidget {
     required this.onRetry,
     this.aboveFreshness,
     this.onFocusVehicle,
-    this.onOpenFleetCard,
   });
 
   final String stopId;
@@ -60,10 +57,6 @@ class StopArrivalsList extends ConsumerStatefulWidget {
 
   /// Tap on a live row → the host map focuses that vehicle. Null → not tappable.
   final void Function(Arrival arrival, DateTime asOf)? onFocusVehicle;
-
-  /// Host-rendered fleet card (desktop panel / sheet subview). Null → modal.
-  final void Function(FleetVehicle fleet, String? garageNo, VehicleType type)?
-  onOpenFleetCard;
 
   @override
   ConsumerState<StopArrivalsList> createState() => _StopArrivalsListState();

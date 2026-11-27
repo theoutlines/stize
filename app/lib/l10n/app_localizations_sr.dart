@@ -280,10 +280,6 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get vehicleTypeTrolleybus => 'Trolejbus';
 
-  @override
-  String fleetAgeYears(int years) {
-    return '$years god.';
-  }
 
   @override
   String fleetVehicleNumber(String number) {
@@ -293,72 +289,28 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get fleetUnknownModel => 'Model nepoznat';
 
-  @override
-  String get fleetSectionComfort => 'Komfor';
 
   @override
   String get fleetAc => 'Klima';
 
-  @override
-  String get fleetNoAc => 'Bez klime';
 
-  @override
-  String get fleetLowFloor => 'Niski pod';
 
-  @override
-  String get fleetHighFloor => 'Stepenice na ulazu';
 
-  @override
-  String get fleetArticulated => 'Zglobni';
 
-  @override
-  String get fleetUsb => 'USB punjenje';
 
-  @override
-  String get fleetElectric => 'Električni';
 
   @override
   String get fleetHybrid => 'Hibrid';
 
-  @override
-  String get fleetCng => 'Na gas (CNG)';
 
-  @override
-  String get fleetTrolley => 'Trolejbus';
 
-  @override
-  String get fleetTram => 'Tramvaj';
 
-  @override
-  String get fleetDiesel => 'Dizel';
 
-  @override
-  String get fleetAge => 'Starost';
 
-  @override
-  String fleetAgeApprox(int years, int from, int to) {
-    return '~$years god. (proizvedeno $from–$to)';
-  }
 
-  @override
-  String fleetCapacity(int count) {
-    return 'Prima ~$count';
-  }
 
-  @override
-  String fleetLength(String meters) {
-    return 'Dužina $meters m';
-  }
 
-  @override
-  String fleetOperator(String name) {
-    return 'Prevoznik: $name';
-  }
 
-  @override
-  String fleetManufacturer(String value) {
-    return 'Proizvođač: $value';
-  }
 
   @override
   String get fleetComfortRetro => 'retro';
@@ -521,10 +473,6 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get jamFollowAhead => 'Moguće kašnjenje ispred na trasi';
 
-  @override
-  String fleetPhotoCredit(String author, String license) {
-    return 'Foto: $author, $license, Wikimedia Commons';
-  }
 
   @override
   String get arrivalTerminus => 'Konačna';

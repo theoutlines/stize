@@ -5,11 +5,10 @@ part of '../home_map_screen.dart';
 
 extension _MapPill on _HomeMapScreenState {
   /// What the close above the mobile sheet does now, or null when the level
-  /// has none (Nearby root, a nested level with its back link, a model leaf).
+  /// has none (Nearby root, a nested level with its back link).
   VoidCallback? get _mobileSheetCloseAction {
     if (_panelActive || _lineOnlyFocus) return null;
     if (_selectedVehicleKey != null) return _closeVehicleContext;
-    if (_slotModel != null) return null;
     if (_levels.length == 1) return _closeAllLevels;
     return null;
   }

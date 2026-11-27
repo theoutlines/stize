@@ -4,10 +4,8 @@ import 'package:stize/core/design/stize_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/fleet_matcher.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/route_alert.dart';
-import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'empty_state.dart';
@@ -39,7 +37,6 @@ class StopBoard extends ConsumerStatefulWidget {
     required this.stopId,
     this.initialStopName,
     this.onFocusVehicle,
-    this.onOpenFleetCard,
     this.onClose,
     this.scrollController,
     this.showHeader = true,
@@ -47,12 +44,6 @@ class StopBoard extends ConsumerStatefulWidget {
 
   final String stopId;
   final String? initialStopName;
-
-  /// When set, tapping a row's Fleet-ID badge opens the model through this host
-  /// callback (the desktop panel renders it as a leaf sub-view). Null → the
-  /// default modal card (mobile).
-  final void Function(FleetVehicle fleet, String? garageNo, VehicleType type)?
-  onOpenFleetCard;
 
   /// Called with the tapped arrival (and the board's as-of time, which anchors
   /// its timed-trajectory plan) when a live row is selected, so the host (the
@@ -121,7 +112,6 @@ class _StopBoardState extends ConsumerState<StopBoard> with StopLiveRefresh {
           stopLines: stopLocation?.lines ?? const [],
           onRetry: refreshStopNow,
           onFocusVehicle: widget.onFocusVehicle,
-          onOpenFleetCard: widget.onOpenFleetCard,
         ),
       ),
     ];

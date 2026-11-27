@@ -19,7 +19,6 @@ import '../../core/context_slot.dart';
 import '../../core/search.dart';
 import '../../core/coverage_heatmap.dart';
 import '../../core/design/stize_tokens.dart';
-import '../../core/fleet_matcher.dart';
 import '../../core/follow_camera.dart';
 import '../../core/fps_overlay.dart';
 import '../../core/hit_test.dart';
@@ -59,7 +58,6 @@ import '../providers/providers.dart';
 import '../widgets/stretch_card_list.dart';
 import '../widgets/context_shell.dart';
 import '../widgets/stop_header_actions.dart';
-import '../widgets/fleet_model_card.dart';
 import '../widgets/follow_model.dart';
 import '../widgets/follow_view.dart';
 import '../widgets/sheet_chrome.dart';
@@ -318,10 +316,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   String? get _slotStopName => _levels.topStop?.name;
 
-  // A tapped Fleet-ID vehicle shown as a leaf sub-view of the vehicle view (the
-  // desktop model card lives INSIDE the panel — no second surface). Null = not
-  // showing the model. (`(fleet, garageNo, type)`.)
-  ({FleetVehicle fleet, String? garageNo, VehicleType type})? _slotModel;
   // Desktop collapse (the ◄/► tab). Session-only, default expanded (owner A#5):
   // no persistence — a fresh load always opens expanded. Collapsing hides the
   // panel view and drops the left map inset to zero (via `_mapInsets`); it NEVER
@@ -487,8 +481,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     final size = MediaQuery.sizeOf(context);
 
     // Android back / PopScope: with the panel active, back walks up the chain
-    // (model → vehicle → stop → nearby) before leaving the map.
-    final canPopMap = _slotModel == null && _activeView == ContextView.nearby;
+    // (vehicle → stop → nearby) before leaving the map.
+    final canPopMap = _activeView == ContextView.nearby;
 
     return PopScope(
       // While a context is open, Android back closes it instead of leaving.
