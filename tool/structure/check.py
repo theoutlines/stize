@@ -19,6 +19,9 @@ Checks (each finding has a short code, like a linter):
   unused-string   an l10n key (app_en.arb) no Dart code reads.
   duplicate       the same 12+ normalised lines in two places: a pattern that
                   should be one shared function or component.
+  interp-member   `'$_name.field'` in a Dart string: Dart interpolates only
+                  `_name` there, so the text reads "Instance of ...".field;
+                  write `${_name.field}`.
 
 Findings in baseline.json are known debt: reported as a total, not failed.
 The point is direction: every change should leave the numbers equal or lower.
@@ -200,6 +203,24 @@ def duplicates() -> list[str]:
     return sorted(f"{a}:{la} = {b}:{lb}" for (a, b), (la, lb) in found.items())
 
 
+# ---- interp-member -------------------------------------------------------------
+
+_INTERP = re.compile(r"(?<!\\)\$_?[A-Za-z]\w*\.[A-Za-z_]")
+_STRING = re.compile(r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"")
+
+
+def interp_members() -> list[str]:
+    out = []
+    for f in APP_LIB.rglob("*.dart"):
+        if "/l10n/" in f.as_posix():
+            continue
+        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            for lit in _STRING.findall(line):
+                if _INTERP.search(lit):
+                    out.append(f"{rel(f)}:{n}")
+    return sorted(out)
+
+
 # ---- driver ------------------------------------------------------------------------
 
 def collect() -> dict:
@@ -210,6 +231,7 @@ def collect() -> dict:
         "dead-export": dead_ts_exports(),
         "unused-string": unused_strings(),
         "duplicate": duplicates(),
+        "interp-member": interp_members(),
     }
 
 

@@ -41,7 +41,7 @@ extension _MapView on _HomeMapScreenState {
             // is idle between fixes, so this only repaints while moving.
             // While Nearby is around a map point, your dot is the
             // centre point instead (drawn over the map below).
-            if (_meTo != null && _browsePoint == null)
+            if (_meTo != null && _browse.point == null)
               AnimatedBuilder(
                 animation: _meAnim,
                 builder: (context, _) {

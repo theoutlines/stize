@@ -4,14 +4,14 @@ extension _MapSearch on _HomeMapScreenState {
   // ---- Search ---------------------------------------------------------------
 
   void _onSearchChanged(String query) {
-    _searchDebounce?.cancel();
+    _search.debounce?.cancel();
     if (query.trim().isEmpty) {
-      _searchLogged = false; // a new non-empty query starts a fresh session
+      _search.logged = false; // a new non-empty query starts a fresh session
       _setState(() {
-        _searching = false;
-        _resultStops = [];
-        _resultLines = [];
-        _resultPlaces = [];
+        _search.busy = false;
+        _search.stops = [];
+        _search.lines = [];
+        _search.places = [];
       });
       return;
     }
@@ -19,16 +19,16 @@ extension _MapSearch on _HomeMapScreenState {
     // so starting a search re-expands the panel (a search is a context entry,
     // owner A#4) to give the results (and the row you'll tap) somewhere to show.
     _expandPanelIfCollapsed();
-    _setState(() => _searching = true);
-    _searchDebounce = Timer(
+    _setState(() => _search.busy = true);
+    _search.debounce = Timer(
       const Duration(milliseconds: 300),
       () => _runSearch(query),
     );
   }
 
   Future<void> _runSearch(String query) async {
-    if (!_searchLogged) {
-      _searchLogged = true;
+    if (!_search.logged) {
+      _search.logged = true;
       ref.read(eventLoggerProvider).log(Ev.searchUsed);
     }
     // Shared stop+line fan-out (one fork for both breakpoints — C#4).
@@ -41,21 +41,21 @@ extension _MapSearch on _HomeMapScreenState {
     }
     if (!mounted) return;
     _setState(() {
-      _resultStops = results.stops;
-      _resultLines = results.lines;
-      _resultPlaces = places;
+      _search.stops = results.stops;
+      _search.lines = results.lines;
+      _search.places = places;
     });
   }
 
   void _clearSearch() {
     _searchController.clear();
     _focusNode.unfocus();
-    _searchLogged = false;
+    _search.logged = false;
     _setState(() {
-      _searching = false;
-      _resultStops = [];
-      _resultLines = [];
-      _resultPlaces = [];
+      _search.busy = false;
+      _search.stops = [];
+      _search.lines = [];
+      _search.places = [];
     });
   }
 
@@ -355,9 +355,9 @@ extension _MapSearch on _HomeMapScreenState {
 
   Widget _searchResultsList(AppLocalizations l10n) {
     final hasResults =
-        _resultStops.isNotEmpty ||
-        _resultLines.isNotEmpty ||
-        _resultPlaces.isNotEmpty;
+        _search.stops.isNotEmpty ||
+        _search.lines.isNotEmpty ||
+        _search.places.isNotEmpty;
     if (!hasResults) {
       return Padding(
         padding: const EdgeInsets.all(24),
@@ -365,7 +365,7 @@ extension _MapSearch on _HomeMapScreenState {
       );
     }
     // An exact line number goes above the stops (core/search.dart).
-    final lines = splitExactLines(_resultLines, _searchController.text);
+    final lines = splitExactLines(_search.lines, _searchController.text);
     Widget lineTile(LineInfo line) => ListTile(
       leading: vehicleGlyph(
         line.vehicleType,
@@ -389,13 +389,13 @@ extension _MapSearch on _HomeMapScreenState {
       shrinkWrap: true,
       children: [
         for (final line in lines.exact) lineTile(line),
-        for (final stop in _resultStops)
+        for (final stop in _search.stops)
           StopResultTile(
             stop: stop,
             onTap: () => _openStop(stop, source: Ev.srcSearch),
           ),
         for (final line in lines.rest) lineTile(line),
-        for (final place in _resultPlaces)
+        for (final place in _search.places)
           ListTile(
             leading: const Icon(StizeIcons.map),
             title: Text(place.displayName),

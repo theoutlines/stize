@@ -5,8 +5,7 @@
     "app/lib/core/map_support.dart": 851,
     "app/lib/core/timed_trajectory.dart": 863,
     "app/lib/core/vehicle_track_animator.dart": 656,
-    "app/lib/presentation/screens/city_screen.dart": 1069,
-    "app/lib/presentation/screens/home_map_screen.dart": 806,
+    "app/lib/presentation/screens/home_map_screen.dart": 631,
     "app/lib/presentation/widgets/fleet_model_card.dart": 536,
     "app/lib/presentation/widgets/follow_view.dart": 754,
     "app/lib/presentation/widgets/guide/belgrade_guide.dart": 511,
@@ -30,5 +29,6 @@
     "backend/src/lib/schedule.ts:scheduledMapObjectsForRoute (tests only)"
   ],
   "unused-string": [],
-  "duplicate": []
+  "duplicate": [],
+  "interp-member": []
 }

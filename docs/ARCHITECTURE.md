@@ -104,6 +104,11 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
   (`VehicleArranger`, `vehicle_diagnostics`, `follow_model`); visual pieces
   go to widgets that get what they show plus callbacks (`widgets/map/`).
 
+- **City pages**: `screens/city_screen.dart` (the page and its body) with
+  parts in `screens/city/`: `city_heatmap` (delay by hour and day),
+  `city_treemap` (lines by riders and delay), `city_blocks` (header, section,
+  KPIs, intervals, notes), `city_line_screen` (one line's page).
+
 ## Conventions & non-obvious gotchas
 
 - **Never call the upstream source from client code**, and never hardcode its

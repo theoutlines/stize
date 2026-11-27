@@ -53,20 +53,20 @@ extension _MapContext on _HomeMapScreenState {
     // A no-route follow re-adds the followed vehicle's board plan on every
     // refresh; keep it in raw-GPS mode so it doesn't resume driving "through the
     // houses" over a route we can't render (owner R4 #2).
-    if (_followNoRouteData && _selectedVehicleKey != null) {
+    if (_follow.noRouteData && _selectedVehicleKey != null) {
       _vehAnimator.dropTimed(_selectedVehicleKey!);
     }
     // Diagnostics (staging overlay): board freshness + how many of this stop's
     // rows carried a timing plan, so a "frozen markers" report can be read off
     // the screen without a console (debugPrint is stripped in release web).
-    _lastCtxBoardAgeSec = DateTime.now()
+    _diag.ctxBoardAgeSec = DateTime.now()
         .toUtc()
         .difference(board.updatedAt.toUtc())
         .inSeconds;
-    _boardAgePolls.add(_lastCtxBoardAgeSec!);
-    if (_boardAgePolls.length > 12) _boardAgePolls.removeAt(0);
-    _lastCtxLive = samples.length;
-    _lastCtxWithTraj = samples.where((s) => s.trajectory != null).length;
+    _diag.boardAgePolls.add(_diag.ctxBoardAgeSec!);
+    if (_diag.boardAgePolls.length > 12) _diag.boardAgePolls.removeAt(0);
+    _diag.ctxLive = samples.length;
+    _diag.ctxWithTraj = samples.where((s) => s.trajectory != null).length;
     // Keep the driver alive for the whole poll interval whenever this context has
     // live timed markers — the timed players are advanced by wall-clock each
     // frame, and `hasForwardMotion` can momentarily read false as a fix converges
@@ -76,7 +76,7 @@ extension _MapContext on _HomeMapScreenState {
     // them; a genuinely stale/stationary marker just repaints in place. (A context
     // is a handful of vehicles the user is watching, so this doesn't touch the
     // whole-city "idle = 0 frames" thermal budget.)
-    final hasLiveTimed = _lastCtxWithTraj > 0;
+    final hasLiveTimed = _diag.ctxWithTraj > 0;
     if (!_paused && (hasLiveTimed || _vehAnimator.hasPendingMotion)) {
       _vehAnim.forward(from: 0);
       _startVehDriver();
@@ -136,18 +136,18 @@ extension _MapContext on _HomeMapScreenState {
     _clearFocus();
     // The anchors belong to the follow that just ended: a later marker-tap
     // follow must not inherit them.
-    _followStopsRemaining = null;
-    _followEtaMinutes = null;
-    _followBoardStop = null;
-    _followBoardStopId = null;
+    _follow.stopsRemaining = null;
+    _follow.etaMinutes = null;
+    _follow.boardStop = null;
+    _follow.boardStopId = null;
     final returnStop = _onDemand ? _returnToStopId : null;
     _returnToStopId = null;
     if (returnStop != null) {
       // Returning to the stop: reopening it re-pans the camera so the stop sits
       // above the sheet — don't also restore the pre-follow centre (it would
       // fight that), just reopen.
-      _preFollowCenter = null;
-      _preFollowZoom = null;
+      _follow.preCenter = null;
+      _follow.preZoom = null;
       _openStopById(returnStop);
       return;
     }
@@ -155,15 +155,15 @@ extension _MapContext on _HomeMapScreenState {
     // pre-stop viewport when the follow was spawned from a stop sheet we're not
     // reopening (so we land back at the original browse position, not the panned
     // stop), else the pre-follow viewport (a follow straight from Nearby).
-    final center = _preStopCameraCenter ?? _preFollowCenter;
+    final center = _preStopCameraCenter ?? _follow.preCenter;
     final zoom = _preStopCameraCenter != null
         ? _preStopCameraZoom
-        : _preFollowZoom;
+        : _follow.preZoom;
     if (center != null) {
       _camEase(center, zoom: zoom);
     }
-    _preFollowCenter = null;
-    _preFollowZoom = null;
+    _follow.preCenter = null;
+    _follow.preZoom = null;
     _preStopCameraCenter = null;
     _preStopCameraZoom = null;
     if (_onDemand) _exitStopContext();
@@ -191,7 +191,7 @@ extension _MapContext on _HomeMapScreenState {
   /// user panned it away, or the vehicle left the viewport). Drives the
   /// conditional "Back to vehicle" pill (decision #8). Desktop-panel only.
   bool get _followLost =>
-      _panelActive && _selectedVehicleKey != null && !_following;
+      _panelActive && _selectedVehicleKey != null && !_follow.active;
 
   /// The insets of the map NOT covered by the panel — the region a followed
   /// target must stay CENTRED inside (decision #3). Desktop-panel only.
@@ -285,11 +285,13 @@ extension _MapContext on _HomeMapScreenState {
       return;
     }
     // Anchor the worded-route ETAs (R1 #5) to this arrival's own numbers.
-    _followStopsRemaining = a.stopsRemaining;
-    _followEtaMinutes = a.etaMinutes;
+    _follow.stopsRemaining = a.stopsRemaining;
+    _follow.etaMinutes = a.etaMinutes;
     final ctxStop = _slotStopId ?? _stopContextId;
-    _followBoardStop = ctxStop == null ? null : _resolveStopLatLngSync(ctxStop);
-    _followBoardStopId = ctxStop;
+    _follow.boardStop = ctxStop == null
+        ? null
+        : _resolveStopLatLngSync(ctxStop);
+    _follow.boardStopId = ctxStop;
     // Single follow entry (fly the camera in from a list row). refreshVehicles
     // false so a fan-out can't prune the marker we just injected.
     _enterFollow(
@@ -316,7 +318,7 @@ extension _MapContext on _HomeMapScreenState {
       _focus = null;
       _selectedVehicleKey = null;
       _slotModel = null; // the model leaf belongs to the vehicle view
-      _followNoRouteData = false;
+      _follow.noRouteData = false;
     });
     _pushStopSources(); // restore the ambient stop layers
     _syncFocusLayers(); // remove the focus route/stops layers
@@ -413,7 +415,7 @@ extension _MapContext on _HomeMapScreenState {
   }
 
   Stop? _stopById(String id) {
-    for (final s in _areaStops) {
+    for (final s in _stops.area) {
       if (s.stopId == id) return s;
     }
     // While a line is focused, its own stops are the ones on screen.

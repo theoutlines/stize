@@ -55,8 +55,8 @@ extension _MapSync on _HomeMapScreenState {
     // resolves. When it turns on, reconcile after this frame so the layer is
     // added if the map is already zoomed out.
     final coverageEnabled = ref.watch(coverageOnMainMapEnabledProvider);
-    if (coverageEnabled != _coverageEnabled) {
-      _coverageEnabled = coverageEnabled;
+    if (coverageEnabled != _cov.enabled) {
+      _cov.enabled = coverageEnabled;
       if (coverageEnabled) {
         WidgetsBinding.instance.addPostFrameCallback(
           (_) => _reconcileCoverageLayer(),
@@ -115,8 +115,8 @@ extension _MapSync on _HomeMapScreenState {
     // The map-layer dot follows the browse state (a level opening hides it,
     // the locate button clears it).
     final dotShown = _browseShowing;
-    if (dotShown != _browseDotShown) {
-      _browseDotShown = dotShown;
+    if (dotShown != _browse.dotShown) {
+      _browse.dotShown = dotShown;
       WidgetsBinding.instance.addPostFrameCallback((_) => _pushBrowseDot());
     }
 

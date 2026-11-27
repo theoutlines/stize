@@ -20,7 +20,7 @@ extension _MapLayers on _HomeMapScreenState {
   // stop the driver and settle on the final frame.
   void _pumpVehLayer() {
     _vehAnimator.advanceTimed(DateTime.now());
-    _pumpCount++;
+    _diag.pumpCount++;
     // Keep ticking while a fan is still easing into place even if nothing is
     // "playing" (choral HOLD): _paintVehicles → _arrangeVehicles advances the
     // ease and clears fanAnimating once it settles.
@@ -40,10 +40,10 @@ extension _MapLayers on _HomeMapScreenState {
     if (!_panelActive || _selectedVehicleKey == null || _slotModel != null)
       return;
     final now = DateTime.now();
-    final last = _lastFollowPanelRefreshAt;
+    final last = _follow.lastPanelRefreshAt;
     if (last != null && now.difference(last) < const Duration(seconds: 1))
       return;
-    _lastFollowPanelRefreshAt = now;
+    _follow.lastPanelRefreshAt = now;
     if (mounted) _setState(() {});
   }
 
@@ -87,8 +87,8 @@ extension _MapLayers on _HomeMapScreenState {
     _style = style;
     // A fresh style (first load or after a theme flip) has none of our layers;
     // the stop layers, heatmap and vehicle symbol layers must be (re)added.
-    _coverageAdded = false;
-    _stopLayersAdded = false;
+    _cov.added = false;
+    _stops.layersAdded = false;
     _vehLayerAdded = false;
     _focusLayersAdded = false;
     await registerStigmaImages(style, _scheme, owner: this);
@@ -108,7 +108,7 @@ extension _MapLayers on _HomeMapScreenState {
     // Re-add the focused-line layers (below the vehicle symbols) if a line is
     // focused across this style (re)load — e.g. a theme flip mid-follow.
     if (_focus != null) _syncFocusLayers();
-    _browseDotAdded = false;
+    _browse.dotAdded = false;
     _pushBrowseDot();
     _loadStopsForVisibleArea();
     _loadVehiclesForVisibleArea(force: true);
@@ -116,9 +116,9 @@ extension _MapLayers on _HomeMapScreenState {
     // them once, a moment after the map and the nearby list are up, so their
     // 12 fetches and the layer rebuilds don't stutter the opening animation
     // (owner, mobile, 2026-11-22). A style reload reuses what's already in hand.
-    if (_tramRails.isEmpty) {
-      _railsTimer?.cancel();
-      _railsTimer = Timer(const Duration(seconds: 2), () {
+    if (_stops.rails.isEmpty) {
+      _stops.railsTimer?.cancel();
+      _stops.railsTimer = Timer(const Duration(seconds: 2), () {
         if (mounted) _loadTramRails();
       });
     }
@@ -189,7 +189,7 @@ extension _MapLayers on _HomeMapScreenState {
           // track key is the garage number for a real vehicle.
           stuck:
               _vehAnimator.isStuck(entry.key) ||
-              _jammedGarages.contains(entry.key),
+              _jam.jammedGarages.contains(entry.key),
           // Fade a vanishing/stale vehicle over its grace period (X6), and dim a
           // schedule-predicted object so it reads as "by schedule, not live".
           opacity:
@@ -215,7 +215,7 @@ extension _MapLayers on _HomeMapScreenState {
     );
     // Follow mode: keep the selected vehicle in view as its marker moves. Runs
     // on the same cadence as the layer repaint so the camera tracks smoothly.
-    if (_following) _followTick();
+    if (_follow.active) _followTick();
   }
 
   /// Arranges the vehicles through [_vehArranger] (fan at stops, dim when
@@ -246,36 +246,33 @@ extension _MapLayers on _HomeMapScreenState {
     if (style == null || controller == null) return;
     // Jam mode: the event matters more than the ambient density backdrop, so hide
     // the coverage heatmap while it's on (2c). Restored when jam mode turns off.
-    if (_jamModeOn) {
-      if (_coverageAdded) {
+    if (_jam.modeOn) {
+      if (_cov.added) {
         try {
           await style.removeLayer(coverageMainLayerId);
         } catch (_) {}
         try {
           await style.removeSource(coverageSourceId);
         } catch (_) {}
-        _coverageAdded = false;
-        _coverageActive = false;
+        _cov.added = false;
+        _cov.active = false;
       }
       return;
     }
-    if (!_coverageEnabled) return;
+    if (!_cov.enabled) return;
     final zoom = controller.getCamera().zoom;
-    _coverageActive = coverageMainHeatmapActive(
-      zoom: zoom,
-      wasActive: _coverageActive,
-    );
-    if (!_coverageActive || _coverageAdded) return;
+    _cov.active = coverageMainHeatmapActive(zoom: zoom, wasActive: _cov.active);
+    if (!_cov.active || _cov.added) return;
     // Claim the slot before the first await so a burst of idle events can't
     // race two adds of the same source/layer.
-    _coverageAdded = true;
+    _cov.added = true;
     final dark = Theme.of(context).brightness == Brightness.dark;
     try {
       await style.addSource(coverageSource());
       await style.addLayer(coverageMainLayer(dark: dark));
     } catch (_) {
       // Failed (e.g. style torn down mid-add) — allow a later retry.
-      _coverageAdded = false;
+      _cov.added = false;
     }
   }
 
@@ -283,8 +280,8 @@ extension _MapLayers on _HomeMapScreenState {
   /// lines on the map (C2). Best-effort per line — a missing shape just omits
   /// that route.
   Future<void> _loadTramRails() async {
-    if (_tramRailsRequested) return;
-    _tramRailsRequested = true;
+    if (_stops.railsRequested) return;
+    _stops.railsRequested = true;
     final repo = ref.read(linesRepositoryProvider);
     // Install the authoritative line→type index (feed route_type) once. It
     // drives the tram-rail set below (only tram lines the bundle actually
@@ -310,7 +307,7 @@ extension _MapLayers on _HomeMapScreenState {
             .catchError((_) {}),
     ]);
     if (!mounted) return;
-    _tramRails = rails;
+    _stops.rails = rails;
     // Rails are one of the imperative stop layers (stg-stops-rails), rendered the
     // same way in both symbol and widget modes — push the fresh geometry onto it.
     _pushStopSources();
@@ -320,20 +317,20 @@ extension _MapLayers on _HomeMapScreenState {
     if (event is MapEventCameraIdle) {
       // While following, the camera is being panned every frame by us — don't
       // treat those idles as browsing (they'd hammer the stop/vehicle reload).
-      if (_following) return;
+      if (_follow.active) return;
       _onBrowseIdle();
       _loadStopsForVisibleArea();
       _loadVehiclesForVisibleArea();
       _reconcileCoverageLayer();
     } else if (event is MapEventMoveCamera) {
       // The lifted dot rides the visible centre while the map moves.
-      if (_browseLifted) _pushBrowseDot();
+      if (_browse.lifted) _pushBrowseDot();
     } else if (event is MapEventClick) {
       _handleTap(event.point);
     } else if (event is MapEventStartMoveCamera) {
       // A camera event in the brief post-resume window is the tab-return canvas
       // re-layout, not a user gesture — never break follow on it.
-      final guard = _followResumeGuardUntil;
+      final guard = _follow.resumeGuardUntil;
       if (guard != null && DateTime.now().isBefore(guard)) return;
       if (!_selfCameraMove && event.reason == CameraChangeReason.apiGesture) {
         _onBrowseDragStart();
@@ -343,7 +340,7 @@ extension _MapLayers on _HomeMapScreenState {
       // they never count — even if the platform mislabels one as a gesture — so
       // the per-frame follow pan can't cancel its own follow.
       if (shouldBreakFollow(
-        following: _following,
+        following: _follow.active,
         selfMove: _selfCameraMove,
         reason: event.reason,
       )) {
