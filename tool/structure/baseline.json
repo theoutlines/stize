@@ -1,6 +1,6 @@
 {
   "big-file": {
-    "app/lib/core/map_style.dart": 596,
+    "app/lib/core/map_style.dart": 587,
     "app/lib/core/timed_trajectory.dart": 525,
     "app/lib/core/vehicle_track_animator.dart": 526,
     "app/lib/presentation/screens/home_map_screen.dart": 591,
