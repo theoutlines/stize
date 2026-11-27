@@ -5,8 +5,6 @@ import 'screens/about_screen.dart';
 import 'screens/privacy_screen.dart';
 import 'screens/city_screen.dart';
 import 'screens/coverage_screen.dart';
-import 'screens/map_screen.dart';
-import 'screens/map_screen_args.dart';
 import 'screens/root_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/linked_stop_screen.dart';
@@ -24,16 +22,6 @@ final appRouter = GoRouter(
         return NoTransitionPage(
           key: state.pageKey,
           child: LinkedStopScreen(stopId: stopId, stopName: stopName),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/map',
-      pageBuilder: (context, state) {
-        final args = state.extra as MapScreenArgs;
-        return adaptivePage(
-          key: state.pageKey,
-          child: MapScreen(args: args),
         );
       },
     ),

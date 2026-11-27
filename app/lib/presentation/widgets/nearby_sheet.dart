@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -302,9 +304,7 @@ class _SheetDragArea extends StatelessWidget {
   }
 }
 
-/// Pointers the Nearby list took at the top detent ([_TopDetentScroll]): the
-/// sheet's drag area leaves them to the list, so a pull at the list's top
-/// refreshes instead of moving the sheet.
+/// Pointers the Nearby list took at the top detent: the sheet leaves them to it.
 final Set<int> _listOwnedPointers = {};
 
 class _SheetDragRecognizer extends VerticalDragGestureRecognizer {
@@ -321,12 +321,9 @@ class _SheetDragRecognizer extends VerticalDragGestureRecognizer {
 /// 2026-11-26, option 1) instead of shrinking the sheet, which is what the
 /// sheet's own scroll position does with every downward drag at its top.
 ///
-/// The sheet's controller then rests on an empty scrollable, so the handle,
-/// the header and [DraggableScrollableController] calls keep moving the sheet,
-/// and a quick flick down from the list's top collapses it to [rest].
-///
-/// Swaps wait for the fingers to lift and the list to stop, so a drag or a
-/// fling is never cut halfway.
+/// The sheet's controller then rests on an empty scrollable, so the handle and
+/// controller calls still move the sheet; a flick down collapses it to [rest].
+/// Swaps wait for fingers to lift and motion to stop.
 class _TopDetentScroll extends StatefulWidget {
   const _TopDetentScroll({
     required this.sheetScroll,
@@ -362,11 +359,13 @@ class _TopDetentScrollState extends State<_TopDetentScroll> {
   );
   double _downY = 0;
   bool _downAtTop = false;
+  Timer? _still; // the sheet stopped moving: swap only then
 
   bool get _detached => _own != null;
 
   @override
   void dispose() {
+    _still?.cancel();
     _own?.dispose();
     super.dispose();
   }
@@ -377,10 +376,11 @@ class _TopDetentScrollState extends State<_TopDetentScroll> {
     final want = _detached
         ? n.extent >= widget.top - 0.02
         : n.extent >= widget.top - 0.01;
-    if (want != _want) {
-      _want = want;
-      _settle();
-    }
+    _want = want;
+    // Swapping scrollables under a moving sheet stops an animateTo halfway
+    // (closing the search left the sheet near the top): wait until it stops.
+    _still?.cancel();
+    if (_want != _detached) _still = Timer(StizeMotion.quick, _settle);
     return false;
   }
 

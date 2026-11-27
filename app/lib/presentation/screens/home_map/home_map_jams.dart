@@ -249,6 +249,14 @@ extension _MapJams on _HomeMapScreenState {
       if (j.segmentRear != null) pts.add(j.segmentRear!);
       if (j.segmentFront != null) pts.add(j.segmentFront!);
     }
+    _fitToPoints(pts);
+  }
+
+  /// Fit the camera to [pts] (with a little margin), inside the visible map
+  /// area left by the sheet / panel.
+  void _fitToPoints(List<ll.LatLng> pts) {
+    final controller = _controller;
+    if (controller == null) return;
     if (pts.isEmpty) return;
     var minLat = pts.first.latitude, maxLat = pts.first.latitude;
     var minLon = pts.first.longitude, maxLon = pts.first.longitude;

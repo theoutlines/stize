@@ -138,26 +138,44 @@ extension _MapSearch on _HomeMapScreenState {
         .getShapeByRouteId(line.routeId);
     if (!mounted) return;
     _clearSearch();
-    final routeStops = shape.stops
-        .map(
-          (s) => Stop(
-            stopId: s.stopId,
-            name: s.name,
-            lat: s.lat,
-            lon: s.lon,
-            lines: [line.line],
-          ),
-        )
-        .toList();
-    context.push(
-      '/map',
-      extra: MapScreenArgs(
-        stops: routeStops,
+    if (_pillActive) _closePill();
+    // The line opens on this same map (owner, 2026-11-27): its route and stops
+    // highlighted, the line bar to close it, like a line reached by following
+    // a vehicle. Closing returns to where the user was.
+    final cam = _controller?.getCamera();
+    if (cam != null && _follow.preCenter == null) {
+      _follow.preCenter = cam.center;
+      _follow.preZoom = cam.zoom;
+    }
+    if (shape.polyline.length >= 2) {
+      _shapes.cache.put(line.line, RoutePath.fromLatLon(shape.polyline));
+    }
+    _setState(() {
+      _focus = _LineFocus(
+        line: line.line,
+        type: shape.vehicleType,
+        origin: shape.origin,
+        destination: shape.destination,
         polyline: shape.polyline,
-        title: '${line.line}: ${shape.origin} → ${shape.destination}',
-        lineNumber: line.line,
-      ),
-    );
+        stops: [
+          for (final s in shape.stops)
+            Stop(
+              stopId: s.stopId,
+              name: s.name,
+              lat: s.lat,
+              lon: s.lon,
+              lines: [line.line],
+            ),
+        ],
+      );
+    });
+    _pushStopSources(); // hide the ambient stop layers behind the focused line
+    _syncFocusLayers();
+    _loadVehiclesForVisibleArea(force: true);
+    _fitToPoints([
+      for (final p in shape.polyline) ll.LatLng(p[0], p[1]),
+      for (final s in shape.stops) ll.LatLng(s.lat, s.lon),
+    ]);
   }
 
   Future<void> _openPlace(GeocodeResult place) async {
