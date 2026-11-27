@@ -1,13 +1,10 @@
-import 'dart:async';
 import 'stretch_card_list.dart';
 import 'package:stize/core/design/stize_text.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/api_config.dart';
 import '../../core/fleet_matcher.dart';
-import '../../core/foreground.dart';
 import '../../domain/models/arrival.dart';
 import '../../domain/models/route_alert.dart';
 import '../../domain/models/vehicle_type.dart';
@@ -19,6 +16,7 @@ import 'jam_stop_banner.dart';
 import 'route_alerts_strip.dart';
 import 'sheet_chrome.dart';
 import 'stop_header_actions.dart';
+import 'stop_live_refresh.dart';
 import '../../core/design/stize_icons.dart';
 
 /// The reusable "stop" view — a stop's live arrivals board, with no assumption
@@ -79,38 +77,9 @@ class StopBoard extends ConsumerStatefulWidget {
   ConsumerState<StopBoard> createState() => _StopBoardState();
 }
 
-class _StopBoardState extends ConsumerState<StopBoard> {
-  Timer? _refreshTimer;
-  late final ForegroundResumeListener _resume = ForegroundResumeListener(() {
-    if (mounted) _refreshNow();
-  });
+class _StopBoardState extends ConsumerState<StopBoard> with StopLiveRefresh {
   @override
-  void initState() {
-    super.initState();
-    _scheduleRefresh();
-  }
-
-  void _scheduleRefresh() {
-    _refreshTimer?.cancel();
-    _resume; // start listening for foreground returns
-    _refreshTimer = Timer.periodic(kLiveRefreshInterval, (_) {
-      if (appInForeground) _refreshNow();
-    });
-  }
-
-  void _refreshNow() {
-    ref.invalidate(arrivalsProvider(widget.stopId));
-    // Keep the jam banner fresh on the same 30s cadence (no-op when the flag
-    // is off — the provider short-circuits to an empty board with no request).
-    if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);
-  }
-
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    _resume.dispose();
-    super.dispose();
-  }
+  String get liveStopId => widget.stopId;
 
   @override
   Widget build(BuildContext context) {
@@ -145,12 +114,12 @@ class _StopBoardState extends ConsumerState<StopBoard> {
       board.when(
         loading: () =>
             EmptyState(icon: StizeIcons.transit, title: l10n.loadingArrivals),
-        error: (err, _) => stopArrivalsErrorState(l10n, err, _refreshNow),
+        error: (err, _) => stopArrivalsErrorState(l10n, err, refreshStopNow),
         data: (b) => StopArrivalsList(
           stopId: widget.stopId,
           board: b,
           stopLines: stopLocation?.lines ?? const [],
-          onRetry: _refreshNow,
+          onRetry: refreshStopNow,
           onFocusVehicle: widget.onFocusVehicle,
           onOpenFleetCard: widget.onOpenFleetCard,
         ),
@@ -172,7 +141,7 @@ class _StopBoardState extends ConsumerState<StopBoard> {
             shrinkWrap: hug,
             // Live data: pull to refresh, like Nearby (DS StretchList).
             onRefresh: () async {
-              _refreshNow();
+              refreshStopNow();
               await ref.read(arrivalsProvider(widget.stopId).future);
             },
             children: content,

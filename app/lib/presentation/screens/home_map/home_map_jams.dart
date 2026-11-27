@@ -1,7 +1,7 @@
 part of '../home_map_screen.dart';
 
 extension _MapJams on _HomeMapScreenState {
-  // ---- Tram-jam overlay -----------------------------------------------------
+  // ---- Tram-jams: overlay, jam mode and the button --------------------------
 
   /// Turn a jam board into the amber segment polylines + affected-stop glow points
   /// + the badged-vehicle set, then reconcile the map layers and run the pulse.
@@ -229,74 +229,109 @@ extension _MapJams on _HomeMapScreenState {
     });
   }
 
-  Widget _searchResultsList(AppLocalizations l10n) {
-    final hasResults =
-        _resultStops.isNotEmpty ||
-        _resultLines.isNotEmpty ||
-        _resultPlaces.isNotEmpty;
-    if (!hasResults) {
-      return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(l10n.searchNoResults, textAlign: TextAlign.center),
-      );
+  /// The jam-mode toggle button. Present only when the city has active jams; a
+  /// toggle (not a screen): on = camera fits all active jams, off = normal view.
+  ///
+  /// It only NAGS (loud amber icon + red count badge) when at least one jam is
+  /// relevant to the user's context — near them, on the followed vehicle's line,
+  /// or at the open stop. Jams elsewhere keep the button present but QUIET (muted,
+  /// no badge). No jams → no button. The count badge shows the relevant count.
+  Widget _jamModeButton() {
+    if (!ref.watch(jamDetectionEnabledProvider)) return const SizedBox.shrink();
+    final board = ref.watch(jamsProvider).valueOrNull;
+    final jams = board?.activeJams ?? const <Jam>[];
+    if (jams.isEmpty) {
+      // Falling out of jam mode when the last jam clears.
+      if (_jamModeOn) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _setJamMode(false));
+      }
+      return const SizedBox.shrink();
     }
-    // An exact line number goes above the stops (core/search.dart).
-    final lines = splitExactLines(_resultLines, _searchController.text);
-    return StretchCardList(
-      shrinkWrap: true,
-      children: [
-        for (final line in lines.exact)
-          ListTile(
-            leading: vehicleGlyph(
-              line.vehicleType,
-              size: 24,
-              color: vehicleColor(line.vehicleType),
-            ),
-            title: Text(line.line),
-            subtitle: Text('${line.origin} → ${line.destination}'),
-            trailing: IconButton(
-              icon: Icon(
-                _isLinePinned(line.line)
-                    ? StizeIcons.pinPushFilled
-                    : StizeIcons.pinPush,
-              ),
-              tooltip: l10n.pinLineTooltip,
-              onPressed: () => _togglePinLine(line),
-            ),
-            onTap: () => _openLine(line),
+    final followedLine = _selectedVehicleKey == null
+        ? null
+        : _vehAnimator.trackFor(_selectedVehicleKey!)?.line;
+    final openStopId = _slotStopId ?? _stopContextId;
+    final relevant = jams
+        .where(
+          (j) => isJamRelevant(
+            j,
+            followedLine: followedLine,
+            openStopId: openStopId,
+            userLocation: _meTo,
           ),
-        for (final stop in _resultStops)
-          StopResultTile(
-            stop: stop,
-            onTap: () => _openStop(stop, source: Ev.srcSearch),
-          ),
-        for (final line in lines.rest)
-          ListTile(
-            leading: vehicleGlyph(
-              line.vehicleType,
-              size: 24,
-              color: vehicleColor(line.vehicleType),
-            ),
-            title: Text(line.line),
-            subtitle: Text('${line.origin} → ${line.destination}'),
-            trailing: IconButton(
-              icon: Icon(
-                _isLinePinned(line.line)
-                    ? StizeIcons.pinPushFilled
-                    : StizeIcons.pinPush,
-              ),
-              tooltip: l10n.pinLineTooltip,
-              onPressed: () => _togglePinLine(line),
-            ),
-            onTap: () => _openLine(line),
-          ),
-        for (final place in _resultPlaces)
-          ListTile(
-            leading: const Icon(StizeIcons.map),
-            title: Text(place.displayName),
-            onTap: () => _openPlace(place),
-          ),
-      ],
+        )
+        .length;
+    return JamModeButton(
+      on: _jamModeOn,
+      relevantCount: relevant,
+      onToggle: () => _setJamMode(!_jamModeOn),
     );
+  }
+
+  /// Whether an active jam lies ahead of the followed vehicle on its own
+  /// direction. Uses the track's along-track position + its direction shape, so a
+  /// vehicle on the opposite direction or already past the jam gets no warning.
+  bool _jamAheadForFollowed(VehicleTrack? track) {
+    if (!ref.watch(jamDetectionEnabledProvider)) return false;
+    if (track == null || track.path == null) return false;
+    final board = ref.watch(jamsProvider).valueOrNull;
+    if (board == null) return false;
+    for (final jam in board.activeJams) {
+      if (isJamAhead(
+        jam: jam,
+        vehicleDirectionRouteId: track.directionRouteId,
+        path: track.path,
+        vehicleAlong: track.toDist,
+      )) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _setJamMode(bool on) {
+    if (_jamModeOn == on) return;
+    _setState(() => _jamModeOn = on);
+    _reconcileCoverageLayer(); // hide/restore the coverage backdrop (2c)
+    if (on) _fitToJams();
+  }
+
+  /// Fit the camera to the bounds of every active jam (its vehicles + segment
+  /// stops). A jam-mode toggle of the SAME map — no navigation, no back button.
+  void _fitToJams() {
+    final board = ref.read(jamsProvider).valueOrNull;
+    final controller = _controller;
+    if (board == null || controller == null) return;
+    final pts = <ll.LatLng>[];
+    for (final j in board.activeJams) {
+      for (final v in j.vehicles) {
+        pts.add(v.position);
+      }
+      if (j.segmentRear != null) pts.add(j.segmentRear!);
+      if (j.segmentFront != null) pts.add(j.segmentFront!);
+    }
+    if (pts.isEmpty) return;
+    var minLat = pts.first.latitude, maxLat = pts.first.latitude;
+    var minLon = pts.first.longitude, maxLon = pts.first.longitude;
+    for (final p in pts) {
+      minLat = math.min(minLat, p.latitude);
+      maxLat = math.max(maxLat, p.latitude);
+      minLon = math.min(minLon, p.longitude);
+      maxLon = math.max(maxLon, p.longitude);
+    }
+    // A little padding around the bounds so pins/segment aren't flush to the edge.
+    const pad = 0.004;
+    _selfMove(() {
+      controller.fitBounds(
+        bounds: LngLatBounds(
+          longitudeWest: minLon - pad,
+          latitudeSouth: minLat - pad,
+          longitudeEast: maxLon + pad,
+          latitudeNorth: maxLat + pad,
+        ),
+        nativeDuration: StizeMotion.camera,
+        padding: _mapInsets,
+      );
+    });
   }
 }

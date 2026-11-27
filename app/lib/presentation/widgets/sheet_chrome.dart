@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:stize/core/design/stize_text.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
+import '../../core/context_slot.dart';
 import '../../core/design/stize_icons.dart';
 
 /// Shared bottom-sheet chrome, so every mobile sheet (nearby / stop / vehicle /
@@ -190,6 +191,62 @@ class MapSheetCloseButton extends StatelessWidget {
                 color: theme.colorScheme.onSurface,
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The frame of a modal map sheet (design system: MapSheet): the unified
+/// detents (peek, half, large; large is never fullscreen, a map strip always
+/// stays on top), a surface with the sheet radius, the grabber, then
+/// [childBuilder]'s widgets in a column. The stop sheet and the vehicle sheet
+/// both draw THIS, so their chrome can't drift apart.
+///
+/// The surface is a [Material] (not a plain coloured box) so rows paint their
+/// ink splashes on it; [PointerInterceptor] stops taps on the sheet from
+/// falling through to the MapLibre view underneath on web (no-op on mobile).
+class MapSheetFrame extends StatelessWidget {
+  const MapSheetFrame({
+    super.key,
+    required this.childBuilder,
+    this.initialSize,
+  });
+
+  /// Opening height as a share of the screen; null = the half detent.
+  final double? initialSize;
+
+  /// The sheet's content under the grabber; gets the sheet's scroll controller.
+  final List<Widget> Function(
+    BuildContext context,
+    ScrollController scrollController,
+  )
+  childBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return DraggableScrollableSheet(
+      initialChildSize: (initialSize ?? kSheetHalf).clamp(
+        kSheetPeek,
+        kSheetLarge,
+      ),
+      minChildSize: kSheetPeek,
+      maxChildSize: kSheetLarge,
+      snap: true,
+      snapSizes: const [kSheetPeek, kSheetHalf, kSheetLarge],
+      expand: false,
+      builder: (context, scrollController) => PointerInterceptor(
+        child: Material(
+          color: theme.colorScheme.surface,
+          borderRadius: kSheetRadius,
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              const SheetDragHandle(bottom: 4),
+              ...childBuilder(context, scrollController),
+            ],
           ),
         ),
       ),

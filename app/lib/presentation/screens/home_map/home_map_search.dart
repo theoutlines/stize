@@ -167,132 +167,6 @@ extension _MapSearch on _HomeMapScreenState {
     _raiseSheetToHalf();
   }
 
-  /// The menu's "My stops": open the saved stops as a level (desktop panel /
-  /// mobile sheet), on top of whatever is open, so back returns there.
-  void _openMyStopsLevel() {
-    _expandPanelIfCollapsed();
-    if (_levels.isEmpty || _levels.last is! _MyStopsLevel) {
-      _levels.add(const _MyStopsLevel());
-    }
-    _setState(() => _slotModel = null);
-    _raiseSheetToHalf();
-  }
-
-  /// Pushes a non-stop level (Settings, Feedback) onto the one sheet/panel.
-  void _pushLevel(_SlotLevel level) {
-    _expandPanelIfCollapsed();
-    final top = _levels.isEmpty ? null : _levels.last;
-    if (top.runtimeType != level.runtimeType ||
-        (level is _FeedbackLevel &&
-            (top as _FeedbackLevel).form != level.form)) {
-      _levels.add(level);
-    }
-    _setState(() => _slotModel = null);
-    _raiseSheetToHalf();
-  }
-
-  /// Opens a page of the Belgrade guide as the next level.
-  void _openGuideLevel(GuidePage page) {
-    _expandPanelIfCollapsed();
-    final top = _levels.isEmpty ? null : _levels.last;
-    if (top is! _GuideLevel || top.page != page) {
-      _levels.add(_GuideLevel(page));
-    }
-    _setState(() {
-      _slotModel = null;
-      _guideSeen = true;
-    });
-    _raiseSheetToHalf();
-    markGuideOpened();
-  }
-
-  /// On mobile, a newly opened level shows at least at the half detent (from
-  /// peek the board would barely be visible); a taller sheet keeps its height.
-  void _raiseSheetToHalf() {
-    if (_panelActive) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_sheetCtl.isAttached) return;
-      if (_sheetCtl.size < kSheetHalf - 0.01) {
-        _sheetCtl.animateTo(
-          kSheetHalf,
-          duration: StizeMotion.slow,
-          curve: StizeMotion.smoothOut,
-        );
-      }
-    });
-  }
-
-  /// Back one level: the level below shows again (its stop context and camera
-  /// restored), or Nearby when the chain is empty.
-  void _popLevel() {
-    if (_levels.isEmpty) return;
-    final popped = _levels.removeLast();
-    if (popped is _StopLevel && _onDemand && _stopContextId == popped.id) {
-      _exitStopContext();
-    }
-    final top = _levels.isEmpty ? null : _levels.last;
-    if (top is _StopLevel) {
-      if (_onDemand) _enterStopContext(top.id);
-      _bringStopIntoView(top.id, null);
-      ref.read(openStopNameProvider.notifier).state = top.name;
-    } else {
-      ref.read(openStopNameProvider.notifier).state = null;
-      if (top == null) _restorePreStopCamera();
-    }
-    _setState(() => _slotModel = null);
-  }
-
-  /// Close every level (the × on the first level, or a swipe below peek):
-  /// back to Nearby, camera where the user was before the first stop.
-  void _closeAllLevels() {
-    final top = _levels.isEmpty ? null : _levels.last;
-    if (top is _StopLevel && _onDemand && _stopContextId == top.id) {
-      _exitStopContext();
-    }
-    _levels.clear();
-    ref.read(openStopNameProvider.notifier).state = null;
-    _restorePreStopCamera();
-    _setState(() => _slotModel = null);
-  }
-
-  /// Mobile sheet height feed: the geometry owner gets it as before; dragging
-  /// an open level below the peek detent closes all levels (swipe-to-close) and
-  /// the sheet settles back at peek showing Nearby.
-  void _onMobileSheetHeight(double px) {
-    _setMobileSheetPx(px);
-    final h = MediaQuery.sizeOf(context).height;
-    if (h <= 0) return;
-    final following = _selectedVehicleKey != null;
-    final hasLevel = _levels.isNotEmpty || _slotModel != null || following;
-    if (hasLevel && px / h < kSheetPeek - 0.1) {
-      if (following) {
-        _closeVehicleContext();
-        return;
-      }
-      _closeAllLevels();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_sheetCtl.isAttached) return;
-        _sheetCtl.animateTo(
-          kSheetPeek,
-          duration: StizeMotion.slow,
-          curve: StizeMotion.smoothOut,
-        );
-      });
-    }
-  }
-
-  /// Ease the camera back to where it sat before the stop sheet panned it up —
-  /// symmetric to the open (same glide), and resetting the sheet's bottom padding
-  /// so it doesn't land offset.
-  void _restorePreStopCamera() {
-    final center = _preStopCameraCenter;
-    if (center != null) {
-      _camEase(center, zoom: _preStopCameraZoom);
-    }
-    _preStopCameraCenter = null;
-    _preStopCameraZoom = null;
-  }
-
   bool _isLinePinned(String line) {
     final pinned =
         ref.watch(pinnedLinesControllerProvider).valueOrNull ??
@@ -464,45 +338,6 @@ extension _MapSearch on _HomeMapScreenState {
   bool get _lineOnlyFocus =>
       !_panelActive && _focus != null && _selectedVehicleKey == null;
 
-  /// What the close above the mobile sheet does now, or null when the level
-  /// has none (Nearby root, a nested level with its back link, a model leaf).
-  VoidCallback? get _mobileSheetCloseAction {
-    if (_panelActive || _lineOnlyFocus) return null;
-    if (_selectedVehicleKey != null) return _closeVehicleContext;
-    if (_slotModel != null) return null;
-    if (_levels.length == 1) return _closeAllLevels;
-    return null;
-  }
-
-  /// The close of the mobile sheet, riding just above its right edge; stops
-  /// under the status bar when the sheet is at its tallest.
-  Widget _mapSheetClose(Size size) {
-    final action = _mobileSheetCloseAction;
-    return AnimatedBuilder(
-      animation: _sheetCtl,
-      builder: (context, child) {
-        final top = _sheetCloseTopFor(size);
-        return Positioned(
-          right: StizeSpace.space4,
-          top: action == null || top == null ? -400 : top,
-          child: IgnorePointer(ignoring: action == null, child: child!),
-        );
-      },
-      child: MapSheetCloseButton(onPressed: () => action?.call()),
-    );
-  }
-
-  /// The close button's top for the current sheet height, or null before the
-  /// sheet is attached.
-  double? _sheetCloseTopFor(Size size) {
-    if (!_sheetCtl.isAttached) return null;
-    final sheetTop = _bodyH(size) * (1 - _sheetCtl.size);
-    final riding =
-        sheetTop - MapSheetCloseButton.gap - MapSheetCloseButton.size;
-    final floor = MediaQuery.paddingOf(context).top + StizeSpace.space3;
-    return riding < floor ? floor : riding;
-  }
-
   bool get _oneScrollRoot =>
       !_panelActive &&
       _focus == null &&
@@ -514,123 +349,59 @@ extension _MapSearch on _HomeMapScreenState {
   double _pillPinnedTop() =>
       MediaQuery.paddingOf(context).top + StizeSpace.space4;
 
-  /// Typing in the pill raises the list to just under the pinned pill; an
-  /// emptied query lets it settle back to rest.
-  void _onPillQuery() {
-    if (!_pillActive || !_sheetCtl.isAttached) return;
-    final size = MediaQuery.sizeOf(context);
-    final want = _pillCtl.text.isEmpty
-        ? NearbySheet.oneScrollRestFor(size.height)
-        : _oneScrollMax(size);
-    if ((_sheetCtl.size - want).abs() < 0.01) return;
-    _sheetCtl.animateTo(
-      want,
-      duration: StizeMotion.slow,
-      curve: StizeMotion.smoothOut,
-    );
-  }
-
-  /// The sheet rises to just under the pinned pill, then its list scrolls.
-  double _oneScrollMax(Size size) {
-    final top = _pillPinnedTop() + MapSearchPill.height + StizeSpace.space4;
-    final h = _bodyH(size);
-    return ((h - top) / h).clamp(0.5, 0.95);
-  }
-
   /// The sheet lives in the Scaffold body, which shrinks by the keyboard.
   double _bodyH(Size size) =>
       _bodyHeight ?? size.height - MediaQuery.viewInsetsOf(context).bottom;
 
-  /// The pill's top for the current sheet height: it rides on the map just
-  /// above the sheet, and stops under the status bar.
-  double _pillTopFor(Size size) {
-    // Searching with a query: the pill stays pinned at the top.
-    if (_pillActive && _pillCtl.text.isNotEmpty) return _pillPinnedTop();
-    final s = _sheetCtl.isAttached
-        ? _sheetCtl.size
-        : NearbySheet.oneScrollRestFor(size.height);
-    final sheetTop = _bodyH(size) * (1 - s);
-    final riding = sheetTop - MapSearchPill.height - StizeSpace.space4;
-    return riding < _pillPinnedTop() ? _pillPinnedTop() : riding;
-  }
-
-  Widget _searchPill(AppLocalizations l10n, Size size) {
-    return AnimatedBuilder(
-      animation: _sheetCtl,
-      builder: (context, child) => Positioned(
-        left: StizeSpace.space4,
-        right: StizeSpace.space4,
-        top: _oneScrollRoot ? _pillTopFor(size) : -400,
-        child: IgnorePointer(ignoring: !_oneScrollRoot, child: child!),
+  Widget _searchResultsList(AppLocalizations l10n) {
+    final hasResults =
+        _resultStops.isNotEmpty ||
+        _resultLines.isNotEmpty ||
+        _resultPlaces.isNotEmpty;
+    if (!hasResults) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(l10n.searchNoResults, textAlign: TextAlign.center),
+      );
+    }
+    // An exact line number goes above the stops (core/search.dart).
+    final lines = splitExactLines(_resultLines, _searchController.text);
+    Widget lineTile(LineInfo line) => ListTile(
+      leading: vehicleGlyph(
+        line.vehicleType,
+        size: 24,
+        color: vehicleColor(line.vehicleType),
       ),
-      child: MapSearchPill(
-        controller: _pillCtl,
-        focusNode: _pillFocus,
-        active: _pillActive,
-        placeLabel: _browsePlaceLabel(l10n),
-        away: _browsePoint != null,
-        onLocate: _recenterOnMe,
-        // Nothing moves on the tap itself: iOS drops the keyboard when the
-        // focused field jumps during the tap (owner, 2026-11-23). The list
-        // rises once a query is typed (see _onPillQuery).
-        onActivate: () => _setState(() => _pillActive = true),
-        onClose: () {
-          _pillCtl.clear();
-          _pillFocus.unfocus();
-          _setState(() => _pillActive = false);
-          if (_sheetCtl.isAttached) {
-            _sheetCtl.animateTo(
-              NearbySheet.oneScrollRestFor(size.height),
-              duration: StizeMotion.medium,
-              curve: StizeMotion.smoothOut,
-            );
-          }
-        },
+      title: Text(line.line),
+      subtitle: Text('${line.origin} → ${line.destination}'),
+      trailing: IconButton(
+        icon: Icon(
+          _isLinePinned(line.line)
+              ? StizeIcons.pinPushFilled
+              : StizeIcons.pinPush,
+        ),
+        tooltip: l10n.pinLineTooltip,
+        onPressed: () => _togglePinLine(line),
       ),
+      onTap: () => _openLine(line),
     );
-  }
-
-  /// The round map buttons, pushed up past the top edge as the rising pill
-  /// reaches them (owner, 2026-11-23). Desktop and level views: unmoved.
-  Widget _pushedTopButtons(ThemeData theme, Size size) {
-    final buttons = _topButtons(theme);
-    // The builder stays in the tree in every state, so the buttons (and their
-    // pointer interceptors) are never re-mounted when a level opens.
-    return AnimatedBuilder(
-      animation: _sheetCtl,
-      child: buttons,
-      builder: (context, child) {
-        // The measured bottom of the button stack (zoom control included on
-        // web); the pill pushes once it is within 12px of that edge.
-        // Measured after layout, never during build (a render object can be
-        // inactive mid-build).
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          final ctx = _topButtonsKey.currentContext;
-          if (ctx == null || !ctx.mounted) return;
-          final box = ctx.findRenderObject();
-          if (box is RenderBox && box.attached && box.hasSize) {
-            _topButtonsH = box.size.height;
-          }
-        });
-        // The right-hand button column (keyed in _topButtons) sits below the
-        // status-bar inset and a 12px margin.
-        final buttonsBottom =
-            MediaQuery.paddingOf(context).top + 12 + _topButtonsH;
-        // The rising search pill (Nearby root) or the sheet's close (a level)
-        // pushes the buttons up once it reaches them.
-        final closeTop = _mobileSheetCloseAction == null
-            ? null
-            : _sheetCloseTopFor(size);
-        final gap = _oneScrollRoot
-            ? _pillTopFor(size) - StizeSpace.space3 - buttonsBottom
-            : (closeTop == null
-                  ? 0.0
-                  : closeTop - StizeSpace.space3 - buttonsBottom);
-        return Transform.translate(
-          offset: Offset(0, gap < 0 ? gap : 0),
-          child: child,
-        );
-      },
+    return StretchCardList(
+      shrinkWrap: true,
+      children: [
+        for (final line in lines.exact) lineTile(line),
+        for (final stop in _resultStops)
+          StopResultTile(
+            stop: stop,
+            onTap: () => _openStop(stop, source: Ev.srcSearch),
+          ),
+        for (final line in lines.rest) lineTile(line),
+        for (final place in _resultPlaces)
+          ListTile(
+            leading: const Icon(StizeIcons.map),
+            title: Text(place.displayName),
+            onTap: () => _openPlace(place),
+          ),
+      ],
     );
   }
 }

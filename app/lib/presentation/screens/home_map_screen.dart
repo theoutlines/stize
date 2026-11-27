@@ -57,6 +57,7 @@ import '../widgets/stretch_card_list.dart';
 import '../widgets/context_shell.dart';
 import '../widgets/stop_header_actions.dart';
 import '../widgets/fleet_model_card.dart';
+import '../widgets/follow_model.dart';
 import '../widgets/follow_view.dart';
 import '../widgets/sheet_chrome.dart';
 import '../widgets/nearby_sheet.dart';
@@ -86,6 +87,17 @@ part 'home_map/home_map_context.dart';
 part 'home_map/home_map_search.dart';
 part 'home_map/home_map_panels.dart';
 part 'home_map/home_map_jams.dart';
+part 'home_map/home_map_diagnostics.dart';
+part 'home_map/home_map_focus.dart';
+part 'home_map/home_map_follow.dart';
+part 'home_map/home_map_stops.dart';
+part 'home_map/home_map_vehicles.dart';
+part 'home_map/home_map_sync.dart';
+part 'home_map/home_map_view.dart';
+part 'home_map/home_map_types.dart';
+part 'home_map/home_map_lifecycle.dart';
+part 'home_map/home_map_levels.dart';
+part 'home_map/home_map_pill.dart';
 
 const _belgradeCenter = Geographic(lon: 20.4612, lat: 44.8125);
 const _distance = ll.Distance();
@@ -593,89 +605,12 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     }
   }
 
-  void _pauseActivity() {
-    if (_paused) return;
-    _paused = true;
-    _hiddenAt = DateTime.now();
-    _vehAnim.stop();
-    _stopVehDriver();
-    _vehiclesTimer?.cancel();
-    _vehiclesTimer = null;
-  }
-
-  void _resumeActivity() {
-    if (!_paused) return;
-    _paused = false;
-    // Hold follow across the resume: the tab-return canvas re-layout can surface
-    // a spurious "gesture" camera event that would otherwise break it. The next
-    // follow tick re-centres on the marker, so a re-anchor jump just re-centres.
-    if (_following) {
-      _followResumeGuardUntil = DateTime.now().add(const Duration(seconds: 1));
-    }
-    final hiddenAt = _hiddenAt;
-    if (hiddenAt != null) {
-      // Discount the time spent hidden so a vehicle isn't declared stuck just
-      // because the app was in the background across its dwell.
-      _vehAnimator.shiftClock(DateTime.now().difference(hiddenAt));
-      _hiddenAt = null;
-    }
-    _startVehiclesTimer();
-    // Refresh right away on resume (both modes): the aquarium off-demand, or the
-    // active stop/vehicle context on-demand — so a vehicle isn't left on a stale
-    // fix after the tab comes back. The fresh board then re-anchors the timed
-    // players and the marker catches up to its real position.
-    _refreshTick();
-    // Restart the driver so the timed players advance the moment we're back —
-    // otherwise the marker sits frozen until the refetch lands (and a stale/503
-    // board would leave it frozen with no ticker running at all).
-    if (_vehAnimator.tracks.isNotEmpty) {
-      _startVehDriver();
-      _paintVehicles();
-    }
-  }
-
-  void _startVehiclesTimer() {
-    _vehiclesTimer?.cancel();
-    _vehiclesTimer = Timer.periodic(
-      _vehiclesRefreshInterval,
-      (_) => _refreshTick(),
-    );
-  }
-
-  /// The steady 30s refresh, matched to the backend cache. In on-demand mode the
-  /// background aquarium is off, so instead the ACTIVE context (a stop, or a
-  /// followed vehicle still tied to its stop) is kept live by re-fetching that
-  /// stop's arrivals — otherwise the markers play their trajectory to the end of
-  /// `as_of` and freeze forever, since the sheet's own poll dies when it closes.
-  /// This runs regardless of follow, so following never freezes the data. When
-  /// off-demand it drives the viewport aquarium exactly as before.
-  void _refreshTick() {
-    final action = mapRefreshAction(
-      onDemand: _onDemand,
-      stopContextId: _stopContextId,
-    );
-    _refreshTicks++;
-    // Refresh the jam board on the same 30s cadence (no-op / no request when the
-    // flag is off — the provider short-circuits to an empty board).
-    if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);
-    switch (action) {
-      case MapRefresh.aquarium:
-        _loadVehiclesForVisibleArea(force: true);
-      case MapRefresh.pollStop:
-        ref.invalidate(arrivalsProvider(_stopContextId!));
-      case MapRefresh.none:
-        break;
-    }
-  }
-
   // ---- Vehicle-layer driver (runs only while something is actually moving) --
 
   // Rebuild the desktop vehicle panel ~1/s while following, so its worded route
   // ("Rest of the route") slides as the vehicle progresses along the plan — same
   // progress the marker uses (its plan position), just re-read (owner R3 #3).
   DateTime? _lastFollowPanelRefreshAt;
-
-  // ---- Map lifecycle --------------------------------------------------------
 
   // ---- Location -------------------------------------------------------------
 
@@ -685,10 +620,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   Timer? _stopPushTimer;
   Timer? _railsTimer;
-
-  // ---- Live vehicles in the viewport ---------------------------------------
-
-  // ---- Follow mode ----------------------------------------------------------
 
   // ---- Map geometry owner (single source of truth) --------------------------
   //
@@ -734,148 +665,15 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// resulting camera centre. Surfaced on the staging overlay.
   String _followCamDiag = 'FOLLOW cam -';
 
-  // ---- On-demand stop context (state B) ------------------------------------
-
-  // ---- Adaptive context slot ------------------------------------------------
-
-  // ---- Taps -----------------------------------------------------------------
-
-  // ---- Search ---------------------------------------------------------------
-
   // ---- Build ----------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    // "My stops" from the menu opens as a level in the same sheet / panel.
-    ref.listen(myStopsRequestProvider, (prev, next) {
-      if (prev == next) return;
-      _openMyStopsLevel();
-    });
-    ref.listen(settingsRequestProvider, (prev, next) {
-      if (prev == next) return;
-      _pushLevel(const _SettingsLevel());
-    });
-    ref.listen(feedbackRequestProvider, (prev, next) {
-      if (prev == next) return;
-      _pushLevel(const _FeedbackLevel());
-    });
-    ref.listen(guideRequestProvider, (prev, next) {
-      if (prev == next) return;
-      _openGuideLevel(GuidePage.home);
-    });
+    _syncMapState(context);
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    _scheme = theme.colorScheme;
     final brightness = theme.brightness;
-
-    // Follow the app theme: swap the MapTiler style when brightness flips.
-    if (_styleBrightness == null) {
-      _styleBrightness = brightness;
-    } else if (_styleBrightness != brightness && _controller != null) {
-      _styleBrightness = brightness;
-      _imagesReady = false;
-      _controller!.setStyle(MapStyle.forBrightness(brightness));
-    }
-
-    // Favourites are drawn by an imperative source now; refresh it whenever the
-    // set changes (no widget rebuild needed for the markers themselves).
-    ref.listen(favoriteStopLocationsProvider, (_, _) => _pushStopSources());
-    ref.listen<bool>(locationAutopromptEnabledProvider, (prev, next) {
-      if (next && prev != true) _autopromptLocation();
-    });
-
-    // Tram-jam overlay: whenever the jam board changes, (re)build the red segment
-    // layer and the badged-vehicle set. Flag-gated (empty board when off → clears).
-    ref.listen(jamsProvider, (_, next) {
-      final board = next.valueOrNull;
-      if (board != null) _onJamsUpdated(board);
-    });
-
-    // Coverage overlay flag: usually flips false→true once the remote config
-    // resolves. When it turns on, reconcile after this frame so the layer is
-    // added if the map is already zoomed out.
-    final coverageEnabled = ref.watch(coverageOnMainMapEnabledProvider);
-    if (coverageEnabled != _coverageEnabled) {
-      _coverageEnabled = coverageEnabled;
-      if (coverageEnabled) {
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _reconcileCoverageLayer(),
-        );
-      }
-    }
-
-    // The map mode: the Settings choice resolved against the on-demand flag.
-    // Flips false→true once remote config resolves, and again whenever the user
-    // switches the setting. Reconcile after the frame (clear the background
-    // aquarium, or repopulate) so the switch applies without a restart.
-    final onDemand =
-        ref.watch(vehicleMapModeProvider) == VehicleMapMode.onDemand;
-    if (onDemand != _onDemand) {
-      _onDemand = onDemand;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _onOnDemandChanged());
-    }
-
-    // Adaptive context slot flag (killswitch): OFF = today's independent sheets,
-    // untouched. The map itself is ALWAYS the same Positioned.fill widget below
-    // — only the OVERLAY (panel vs sheets) changes — so crossing the breakpoint
-    // never rebuilds/recreates the map (the IndexedStack/render-cycle gotcha).
     final size = MediaQuery.sizeOf(context);
-    _wideNow = isWideLayout(size.width);
-    // Back on the one-scroll root from a level: settle the list at rest
-    // (a level leaves the sheet at its own height).
-    final rootNow = _oneScrollRoot;
-    if (rootNow && !_wasOneScrollRoot) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_sheetCtl.isAttached || !_oneScrollRoot) return;
-        _sheetCtl.animateTo(
-          NearbySheet.oneScrollRestFor(MediaQuery.sizeOf(context).height),
-          duration: StizeMotion.medium,
-          curve: StizeMotion.smoothOut,
-        );
-      });
-    }
-    _wasOneScrollRoot = rootNow;
-    // Panel is a DESKTOP-ONLY surface: on mobile the app falls through to the
-    // legacy bottom cluster, unchanged. The map is ALWAYS the same Positioned.
-    // fill widget — crossing the breakpoint only swaps the overlay, never
-    // rebuilds the map. Whenever the overlap GEOMETRY changes (panel width on a
-    // window resize, breakpoint flip, or the mobile sheet detent), re-settle the
-    // camera so the focus stays centred in the new visible area / the scene
-    // shifts by the delta — one owner, [_mapInsets] (owner R3 #1/#2).
-    // The nearby sheet AND the stop sheet feed their live height to the geometry
-    // owner (owner R2 #3). When NEITHER is shown (desktop panel, a follow bar)
-    // drop the stale value so the owner doesn't keep a phantom bottom inset.
-    // (Assigned during build, no setState — the value is read just below.)
-    // The follow lives in the same sheet now (owner, 2026-11-25); only a
-    // line opened without a vehicle keeps its compact bar.
-    final showingNearbySheet = !_panelActive && !_lineOnlyFocus;
-    final mobileSheetShowing = showingNearbySheet;
-    if (!mobileSheetShowing && _mobileSheetPx != 0) _mobileSheetPx = 0;
-
-    // The map-layer dot follows the browse state (a level opening hides it,
-    // the locate button clears it).
-    final dotShown = _browseShowing;
-    if (dotShown != _browseDotShown) {
-      _browseDotShown = dotShown;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _pushBrowseDot());
-    }
-
-    final insets = _mapInsets;
-    if (insets != _appliedInsets) {
-      final first = _appliedInsets == null;
-      // Ease only for desktop panel-geometry / breakpoint changes. A mobile
-      // sheet DRAG also moves the inset, but the 66ms follow tick re-centres a
-      // followed vehicle smoothly from it — a 280ms ease every drag frame would
-      // lag, so we don't fire one here for the mobile-only case.
-      final easeWorthy = !first && (_panelActive || _wasPanelActive);
-      _wasPanelActive = _panelActive;
-      _appliedInsets = insets;
-      if (easeWorthy) {
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _onMapGeometryChanged(),
-        );
-      }
-    }
 
     // Android back / PopScope: with the panel active, back walks up the chain
     // (model → vehicle → stop → nearby) before leaving the map.
@@ -902,74 +700,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
               _bodyHeight = box.maxHeight;
               return Stack(
                 children: [
-                  if (kMapRenderingEnabled)
-                    Positioned.fill(
-                      child: MapResizeNudge(
-                        child: MapLibreMap(
-                          options: MapOptions(
-                            initCenter: _belgradeCenter,
-                            initZoom: 15,
-                            // Fence the camera to the city (B1): no zooming out to a
-                            // country view, no dragging far past the agglomeration.
-                            minZoom: kCityMinZoom,
-                            maxZoom: kCityMaxZoom,
-                            maxBounds: belgradeMaxBounds,
-                            initStyle: MapStyle.forBrightness(brightness),
-                          ),
-                          onMapCreated: _onMapCreated,
-                          onStyleLoaded: _onStyleLoaded,
-                          onEvent: _onEvent,
-                          // No declarative layers: stops, the focused line and
-                          // vehicles are added imperatively (maplibre 0.3.5's
-                          // positional LayerManager dropped whole layers; see
-                          // _addStopLayers / _syncFocusLayers).
-                          layers: const [],
-                          children: [
-                            const CompactAttribution(),
-                            // "My position" as a widget marker so it survives every zoom
-                            // level (X2), not a cullable GL symbol. Wrapped in an
-                            // AnimatedBuilder so it eases to each fresh fix; the ticker
-                            // is idle between fixes, so this only repaints while moving.
-                            // While Nearby is around a map point, your dot is the
-                            // centre point instead (drawn over the map below).
-                            if (_meTo != null && _browsePoint == null)
-                              AnimatedBuilder(
-                                animation: _meAnim,
-                                builder: (context, _) {
-                                  final me = _displayedMe ?? _meTo!;
-                                  return WidgetLayer(
-                                    markers: [
-                                      Marker(
-                                        point: Geographic(
-                                          lon: me.longitude,
-                                          lat: me.latitude,
-                                        ),
-                                        size: MeLocationDot.markerSize,
-                                        // Turns with the map, so the cone's
-                                        // compass heading stays true on a
-                                        // rotated map.
-                                        rotate: true,
-                                        child: ValueListenableBuilder<double?>(
-                                          valueListenable: _heading,
-                                          builder: (context, h, _) =>
-                                              MeLocationDot(heading: h),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            // Live vehicles render as the batched GPU symbol layer,
-                            // added imperatively in _addVehicleSymbolLayers — no widget
-                            // layer is built for them here.
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    // Positioned like the real map, so tests see the same Stack
-                    // sizing as production.
-                    const Positioned.fill(child: SizedBox()),
+                  _mapView(brightness),
                   // Round action buttons at the top: menu (left), recenter (right).
                   _pushedTopButtons(theme, size),
                   // Staging-only stop-render diagnostics (isStaging; invisible in prod).
@@ -1072,57 +803,4 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // Widget-rendered marker images are captured at device pixel ratio, so they
   // come out larger than their logical size — scale down to taste.
   static const _iconSize = 0.5;
-}
-
-/// A line whose route is currently highlighted on the home map (the inline
-/// alternative to pushing a separate route screen).
-class _LineFocus {
-  const _LineFocus({
-    required this.line,
-    required this.type,
-    required this.origin,
-    required this.destination,
-    required this.polyline,
-    required this.stops,
-    this.scheduled = false,
-  });
-
-  final String line;
-  final VehicleType type;
-  final String origin;
-  final String destination;
-  final List<List<double>> polyline; // [[lat, lon], ...]
-  final List<Stop> stops;
-
-  /// Opened from a tap on a schedule-predicted object — the panel notes it.
-  final bool scheduled;
-}
-
-/// A level in the context slot's chain.
-sealed class _SlotLevel {
-  const _SlotLevel();
-}
-
-class _StopLevel extends _SlotLevel {
-  const _StopLevel(this.id, this.name);
-  final String id;
-  final String? name;
-}
-
-class _MyStopsLevel extends _SlotLevel {
-  const _MyStopsLevel();
-}
-
-class _SettingsLevel extends _SlotLevel {
-  const _SettingsLevel();
-}
-
-class _FeedbackLevel extends _SlotLevel {
-  const _FeedbackLevel({this.form = false});
-  final bool form;
-}
-
-class _GuideLevel extends _SlotLevel {
-  const _GuideLevel(this.page);
-  final GuidePage page;
 }

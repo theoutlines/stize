@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/context_slot.dart';
 import '../../core/fleet_matcher.dart';
@@ -83,7 +82,6 @@ class _StopSheetState extends State<_StopSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final leaf = _leaf;
     final viewport = MediaQuery.sizeOf(context).height;
@@ -92,77 +90,46 @@ class _StopSheetState extends State<_StopSheet> {
         widget.onHeightChanged?.call(n.extent * viewport);
         return false;
       },
-      child: DraggableScrollableSheet(
-        // Unified detents (owner R2 #4): large is NOT fullscreen — a map strip
-        // always stays on top. Opens at the nearby sheet's resting height when
-        // given, else the half detent.
-        initialChildSize: (widget.initialSize ?? kSheetHalf).clamp(
-          kSheetPeek,
-          kSheetLarge,
-        ),
-        minChildSize: kSheetPeek,
-        maxChildSize: kSheetLarge,
-        snap: true,
-        snapSizes: const [kSheetPeek, kSheetHalf, kSheetLarge],
-        expand: false,
-        builder: (context, scrollController) {
-          // PointerInterceptor stops taps/double-taps on the sheet from falling
-          // through to the MapLibre platform view underneath (which would zoom the
-          // map) on web. No-op on mobile.
-          return PointerInterceptor(
-            // A Material (not a plain coloured Container) so the arrival rows'
-            // ListTiles paint their ink splashes on it.
-            child: Material(
-              color: theme.colorScheme.surface,
-              borderRadius: kSheetRadius,
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  const SheetDragHandle(bottom: 4),
-                  if (leaf != null) ...[
-                    // Subview: the shared fleet card, with a back arrow returning
-                    // to the exact board it came from.
-                    SheetBackHeader(
-                      title: leaf.fleet.modelName ?? l10n.fleetUnknownModel,
-                      onBack: () => setState(() => _leaf = null),
-                    ),
-                    Expanded(
-                      child: FleetModelView(
-                        fleet: leaf.fleet,
-                        fallbackType: leaf.type,
-                        garageNo: leaf.garageNo,
-                        scrollController: scrollController,
-                      ),
-                    ),
-                  ] else
-                    Expanded(
-                      child: StopBoard(
-                        stopId: widget.stopId,
-                        initialStopName: widget.initialStopName,
-                        scrollController: scrollController,
-                        onClose: () => Navigator.of(context).maybePop(),
-                        // Swap to the in-sheet fleet card instead of stacking a
-                        // separate modal (owner B#2).
-                        onOpenFleetCard: (fleet, garageNo, type) => setState(
-                          () => _leaf = (
-                            fleet: fleet,
-                            garageNo: garageNo,
-                            type: type,
-                          ),
-                        ),
-                        onFocusVehicle: widget.onFocusVehicle == null
-                            ? null
-                            : (arrival, asOf) {
-                                Navigator.of(context).maybePop();
-                                widget.onFocusVehicle!.call(arrival, asOf);
-                              },
-                      ),
-                    ),
-                ],
+      child: MapSheetFrame(
+        // Opens at the nearby sheet's resting height when given.
+        initialSize: widget.initialSize,
+        childBuilder: (context, scrollController) => [
+          if (leaf != null) ...[
+            // Subview: the shared fleet card, with a back arrow returning
+            // to the exact board it came from.
+            SheetBackHeader(
+              title: leaf.fleet.modelName ?? l10n.fleetUnknownModel,
+              onBack: () => setState(() => _leaf = null),
+            ),
+            Expanded(
+              child: FleetModelView(
+                fleet: leaf.fleet,
+                fallbackType: leaf.type,
+                garageNo: leaf.garageNo,
+                scrollController: scrollController,
               ),
             ),
-          );
-        },
+          ] else
+            Expanded(
+              child: StopBoard(
+                stopId: widget.stopId,
+                initialStopName: widget.initialStopName,
+                scrollController: scrollController,
+                onClose: () => Navigator.of(context).maybePop(),
+                // Swap to the in-sheet fleet card instead of stacking a
+                // separate modal (owner B#2).
+                onOpenFleetCard: (fleet, garageNo, type) => setState(
+                  () => _leaf = (fleet: fleet, garageNo: garageNo, type: type),
+                ),
+                onFocusVehicle: widget.onFocusVehicle == null
+                    ? null
+                    : (arrival, asOf) {
+                        Navigator.of(context).maybePop();
+                        widget.onFocusVehicle!.call(arrival, asOf);
+                      },
+              ),
+            ),
+        ],
       ),
     );
   }

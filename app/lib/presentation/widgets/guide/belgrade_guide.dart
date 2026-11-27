@@ -8,7 +8,7 @@ import '../stretch_card_list.dart';
 import '../../../core/design/stize_icons.dart';
 import '../../../core/design/stize_tokens.dart';
 import '../../../l10n/app_localizations.dart';
-import '../flat_cards.dart';
+import '../notice_strip.dart';
 
 /// Pages of the Belgrade guide, each shown as a level in the map's sheet /
 /// desktop panel (owner-approved 2026-11-23, design v5).
@@ -469,74 +469,42 @@ class GuideStrip extends StatelessWidget {
     // in the cards' own language with the timetable cards' neutral fill.
     // Mobile: flat, flush with the sheet's top, a hairline under it. Desktop
     // island: rounded like the island's cards.
-    final flat = FlatCards.of(context);
     final c = StizeColors.of(context);
     final text = StizeText.of(context);
-    return Material(
-      color: surface(c),
-      shape: flat
-          ? Border(bottom: BorderSide(color: c.stripeLine))
-          : RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
+    return StripFrame(
+      surface: surface(c),
+      onTap: onTap,
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: StizeSpace.space3),
+            child: Icon(icon, size: 20, color: c.ink75),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: text.label.copyWith(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 2),
+                Text(subtitle, style: text.caption.copyWith(color: c.ink60)),
+              ],
             ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            StizeSpace.space4,
-            StizeSpace.space3,
-            StizeSpace.space2,
-            StizeSpace.space3,
           ),
-          child: Row(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: StizeSpace.space3),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: c.ink75,
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: text.label.copyWith(fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: text.caption.copyWith(color: c.ink60),
-                    ),
-                  ],
-                ),
-              ),
-              if (onDismiss != null)
-                IconButton(
-                  onPressed: onDismiss,
-                  tooltip: AppLocalizations.of(context).close,
-                  icon: Icon(
-                    StizeIcons.close,
-                    size: 16,
-                    color: c.ink50,
-                  ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.all(StizeSpace.space2),
-                  child: Icon(
-                    StizeIcons.chevronRight,
-                    size: 20,
-                    color: c.ink50,
-                  ),
-                ),
-            ],
-          ),
-        ),
+          if (onDismiss != null)
+            IconButton(
+              onPressed: onDismiss,
+              tooltip: AppLocalizations.of(context).close,
+              icon: Icon(StizeIcons.close, size: 16, color: c.ink50),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.all(StizeSpace.space2),
+              child: Icon(StizeIcons.chevronRight, size: 20, color: c.ink50),
+            ),
+        ],
       ),
     );
   }
