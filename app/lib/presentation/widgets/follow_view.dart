@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/design/stize_icons.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../core/fleet_matcher.dart';
 import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import 'arrival_time.dart';
 import 'fleet_badges.dart';
 import 'fleet_model_card.dart';
 import 'live_pulse_dot.dart';
@@ -87,46 +87,13 @@ class FollowHeader extends StatelessWidget {
     final on = c.onTransit;
     final fill = StizeTransitCard.fillFor(c, type);
 
-    Widget? time;
-    final m = etaMinutes;
-    if (m != null) {
-      final now = m <= 0;
-      final block = Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          if (approximate) ...[
-            Text(
-              '≈',
-              style: StizeType.h1.copyWith(
-                fontWeight: FontWeight.w400,
-                height: 1,
-                color: on,
-              ),
-            ),
-            const SizedBox(width: 2),
-          ],
-          Text(
-            now ? l10n.arrivalEtaNow.toLowerCase() : '$m',
-            style: StizeType.bigNumber.copyWith(
-              color: on,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          if (!now) ...[
-            const SizedBox(width: StizeSpace.space1),
-            Text(
-              l10n.arrivalEtaMinutesUnit,
-              style: StizeType.label.copyWith(color: on),
-            ),
-          ],
-        ],
-      );
-      time = approximate
-          ? Opacity(opacity: StizeTransitCard.approximateOpacity, child: block)
-          : block;
-    }
+    final Widget? time = etaMinutes == null
+        ? null
+        : ArrivalTime(
+            etaMinutes: etaMinutes,
+            color: on,
+            approximate: approximate,
+          );
 
     final dest = destination?.trim();
     return Container(
@@ -173,35 +140,7 @@ class FollowHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Expanded(
-                child: dest == null || dest.isEmpty
-                    ? const SizedBox.shrink()
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          // Baseline-aligned, an icon sits on its bottom edge and reads
-                          // high: drop it 3px onto the text's x-height centre.
-                          Transform.translate(
-                            offset: const Offset(0, 3),
-                            child: Icon(
-                              StizeIcons.forward,
-                              size: 16,
-                              color: on,
-                            ),
-                          ),
-                          const SizedBox(width: StizeSpace.space1),
-                          Flexible(
-                            child: Text(
-                              dest,
-                              style: StizeType.label.copyWith(color: on),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
+              Expanded(child: StizeTransitCard.destinationLine(dest, on)),
               if (caption != null) ...[
                 const SizedBox(width: StizeSpace.space3),
                 Row(

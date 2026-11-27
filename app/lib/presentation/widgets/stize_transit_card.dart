@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'arrival_time.dart';
 import 'flat_cards.dart';
 import 'live_pulse_dot.dart';
 import 'vehicle_icon.dart';
@@ -7,7 +8,6 @@ import 'vehicle_icon.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../core/eta_format.dart';
 import '../../domain/models/vehicle_type.dart';
-import '../../l10n/app_localizations.dart';
 import '../../core/design/stize_icons.dart';
 
 /// The one Stiže transit card. Every list that shows "a line arriving" draws
@@ -86,8 +86,8 @@ class StizeTransitCard extends StatelessWidget {
 
   static const double heldBackOpacity = 0.82;
 
-  /// Opacity of a time we no longer trust.
-  static const double approximateOpacity = 0.5;
+  /// Opacity of a time we no longer trust (see [ArrivalTime]).
+  static const double approximateOpacity = ArrivalTime.approximateOpacity;
 
   /// The card's surface as it reads on screen (a held-back card included), for
   /// a list that stretches its first or last card past the edge.
@@ -118,6 +118,34 @@ class StizeTransitCard extends StatelessWidget {
       StizeType.caption.copyWith(
         color: onFor(c, scheduled).withValues(alpha: scheduled ? 0.8 : 0.88),
       );
+
+  /// Row 2's left side: arrow + destination, on one baseline with the
+  /// caption beside it. Empty when there is no destination. The follow card
+  /// draws the same line.
+  static Widget destinationLine(String? dest, Color on) {
+    if (dest == null || dest.isEmpty) return const SizedBox.shrink();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        // Baseline-aligned, an icon sits on its bottom edge and reads high:
+        // drop it 3px onto the text's x-height centre.
+        Transform.translate(
+          offset: const Offset(0, 3),
+          child: Icon(StizeIcons.forward, size: 16, color: on),
+        ),
+        const SizedBox(width: StizeSpace.space1),
+        Flexible(
+          child: Text(
+            dest,
+            style: StizeType.label.copyWith(color: on),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
 
   /// The line number on its plate, led by the vehicle type's icon (owner,
   /// 2026-11-25, variant A: colour alone doesn't tell a visitor tram from
@@ -171,7 +199,13 @@ class StizeTransitCard extends StatelessWidget {
         plate(c, type, line, inverted: scheduled),
         const SizedBox(width: StizeSpace.space3),
         const Spacer(),
-        scheduled ? _clock(context, c) : _eta(context, c),
+        scheduled
+            ? _clock(context, c)
+            : ArrivalTime(
+                etaMinutes: etaMinutes,
+                color: c.onTransit,
+                approximate: approximate,
+              ),
       ],
     );
 
@@ -185,31 +219,7 @@ class StizeTransitCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
       children: [
-        Expanded(
-          child: dest == null || dest.isEmpty
-              ? const SizedBox.shrink()
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    // Baseline-aligned, an icon sits on its bottom edge and reads
-                    // high: drop it 3px onto the text's x-height centre.
-                    Transform.translate(
-                      offset: const Offset(0, 3),
-                      child: Icon(StizeIcons.forward, size: 16, color: on),
-                    ),
-                    const SizedBox(width: StizeSpace.space1),
-                    Flexible(
-                      child: Text(
-                        dest,
-                        style: StizeType.label.copyWith(color: on),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-        ),
+        Expanded(child: destinationLine(dest, on)),
         if (rightCaption != null) ...[
           const SizedBox(width: StizeSpace.space3),
           rightCaption,
@@ -318,85 +328,5 @@ class StizeTransitCard extends StatelessWidget {
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
-  }
-
-  /// The big live time: 40 with "min" beside it on one baseline; "now" for a
-  /// due vehicle; a clock time for a far one.
-  Widget _eta(BuildContext context, StizeColors c) {
-    final on = c.onTransit;
-    final l10n = AppLocalizations.of(context);
-    final localeName = Localizations.localeOf(context).toString();
-    final m = etaMinutes;
-
-    final String text;
-    String? unit;
-    if (m == null) {
-      text = '—';
-    } else if (m <= 0) {
-      text = l10n.arrivalEtaNow.toLowerCase(); // "now", not "0"
-    } else if (m >= kFarEtaMinutes) {
-      text = clockAt(localeName, m);
-    } else {
-      text = '$m';
-      unit = l10n.arrivalEtaMinutesUnit;
-    }
-
-    final value = Text(
-      text,
-      key: ValueKey(text),
-      style: StizeType.bigNumber.copyWith(
-        color: on,
-        fontFeatures: const [FontFeature.tabularFigures()],
-      ),
-    );
-
-    // A changed time swaps softly (150ms, 4px) instead of jumping.
-    final swapped = AnimatedSwitcher(
-      duration: StizeMotion.quick,
-      switchInCurve: StizeMotion.inOut,
-      switchOutCurve: StizeMotion.inOut,
-      layoutBuilder: (current, previous) => Stack(
-        alignment: Alignment.centerRight,
-        children: [...previous, ?current],
-      ),
-      transitionBuilder: (child, anim) => FadeTransition(
-        opacity: anim,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.1),
-            end: Offset.zero,
-          ).animate(anim),
-          child: child,
-        ),
-      ),
-      child: value,
-    );
-
-    final block = Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        if (approximate) ...[
-          Text(
-            '≈',
-            style: StizeType.h1.copyWith(
-              fontWeight: FontWeight.w400,
-              height: 1,
-              color: on,
-            ),
-          ),
-          const SizedBox(width: 2),
-        ],
-        swapped,
-        if (unit != null) ...[
-          const SizedBox(width: StizeSpace.space1),
-          Text(unit, style: StizeType.label.copyWith(color: on)),
-        ],
-      ],
-    );
-    return approximate
-        ? Opacity(opacity: approximateOpacity, child: block)
-        : block;
   }
 }
