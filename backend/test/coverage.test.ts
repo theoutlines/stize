@@ -238,12 +238,12 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
       );
       const tram = gj.features.filter((f: any) => f.properties.type === "tram");
       const bus = gj.features.filter((f: any) => f.properties.type === "bus");
-      // Each route draws its own path; on a shared street they share the weight.
+      // One geometry per street: both tram directions merge into one line.
       // 100 + 90 = 190 trips, rounded down to the 150 step.
-      expect(tram.map((f: any) => f.properties.trips)).toEqual([150, 150]);
+      expect(tram.map((f: any) => f.properties.trips)).toEqual([150]);
       expect(bus.map((f: any) => f.properties.trips)).toEqual([35]);
       // Lightest first, so the busiest corridor draws on top.
-      expect(gj.features.map((f: any) => f.properties.trips)).toEqual([35, 150, 150]);
+      expect(gj.features.map((f: any) => f.properties.trips)).toEqual([35, 150]);
     });
 
     it("weights a corridor only by the routes that use it", () => {
@@ -261,16 +261,12 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
       expect([...trips].sort((x: any, y: any) => x - y)).toEqual([200, 260]);
     });
 
-    it("keeps the route's own geometry instead of snapping to the grid", () => {
-      // A curve sampled every ~15 m: off-grid points must survive as drawn.
-      const curve = Array.from({ length: 12 }, (_, i) => [44.8 + i * 0.00013, 20.4 + Math.sin(i / 3) * 0.0004]);
-      const gj = buildCoverageFlow([{ routeId: "c", vehicleType: "bus", tripsPerDay: 50, polyline: curve }], {
-        simplifyEpsilon: 0,
-      });
-      const drawn = gj.features.flatMap((f: any) => f.geometry.coordinates);
-      for (const [lat, lon] of curve) {
-        expect(drawn.some(([x, y]: number[]) => Math.abs(x - lon) < 1e-5 && Math.abs(y - lat) < 1e-5)).toBe(true);
-      }
+    it("stays on the route: smoothed, never cut across", () => {
+      const curve = Array.from({ length: 30 }, (_, i) => [44.8 + i * 0.00013, 20.4 + Math.sin(i / 5) * 0.0015]);
+      const gj = buildCoverageFlow([{ routeId: "c", vehicleType: "bus", tripsPerDay: 50, polyline: curve }]);
+      const near = (lon: number, lat: number) =>
+        curve.some(([y, x]) => Math.hypot((x - lon) * 78700, (y - lat) * 111200) < 25);
+      for (const f of gj.features) for (const [lon, lat] of f.geometry.coordinates) expect(near(lon, lat)).toBe(true);
     });
 
     it("skips routes without trips", () => {

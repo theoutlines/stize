@@ -205,7 +205,7 @@ const coverageOverviewZoom = 11.4;
 
 /// Corridors with `type` and `trips` (backend `build-coverage-flow.mjs`).
 const coverageFlowSourceId = 'coverage-flow-src';
-const coverageFlowUrl = '$apiBaseUrl/api/v1/coverage/flow?rev=6';
+const coverageFlowUrl = '$apiBaseUrl/api/v1/coverage/flow?rev=7';
 
 GeoJsonSource coverageFlowSource() =>
     GeoJsonSource(id: coverageFlowSourceId, data: coverageFlowUrl);
@@ -282,14 +282,13 @@ List<Object> _colorByTrips(String type) {
   ];
 }
 
-/// The crisp stroke of one [type]'s corridors. Opaque, so routes on one
-/// street coincide instead of piling up; butt caps, so pieces of different
-/// width meet flush instead of leaving round beads at every joint.
+/// The crisp stroke of one [type]'s streets: one geometry per street, so
+/// opaque round-capped pieces simply meet end to end.
 LineStyleLayer coverageFlowLayer({required String type}) => LineStyleLayer(
   id: coverageFlowLayerId(type),
   sourceId: coverageFlowSourceId,
   filter: _isType(type),
-  layout: const {'line-cap': 'butt', 'line-join': 'round'},
+  layout: const {'line-cap': 'round', 'line-join': 'round'},
   paint: {'line-color': _colorByTrips(type), 'line-width': _width()},
 );
 

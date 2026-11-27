@@ -330,24 +330,8 @@ export function buildCoveragePoints(shapes, opts = {}) {
   return { type: "FeatureCollection", features };
 }
 
-/**
- * Build coverage mode's *flow lines*: the routes' own street geometry, each
- * piece carrying `trips`: the weekday trips of every route
- * direction of that vehicle type along it. The client turns `trips` into line
- * width and colour, so a street with hundreds of trams a day reads heavier
- * than a lone night bus.
- *
- * The grid is used only to *count*: trips are summed per ~90 m cell, so both
- * directions and every route on a street add up. The geometry is never
- * snapped: each route draws its own path, split where the weight changes,
- * and routes on one street get the same weight, so they overlap as one line.
- *
- * @param {Array<{routeId:string, vehicleType:string, tripsPerDay:number, polyline:number[][]}>} shapes
- * @param {{grid?:number, simplifyEpsilon?:number, coordPrecision?:number}} opts
- */
-// Trips round down to these steps, so neighbouring stretches with slightly
-// different counts join into one line instead of a row of short pieces.
-// Steps ~1.3× apart: small enough that neighbouring pieces barely differ.
+// Trips round down to these steps (~1.3× apart), so a street with slightly
+// different counts along it stays one piece.
 const TRIP_STEPS = [1, 5, 10, 15, 20, 25, 35, 50, 65, 85, 110, 150, 200, 260, 340, 450, 600, 800, 1050, 1400, 1850, 2400, 3150, 4100];
 function bucketTrips(n) {
   let out = TRIP_STEPS[0];
@@ -355,89 +339,71 @@ function bucketTrips(n) {
   return out;
 }
 
+/**
+ * Build coverage mode's *flow lines*: per vehicle type, one geometry per
+ * street. Routes are merged on a fine grid (~25 m, the same identity and
+ * real-point centroids as buildCoverage), so a street several routes share is
+ * a single line, never a stack of slightly offset copies. Each street stretch
+ * carries `trips`: the weekday trips of every route direction along it,
+ * rounded to steps so a street runs as one piece. Lines are smoothed (Chaikin)
+ * so the grid never shows as corners.
+ *
+ * @param {Array<{routeId:string, vehicleType:string, tripsPerDay:number, polyline:number[][]}>} shapes
+ * @param {{grid?:number, smoothPasses?:number, coordPrecision?:number}} opts
+ */
 export function buildCoverageFlow(shapes, opts = {}) {
-  const grid = opts.grid ?? DEFAULT_GRID_DEG;
-  // Counting grid: ~90 m, wide enough to put a boulevard's two carriageways
-  // (two route directions) in one cell, so they add up instead of halving.
-  const countGrid = opts.countGrid ?? 0.0008;
-  const simplifyEpsilon = opts.simplifyEpsilon ?? 0.00003; // ~3 m
+  const grid = opts.grid ?? 0.00025;
+  const passes = opts.smoothPasses ?? 2;
+  const simplifyEpsilon = opts.simplifyEpsilon ?? 0.00004; // ~4 m
   const coordPrecision = opts.coordPrecision ?? 5;
   const round = (v) => Number(v.toFixed(coordPrecision));
+  const trips = new Map(shapes.map((s) => [s.routeId, s.tripsPerDay ?? 0]));
 
   const features = [];
   for (const type of TYPE_ORDER) {
     const ofType = shapes
       .filter((s) => s.vehicleType === type && (s.tripsPerDay ?? 0) > 0)
-      .filter((s) => Array.isArray(s.polyline) && s.polyline.length >= 2)
-      .sort((a, b) => b.tripsPerDay - a.tripsPerDay);
+      .map((s) => ({ line: s.routeId, vehicleType: type, polyline: s.polyline }));
     if (ofType.length === 0) continue;
-
-    // Pass 1: trips per cell of a coarser counting grid (each route once per
-    // cell). Cells, not cell pairs: both carriageways and every route on a
-    // street land in the same cell even where their points cross it apart.
-    const countCell = ([lat, lon]) => nodeKey(snap(lat, lon, countGrid));
-    const routesIn = new Map(); // count cell -> Set(routeId)
-    for (const s of ofType) {
-      for (const pt of s.polyline) {
-        const c = countCell(pt);
-        if (!routesIn.has(c)) routesIn.set(c, new Set());
-        routesIn.get(c).add(s.routeId);
-      }
-    }
-    const tripsOf = new Map(ofType.map((s) => [s.routeId, s.tripsPerDay]));
-    const rawTrips = new Map();
-    for (const [c, ids] of routesIn) {
+    const { segments, nodeCoord } = accumulate(ofType, grid);
+    const groups = new Map(); // trips step -> edges
+    for (const seg of segments.values()) {
       let sum = 0;
-      for (const id of ids) sum += tripsOf.get(id);
-      rawTrips.set(c, sum);
+      for (const id of seg.lines) sum += trips.get(id) ?? 0;
+      const step = bucketTrips(sum);
+      if (!groups.has(step)) groups.set(step, []);
+      groups.get(step).push({ a: seg.a, b: seg.b });
     }
-    // Smooth over the 3×3 neighbourhood (cells the type uses), the same for
-    // every route: routes on one street get the same width at the same spot,
-    // so their strokes coincide, and a junction's spike spreads into a swell.
-    const cellTrips = new Map();
-    for (const c of rawTrips.keys()) {
-      const [y, x] = c.split(",").map(Number);
-      let sum = 0;
-      let n = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const v = rawTrips.get(`${y + dy},${x + dx}`);
-          if (v) (sum += v), n++;
-        }
+    for (const [step, edges] of groups) {
+      for (const chain of chainEdges(edges)) {
+        const raw = simplify(chain.map((node) => nodeCoord.get(nodeKey(node))), simplifyEpsilon);
+        const pts = simplify(chaikin(raw, passes), simplifyEpsilon / 2);
+        features.push({
+          type: "Feature",
+          properties: { type, trips: step },
+          geometry: { type: "LineString", coordinates: pts.map(([lat, lon]) => [round(lon), round(lat)]) },
+        });
       }
-      cellTrips.set(c, bucketTrips(sum / n));
-    }
-    // A stretch weighs what the quieter of its two ends does: at a junction
-    // the cell also counts the crossing street's routes, the next one doesn't.
-    const stretchTripsAt = (a, b) => Math.min(cellTrips.get(countCell(a)), cellTrips.get(countCell(b)));
-
-    // Pass 2: draw each stretch once, in real geometry.
-    for (const s of ofType) {
-      let run = null; // { trips, points }
-      const flush = () => {
-        if (run && run.points.length >= 2) {
-          const pts = simplify(run.points, simplifyEpsilon);
-          features.push({
-            type: "Feature",
-            properties: { type, trips: run.trips },
-            geometry: { type: "LineString", coordinates: pts.map(([lat, lon]) => [round(lon), round(lat)]) },
-          });
-        }
-        run = null;
-      };
-      const poly = s.polyline;
-      for (let i = 1; i < poly.length; i++) {
-        const trips = stretchTripsAt(poly[i - 1], poly[i]);
-        // The next piece starts where this one ends: no gap between them.
-        if (run && run.trips !== trips) flush();
-        if (!run) run = { trips, points: [poly[i - 1]] };
-        run.points.push(poly[i]);
-      }
-      flush();
     }
   }
   features.sort((a, b) => a.properties.trips - b.properties.trips);
   return { type: "FeatureCollection", features };
+}
+
+/** Chaikin corner cutting; the end points stay put so pieces still meet. */
+function chaikin(points, passes) {
+  let pts = points;
+  for (let p = 0; p < passes && pts.length > 2; p++) {
+    const out = [pts[0]];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [a, b] = [pts[i], pts[i + 1]];
+      out.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25]);
+      out.push([a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+    }
+    out.push(pts[pts.length - 1]);
+    pts = out;
+  }
+  return pts;
 }
 
 /**
