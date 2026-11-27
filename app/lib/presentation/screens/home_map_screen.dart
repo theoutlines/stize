@@ -1,4 +1,3 @@
-import 'package:stize/core/design/stize_text.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
