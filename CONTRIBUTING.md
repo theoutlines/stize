@@ -86,6 +86,8 @@ too). It reports, each with a short code:
   strings nothing uses. Delete them in the same change that made them dead.
 - `duplicate`: the same 12+ lines in two places. One pattern is one shared
   function or component (design-system rule).
+- `interp-member`: `'$_name.field'` in a Dart string (Dart interpolates only
+  `_name`); write `${_name.field}`.
 
 The same job prints how many lines the branch adds and removes. A feature that
 adds thousands of lines should say why in its PR. Known debt is accepted by
