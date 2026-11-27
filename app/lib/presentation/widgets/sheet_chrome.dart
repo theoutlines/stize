@@ -3,6 +3,7 @@ import 'package:stize/core/design/stize_text.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import '../../core/context_slot.dart';
 import '../../core/design/stize_icons.dart';
+import '../../core/design/stize_tokens.dart';
 
 /// Shared bottom-sheet chrome, so every mobile sheet (nearby / stop / vehicle /
 /// the in-sheet fleet-card subview) uses ONE width + handle + surface treatment
@@ -202,7 +203,8 @@ class MapSheetCloseButton extends StatelessWidget {
 /// detents (peek, half, large; large is never fullscreen, a map strip always
 /// stays on top), a surface with the sheet radius, the grabber, then
 /// [childBuilder]'s widgets in a column. The stop sheet and the vehicle sheet
-/// both draw THIS, so their chrome can't drift apart.
+/// both draw THIS, so their chrome can't drift apart. It carries the same
+/// `shadow-sheet` as the persistent Nearby sheet.
 ///
 /// The surface is a [Material] (not a plain coloured box) so rows paint their
 /// ink splashes on it; [PointerInterceptor] stops taps on the sheet from
@@ -238,15 +240,23 @@ class MapSheetFrame extends StatelessWidget {
       snapSizes: const [kSheetPeek, kSheetHalf, kSheetLarge],
       expand: false,
       builder: (context, scrollController) => PointerInterceptor(
-        child: Material(
-          color: theme.colorScheme.surface,
-          borderRadius: kSheetRadius,
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              const SheetDragHandle(bottom: 4),
-              ...childBuilder(context, scrollController),
-            ],
+        // The system sheet shadow (design system: MapSheet, `shadow-sheet`),
+        // the same as the Nearby sheet.
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            borderRadius: kSheetRadius,
+            boxShadow: StizeShadow.shadowSheet,
+          ),
+          child: Material(
+            color: theme.colorScheme.surface,
+            borderRadius: kSheetRadius,
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                const SheetDragHandle(bottom: 4),
+                ...childBuilder(context, scrollController),
+              ],
+            ),
           ),
         ),
       ),
