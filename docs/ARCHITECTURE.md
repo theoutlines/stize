@@ -59,6 +59,12 @@ source into a stable versioned API under `/api/v1`. Key pieces:
 - **Feature flags** live in KV and flip without a redeploy
   (`backend/src/lib/featureFlags.ts`).
 
+- **Code map (backend)**. Transport analytics live in `lib/analytics/`
+  (`shared`, `observe` on the request path, `aggregate` and `aggregateParts`
+  for the hourly roll-up, `read` for the app) and the stop sweep in
+  `lib/sweep/` (`config`, `tick`, `status`, `state`); `lib/analytics.ts` and
+  `lib/sweep.ts` re-export them, so import from those.
+
 ## App — layered Flutter (`app/lib/`)
 
 `data/` (repos + API client + local caches) → `domain/` (models + repository
@@ -81,7 +87,10 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
   is still used by the per-stop "vehicles approaching this stop" mini-map
   (`widgets/live_vehicles_map.dart`).
 - **Vehicle movement**: `core/vehicle_track_animator.dart` holds the pure
-  interpolation math (kept separate so it's unit-testable). The backend sends a
+  interpolation math (kept separate so it's unit-testable), with its data
+  classes in the part `vehicle_track.dart`; `core/timed_trajectory.dart` plays
+  one vehicle's plan, and its part `timed_trajectory_plan.dart` turns the plan
+  into a distance-vs-time shape. The backend sends a
   forward timing plan (`trajectory` + `as_of`); markers play it forward by time
   along the route shape, and a vehicle without a usable plan eases conservatively
   toward its latest fix (never past it), with a "looks stuck" staleness
@@ -104,6 +113,10 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
   (`VehicleArranger`, `vehicle_diagnostics`, `follow_model`, and in
   `core/map/`: `RouteShapeCache`, `JamOverlay`, `StopMarkers`); visual pieces
   go to widgets that get what they show plus callbacks (`widgets/map/`).
+  The follow sheet is `widgets/follow_view.dart`, which re-exports its parts
+  (`follow_header`, `follow_route`, `fleet_vehicle_card`); the Nearby list is
+  `widgets/nearby_view.dart` (state) with its rows in the part
+  `nearby_view_parts.dart`.
 
 - **City pages**: `screens/city_screen.dart` (the page and its body) with
   parts in `screens/city/`: `city_heatmap` (delay by hour and day),
