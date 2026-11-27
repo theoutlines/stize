@@ -7,6 +7,13 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.svgLib.path import parse_path
 import pathops
 names=sorted(f[:-4] for f in os.listdir('out'))
+# Codepoints are pinned in codes.json so adding or removing an icon never
+# shifts the others (a shifted code shows the wrong glyph from a cached font).
+# New icons take the next free code; retired codes are never reused.
+pinned=json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'codes.json')))
+known=dict(pinned['codes'])
+taken=set(known.values())|set(pinned['retired'].values())
+nxt=max(taken)+1
 UPM=1024; S=UPM/24
 glyphs={'.notdef':None}; cmap={}; order=['.notdef']; codes={}
 for i,n in enumerate(names):
@@ -23,7 +30,8 @@ for i,n in enumerate(names):
     p.draw(tp)
     gn='i_'+n.replace('-','_')
     glyphs[gn]=pen.glyph(); order.append(gn)
-    code=0xE000+i; cmap[code]=gn; codes[n]=code
+    if n not in known: known[n]=nxt; nxt+=1
+    code=known[n]; cmap[code]=gn; codes[n]=code
 fb=FontBuilder(UPM,isTTF=True)
 fb.setupGlyphOrder(order); fb.setupCharacterMap(cmap)
 empty=TTGlyphPen(None).glyph()
