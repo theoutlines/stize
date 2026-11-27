@@ -13,34 +13,19 @@ extension _MapJams on _HomeMapScreenState {
     if (_jam.processing) return;
     _jam.processing = true;
     try {
-      final segments = <List<ll.LatLng>>[];
-      final glow = <ll.LatLng>[];
-      final jammed = <String>{};
+      final shapes = <String, JamShape?>{};
       for (final jam in board.activeJams) {
         final dir = jam.directionRouteId;
-        final shape = dir == null ? null : await _jamShape(dir);
-        final seg = buildJamSegment(jam, shape?.path);
-        if (seg.polyline != null) {
-          segments.add(seg.polyline!);
-        } else {
-          for (final v in jam.vehicles) {
-            jammed.add(v.garageNo);
-          }
-        }
-        // Glow every affected stop we can resolve from the direction shape.
-        if (shape != null) {
-          for (final id in jam.affectedStopIds) {
-            final c = shape.stops[id];
-            if (c != null) glow.add(c);
-          }
+        if (dir != null && !shapes.containsKey(dir)) {
+          shapes[dir] = await _jamShape(dir);
         }
       }
       if (!mounted) return;
-      _jam.segments = segments;
-      _jam.glowStops = glow;
-      _jam.jammedGarages = jammed;
+      final next = JamOverlay.build(board.activeJams, shapes)
+        ..continuePulseFrom(_jam.overlay);
+      _jam.overlay = next;
       await _syncJamLayers();
-      _updateJamPulse(active: segments.isNotEmpty || glow.isNotEmpty);
+      _updateJamPulse(active: next.isVisible);
       _reconcileCoverageLayer(); // dim coverage under jam mode (2c)
       _paintVehicles(); // refresh the badge state on the markers
       if (mounted) _setState(() {}); // jam-mode button visibility/count
@@ -49,9 +34,7 @@ extension _MapJams on _HomeMapScreenState {
     }
   }
 
-  Future<({RoutePath? path, Map<String, ll.LatLng> stops})?> _jamShape(
-    String directionRouteId,
-  ) async {
+  Future<JamShape?> _jamShape(String directionRouteId) async {
     final cached = _jam.shapeCache[directionRouteId];
     if (cached != null) return cached;
     if (_jam.shapeCache.containsKey(directionRouteId)) return null;
@@ -75,9 +58,8 @@ extension _MapJams on _HomeMapScreenState {
   /// runs ONLY while a jam is on screen — an empty map spins nothing (thermal).
   void _updateJamPulse({required bool active}) {
     if (active) {
-      _jam.pulseTimer ??= Timer.periodic(const Duration(milliseconds: 90), (_) {
-        _jam.pulsePhase =
-            (_jam.pulsePhase + (2 * math.pi * 0.09 / 1.75)) % (2 * math.pi);
+      _jam.pulseTimer ??= Timer.periodic(JamOverlay.pulseTick, (_) {
+        _jam.overlay.advancePulse();
         _repushJamOpacity();
       });
     } else {
@@ -85,9 +67,6 @@ extension _MapJams on _HomeMapScreenState {
       _jam.pulseTimer = null;
     }
   }
-
-  double get _jamPulseOpacity =>
-      0.5 + 0.5 * (0.5 + 0.5 * math.sin(_jam.pulsePhase));
 
   void _repushJamOpacity() {
     final style = _style;
@@ -97,11 +76,11 @@ extension _MapJams on _HomeMapScreenState {
     // the per-feature `opacity` via a data expression.
     style.updateGeoJsonSource(
       id: _stopSourceId(_LayerIds.jamSegment),
-      data: _jamSegmentsGeoJson(),
+      data: _jam.overlay.segmentsGeoJson(),
     );
     style.updateGeoJsonSource(
       id: _stopSourceId(_LayerIds.jamGlow),
-      data: _jamGlowGeoJson(),
+      data: _jam.overlay.glowGeoJson(),
     );
   }
 
@@ -110,7 +89,7 @@ extension _MapJams on _HomeMapScreenState {
   Future<void> _syncJamLayers() async {
     final style = _style;
     if (style == null) return;
-    final hasAnything = _jam.segments.isNotEmpty || _jam.glowStops.isNotEmpty;
+    final hasAnything = _jam.overlay.isVisible;
     if (!hasAnything) {
       if (_jam.layersAdded) {
         for (final id in const [_LayerIds.jamSegment, _LayerIds.jamGlow]) {
@@ -136,7 +115,7 @@ extension _MapJams on _HomeMapScreenState {
         await style.addSource(
           GeoJsonSource(
             id: _stopSourceId(_LayerIds.jamGlow),
-            data: _jamGlowGeoJson(),
+            data: _jam.overlay.glowGeoJson(),
           ),
         );
         await style.addLayer(
@@ -155,7 +134,7 @@ extension _MapJams on _HomeMapScreenState {
         await style.addSource(
           GeoJsonSource(
             id: _stopSourceId(_LayerIds.jamSegment),
-            data: _jamSegmentsGeoJson(),
+            data: _jam.overlay.segmentsGeoJson(),
           ),
         );
         await style.addLayer(
@@ -175,55 +154,16 @@ extension _MapJams on _HomeMapScreenState {
       } else {
         await style.updateGeoJsonSource(
           id: _stopSourceId(_LayerIds.jamGlow),
-          data: _jamGlowGeoJson(),
+          data: _jam.overlay.glowGeoJson(),
         );
         await style.updateGeoJsonSource(
           id: _stopSourceId(_LayerIds.jamSegment),
-          data: _jamSegmentsGeoJson(),
+          data: _jam.overlay.segmentsGeoJson(),
         );
       }
     } catch (_) {
       _jam.layersAdded = false;
     }
-  }
-
-  String _jamSegmentsGeoJson() {
-    final o = _jam.segments.isEmpty ? 0.0 : _jamPulseOpacity;
-    return jsonEncode({
-      'type': 'FeatureCollection',
-      'features': [
-        for (final seg in _jam.segments)
-          {
-            'type': 'Feature',
-            'geometry': {
-              'type': 'LineString',
-              'coordinates': [
-                for (final p in seg) [p.longitude, p.latitude],
-              ],
-            },
-            'properties': {'opacity': o},
-          },
-      ],
-    });
-  }
-
-  String _jamGlowGeoJson() {
-    // The glow breathes a touch softer than the line.
-    final o = _jam.glowStops.isEmpty ? 0.0 : (_jamPulseOpacity * 0.55);
-    return jsonEncode({
-      'type': 'FeatureCollection',
-      'features': [
-        for (final p in _jam.glowStops)
-          {
-            'type': 'Feature',
-            'geometry': {
-              'type': 'Point',
-              'coordinates': [p.longitude, p.latitude],
-            },
-            'properties': {'opacity': o},
-          },
-      ],
-    });
   }
 
   /// The jam-mode toggle button. Present only when the city has active jams; a

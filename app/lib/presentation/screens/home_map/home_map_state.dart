@@ -38,14 +38,11 @@ abstract final class _LayerIds {
 class _JamState {
   bool layersAdded = false;
   bool processing = false; // guards the async shape-load reentrancy
-  List<List<ll.LatLng>> segments = const []; // amber polylines to draw
-  List<ll.LatLng> glowStops = const []; // affected-stop points to glow
-  Set<String> jammedGarages = const {}; // off-shape jams → badge these markers
+  // What the overlay draws (segments, glows, badged vehicles) and its pulse.
+  JamOverlay overlay = JamOverlay.empty;
   // Direction route_id → its shape path + stop id→coord map (for segment + glow).
-  final Map<String, ({RoutePath? path, Map<String, ll.LatLng> stops})?>
-  shapeCache = {};
+  final Map<String, JamShape?> shapeCache = {};
   Timer? pulseTimer; // runs only while a jam is shown
-  double pulsePhase = 0; // 0..2π, advanced by the pulse timer
   bool modeOn = false; // the jam-mode map toggle (fit to all active jams)
 }
 
@@ -176,19 +173,14 @@ class _FollowState {
 /// Route shapes per line for the moving vehicles, and the last vehicle set to
 /// re-apply when a shape arrives late (home_map_vehicles.dart).
 class _ShapeState {
-  // Per-line route geometry cache (X5): line number -> path (null = fetched but
-  // unavailable). Vehicles move along these instead of teleporting.
-  final Map<String, RoutePath?> byLine = {};
-  final Set<String> fetching = {};
+  /// Route geometry per direction route_id or line number (see
+  /// [RouteShapeCache]): fetched once, a failure retried after 30 s.
+  final RouteShapeCache cache = RouteShapeCache();
 
-  /// When a shape lookup last failed. A failure (a network blip) is retried
-  /// after [_shapeRetryAfter] instead of being cached for the session, which
-  /// left that direction's vehicles off the road until a reload.
-  final Map<String, DateTime> failedAt = {};
   // The last vehicle set handed to the animator, kept so a route shape that
   // finishes loading *after* a sync can be re-applied immediately (upgrading a
   // vehicle from its raw GPS fix onto the real road geometry)
-  // instead of waiting for the next 30s poll. Debounced by [_shapeResyncTimer]
+  // instead of waiting for the next 30s poll. Debounced by [resyncTimer]
   // so a burst of shape loads (panning brings in many lines) coalesces into one
   // re-sync.
   List<AreaVehicle> lastShown = const [];

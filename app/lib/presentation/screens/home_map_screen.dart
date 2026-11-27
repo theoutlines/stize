@@ -34,6 +34,8 @@ import '../../core/route_path.dart';
 import '../../core/user_location_tracker.dart';
 import '../../core/vehicle_map_mode.dart';
 import '../../core/vehicle_route.dart';
+import '../../core/map/jam_overlay.dart';
+import '../../core/map/route_shape_cache.dart';
 import '../../core/vehicle_arrangement.dart';
 import '../../core/vehicle_diagnostics.dart';
 import '../../core/vehicle_track_animator.dart';
@@ -255,7 +257,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   Geographic? _pendingCenter;
   double? _pendingZoom;
 
-  static const _shapeRetryAfter = Duration(seconds: 30);
 
   Geographic? _pinnedPlace;
 
