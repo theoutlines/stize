@@ -101,52 +101,6 @@ class ContextPanel extends StatelessWidget {
   }
 }
 
-/// The single `[← back] [title]` navigation row inside a context view (stop /
-/// vehicle / model). Back walks up the chain — there is no separate close.
-class ContextNavRow extends StatelessWidget {
-  const ContextNavRow({
-    super.key,
-    required this.onBack,
-    required this.title,
-    this.leading,
-    this.trailing,
-  });
-
-  final VoidCallback onBack;
-
-  /// The current view's title (stop name / direction / model name).
-  final String title;
-
-  /// Optional element between the back arrow and the title (e.g. the line pill).
-  final Widget? leading;
-
-  /// Optional trailing action (e.g. the favourite star on a stop).
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          icon: const Icon(StizeIcons.back),
-          onPressed: onBack,
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-        ),
-        ?leading,
-        if (leading != null) const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            title,
-            style: StizeText.of(context).label,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        ?trailing,
-      ],
-    );
-  }
-}
-
 /// The floating "Back to vehicle" pill (owner decision #8) — shown ONLY while
 /// follow is interrupted (a manual pan, or the vehicle left the viewport).
 /// Recenters the camera on the vehicle and resumes follow; the label is the

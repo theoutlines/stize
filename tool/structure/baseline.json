@@ -18,15 +18,9 @@
     "backend/src/lib/sweep.ts": 650
   },
   "dead-file": [],
-  "dead-widget": [
-    "app/lib/presentation/widgets/context_shell.dart:ContextNavRow"
-  ],
+  "dead-widget": [],
   "dead-export": [
-    "backend/src/lib/feedback.ts:StopReportCategory",
-    "backend/src/lib/gtfsData.ts:getLineDirections (tests only)",
-    "backend/src/lib/gtfsData.ts:nearestStop (tests only)",
-    "backend/src/lib/kvCache.ts:kvCacheClear (tests only)",
-    "backend/src/lib/schedule.ts:scheduledMapObjectsForRoute (tests only)"
+    "backend/src/lib/kvCache.ts:kvCacheClear (tests only)"
   ],
   "unused-string": [],
   "duplicate": [],
