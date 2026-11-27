@@ -107,8 +107,10 @@ class _TracesPainter extends CustomPainter {
   ];
 
   /// Thread opacity from the route's own trips (busiest single ~260 a day).
+  /// Fainter at the city view, where many more threads overlap per pixel.
   double _alpha(int trips) =>
-      0.1 + 0.45 * math.min(1.0, math.sqrt(trips / 260));
+      (0.08 + 0.42 * math.min(1.0, math.sqrt(trips / 260))) *
+      ui.lerpDouble(0.4, 1, ((zoom - 11) / 4).clamp(0.0, 1.0))!;
 
   @override
   void paint(Canvas canvas, Size size) {
