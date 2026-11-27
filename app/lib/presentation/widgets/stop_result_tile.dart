@@ -17,7 +17,6 @@ class StopResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = StizeColors.of(context);
     final code = stop.code;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
