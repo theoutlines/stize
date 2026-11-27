@@ -38,6 +38,13 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   of text.
 - **"Back" is a left chevron** everywhere.
 
+- **One mark for "no stop here".** "No stops nearby" and "Can't find that
+  stop" now share a crossed-out stop sign instead of a crossed-out arrow and
+  a crossed-out crosshair; a stop that can't be found shows no ⋯ menu.
+- **"Back to 29" in one pill.** On desktop the off-screen hint and the
+  "Back to vehicle" button are one pill: an arrow toward the vehicle, "Back
+  to" and the line badge.
+
 ### Fixed (afternoon)
 - **City shows the offline mark on a network error,** not a crossed-out
   location arrow.

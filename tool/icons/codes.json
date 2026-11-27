@@ -15,6 +15,8 @@
   "groups": 57371,
   "history": 57373,
   "leaf": 57377,
+  "locate-off": 57380,
+  "near-me-off": 57388,
   "pin-push": 57392,
   "pin-push-filled": 57393,
   "ruler": 57397,
@@ -53,7 +55,6 @@
   "info": 57376,
   "live-transport": 57378,
   "locate": 57379,
-  "locate-off": 57380,
   "luggage": 57381,
   "map": 57382,
   "menu": 57383,
@@ -61,7 +62,6 @@
   "moon": 57385,
   "more": 57386,
   "near-me": 57387,
-  "near-me-off": 57388,
   "offline": 57389,
   "pause": 57390,
   "pin": 57391,
@@ -78,6 +78,7 @@
   "train": 57412,
   "tram": 57413,
   "trolleybus": 57416,
-  "warning": 57419
+  "warning": 57419,
+  "stop-off": 57421
  }
 }

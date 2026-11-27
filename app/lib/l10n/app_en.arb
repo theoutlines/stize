@@ -84,17 +84,12 @@
     "description": "Title/back-chip label for the nearby view of the adaptive context slot"
   },
   "backToVehicle": "Back to vehicle",
+  "backTo": "Back to",
+  "@backTo": {
+    "description": "Start of the \"Back to <line badge>\" pill when the followed vehicle left the view."
+  },
   "@backToVehicle": {
     "description": "Pill shown when following is interrupted (manual pan or the vehicle left the screen); recenters and resumes follow"
-  },
-  "vehicleOffScreen": "{line} is off-screen",
-  "@vehicleOffScreen": {
-    "description": "Hint next to the Back-to-vehicle pill when the followed vehicle is off-screen",
-    "placeholders": {
-      "line": {
-        "type": "String"
-      }
-    }
   },
   "routeUnavailable": "Route unavailable for this line",
   "@routeUnavailable": {

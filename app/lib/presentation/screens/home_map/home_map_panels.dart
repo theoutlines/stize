@@ -121,7 +121,8 @@ extension _MapPanels on _HomeMapScreenState {
           onBack: _slotBack,
           // Mobile: the close rides above the sheet (MapSheetCloseButton).
           onClose: _panelActive ? _closeAllLevels : null,
-          trailing: top is StopLevel
+          // A stop we can't find (an old link) has nothing to save or report.
+          trailing: top is StopLevel && title.isNotEmpty
               ? StopHeaderActions(stopId: top.id, stopName: title)
               : null,
         );
@@ -285,7 +286,7 @@ extension _MapPanels on _HomeMapScreenState {
   }
 
   /// The "Back to vehicle" pill, pinned to the bottom of the VISIBLE map area
-  /// (right of the panel) with an off-screen hint. Decision #8, desktop-only.
+  /// (right of the panel). Decision #8, desktop-only.
   Widget _backToVehiclePill(
     AppLocalizations l10n,
     ThemeData theme, {
@@ -295,6 +296,7 @@ extension _MapPanels on _HomeMapScreenState {
         ? null
         : _vehAnimator.trackFor(_selectedVehicleKey!);
     final line = _focus?.line ?? track?.line ?? '';
+    final type = _focus?.type ?? track?.type;
     final leftInset = panelWidthFor(size.width);
     return Positioned(
       left: leftInset,
@@ -302,31 +304,11 @@ extension _MapPanels on _HomeMapScreenState {
       bottom: 16,
       child: SafeArea(
         child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (line.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    l10n.vehicleOffScreen(line),
-                    style: StizeText.of(context).control,
-                  ),
-                ),
-              BackToVehiclePill(
-                line: line,
-                onTap: _resumeFollowFromPill,
-                arrowTurns: _offScreenArrowTurns(size),
-              ),
-            ],
+          child: BackToVehiclePill(
+            line: line,
+            type: type,
+            onTap: _resumeFollowFromPill,
+            arrowTurns: _offScreenArrowTurns(size),
           ),
         ),
       ),

@@ -28,7 +28,6 @@ abstract final class StizeIcons {
   static const IconData info = IconData(0xE020, fontFamily: _family);
   static const IconData liveTransport = IconData(0xE022, fontFamily: _family);
   static const IconData locate = IconData(0xE023, fontFamily: _family);
-  static const IconData locateOff = IconData(0xE024, fontFamily: _family);
   static const IconData luggage = IconData(0xE025, fontFamily: _family);
   static const IconData map = IconData(0xE026, fontFamily: _family);
   static const IconData menu = IconData(0xE027, fontFamily: _family);
@@ -36,7 +35,6 @@ abstract final class StizeIcons {
   static const IconData moon = IconData(0xE029, fontFamily: _family);
   static const IconData more = IconData(0xE02A, fontFamily: _family);
   static const IconData nearMe = IconData(0xE02B, fontFamily: _family);
-  static const IconData nearMeOff = IconData(0xE02C, fontFamily: _family);
   static const IconData offline = IconData(0xE02D, fontFamily: _family);
   static const IconData pause = IconData(0xE02E, fontFamily: _family);
   static const IconData pin = IconData(0xE02F, fontFamily: _family);
@@ -49,6 +47,7 @@ abstract final class StizeIcons {
   static const IconData shield = IconData(0xE03A, fontFamily: _family);
   static const IconData star = IconData(0xE03E, fontFamily: _family);
   static const IconData starFilled = IconData(0xE03F, fontFamily: _family);
+  static const IconData stopOff = IconData(0xE04D, fontFamily: _family);
   static const IconData stats = IconData(0xE040, fontFamily: _family);
   static const IconData train = IconData(0xE044, fontFamily: _family);
   static const IconData tram = IconData(0xE045, fontFamily: _family);
