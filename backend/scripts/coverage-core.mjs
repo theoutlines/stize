@@ -438,3 +438,33 @@ export function buildCoverageFlow(shapes, opts = {}) {
   features.sort((a, b) => a.properties.trips - b.properties.trips);
   return { type: "FeatureCollection", features };
 }
+
+/**
+ * Build coverage mode's *glow points*: every city route resampled every
+ * `stepMetres`, one MultiPoint per route carrying its `type` and own weekday
+ * `trips`. The client draws them as a narrow heatmap under the strokes: where
+ * routes share a street their points pile up and the glow brightens, but only
+ * within the heatmap's radius and up to the top of its colour ramp, so it
+ * accumulates without blooming over the block.
+ *
+ * @param {Array<{vehicleType:string, tripsPerDay:number, polyline:number[][]}>} shapes
+ * @param {{stepMetres?:number, coordPrecision?:number}} opts
+ */
+export function buildCoverageGlow(shapes, opts = {}) {
+  const step = opts.stepMetres ?? 25;
+  const precision = opts.coordPrecision ?? 5;
+  const round = (v) => Number(v.toFixed(precision));
+  const features = [];
+  for (const s of shapes) {
+    if (!(s.tripsPerDay > 0) || !Array.isArray(s.polyline) || s.polyline.length < 2) continue;
+    features.push({
+      type: "Feature",
+      properties: { type: s.vehicleType, trips: s.tripsPerDay },
+      geometry: {
+        type: "MultiPoint",
+        coordinates: resample(s.polyline, step).map(([lat, lon]) => [round(lon), round(lat)]),
+      },
+    });
+  }
+  return { type: "FeatureCollection", features };
+}

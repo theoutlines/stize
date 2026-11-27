@@ -77,3 +77,15 @@ export function buildCoverageFlow(
   shapes: CoverageFlowShape[],
   opts?: { grid?: number; countGrid?: number; simplifyEpsilon?: number; coordPrecision?: number },
 ): { type: "FeatureCollection"; features: CoverageFlowFeature[] };
+
+export function buildCoverageGlow(
+  shapes: { vehicleType: string; tripsPerDay: number; polyline: number[][] }[],
+  opts?: { stepMetres?: number; coordPrecision?: number },
+): {
+  type: "FeatureCollection";
+  features: {
+    type: "Feature";
+    properties: { type: string; trips: number };
+    geometry: { type: "MultiPoint"; coordinates: number[][] };
+  }[];
+};

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accumulateSegments, buildCoverage, buildCoverageFlow, buildCoveragePoints } from "../scripts/coverage-core.mjs";
+import { accumulateSegments, buildCoverage, buildCoverageFlow, buildCoverageGlow, buildCoveragePoints } from "../scripts/coverage-core.mjs";
 
 // A straight west→east run of points along one latitude, spaced ~1 grid cell
 // apart at grid=0.001 so each pair lands in a distinct cell.
@@ -280,4 +280,21 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
       expect(gj.features).toHaveLength(0);
     });
   });
+
+  describe("buildCoverageGlow", () => {
+    it("one MultiPoint per route, resampled, carrying its own trips", () => {
+      const gj = buildCoverageGlow(
+        [
+          { vehicleType: "tram", tripsPerDay: 120, polyline: horizontalLine(44.8, 20.4, 10) },
+          { vehicleType: "bus", tripsPerDay: 0, polyline: horizontalLine(44.8, 20.4, 10) },
+        ],
+        { stepMetres: 25 },
+      );
+      expect(gj.features).toHaveLength(1);
+      expect(gj.features[0].properties).toEqual({ type: "tram", trips: 120 });
+      // ~790 m at 25 m steps.
+      expect(gj.features[0].geometry.coordinates.length).toBeGreaterThan(28);
+    });
+  });
 });
+

@@ -241,51 +241,38 @@ List<Object> _isType(String type) => [
   type,
 ];
 
-/// Line width by trips at the city view, times [k], plus [plus] px: a
-/// hairline for a few trips, ~6.5 px for the busiest corridor.
-List<Object> _widthByTrips(double k, {double plus = 0}) => [
+/// Line width by trips at the city view, times [k]: a hairline for a few
+/// trips, ~6.5 px for the busiest corridor.
+List<Object> _widthByTrips(double k) => [
   'interpolate',
   ['linear'],
   ['get', 'trips'],
   1,
-  0.4 * k + plus,
+  0.4 * k ,
   50,
-  0.9 * k + plus,
+  0.9 * k ,
   300,
-  2 * k + plus,
+  2 * k ,
   1000,
-  3.6 * k + plus,
+  3.6 * k ,
   4000,
-  6.5 * k + plus,
+  6.5 * k ,
 ];
 
 /// The width over zoom: as above at the city view, 1.6× up close.
-List<Object> _width({double plus = 0}) => [
+List<Object> _width() => [
   'interpolate',
   ['linear'],
   ['zoom'],
   11,
-  _widthByTrips(1, plus: plus),
+  _widthByTrips(1),
   15,
-  _widthByTrips(1.6, plus: plus * 1.5),
+  _widthByTrips(1.6),
 ];
 
-/// [hex] mixed toward [bg] by [t] (0 = colour, 1 = background).
-String _mix(String hex, String bg, double t) {
-  int ch(String h, int i) =>
-      int.parse(h.substring(1 + i * 2, 3 + i * 2), radix: 16);
-  String out(int i) => (ch(hex, i) + (ch(bg, i) - ch(hex, i)) * t)
-      .round()
-      .toRadixString(16)
-      .padLeft(2, '0');
-  return '#${out(0)}${out(1)}${out(2)}';
-}
-
-/// Colour by trips along the type's ramp, optionally mixed toward [bg].
-List<Object> _colorByTrips(String type, {String? bg, double mix = 0}) {
-  final r = [
-    for (final c in _coverageRamps[type]!) bg == null ? c : _mix(c, bg, mix),
-  ];
+/// Colour by trips along the type's ramp.
+List<Object> _colorByTrips(String type) {
+  final r = _coverageRamps[type]!;
   final t = _coverageTripStops[type]!;
   return [
     'interpolate',
@@ -295,37 +282,85 @@ List<Object> _colorByTrips(String type, {String? bg, double mix = 0}) {
   ];
 }
 
-/// The background of the data-viz basemap (see map_style_dataviz.dart): the
-/// halo is premixed toward it, so it reads as glow without being see-through.
-String _bg(bool dark) => dark ? '#0E0F14' : '#EDEEF0';
-
-/// The crisp stroke of one [type]'s corridors. Opaque: routes on one street
-/// coincide and read as one line instead of piling up.
+/// The crisp stroke of one [type]'s corridors. Opaque, so routes on one
+/// street coincide instead of piling up; butt caps, so pieces of different
+/// width meet flush instead of leaving round beads at every joint.
 LineStyleLayer coverageFlowLayer({required String type}) => LineStyleLayer(
   id: coverageFlowLayerId(type),
   sourceId: coverageFlowSourceId,
   filter: _isType(type),
-  layout: const {'line-cap': 'round', 'line-join': 'round'},
+  layout: const {'line-cap': 'butt', 'line-join': 'round'},
   paint: {'line-color': _colorByTrips(type), 'line-width': _width()},
 );
 
-/// The halo under one [type]'s corridors: a fixed few pixels wider than the
-/// stroke, in the stroke's colour mixed toward the background, and opaque.
-/// However many routes meet at a junction, it never spreads or brightens
-/// past that: no blobs over the block.
-LineStyleLayer coverageGlowLayer({required String type, required bool dark}) =>
-    LineStyleLayer(
-      id: coverageGlowLayerId(type),
-      sourceId: coverageFlowSourceId,
-      filter: _isType(type),
-      layout: const {'line-cap': 'round', 'line-join': 'round'},
-      paint: {
-        'line-color': _colorByTrips(
-          type,
-          bg: _bg(dark),
-          mix: dark ? 0.72 : 0.7,
-        ),
-        'line-width': _width(plus: 3),
-        'line-blur': 1.5,
-      },
-    );
+/// Per-route points for the glow (backend `buildCoverageGlow`).
+const coverageGlowSourceId = 'coverage-glow-src';
+const coverageGlowUrl = '$apiBaseUrl/api/v1/coverage/glow?rev=1';
+
+GeoJsonSource coverageGlowSource() =>
+    GeoJsonSource(id: coverageGlowSourceId, data: coverageGlowUrl);
+
+/// The glow under one [type]'s corridors: a narrow heatmap of the routes'
+/// points. Routes sharing a street add up and the glow brightens, but within
+/// limits: the radius bounds how far it spreads (about 35 m on the ground up
+/// close, a few pixels at the city view), and the ramp tops out at the
+/// type's tint at [_glowPeak] opacity, so a junction of thirty routes glows
+/// no wider and no brighter than a busy boulevard.
+HeatmapStyleLayer coverageGlowLayer({required String type, required bool dark}) {
+  final r = _coverageRamps[type]!;
+  final peak = dark ? 0.55 : 0.45;
+  String a(String hex, double o) =>
+      '$hex${(o * 255).round().toRadixString(16).padLeft(2, '0')}';
+  return HeatmapStyleLayer(
+    id: coverageGlowLayerId(type),
+    sourceId: coverageGlowSourceId,
+    filter: _isType(type),
+    paint: {
+      // A route's own trips, up to the busiest single route (~260 a day).
+      'heatmap-weight': [
+        'interpolate',
+        ['linear'],
+        ['get', 'trips'],
+        0,
+        0,
+        260,
+        1,
+      ],
+      'heatmap-radius': [
+        'interpolate',
+        ['exponential', 2],
+        ['zoom'],
+        11,
+        3,
+        13,
+        5,
+        15,
+        11,
+        18,
+        80,
+      ],
+      'heatmap-intensity': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        11,
+        0.6,
+        15,
+        0.9,
+      ],
+      'heatmap-color': [
+        'interpolate',
+        ['linear'],
+        ['heatmap-density'],
+        0,
+        a(r[1], 0),
+        0.15,
+        a(r[1], peak * 0.35),
+        0.5,
+        a(r[2], peak * 0.75),
+        1,
+        a(r[3], peak),
+      ],
+    },
+  );
+}

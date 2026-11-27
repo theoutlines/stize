@@ -350,10 +350,11 @@ extension _MapLayers on _HomeMapScreenState {
       _cov.modeLayers.remove(id);
     }
     if (!_cov.mode || !mounted) return;
-    try {
-      await style.addSource(coverageFlowSource());
-    } catch (_) {
-      // Already there: the corridors are fetched once per style.
+    // Fetched once per style; a second add just throws.
+    for (final src in [coverageFlowSource(), coverageGlowSource()]) {
+      try {
+        await style.addSource(src);
+      } catch (_) {}
     }
     final picked = ref.read(coverageTypesProvider);
     // Under the stop and vehicle layers, so a focus left over can't hide

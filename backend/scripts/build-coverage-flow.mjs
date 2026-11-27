@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Builds public/gtfs/coverage-flow.geojson: coverage mode's flow lines. Per
+// Builds public/gtfs/coverage-flow.geojson (coverage mode's flow lines) and
+// coverage-glow.geojson (per-route points for the glow heatmap). Per
 // vehicle type, city routes collapse into shared corridors carrying `trips`
 // (weekday trips of every route direction along them, from
 // public/gtfs/trips/<route_id>.json); the client maps `trips` to line width.
@@ -9,7 +10,7 @@
 import { existsSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { join } from "node:path";
-import { buildCoverageFlow } from "./coverage-core.mjs";
+import { buildCoverageFlow, buildCoverageGlow } from "./coverage-core.mjs";
 
 const OUT_DIR = join(import.meta.dirname, "..", "public", "gtfs");
 
@@ -46,6 +47,14 @@ function main() {
       polyline: shape.polyline ?? [],
     });
   }
+  // Glow points: every route on its own, so the heatmap sums them.
+  const glow = buildCoverageGlow(shapes, { stepMetres: 35, coordPrecision: 4 });
+  const glowPath = join(OUT_DIR, "coverage-glow.geojson");
+  const glowJson = JSON.stringify(glow);
+  writeFileSync(glowPath, glowJson);
+  const pts = glow.features.reduce((n, f) => n + f.geometry.coordinates.length, 0);
+  console.log(`Wrote ${glowPath}: ${pts} points, ~${(gzipSync(glowJson).length / 1024).toFixed(0)} KB gzip`);
+
   const geojson = buildCoverageFlow(shapes);
   const outPath = join(OUT_DIR, "coverage-flow.geojson");
   const json = JSON.stringify(geojson);

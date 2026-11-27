@@ -238,6 +238,17 @@ export function transitRoutes(app: App): void {
     });
   });
 
+  // Coverage mode's glow points (coverage-glow.geojson): per-route points the
+  // client sums in a narrow heatmap. Same serving rules as above.
+  app.get("/api/v1/coverage/glow", async (c) => {
+    const res = await c.env.ASSETS.fetch(new URL("/gtfs/coverage-glow.geojson", "https://assets.internal"));
+    if (!res.ok) return c.json({ error: "coverage data unavailable" }, 404);
+    return c.newResponse(res.body, 200, {
+      "content-type": "application/json",
+      "cache-control": "public, max-age=3600, s-maxage=60",
+    });
+  });
+
   // Convenience alias: look a line up by its number directly (e.g. "79", "7L").
   app.get("/api/v1/lines/by-number/:line/shape", async (c) => {
     const line = c.req.param("line");
