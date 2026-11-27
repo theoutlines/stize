@@ -38,6 +38,15 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   of text.
 - **"Back" is a left chevron** everywhere.
 
+- **Coverage lives on the map.** Coverage (behind its flag) is no longer a
+  separate screen with its own map: it opens from the menu as a level, like
+  Settings, and the home map itself switches to the transit heat, takes in the
+  whole city and hides stops and vehicles; back returns the camera. The level
+  holds the type filters (All, Tram, Trolleybus, Bus, now with the vehicle
+  icons and the app's chip style, scrolling sideways) and a short density key.
+- **Heat in the transit colours.** Each type glows in its own colour (tram
+  red, trolleybus orange, bus blue); where types share a corridor the glows
+  overlap and mix. Single routes stay a faint veil, busy corridors light up.
 - **One mark for "no stop here".** "No stops nearby" and "Can't find that
   stop" now share a crossed-out stop sign instead of a crossed-out arrow and
   a crossed-out crosshair; a stop that can't be found shows no ⋯ menu.

@@ -170,7 +170,9 @@ extension _MapStops on _HomeMapScreenState {
     final focused = _focus != null;
     final zoom = _controller?.getCamera().zoom ?? 15.0;
     final hidden =
-        focused || (_cov.enabled && coverageMainStopsOpacity(zoom) <= 0.01);
+        focused ||
+        _cov.mode ||
+        (_cov.enabled && coverageMainStopsOpacity(zoom) <= 0.01);
     final favStops =
         ref.read(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
     // Serialise via `jsonEncode`, NOT geobase's `FeatureCollection.toText()`:

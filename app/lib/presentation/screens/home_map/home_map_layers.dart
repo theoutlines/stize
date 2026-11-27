@@ -125,6 +125,8 @@ extension _MapLayers on _HomeMapScreenState {
       });
     }
     _reconcileCoverageLayer();
+    _cov.modeLayers.clear();
+    if (_cov.mode) _refreshCoverageModeLayers();
     _openLinkedStop();
   }
 
@@ -181,7 +183,10 @@ extension _MapLayers on _HomeMapScreenState {
     final t = _vehAnim.value;
     final focusLine = _focus?.line;
     final objects = <MovingObject>[];
-    for (final entry in _vehAnimator.currentPositions(t)) {
+    // Coverage mode shows the network, not who is where right now.
+    for (final entry in _cov.mode
+        ? const <MapEntry<String, ll.LatLng>>[]
+        : _vehAnimator.currentPositions(t)) {
       final track = _vehAnimator.trackFor(entry.key);
       if (track == null) continue;
       if (focusLine != null && track.line != focusLine) continue;
@@ -257,7 +262,19 @@ extension _MapLayers on _HomeMapScreenState {
     if (style == null || controller == null) return;
     // Jam mode: the event matters more than the ambient density backdrop, so hide
     // the coverage heatmap while it's on (2c). Restored when jam mode turns off.
-    if (_jam.modeOn) {
+    if (_jam.modeOn || _cov.mode) {
+      // Coverage mode draws its own per-type heat from the same source, so
+      // only the backdrop layer goes; the source stays.
+      if (_cov.mode) {
+        if (_cov.added) {
+          try {
+            await style.removeLayer(coverageMainLayerId);
+          } catch (_) {}
+          _cov.added = false;
+          _cov.active = false;
+        }
+        return;
+      }
       if (_cov.added) {
         try {
           await style.removeLayer(coverageMainLayerId);
@@ -279,11 +296,80 @@ extension _MapLayers on _HomeMapScreenState {
     _cov.added = true;
     final dark = Theme.of(context).brightness == Brightness.dark;
     try {
-      await style.addSource(coverageSource());
+      await _ensureCoverageSource(style);
       await style.addLayer(coverageMainLayer(dark: dark));
     } catch (_) {
       // Failed (e.g. style torn down mid-add) — allow a later retry.
       _cov.added = false;
+    }
+  }
+
+  /// Adds the shared coverage source unless the style already has it (the
+  /// backdrop and coverage mode share it).
+  Future<void> _ensureCoverageSource(StyleController style) async {
+    try {
+      await style.addSource(coverageSource());
+    } catch (_) {
+      // Already there.
+    }
+  }
+
+  /// Coverage mode on: hide stops and vehicles, show the per-type heat, take
+  /// in the whole city. Off: the reverse, camera back where the user was.
+  Future<void> _applyCoverageMode(bool on) async {
+    final c = _controller;
+    if (on) {
+      if (c != null && _cov.preCenter == null) {
+        final cam = c.getCamera();
+        _cov.preCenter = cam.center;
+        _cov.preZoom = cam.zoom;
+      }
+      _camEase(coverageOverviewCenter, zoom: coverageOverviewZoom);
+    } else if (_cov.preCenter != null) {
+      _camEase(_cov.preCenter!, zoom: _cov.preZoom);
+      _cov.preCenter = null;
+      _cov.preZoom = null;
+    }
+    _pushStopSources();
+    _writeVehiclesToSource();
+    await _reconcileCoverageLayer();
+    await _refreshCoverageModeLayers();
+  }
+
+  /// (Re)draws the per-type heat for the picked types: removed when coverage
+  /// mode is off. Swaps layers rather than restyling them (the 0.3.x style
+  /// controller has no setFilter); the source stays, so nothing refetches.
+  Future<void> _refreshCoverageModeLayers() async {
+    final style = _style;
+    if (style == null) return;
+    for (final id in _cov.modeLayers.toList()) {
+      try {
+        await style.removeLayer(id);
+      } catch (_) {}
+      _cov.modeLayers.remove(id);
+    }
+    if (!_cov.mode || !mounted) return;
+    await _ensureCoverageSource(style);
+    final picked = ref.read(coverageTypesProvider);
+    final c = StizeColors.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final colors = {
+      'bus': c.transitBus.toARGB32(),
+      'trolleybus': c.transitTrolleybus.toARGB32(),
+      'tram': c.transitTram.toARGB32(),
+    };
+    // Under the stop and vehicle layers, so a focus left over can't hide
+    // beneath the heat.
+    for (final type in coverageTypes) {
+      if (picked.isNotEmpty && !picked.contains(type)) continue;
+      final id = coverageModeLayerId(type);
+      try {
+        await style.addLayer(
+          coverageModeLayer(type: type, argb: colors[type]!, dark: dark),
+          belowLayerId: _LayerIds.coverageModeBelow,
+        );
+        _cov.modeLayers.add(id);
+      } catch (_) {}
     }
   }
 

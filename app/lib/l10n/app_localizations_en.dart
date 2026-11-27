@@ -11,8 +11,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get appTitle => 'Stiže';
 
-  @override
-  String get navHome => 'Map';
 
   @override
   String get navMyStops => 'My Stops';
@@ -304,8 +302,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get coverageFilterAll => 'All';
 
-  @override
-  String get coverageLegendTitle => 'Transit density';
 
   @override
   String get coverageLegendLow => 'rarer';

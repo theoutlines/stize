@@ -89,6 +89,7 @@ extension _MapPanels on _HomeMapScreenState {
           ref.watch(stopLocationProvider(id)).valueOrNull?.name ?? name ?? '',
         MyStopsLevel() => l10n.navMyStops,
         SettingsLevel() => l10n.settingsTitle,
+        CoverageLevel() => l10n.navCoverage,
         FeedbackLevel() => l10n.drawerFeedbackSheetTitle,
         GuideLevel(:final page) => switch (page) {
           GuidePage.home => l10n.guideTitle,
@@ -109,6 +110,7 @@ extension _MapPanels on _HomeMapScreenState {
       case ContextView.myStops:
       case ContextView.guide:
       case ContextView.settings:
+      case ContextView.coverage:
       case ContextView.feedback:
         final top = _levels.top!;
         final title = _levelTitle(top, l10n);
@@ -171,6 +173,12 @@ extension _MapPanels on _HomeMapScreenState {
           shrinkWrap: scrollController == null,
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: const [SettingsPanel()],
+        );
+      case ContextView.coverage:
+        return SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+          child: const CoveragePanel(),
         );
       case ContextView.feedback:
         return SingleChildScrollView(

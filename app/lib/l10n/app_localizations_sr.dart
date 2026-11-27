@@ -11,8 +11,6 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get appTitle => 'Stiže';
 
-  @override
-  String get navHome => 'Mapa';
 
   @override
   String get navMyStops => 'Moja stajališta';
@@ -305,8 +303,6 @@ class AppLocalizationsSr extends AppLocalizations {
   @override
   String get coverageFilterAll => 'Sve';
 
-  @override
-  String get coverageLegendTitle => 'Gustina prevoza';
 
   @override
   String get coverageLegendLow => 'ređe';

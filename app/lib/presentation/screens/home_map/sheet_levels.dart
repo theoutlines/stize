@@ -25,6 +25,12 @@ class FeedbackLevel extends SheetLevel {
   const FeedbackLevel();
 }
 
+/// Coverage: the map switches to the transit heat; the level holds its
+/// filters and key.
+class CoverageLevel extends SheetLevel {
+  const CoverageLevel();
+}
+
 class GuideLevel extends SheetLevel {
   const GuideLevel(this.page);
   final GuidePage page;
@@ -71,6 +77,7 @@ class SheetLevelStack {
     (FeedbackLevel(), FeedbackLevel()) => true,
     (MyStopsLevel(), MyStopsLevel()) => true,
     (SettingsLevel(), SettingsLevel()) => true,
+    (CoverageLevel(), CoverageLevel()) => true,
     _ => false,
   };
 

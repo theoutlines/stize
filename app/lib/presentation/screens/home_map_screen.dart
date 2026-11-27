@@ -52,6 +52,7 @@ import '../../domain/models/vehicle_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/stretch_card_list.dart';
+import '../widgets/coverage_panel.dart';
 import '../widgets/context_shell.dart';
 import '../widgets/stop_header_actions.dart';
 import '../widgets/follow_model.dart';
@@ -136,10 +137,8 @@ class HomeMapScreen extends ConsumerStatefulWidget {
   /// Opens the app's navigation drawer (owned by the root scaffold).
   final VoidCallback? onOpenDrawer;
 
-  /// Whether this screen is the one currently visible in the root
-  /// [IndexedStack]. Both section pages stay mounted, so the map needs this to
-  /// know when to pause the live location stream (don't drain the battery while
-  /// the user is on another section).
+  /// Whether the map is on screen; off, it pauses the live location stream
+  /// (no battery drain while hidden).
   final bool active;
 
   @override

@@ -47,11 +47,50 @@ class StizeLineChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = StizeColors.of(context);
+    return _TransitChip(
+      color: color,
+      selected: selected,
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: StizeSpace.space3),
+      // widthFactor 1: the chip is as wide as its number, never the row.
+      child: Center(
+        widthFactor: 1,
+        child: Text(
+          line,
+          style: StizeType.control.copyWith(
+            fontSize: 16,
+            color: selected ? c.onTransit : c.ink75,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The shell both transit chips share: `fill-07` at rest, the transit colour
+/// when picked; 36 high, 20 radius, min 48 wide.
+class _TransitChip extends StatelessWidget {
+  const _TransitChip({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+    required this.padding,
+    required this.child,
+  });
+
+  final Color color;
+  final bool selected;
+  final VoidCallback? onTap;
+  final EdgeInsets padding;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
     return Semantics(
       button: true,
       selected: selected,
       child: Material(
-        color: selected ? color : c.fill07,
+        color: selected ? color : StizeColors.of(context).fill07,
         borderRadius: BorderRadius.circular(StizeRadius.radiusCard),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -59,18 +98,8 @@ class StizeLineChip extends StatelessWidget {
           child: Container(
             height: StizeSize.chipH,
             constraints: const BoxConstraints(minWidth: 48),
-            padding: const EdgeInsets.symmetric(horizontal: StizeSpace.space3),
-            // widthFactor 1: the chip is as wide as its number, never the row.
-            child: Center(
-              widthFactor: 1,
-              child: Text(
-                line,
-                style: StizeType.control.copyWith(
-                  fontSize: 16,
-                  color: selected ? c.onTransit : c.ink75,
-                ),
-              ),
-            ),
+            padding: padding,
+            child: child,
           ),
         ),
       ),
@@ -114,6 +143,54 @@ class StizeTextChip extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Vehicle-type chip (Coverage filters): the type's icon and name. Unpicked:
+/// neutral `fill-07` with the icon in the type's colour; picked: the whole
+/// chip in the type's colour, icon and name white. Same size as the line chip.
+class StizeTypeChip extends StatelessWidget {
+  const StizeTypeChip({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StizeColors.of(context);
+    final ink = selected ? c.onTransit : c.ink75;
+    return _TransitChip(
+      color: color,
+      selected: selected,
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(
+        StizeSpace.space3,
+        0,
+        StizeSpace.space4,
+        0,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: StizeSpace.space2,
+        children: [
+          Icon(icon, size: 18, color: selected ? c.onTransit : color),
+          Text(
+            label,
+            style: StizeType.control.copyWith(fontSize: 16, color: ink),
+          ),
+        ],
       ),
     );
   }

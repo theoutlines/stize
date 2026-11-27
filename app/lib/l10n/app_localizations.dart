@@ -104,11 +104,6 @@ abstract class AppLocalizations {
   /// **'Stiže'**
   String get appTitle;
 
-  /// No description provided for @navHome.
-  ///
-  /// In en, this message translates to:
-  /// **'Map'**
-  String get navHome;
 
   /// No description provided for @navMyStops.
   ///
@@ -585,11 +580,6 @@ abstract class AppLocalizations {
   /// **'All'**
   String get coverageFilterAll;
 
-  /// No description provided for @coverageLegendTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Transit density'**
-  String get coverageLegendTitle;
 
   /// No description provided for @coverageLegendLow.
   ///

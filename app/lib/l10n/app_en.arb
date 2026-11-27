@@ -4,7 +4,6 @@
   "@appTitle": {
     "description": "App name, shown in title bars and the OS app switcher"
   },
-  "navHome": "Map",
   "navMyStops": "My Stops",
   "myStopsEmptyTitle": "No favorite stops yet",
   "myStopsEmptySubtitle": "Search for a stop, street, or line and add it here.",
@@ -172,7 +171,6 @@
   "fleetComfortComfy": "comfort",
   "navCoverage": "Coverage",
   "coverageFilterAll": "All",
-  "coverageLegendTitle": "Transit density",
   "coverageLegendLow": "rarer",
   "coverageLegendHigh": "busier",
   "drawerShareFeedback": "Share feedback",

@@ -3,7 +3,7 @@
     "app/lib/core/map_style.dart": 596,
     "app/lib/core/timed_trajectory.dart": 525,
     "app/lib/core/vehicle_track_animator.dart": 526,
-    "app/lib/presentation/screens/home_map_screen.dart": 592,
+    "app/lib/presentation/screens/home_map_screen.dart": 591,
     "app/lib/presentation/widgets/guide/belgrade_guide.dart": 511,
     "app/lib/presentation/widgets/nearby_list.dart": 528,
     "app/lib/presentation/widgets/nearby_sheet.dart": 509

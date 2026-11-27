@@ -7,6 +7,8 @@ part of '../home_map_screen.dart';
 /// Ids of the imperative map layers the home map adds.
 abstract final class _LayerIds {
   static const rails = 'stg-stops-rails';
+  // Coverage-mode heat goes under the lowest of our own layers.
+  static const coverageModeBelow = rails;
   static const cluster = 'stg-stops-cluster';
   static const bus = 'stg-stops-bus';
   static const tram = 'stg-stops-tram';
@@ -55,6 +57,12 @@ class _CoverageState {
   bool enabled = false; // remote flag, read in build
   bool added = false; // source+layer present in the current style
   bool active = false; // hysteresis state for the mount decision
+  // Coverage mode (the menu's Coverage level): the map swaps stops and
+  // vehicles for one heat layer per vehicle type.
+  bool mode = false;
+  final Set<String> modeLayers = {}; // per-type layers in the current style
+  Geographic? preCenter; // camera to return to when the level closes
+  double? preZoom;
 }
 
 /// Nearby around a point on the map instead of around you, and its centre dot.

@@ -1,7 +1,6 @@
 {
   "@@locale": "sr",
   "appTitle": "Stiže",
-  "navHome": "Mapa",
   "navMyStops": "Moja stajališta",
   "myStopsEmptyTitle": "Još nemaš omiljena stajališta",
   "myStopsEmptySubtitle": "Pronađi stajalište, ulicu ili liniju i dodaj je ovde.",
@@ -90,7 +89,6 @@
   "fleetComfortComfy": "komfor",
   "navCoverage": "Pokrivenost",
   "coverageFilterAll": "Sve",
-  "coverageLegendTitle": "Gustina prevoza",
   "coverageLegendLow": "ređe",
   "coverageLegendHigh": "češće",
   "drawerShareFeedback": "Pošaljite utisak",

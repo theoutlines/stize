@@ -4,7 +4,6 @@ import '../core/adaptive.dart';
 import 'screens/about_screen.dart';
 import 'screens/privacy_screen.dart';
 import 'screens/city_screen.dart';
-import 'screens/coverage_screen.dart';
 import 'screens/root_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/linked_stop_screen.dart';
@@ -40,14 +39,8 @@ final appRouter = GoRouter(
       pageBuilder: (context, state) =>
           adaptivePage(key: state.pageKey, child: const PrivacyScreen()),
     ),
-    // Coverage map (infographic) — reachable via the drawer entry, gated on the
-    // remote `coverage_map_show` flag. Also a section of the root IndexedStack;
-    // this standalone route lets it be deep-linked when enabled.
-    GoRoute(
-      path: '/coverage',
-      pageBuilder: (context, state) =>
-          adaptivePage(key: state.pageKey, child: const CoverageScreen()),
-    ),
+    // Coverage is a level over the home map now; old links land on the map.
+    GoRoute(path: '/coverage', redirect: (_, _) => '/'),
     // City section (transport analytics) — reachable via the menu entry, which
     // is gated on the remote `analytics_show` flag.
     GoRoute(

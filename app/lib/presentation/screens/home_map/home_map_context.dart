@@ -180,6 +180,7 @@ extension _MapContext on _HomeMapScreenState {
       MyStopsLevel() => ContextView.myStops,
       GuideLevel() => ContextView.guide,
       SettingsLevel() => ContextView.settings,
+      CoverageLevel() => ContextView.coverage,
       FeedbackLevel() => ContextView.feedback,
       StopLevel() => ContextView.stop,
     };
@@ -211,6 +212,7 @@ extension _MapContext on _HomeMapScreenState {
       case ContextView.myStops:
       case ContextView.guide:
       case ContextView.settings:
+      case ContextView.coverage:
       case ContextView.feedback:
         _popLevel();
       case ContextView.nearby:

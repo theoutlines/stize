@@ -27,8 +27,6 @@ const double kMenuButtonSize = 48;
 Future<void> showAppMenu(
   BuildContext context, {
   required double topInset,
-  required int currentIndex,
-  required ValueChanged<int> onSelectSection,
 }) {
   return showGeneralDialog<void>(
     context: context,
@@ -38,11 +36,7 @@ Future<void> showAppMenu(
     barrierColor: StizeColors.of(context).scrim,
     transitionDuration: StizeMotion.fast,
     pageBuilder: (menuContext, _, _) => PointerInterceptor(
-      child: AppMenuOverlay(
-        topInset: topInset,
-        currentIndex: currentIndex,
-        onSelectSection: onSelectSection,
-      ),
+      child: AppMenuOverlay(topInset: topInset),
     ),
     transitionBuilder: (_, animation, _, child) {
       // Opens on fast (250), closes on quick (150): the reverse curve is done
@@ -70,16 +64,9 @@ Future<void> showAppMenu(
 /// The menu's full-screen layer: a close button exactly over the menu button,
 /// and the popover card under it. Public for widget tests.
 class AppMenuOverlay extends StatelessWidget {
-  const AppMenuOverlay({
-    super.key,
-    required this.topInset,
-    required this.currentIndex,
-    required this.onSelectSection,
-  });
+  const AppMenuOverlay({super.key, required this.topInset});
 
   final double topInset;
-  final int currentIndex;
-  final ValueChanged<int> onSelectSection;
 
   @override
   Widget build(BuildContext context) {
@@ -115,10 +102,7 @@ class AppMenuOverlay extends StatelessWidget {
           left: kMenuButtonInset,
           top: top + kMenuButtonSize + 8,
           width: 264,
-          child: AppMenuCard(
-            currentIndex: currentIndex,
-            onSelectSection: onSelectSection,
-          ),
+          child: const AppMenuCard(),
         ),
       ],
     );
@@ -127,15 +111,7 @@ class AppMenuOverlay extends StatelessWidget {
 
 /// The popover card: primary destinations, then the quieter contact/legal rows.
 class AppMenuCard extends ConsumerWidget {
-  const AppMenuCard({
-    super.key,
-    required this.currentIndex,
-    required this.onSelectSection,
-  });
-
-  /// 0 = map, 1 = coverage (only while its flag is on).
-  final int currentIndex;
-  final ValueChanged<int> onSelectSection;
+  const AppMenuCard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -155,15 +131,6 @@ class AppMenuCard extends ConsumerWidget {
     }
 
     final rows = <Widget>[
-      if (coverage)
-        _MenuRow(
-          icon: currentIndex == 1 ? StizeIcons.map : StizeIcons.hub,
-          label: currentIndex == 1 ? l10n.navHome : l10n.navCoverage,
-          onTap: () {
-            Navigator.of(context).pop();
-            onSelectSection(currentIndex == 1 ? 0 : 1);
-          },
-        ),
       _MenuRow(
         icon: StizeIcons.star,
         label: l10n.navMyStops,
@@ -181,6 +148,16 @@ class AppMenuCard extends ConsumerWidget {
           ref.read(guideRequestProvider.notifier).state++;
         },
       ),
+      // A level over the map: the map itself switches to the transit heat.
+      if (coverage)
+        _MenuRow(
+          icon: StizeIcons.hub,
+          label: l10n.navCoverage,
+          onTap: () {
+            Navigator.of(context).pop();
+            ref.read(coverageRequestProvider.notifier).state++;
+          },
+        ),
       if (analytics)
         _MenuRow(
           icon: StizeIcons.stats,

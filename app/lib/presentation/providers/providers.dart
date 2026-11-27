@@ -479,6 +479,13 @@ final guideRequestProvider = StateProvider<int>((ref) => 0);
 /// Bumped by the menu: the map opens Settings / Feedback as a level of the one
 /// sheet (owner, 2026-11-23: no second sheet on top of the first).
 final settingsRequestProvider = StateProvider<int>((ref) => 0);
+
+/// The menu's "Coverage": bumped to open the coverage level over the map.
+final coverageRequestProvider = StateProvider<int>((ref) => 0);
+
+/// Vehicle types the coverage map shows (`bus`, `trolleybus`, `tram`); empty =
+/// all of them.
+final coverageTypesProvider = StateProvider<Set<String>>((ref) => const {});
 final feedbackRequestProvider = StateProvider<int>((ref) => 0);
 
 /// Name of the stop currently open in the home map's sheet, or null. Screens

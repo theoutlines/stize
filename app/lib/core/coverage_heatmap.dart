@@ -249,3 +249,96 @@ HeatmapStyleLayer coverageMainLayer({required bool dark}) => HeatmapStyleLayer(
     'heatmap-opacity': coverageMainOpacityExpression(),
   },
 );
+
+// ---- Coverage mode (the menu's Coverage, over the home map) ---------------
+//
+// One heat layer per vehicle type, each in that type's transit colour, so the
+// map shows not just where transit is dense but what runs there. Where two
+// types share a corridor their glows overlap and the colours mix. Bus (the
+// widest network) sits lowest and tram (the fewest lines) on top, each a little
+// see-through so the one underneath still tints the overlap.
+
+/// Coverage mode takes in the whole city.
+const coverageOverviewCenter = Geographic(lon: 20.46, lat: 44.80);
+const coverageOverviewZoom = 11.4;
+
+/// The coverage `type` values, bottom layer first.
+const coverageTypes = <String>['bus', 'trolleybus', 'tram'];
+
+/// Layer id of one type's heat in coverage mode.
+String coverageModeLayerId(String type) => 'coverage-mode-$type';
+
+String _rgba(int argb, double alpha) {
+  final r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
+  return 'rgba($r,$g,$b,${alpha.toStringAsFixed(2)})';
+}
+
+/// [argb] mixed toward white (t > 0) or black (t < 0) by |t|.
+int _shade(int argb, double t) {
+  int ch(int v) => t >= 0
+      ? (v + (255 - v) * t).round()
+      : (v * (1 + t)).round();
+  final r = ch((argb >> 16) & 0xFF),
+      g = ch((argb >> 8) & 0xFF),
+      b = ch(argb & 0xFF);
+  return 0xFF000000 | (r << 16) | (g << 8) | b;
+}
+
+/// Heat ramp for one type. A lone route is a thin veil of the type's colour;
+/// a corridor reaches the full colour; only the densest cores go past it:
+/// lighter on the dark map (glow), deeper on the light map (ink), so the heat
+/// never sinks into the base map's own tones.
+List<Object> coverageTypeColorExpression(int argb, {required bool dark}) => [
+  'interpolate',
+  ['linear'],
+  ['heatmap-density'],
+  0.0,
+  _rgba(argb, 0),
+  0.06,
+  _rgba(argb, dark ? 0.22 : 0.18),
+  0.35,
+  _rgba(argb, dark ? 0.6 : 0.55),
+  0.7,
+  _rgba(argb, 0.95),
+  0.9,
+  _rgba(_shade(argb, dark ? 0.35 : -0.25), 1),
+  1.0,
+  _rgba(_shade(argb, dark ? 0.7 : -0.5), 1),
+];
+
+/// Intensity per type: the tab's ramp, a little hotter, because each layer
+/// sees only its own type's points.
+List<Object> coverageModeIntensityExpression() => [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  11,
+  0.035,
+  13,
+  0.1,
+  15,
+  0.36,
+  18,
+  1.2,
+];
+
+/// The heat layer for one [type] in coverage mode.
+HeatmapStyleLayer coverageModeLayer({
+  required String type,
+  required int argb,
+  required bool dark,
+}) => HeatmapStyleLayer(
+  id: coverageModeLayerId(type),
+  sourceId: coverageSourceId,
+  filter: [
+    '==',
+    ['get', 'type'],
+    type,
+  ],
+  paint: {
+    'heatmap-color': coverageTypeColorExpression(argb, dark: dark),
+    'heatmap-radius': coverageRadiusExpression(),
+    'heatmap-intensity': coverageModeIntensityExpression(),
+    'heatmap-opacity': 0.85,
+  },
+);

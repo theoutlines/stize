@@ -21,6 +21,23 @@ extension _MapLevels on _HomeMapScreenState {
     _raiseSheetToHalf();
   }
 
+  /// The menu's "Coverage": a level whose map is the transit heat. On mobile
+  /// the sheet drops to its low detent so the city stays in view.
+  void _openCoverageLevel() {
+    _expandPanelIfCollapsed();
+    _levels.open(const CoverageLevel());
+    _setState(() {});
+    if (_panelActive) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_sheetCtl.isAttached) return;
+      _sheetCtl.animateTo(
+        kSheetPeek,
+        duration: StizeMotion.slow,
+        curve: StizeMotion.smoothOut,
+      );
+    });
+  }
+
   /// Opens a page of the Belgrade guide as the next level.
   void _openGuideLevel(GuidePage page) {
     _expandPanelIfCollapsed();

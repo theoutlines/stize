@@ -24,12 +24,7 @@ Widget _host({bool feedbackOn = true, String? donateUrl}) {
         body: Builder(
           builder: (context) => Center(
             child: TextButton(
-              onPressed: () => showAppMenu(
-                context,
-                topInset: 0,
-                currentIndex: 0,
-                onSelectSection: (_) {},
-              ),
+              onPressed: () => showAppMenu(context, topInset: 0),
               child: const Text('open'),
             ),
           ),
