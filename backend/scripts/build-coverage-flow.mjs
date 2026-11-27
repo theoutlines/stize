@@ -45,6 +45,7 @@ function main() {
       vehicleType: l.vehicle_type,
       tripsPerDay: tripsPerDay(l.route_id),
       polyline: shape.polyline ?? [],
+      stops: shape.stops ?? [],
     });
   }
   // Glow points: every route on its own, so the heatmap sums them.

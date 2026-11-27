@@ -340,97 +340,96 @@ function bucketTrips(n) {
 }
 
 /**
- * Build coverage mode's *flow lines*: per vehicle type, one geometry per
- * street. Routes are merged on a fine grid (~25 m, the same identity and
- * real-point centroids as buildCoverage), so a street several routes share is
- * a single line, never a stack of slightly offset copies. Each street stretch
- * carries `trips`: the weekday trips of every route direction along it,
- * rounded to steps so a street runs as one piece. Lines are smoothed (Chaikin)
- * so the grid never shows as corners.
+ * Build coverage mode's *flow lines* the way transit frequency maps do it:
+ * by stop-to-stop segments. Every route direction is cut at its stops; a
+ * segment's identity is the pair of stations it runs between (a station is a
+ * stop name at one place, so both directions' stops across the street count
+ * as one). Routes serving the same pair share that segment exactly, so there
+ * is no geometric guesswork: each segment is drawn once, from the busiest
+ * route's own shape, and carries `trips`, the weekday trips of every route
+ * direction of that type between those two stations. Segment ends are pinned
+ * to the station, so segments meet exactly and run on as one line; the width
+ * changes only at a stop.
  *
- * @param {Array<{routeId:string, vehicleType:string, tripsPerDay:number, polyline:number[][]}>} shapes
- * @param {{grid?:number, smoothPasses?:number, coordPrecision?:number}} opts
+ * @param {Array<{routeId:string, vehicleType:string, tripsPerDay:number,
+ *   polyline:number[][], stops:Array<{stop_id:string,name:string,lat:number,lon:number}>}>} shapes
+ * @param {{simplifyEpsilon?:number, coordPrecision?:number}} opts
  */
 export function buildCoverageFlow(shapes, opts = {}) {
-  const grid = opts.grid ?? 0.00025;
-  const passes = opts.smoothPasses ?? 2;
-  const simplifyEpsilon = opts.simplifyEpsilon ?? 0.00004; // ~4 m
-  const reach = opts.reach ?? 2; // cells, ~50 m
+  const simplifyEpsilon = opts.simplifyEpsilon ?? 0.00003; // ~3 m
   const coordPrecision = opts.coordPrecision ?? 5;
   const round = (v) => Number(v.toFixed(coordPrecision));
-  const trips = new Map(shapes.map((s) => [s.routeId, s.tripsPerDay ?? 0]));
+  // A station: the stop's name without a platform number, at ~300 m.
+  const stationOf = (st) =>
+    `${String(st.name ?? st.stop_id).replace(/\s+\d+$/, "").trim()}|${Math.round(st.lat / 0.003)}|${Math.round(st.lon / 0.004)}`;
+  const stationPos = new Map(); // station -> [sumLat, sumLon, n]
+  for (const sh of shapes) {
+    for (const st of sh.stops ?? []) {
+      const k = stationOf(st);
+      const p = stationPos.get(k) ?? [0, 0, 0];
+      p[0] += st.lat;
+      p[1] += st.lon;
+      p[2] += 1;
+      stationPos.set(k, p);
+    }
+  }
+  const at = (k) => {
+    const p = stationPos.get(k);
+    return [p[0] / p[2], p[1] / p[2]];
+  };
+  // Index of the polyline point nearest to a stop, searching forward.
+  const nearest = (poly, st, from) => {
+    let best = from;
+    let bestD = Infinity;
+    for (let i = from; i < poly.length; i++) {
+      const d = metresBetween(poly[i], [st.lat, st.lon]);
+      if (d < bestD) (bestD = d), (best = i);
+    }
+    return best;
+  };
 
   const features = [];
   for (const type of TYPE_ORDER) {
     const ofType = shapes
       .filter((s) => s.vehicleType === type && (s.tripsPerDay ?? 0) > 0)
-      .map((s) => ({ line: s.routeId, vehicleType: type, polyline: s.polyline }));
-    if (ofType.length === 0) continue;
-    const { segments, nodeCoord } = accumulate(ofType, grid);
-    // Routes through each node, then the routes within a node's reach
-    // (`reach` cells around it): a street's two directions or two close
-    // carriageways land a cell apart, and must count together everywhere,
-    // or the weight would flicker from stretch to stretch.
-    const routesAt = new Map();
-    for (const seg of segments.values()) {
-      for (const n of [seg.a, seg.b]) {
-        const k = nodeKey(n);
-        if (!routesAt.has(k)) routesAt.set(k, new Set());
-        for (const id of seg.lines) routesAt.get(k).add(id);
-      }
-    }
-    const nodeTrips = new Map();
-    const tripsNear = (n) => {
-      const k = nodeKey(n);
-      if (nodeTrips.has(k)) return nodeTrips.get(k);
-      const ids = new Set();
-      for (let dy = -reach; dy <= reach; dy++) {
-        for (let dx = -reach; dx <= reach; dx++) {
-          for (const id of routesAt.get(`${n[0] + dy},${n[1] + dx}`) ?? []) ids.add(id);
+      .filter((s) => Array.isArray(s.polyline) && s.polyline.length >= 2 && (s.stops?.length ?? 0) >= 2)
+      .sort((a, b) => b.tripsPerDay - a.tripsPerDay);
+    const segs = new Map(); // undirected station pair -> { trips, a, b, points }
+    for (const s of ofType) {
+      let from = 0;
+      let prev = null;
+      for (const st of s.stops) {
+        const k = stationOf(st);
+        const idx = nearest(s.polyline, st, from);
+        if (prev && prev.k !== k) {
+          const key = prev.k < k ? `${prev.k}~${k}` : `${k}~${prev.k}`;
+          let seg = segs.get(key);
+          if (!seg) {
+            // The busiest route lends its geometry (routes come busiest first).
+            seg = { trips: 0, a: prev.k, b: k, points: s.polyline.slice(prev.idx, idx + 1) };
+            segs.set(key, seg);
+          }
+          seg.trips += s.tripsPerDay;
         }
+        prev = { k, idx };
+        from = idx;
       }
-      let sum = 0;
-      for (const id of ids) sum += trips.get(id) ?? 0;
-      nodeTrips.set(k, sum);
-      return sum;
-    };
-    const groups = new Map(); // trips step -> edges
-    for (const seg of segments.values()) {
-      // The quieter end: a junction node also reaches the crossing street.
-      const step = bucketTrips(Math.min(tripsNear(seg.a), tripsNear(seg.b)));
-      if (!groups.has(step)) groups.set(step, []);
-      groups.get(step).push({ a: seg.a, b: seg.b });
     }
-    for (const [step, edges] of groups) {
-      for (const chain of chainEdges(edges)) {
-        const raw = simplify(chain.map((node) => nodeCoord.get(nodeKey(node))), simplifyEpsilon);
-        const pts = simplify(chaikin(raw, passes), simplifyEpsilon / 2);
-        features.push({
-          type: "Feature",
-          properties: { type, trips: step },
-          geometry: { type: "LineString", coordinates: pts.map(([lat, lon]) => [round(lon), round(lat)]) },
-        });
-      }
+    for (const seg of segs.values()) {
+      // Pin the ends to the stations, so neighbouring segments meet exactly.
+      const pts = [at(seg.a), ...seg.points.slice(1, -1), at(seg.b)];
+      features.push({
+        type: "Feature",
+        properties: { type, trips: bucketTrips(seg.trips) },
+        geometry: {
+          type: "LineString",
+          coordinates: simplify(pts, simplifyEpsilon).map(([lat, lon]) => [round(lon), round(lat)]),
+        },
+      });
     }
   }
   features.sort((a, b) => a.properties.trips - b.properties.trips);
   return { type: "FeatureCollection", features };
-}
-
-/** Chaikin corner cutting; the end points stay put so pieces still meet. */
-function chaikin(points, passes) {
-  let pts = points;
-  for (let p = 0; p < passes && pts.length > 2; p++) {
-    const out = [pts[0]];
-    for (let i = 0; i < pts.length - 1; i++) {
-      const [a, b] = [pts[i], pts[i + 1]];
-      out.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25]);
-      out.push([a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
-    }
-    out.push(pts[pts.length - 1]);
-    pts = out;
-  }
-  return pts;
 }
 
 /**

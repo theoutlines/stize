@@ -226,52 +226,36 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
   });
 
   describe("buildCoverageFlow", () => {
-    it("sums trips of every route along a shared corridor, per type", () => {
-      const geom = horizontalLine(44.8, 20.4, 4);
-      const gj = buildCoverageFlow(
-        [
-          { routeId: "2", vehicleType: "tram", tripsPerDay: 100, polyline: geom },
-          { routeId: "2-1", vehicleType: "tram", tripsPerDay: 90, polyline: [...geom].reverse() },
-          { routeId: "26", vehicleType: "bus", tripsPerDay: 40, polyline: geom },
-        ],
-        { grid: GRID, simplifyEpsilon: 0 },
-      );
-      const tram = gj.features.filter((f: any) => f.properties.type === "tram");
-      const bus = gj.features.filter((f: any) => f.properties.type === "bus");
-      // One geometry per street: both tram directions merge into one line.
-      // 100 + 90 = 190 trips, rounded down to the 150 step.
-      expect(tram.map((f: any) => f.properties.trips)).toEqual([150]);
-      expect(bus.map((f: any) => f.properties.trips)).toEqual([35]);
-      // Lightest first, so the busiest corridor draws on top.
-      expect(gj.features.map((f: any) => f.properties.trips)).toEqual([35, 150]);
+    const stop = (name: string, lat: number, lon: number) => ({ stop_id: name, name, lat, lon });
+    const A = stop("Alfa 1", 44.8, 20.4);
+    const A2 = stop("Alfa 2", 44.8002, 20.4); // the other side of the street
+    const B = stop("Beta", 44.8, 20.41);
+    const C = stop("Gama", 44.8, 20.42);
+    const line = horizontalLine(44.8, 20.4, 20);
+
+    it("one segment per station pair, both directions and all routes summed", () => {
+      const gj = buildCoverageFlow([
+        { routeId: "2", vehicleType: "tram", tripsPerDay: 100, polyline: line, stops: [A, B, C] },
+        { routeId: "2-1", vehicleType: "tram", tripsPerDay: 90, polyline: [...line].reverse(), stops: [C, B, A2] },
+        { routeId: "7", vehicleType: "tram", tripsPerDay: 60, polyline: line.slice(0, 11), stops: [A, B] },
+      ]);
+      const trips = gj.features.map((f: any) => f.properties.trips);
+      // A–B: 100 + 90 + 60 = 250 → 200 step; B–C: 190 → 150 step.
+      expect(gj.features).toHaveLength(2);
+      expect(trips).toEqual([150, 200]);
     });
 
-    it("weights a corridor only by the routes that use it", () => {
-      const shared = horizontalLine(44.8, 20.4, 2);
-      const branch = [...shared, ...Array.from({ length: 12 }, (_, i) => [44.8 + (i + 1) * 0.0003, 20.402])];
-      const gj = buildCoverageFlow(
-        [
-          { routeId: "a", vehicleType: "bus", tripsPerDay: 100, polyline: shared },
-          { routeId: "b", vehicleType: "bus", tripsPerDay: 200, polyline: branch },
-        ],
-        { grid: GRID, simplifyEpsilon: 0 },
-      );
-      const trips = new Set(gj.features.map((f: any) => f.properties.trips));
-      // Branch alone: 200; shared: 300 → the 260 step.
-      expect([...trips].sort((x: any, y: any) => x - y)).toEqual([200, 260]);
-    });
-
-    it("stays on the route: smoothed, never cut across", () => {
-      const curve = Array.from({ length: 30 }, (_, i) => [44.8 + i * 0.00013, 20.4 + Math.sin(i / 5) * 0.0015]);
-      const gj = buildCoverageFlow([{ routeId: "c", vehicleType: "bus", tripsPerDay: 50, polyline: curve }]);
-      const near = (lon: number, lat: number) =>
-        curve.some(([y, x]) => Math.hypot((x - lon) * 78700, (y - lat) * 111200) < 25);
-      for (const f of gj.features) for (const [lon, lat] of f.geometry.coordinates) expect(near(lon, lat)).toBe(true);
+    it("pins segment ends to the station, so neighbours meet exactly", () => {
+      const gj = buildCoverageFlow([
+        { routeId: "2", vehicleType: "bus", tripsPerDay: 100, polyline: line, stops: [A, B, C] },
+      ]);
+      const [ab, bc] = gj.features.sort((x: any, y: any) => x.geometry.coordinates[0][0] - y.geometry.coordinates[0][0]);
+      expect(ab.geometry.coordinates.at(-1)).toEqual(bc.geometry.coordinates[0]);
     });
 
     it("skips routes without trips", () => {
       const gj = buildCoverageFlow([
-        { routeId: "x", vehicleType: "bus", tripsPerDay: 0, polyline: horizontalLine(44.8, 20.4, 3) },
+        { routeId: "x", vehicleType: "bus", tripsPerDay: 0, polyline: line, stops: [A, B] },
       ]);
       expect(gj.features).toHaveLength(0);
     });

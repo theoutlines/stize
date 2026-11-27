@@ -65,6 +65,7 @@ export interface CoverageFlowShape {
   vehicleType: string;
   tripsPerDay: number;
   polyline: number[][];
+  stops: { stop_id: string; name: string; lat: number; lon: number }[];
 }
 
 export interface CoverageFlowFeature {
@@ -75,7 +76,7 @@ export interface CoverageFlowFeature {
 
 export function buildCoverageFlow(
   shapes: CoverageFlowShape[],
-  opts?: { grid?: number; smoothPasses?: number; simplifyEpsilon?: number; reach?: number; coordPrecision?: number },
+  opts?: { simplifyEpsilon?: number; coordPrecision?: number },
 ): { type: "FeatureCollection"; features: CoverageFlowFeature[] };
 
 export function buildCoverageGlow(
