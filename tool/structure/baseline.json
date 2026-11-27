@@ -13,9 +13,7 @@
     "app/lib/presentation/widgets/nearby_sheet.dart": 509,
     "app/lib/presentation/widgets/nearby_view.dart": 617,
     "backend/src/index.ts": 676,
-    "backend/src/lib/analytics.ts": 913,
-    "backend/src/lib/jamDetector.ts": 597,
-    "backend/src/lib/sweep.ts": 650
+    "backend/src/lib/jamDetector.ts": 597
   },
   "dead-file": [],
   "dead-widget": [],
