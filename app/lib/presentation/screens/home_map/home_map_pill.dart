@@ -97,20 +97,23 @@ extension _MapPill on _HomeMapScreenState {
         // focused field jumps during the tap (owner, 2026-11-23). The list
         // rises once a query is typed (see _onPillQuery).
         onActivate: () => _setState(() => _pillActive = true),
-        onClose: () {
-          _pillCtl.clear();
-          _pillFocus.unfocus();
-          _setState(() => _pillActive = false);
-          if (_sheetCtl.isAttached) {
-            _sheetCtl.animateTo(
-              NearbySheet.oneScrollRestFor(size.height),
-              duration: StizeMotion.medium,
-              curve: StizeMotion.smoothOut,
-            );
-          }
-        },
+        onClose: _closePill,
       ),
     );
+  }
+
+  /// Close the mobile search pill: clear it and lower the sheet to its rest.
+  void _closePill() {
+    _pillCtl.clear();
+    _pillFocus.unfocus();
+    _setState(() => _pillActive = false);
+    if (_sheetCtl.isAttached) {
+      _sheetCtl.animateTo(
+        NearbySheet.oneScrollRestFor(MediaQuery.sizeOf(context).height),
+        duration: StizeMotion.medium,
+        curve: StizeMotion.smoothOut,
+      );
+    }
   }
 
   /// The round map buttons, pushed up past the top edge as the rising pill

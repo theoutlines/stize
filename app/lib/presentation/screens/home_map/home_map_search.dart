@@ -164,6 +164,7 @@ extension _MapSearch on _HomeMapScreenState {
     final center = Geographic(lon: place.lon, lat: place.lat);
     if (!mounted) return;
     _clearSearch();
+    if (_pillActive) _closePill(); // mobile: the map, not the list, answers
     _setState(() {
       _pinnedPlace = center;
     });
