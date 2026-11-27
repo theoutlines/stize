@@ -101,7 +101,8 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
   one-scroll home), `panels` (the desktop panel and the floating controls),
   `lifecycle` (pause / resume), `diagnostics` (staging only), `types`. Logic
   without Flutter or map state goes to `core/` or a plain file with a test
-  (`VehicleArranger`, `vehicle_diagnostics`, `follow_model`); visual pieces
+  (`VehicleArranger`, `vehicle_diagnostics`, `follow_model`, and in
+  `core/map/`: `RouteShapeCache`, `JamOverlay`, `StopMarkers`); visual pieces
   go to widgets that get what they show plus callbacks (`widgets/map/`).
 
 - **City pages**: `screens/city_screen.dart` (the page and its body) with

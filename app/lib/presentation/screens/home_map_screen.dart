@@ -36,6 +36,7 @@ import '../../core/vehicle_map_mode.dart';
 import '../../core/vehicle_route.dart';
 import '../../core/map/jam_overlay.dart';
 import '../../core/map/route_shape_cache.dart';
+import '../../core/map/stop_markers.dart';
 import '../../core/vehicle_arrangement.dart';
 import '../../core/vehicle_diagnostics.dart';
 import '../../core/vehicle_track_animator.dart';
