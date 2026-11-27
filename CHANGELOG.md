@@ -33,7 +33,14 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   the home map with the line bar to close it, like a followed line, instead
   of a separate route screen. Closing returns to where you were.
 
+- **Nearby loads with a skeleton too.** While the Nearby list loads it shows
+  the shape of its cards, like the stop board, instead of an arrow and a line
+  of text.
+- **"Back" is a left chevron** everywhere.
+
 ### Fixed (afternoon)
+- **City shows the offline mark on a network error,** not a crossed-out
+  location arrow.
 - **Closing the search lowers the sheet again.** On phones the Nearby sheet
   used to stop near the top after the search was closed; it now settles back
   to its resting height.

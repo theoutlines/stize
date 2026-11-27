@@ -76,7 +76,7 @@ class CityScreen extends ConsumerWidget {
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => _Message(
-          icon: StizeIcons.nearMeOff,
+          icon: StizeIcons.offline,
           title: l10n.noNetworkTitle,
           body: l10n.noNetworkSubtitle,
           action: TextButton(
