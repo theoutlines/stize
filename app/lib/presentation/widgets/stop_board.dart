@@ -151,7 +151,9 @@ class _StopBoardState extends ConsumerState<StopBoard> with StopLiveRefresh {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          StopHeaderActions(stopId: widget.stopId, stopName: stopName),
+          // A stop we can't find (an old link) has nothing to save or report.
+          if (stopName.isNotEmpty)
+            StopHeaderActions(stopId: widget.stopId, stopName: stopName),
           const Spacer(),
           if (widget.onClose != null)
             SheetCloseButton(onPressed: widget.onClose!),

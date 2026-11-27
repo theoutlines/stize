@@ -136,9 +136,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backToVehicle => 'Back to vehicle';
 
   @override
-  String vehicleOffScreen(String line) {
-    return '$line is off-screen';
-  }
+  String get backTo => 'Back to';
+
 
   @override
   String get routeUnavailable => 'Route unavailable for this line';

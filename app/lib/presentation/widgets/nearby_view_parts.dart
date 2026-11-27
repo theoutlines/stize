@@ -136,7 +136,7 @@ extension _NearbyRows on NearbyViewState {
       return _scrollable(
         controller,
         EmptyState(
-          icon: StizeIcons.nearMeOff,
+          icon: StizeIcons.stopOff,
           title: l10n.nearbyEmptyTitle,
           subtitle: l10n.nearbyEmptySubtitle,
         ),

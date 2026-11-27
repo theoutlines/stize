@@ -294,11 +294,12 @@ abstract class AppLocalizations {
   /// **'Back to vehicle'**
   String get backToVehicle;
 
-  /// Hint next to the Back-to-vehicle pill when the followed vehicle is off-screen
+  /// Start of the "Back to <line badge>" pill when the followed vehicle left the view.
   ///
   /// In en, this message translates to:
-  /// **'{line} is off-screen'**
-  String vehicleOffScreen(String line);
+  /// **'Back to'**
+  String get backTo;
+
 
   /// Shown in the followed-vehicle view for a line with no route geometry in our data (e.g. a suburban carrier)
   ///

@@ -137,9 +137,8 @@ class AppLocalizationsSr extends AppLocalizations {
   String get backToVehicle => 'Nazad na vozilo';
 
   @override
-  String vehicleOffScreen(String line) {
-    return '$line je van ekrana';
-  }
+  String get backTo => 'Nazad na';
+
 
   @override
   String get routeUnavailable => 'Ruta nije dostupna za ovu liniju';

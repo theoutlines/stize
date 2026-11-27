@@ -38,7 +38,7 @@
   "arrivalStopsAway": "{count, plural, =0{Na stajalištu} one{{count} stanica} few{{count} stanice} other{{count} stanica}}",
   "contextNearbyTitle": "U blizini",
   "backToVehicle": "Nazad na vozilo",
-  "vehicleOffScreen": "{line} je van ekrana",
+  "backTo": "Nazad na",
   "routeUnavailable": "Ruta nije dostupna za ovu liniju",
   "emptyArrivalsTitle": "Trenutno je tiho na ovom stajalištu",
   "emptyArrivalsSubtitle": "Prevoz bi trebalo uskoro da stigne.",

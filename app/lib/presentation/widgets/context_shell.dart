@@ -7,7 +7,9 @@ import 'level_header.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../core/design/components/stize_line_badge.dart';
 import '../../core/design/stize_icons.dart';
+import '../../domain/models/vehicle_type.dart';
 
 /// The desktop persistent left panel (owner decision #1/#2/#4/#6) — a
 /// DESKTOP-ONLY surface: on the mobile breakpoint the app keeps today's
@@ -103,17 +105,20 @@ class ContextPanel extends StatelessWidget {
 
 /// The floating "Back to vehicle" pill (owner decision #8) — shown ONLY while
 /// follow is interrupted (a manual pan, or the vehicle left the viewport).
-/// Recenters the camera on the vehicle and resumes follow; the label is the
-/// l10n triple. An off-screen direction arrow hint sits beside it.
+/// Recenters the camera on the vehicle and resumes follow. One compact line
+/// (owner, 2026-11-27): an arrow pointing to where the vehicle went, "Back
+/// to" and the line's badge.
 class BackToVehiclePill extends StatelessWidget {
   const BackToVehiclePill({
     super.key,
     required this.line,
     required this.onTap,
+    this.type,
     this.arrowTurns,
   });
 
   final String line;
+  final VehicleType? type;
   final VoidCallback onTap;
 
   /// Direction hint toward the off-screen vehicle, in turns (0..1). Null hides
@@ -149,12 +154,16 @@ class BackToVehiclePill extends StatelessWidget {
                   const SizedBox(width: 8),
                 ],
                 Text(
-                  l10n.backToVehicle,
+                  line.isEmpty ? l10n.backToVehicle : l10n.backTo,
                   style: StizeText.of(context).label.copyWith(
                     color: theme.colorScheme.onInverseSurface,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                if (line.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  StizeLineBadge(line: line, type: type),
+                ],
               ],
             ),
           ),

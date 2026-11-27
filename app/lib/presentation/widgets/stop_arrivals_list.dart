@@ -360,7 +360,7 @@ Widget stopArrivalsErrorState(
 ) {
   if (err is NotFoundException) {
     return EmptyState(
-      icon: StizeIcons.locateOff,
+      icon: StizeIcons.stopOff,
       title: l10n.unknownStopTitle,
       subtitle: l10n.unknownStopSubtitle,
     );
