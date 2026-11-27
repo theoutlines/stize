@@ -80,6 +80,22 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
   toward its latest fix (never past it), with a "looks stuck" staleness
   heuristic. `core/vehicle_route.dart` splits a route into travelled/upcoming and
   derives per-stop ETAs.
+- **Home map code map**. `screens/home_map_screen.dart` holds the map's state
+  (fields, init/dispose) and `build()`; the behaviour lives in part files under
+  `screens/home_map/`, one per responsibility, each an extension on the same
+  state: `sync` (what build reacts to first), `view` (the MapLibre widget),
+  `layers` (style load, vehicle symbol layer, coverage, tram rails, map
+  events), `stops` (stops for the visible area and their layers), `vehicles`
+  (live vehicles in the viewport, opening a vehicle's line), `follow` (follow
+  header, route plan, camera moves by the app), `focus` (the focused line's
+  layers), `jams` (jam overlay, jam mode and its button), `location`,
+  `geometry` (the one owner of map padding), `context` (on-demand stop
+  context), `levels` (the sheet / panel levels), `search`, `pill` (the mobile
+  one-scroll home), `panels` (the desktop panel and the floating controls),
+  `lifecycle` (pause / resume), `diagnostics` (staging only), `types`. Logic
+  without Flutter or map state goes to `core/` or a plain file with a test
+  (`VehicleArranger`, `vehicle_diagnostics`, `follow_model`); visual pieces
+  go to widgets that get what they show plus callbacks (`widgets/map/`).
 
 ## Conventions & non-obvious gotchas
 

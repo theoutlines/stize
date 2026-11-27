@@ -1,0 +1,365 @@
+part of '../home_map_screen.dart';
+
+// Stops for the visible area: fetch them as the camera moves, the imperative
+// stop layers (one per type + mixed + clusters) and the GeoJSON pushed to them.
+
+extension _MapStops on _HomeMapScreenState {
+  double _radiusForVisibleArea(MapCamera camera) {
+    try {
+      final region = _controller!.getVisibleRegion();
+      final ne = ll.LatLng(region.latitudeNorth, region.longitudeEast);
+      final center = ll.LatLng(camera.center.lat, camera.center.lon);
+      return _distance.as(ll.LengthUnit.Meter, center, ne).clamp(400.0, 3000.0);
+    } catch (_) {
+      return 1200;
+    }
+  }
+
+  Future<void> _loadStopsForVisibleArea() async {
+    final controller = _controller;
+    if (controller == null || !mounted) return;
+    final camera = controller.getCamera();
+    if (camera.zoom < _minStopsZoom) {
+      if (_areaStops.isNotEmpty) {
+        _lastFetchCenter = null;
+        _setState(() {
+          _areaStops = [];
+          _rebuildMarkerFeatures();
+        });
+      }
+      return;
+    }
+    final center = ll.LatLng(camera.center.lat, camera.center.lon);
+    final radius = _radiusForVisibleArea(camera);
+    if (_lastFetchCenter != null) {
+      final moved = _distance.as(
+        ll.LengthUnit.Meter,
+        _lastFetchCenter!,
+        center,
+      );
+      if (moved < _lastFetchRadius * 0.35 &&
+          (radius - _lastFetchRadius).abs() < _lastFetchRadius * 0.5) {
+        // Barely moved — still recluster (zoom may have changed) but skip refetch.
+        _setState(_rebuildMarkerFeatures);
+        return;
+      }
+    }
+    final seq = ++_stopsRequestSeq;
+    _lastFetchCenter = center;
+    _lastFetchRadius = radius;
+    try {
+      final stops = await ref
+          .read(stopsRepositoryProvider)
+          .nearby(
+            lat: center.latitude,
+            lon: center.longitude,
+            radiusMeters: radius,
+          );
+      if (!mounted || seq != _stopsRequestSeq) return;
+      _setState(() {
+        _areaStops = stops;
+        _rebuildMarkerFeatures();
+      });
+    } catch (_) {
+      // Keep whatever is shown on a transient failure.
+    }
+  }
+
+  String _stopSourceId(String layerId) => '$layerId-src';
+
+  /// Adds the stop marker layers + their (empty) GeoJSON sources to a freshly
+  /// loaded style, once. Styling is taken from the same MarkerLayer/PolylineLayer
+  /// specs the declarative path used, so the pins look identical. Order = paint
+  /// order (first added sits lowest): rails · cluster · bus · tram · trolley ·
+  /// mixed · favourites · pinned place. Data arrives later via
+  /// [_pushStopSources]; the layers themselves are never removed/re-added, so the
+  /// buggy positional reconcile can't drop them.
+  Future<void> _addStopLayers(StyleController style) async {
+    if (_stopLayersAdded || _stopLayersAdding) return;
+    _stopLayersAdding = true;
+    MarkerLayer pin(String image, {IconAnchor anchor = IconAnchor.center}) =>
+        MarkerLayer(
+          points: const [],
+          iconImage: image,
+          iconSize: _HomeMapScreenState._iconSize,
+          iconAllowOverlap: true,
+          iconAnchor: anchor,
+        );
+    final specs = <(String, Layer)>[
+      (
+        _HomeMapScreenState._railsLayerId,
+        const PolylineLayer(polylines: [], color: tramRailColor, width: 2),
+      ),
+      (
+        _HomeMapScreenState._clusterLayerId,
+        MarkerLayer(
+          points: const [],
+          iconImage: MapImages.cluster,
+          iconSize: _HomeMapScreenState._iconSize,
+          iconAllowOverlap: true,
+          textField: '{point_count}',
+          textColor: _scheme.onPrimary,
+          textSize: 13,
+          textAllowOverlap: true,
+        ),
+      ),
+      (_HomeMapScreenState._busLayerId, pin(MapImages.bus)),
+      (_HomeMapScreenState._tramLayerId, pin(MapImages.tram)),
+      (_HomeMapScreenState._trolleyLayerId, pin(MapImages.trolley)),
+      (_HomeMapScreenState._mixedLayerId, pin(MapImages.mixedStop)),
+      (_HomeMapScreenState._favLayerId, pin(MapImages.favorite)),
+      (
+        _HomeMapScreenState._placeLayerId,
+        pin(MapImages.place, anchor: IconAnchor.bottom),
+      ),
+    ];
+    try {
+      for (final (id, tmpl) in specs) {
+        final srcId = _stopSourceId(id);
+        await style.addSource(
+          GeoJsonSource(
+            id: srcId,
+            data: _HomeMapScreenState._emptyFeatureCollection,
+          ),
+        );
+        final StyleLayer layer = tmpl is PolylineLayer
+            ? LineStyleLayer(
+                id: id,
+                sourceId: srcId,
+                layout: tmpl.getLayout(),
+                paint: tmpl.getPaint(),
+              )
+            : SymbolStyleLayer(
+                id: id,
+                sourceId: srcId,
+                layout: (tmpl as MarkerLayer).getLayout(),
+                paint: tmpl.getPaint(),
+              );
+        await style.addLayer(layer);
+      }
+      // Flip the ready flag ONLY once every source exists, so a camera-idle
+      // firing mid-add can't call updateGeoJsonSource on a not-yet-created
+      // source (that used to throw and poison the whole push — the stop pins
+      // then never came back until the data happened to change).
+      _stopLayersAdded = true;
+    } catch (_) {
+      // Style torn down mid-add (e.g. a theme flip) — allow a later retry.
+      _stopLayersAdded = false;
+    } finally {
+      _stopLayersAdding = false;
+    }
+  }
+
+  /// Pushes the current marker feature lists into the imperative stop layers'
+  /// sources. Only source *data* changes — no layers are added or removed — so
+  /// the reconcile bug can never drop a layer. Every source is (re)pushed on
+  /// each call so a source can never get stuck on stale/empty data.
+  /// Coalesces stop-layer pushes: several triggers in a burst (style load,
+  /// line-type index, rails, area stops, favourites) rebuild and re-upload the
+  /// GeoJSON once, on the next tick, instead of once per trigger. Each push
+  /// serialises every stop and makes MapLibre re-parse it on the main thread.
+  void _pushStopSources() {
+    if (_stopPushTimer?.isActive ?? false) return;
+    _stopPushTimer = Timer(const Duration(milliseconds: 32), () {
+      if (mounted) _pushStopSourcesNow();
+    });
+  }
+
+  void _pushStopSourcesNow() {
+    final style = _style;
+    if (style == null || !_stopLayersAdded) return;
+    // While a line is focused, only its own route shows (via the declarative
+    // focus layers) — empty every ambient stop source so nothing else competes.
+    // Also hide the stops when the coverage heatmap stands in for them (flag on +
+    // zoomed out); the heatmap shows through.
+    final focused = _focus != null;
+    final zoom = _controller?.getCamera().zoom ?? 15.0;
+    final hidden =
+        focused || (_coverageEnabled && coverageMainStopsOpacity(zoom) <= 0.01);
+    final favStops =
+        ref.read(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
+    // Serialise via `jsonEncode`, NOT geobase's `FeatureCollection.toText()`:
+    // toText() does not escape `"` (and other specials) in string properties, so
+    // a stop whose name contains a quote — e.g. `Park "Tašmajdan"` (19 such stops
+    // in the feed) — produced invalid JSON, which the web plugin's
+    // `setData(JSON.parse(data))` threw on, leaving that source empty and its
+    // stops unrendered. `jsonEncode` escapes correctly.
+    String pointsFc(List<Feature<Point>> f) {
+      if (hidden) return _HomeMapScreenState._emptyFeatureCollection;
+      return jsonEncode({
+        'type': 'FeatureCollection',
+        'features': [
+          for (final feature in f)
+            {
+              'type': 'Feature',
+              'geometry': {
+                'type': 'Point',
+                'coordinates': [
+                  feature.geometry!.position.x,
+                  feature.geometry!.position.y,
+                ],
+              },
+              'properties': feature.properties,
+            },
+        ],
+      });
+    }
+
+    Map<String, Object?> stopFeature(Stop s) => {
+      'type': 'Feature',
+      'geometry': {
+        'type': 'Point',
+        'coordinates': [s.lon, s.lat],
+      },
+      'properties': {'stopId': s.stopId, 'name': s.name},
+    };
+    final data = <String, String>{
+      _HomeMapScreenState._railsLayerId: focused
+          ? _HomeMapScreenState._emptyFeatureCollection
+          : jsonEncode({
+              'type': 'FeatureCollection',
+              'features': [
+                for (final poly in _tramRails)
+                  {
+                    'type': 'Feature',
+                    'geometry': {
+                      'type': 'LineString',
+                      'coordinates': [
+                        for (final p in poly) [p[1], p[0]],
+                      ],
+                    },
+                    'properties': const <String, Object?>{},
+                  },
+              ],
+            }),
+      _HomeMapScreenState._clusterLayerId: pointsFc(_clusterPts),
+      _HomeMapScreenState._busLayerId: pointsFc(_busPts),
+      _HomeMapScreenState._tramLayerId: pointsFc(_tramPts),
+      _HomeMapScreenState._trolleyLayerId: pointsFc(_trolleyPts),
+      _HomeMapScreenState._mixedLayerId: pointsFc(_mixedPts),
+      _HomeMapScreenState._favLayerId: focused
+          ? _HomeMapScreenState._emptyFeatureCollection
+          : jsonEncode({
+              'type': 'FeatureCollection',
+              'features': [for (final s in favStops) stopFeature(s)],
+            }),
+      _HomeMapScreenState._placeLayerId: focused
+          ? _HomeMapScreenState._emptyFeatureCollection
+          : jsonEncode({
+              'type': 'FeatureCollection',
+              'features': [
+                if (_pinnedPlace case final place?)
+                  {
+                    'type': 'Feature',
+                    'geometry': {
+                      'type': 'Point',
+                      'coordinates': [place.lon, place.lat],
+                    },
+                    'properties': const <String, Object?>{},
+                  },
+              ],
+            }),
+    };
+    // Always push every source (no dedup cache): `updateGeoJsonSource` is a
+    // synchronous `setData` on web, so re-pushing unchanged data on a camera
+    // idle is cheap, and it guarantees a source that briefly failed an earlier
+    // push (or was reset) always recovers on the next one. Each update is
+    // isolated so one failure can't abort the rest of the loop.
+    for (final entry in data.entries) {
+      try {
+        style.updateGeoJsonSource(
+          id: _stopSourceId(entry.key),
+          data: entry.value,
+        );
+      } catch (_) {
+        // Source momentarily absent (mid style reload) — the next push retries.
+      }
+    }
+  }
+
+  /// Rebuilds the cluster/per-type marker feature lists from [_areaStops] using
+  /// the current camera. Client-side screen-space grid clustering (the maplibre
+  /// 0.3.x GeoJsonSource has no native clustering).
+  void _rebuildMarkerFeatures() {
+    final controller = _controller;
+    final favoriteIds = _favoriteIds;
+    final visibleStops = [
+      for (final s in _areaStops)
+        if (!favoriteIds.contains(s.stopId)) s,
+    ];
+
+    final clusters = <Feature<Point>>[];
+    final bus = <Feature<Point>>[];
+    final tram = <Feature<Point>>[];
+    final trolley = <Feature<Point>>[];
+    final mixed = <Feature<Point>>[];
+
+    void addIndividual(Stop s) {
+      final feature = Feature<Point>(
+        geometry: Point(Geographic(lon: s.lon, lat: s.lat)),
+        properties: {'stopId': s.stopId, 'name': s.name},
+      );
+      final type = stopMarkerType(s);
+      if (type == null) {
+        mixed.add(feature); // one unified marker for multi-type stops (D2)
+        return;
+      }
+      switch (type) {
+        case VehicleType.tram:
+          tram.add(feature);
+        case VehicleType.trolleybus:
+          trolley.add(feature);
+        case VehicleType.bus:
+          bus.add(feature);
+      }
+    }
+
+    final zoom = controller?.getCamera().zoom ?? 14;
+    if (controller == null || zoom >= _individualZoom) {
+      for (final s in visibleStops) {
+        addIndividual(s);
+      }
+    } else {
+      const cell = 66.0;
+      final buckets = <String, List<Stop>>{};
+      for (final s in visibleStops) {
+        final off = controller.toScreenLocation(
+          Geographic(lon: s.lon, lat: s.lat),
+        );
+        final key = '${(off.dx / cell).floor()}:${(off.dy / cell).floor()}';
+        buckets.putIfAbsent(key, () => []).add(s);
+      }
+      for (final bucket in buckets.values) {
+        if (bucket.length == 1) {
+          addIndividual(bucket.first);
+        } else {
+          var lat = 0.0, lon = 0.0;
+          for (final s in bucket) {
+            lat += s.lat;
+            lon += s.lon;
+          }
+          clusters.add(
+            Feature<Point>(
+              geometry: Point(
+                Geographic(lon: lon / bucket.length, lat: lat / bucket.length),
+              ),
+              properties: {'cluster': true, 'point_count': bucket.length},
+            ),
+          );
+        }
+      }
+    }
+
+    _clusterPts = clusters;
+    _busPts = bus;
+    _tramPts = tram;
+    _trolleyPts = trolley;
+    _mixedPts = mixed;
+    _pushStopSources();
+  }
+
+  Set<String> get _favoriteIds =>
+      (ref.read(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[])
+          .map((s) => s.stopId)
+          .toSet();
+}
