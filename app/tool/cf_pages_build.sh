@@ -74,8 +74,8 @@ trap 'rm -f "${ROOT}/app/dart_defines.json"' EXIT
 flutter pub get
 # --wasm: skwasm renderer (WebAssembly) where the browser supports WasmGC
 # (Chrome 119+, Safari 18.2+, Firefox 120+); others fall back to the JS/CanvasKit
-# bundle that is still emitted as main.dart.js. Trial on a preview only: faster
-# sheet and menu animations over the map on phones? (owner report 2026-11-22)
+# bundle that is still emitted as main.dart.js. Smoother sheet and menu
+# animations and faster loads on the owner's phone (preview, 2026-11-27).
 flutter build web --release --wasm --dart-define-from-file=dart_defines.json "${EXTRA_DEFINES[@]}"
 
 # Sanity check: the bundle must point at the API this branch expects.
