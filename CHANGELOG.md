@@ -13,7 +13,8 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   badge, stops, and streets and places. Phones now find streets and places
   too (Knez Mihailova, Kalemegdan); tapping one centres the map on it. A
   found place shows the same badge it has on the map (museum, park, cafe…);
-  a street or address shows a neutral grey one.
+  a street or address shows a neutral grey one, and a stop shows its map
+  pin (type colour and glyph) instead of a generic pin.
 - **"Live unavailable" sits where live vehicles would be.** On a stop board
   the note now stands right above "By timetable" instead of at the top.
 - **Feedback opens the form.** "Share feedback" in the menu goes straight to

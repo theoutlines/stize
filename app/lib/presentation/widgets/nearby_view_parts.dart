@@ -222,7 +222,11 @@ extension _NearbyRows on NearbyViewState {
       case PlaceSearchRow(:final place):
         return ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-          leading: PlaceBadge(kind: place.kind),
+          // Same leading width as a stop's pin, so the titles line up.
+          leading: SizedBox.square(
+            dimension: 32,
+            child: Center(child: PlaceBadge(kind: place.kind)),
+          ),
           title: Text(place.displayName),
           onTap: widget.onSelectPlace == null
               ? null

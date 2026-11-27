@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../core/design/stize_icons.dart';
+import '../../core/map_support.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../domain/models/stop.dart';
 
 /// DS StopRow: one stop in search results, the same row on mobile (Nearby
-/// search) and desktop (panel search). Pin, name, the lines that serve it, and
-/// the sign number as a Chip on the right, so a stop found by its number shows
-/// that number and two same-named stops (one per direction) tell apart.
+/// search) and desktop (panel search). The stop's map pin, name, the lines
+/// that serve it, and the sign number as a Chip on the right, so a stop found
+/// by its number shows that number and two same-named stops (one per
+/// direction) tell apart.
 class StopResultTile extends StatelessWidget {
   const StopResultTile({super.key, required this.stop, this.onTap});
 
@@ -20,7 +21,12 @@ class StopResultTile extends StatelessWidget {
     final code = stop.code;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: Icon(StizeIcons.pin, color: c.ink75),
+      // The pin the stop has on the map (type colour and glyph), so search
+      // speaks the map's language; 48 px pin box drawn at 32.
+      leading: SizedBox.square(
+        dimension: 32,
+        child: FittedBox(child: stopPinFor(stop, Theme.of(context).colorScheme)),
+      ),
       title: Text(stop.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: stop.lines.isEmpty
           ? null
