@@ -31,7 +31,7 @@ jobs:
       SUB_URL: ${{ inputs.suburban_url || 'https://data.gov.rs/sr/datasets/r/60f82229-16c7-4939-961b-2c24873d3e06' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
