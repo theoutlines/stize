@@ -30,7 +30,9 @@ extension _MapPanels on _HomeMapScreenState {
       navRow: _slotNavRow(l10n),
       borderRadius: BorderRadius.circular(16), // island corners
       hug: true,
-      child: _search.busy ? _searchResultsList(l10n) : _slotContent(l10n),
+      child: _search.session.active
+          ? _searchResultsList(l10n)
+          : _slotContent(l10n),
     );
 
     final widgets = <Widget>[
@@ -304,7 +306,7 @@ extension _MapPanels on _HomeMapScreenState {
           child: MapSearchPill(
             controller: _searchController,
             focusNode: _focusNode,
-            active: _deskSearchActive || _search.busy,
+            active: _deskSearchActive || _search.session.active,
             placeLabel: _browsePlaceLabel(l10n),
             away: _browse.point != null,
             onLocate: _recenterOnMe,

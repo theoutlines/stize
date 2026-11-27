@@ -109,13 +109,8 @@ class _StopsState {
 
 /// Search results and the search session (home_map_search.dart).
 class _SearchState {
-  bool busy = false;
-  // Dedupe the `search_used` event to once per search session (reset when the
-  // query is cleared) so a debounced keystroke burst logs a single event.
-  bool logged = false;
-  List<Stop> stops = [];
-  List<LineInfo> lines = [];
-  List<GeocodeResult> places = [];
+  /// Search mode, the results and which answer may land (see [SearchSession]).
+  final SearchSession session = SearchSession();
   Timer? debounce;
 }
 
