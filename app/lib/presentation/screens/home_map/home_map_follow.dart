@@ -20,9 +20,9 @@ extension _MapFollow on _HomeMapScreenState {
     final current = siblings
         .where((a) => VehicleTrackAnimator.keyFor(a) == _selectedVehicleKey)
         .firstOrNull;
-    final board = _followBoardStopId == null
+    final board = _follow.boardStopId == null
         ? null
-        : ref.watch(arrivalsProvider(_followBoardStopId!)).valueOrNull;
+        : ref.watch(arrivalsProvider(_follow.boardStopId!)).valueOrNull;
     return FollowHeader(
       line: line,
       type: type,
@@ -58,7 +58,7 @@ extension _MapFollow on _HomeMapScreenState {
   /// The live vehicles of the followed line and direction on the board the
   /// follow came from, soonest first, at most three: the head's switcher.
   List<Arrival> _followSiblings(String line, VehicleTrack? track) {
-    final id = _followBoardStopId;
+    final id = _follow.boardStopId;
     if (id == null) return const [];
     final board = ref.watch(arrivalsProvider(id)).valueOrNull;
     if (board == null) return const [];
@@ -101,7 +101,7 @@ extension _MapFollow on _HomeMapScreenState {
     final focus = _focus;
     final key = _selectedVehicleKey;
     if (focus == null || key == null || focus.stops.isEmpty) {
-      _routeAheadDiag = _followNoRouteData
+      _diag.routeAhead = _follow.noRouteData
           ? 'ROUTE unavailable (no GTFS geometry for line)'
           : 'ROUTE ahead -';
       return const [];
@@ -129,14 +129,14 @@ extension _MapFollow on _HomeMapScreenState {
     final plan = planVehicleRoute(
       shape: shape,
       vehicle: vehicle,
-      boardStop: _followBoardStop ?? vehicle,
-      stopsRemaining: _followStopsRemaining,
-      etaToBoardMinutes: _followEtaMinutes,
+      boardStop: _follow.boardStop ?? vehicle,
+      stopsRemaining: _follow.stopsRemaining,
+      etaToBoardMinutes: _follow.etaMinutes,
     );
     // Progress diagnostic (owner R4 #1): how many stops still ahead and which is
     // next. As the vehicle passes a stop these change — the proof the list
     // slides with live progress, not a frozen entry snapshot.
-    _routeAheadDiag =
+    _diag.routeAhead =
         'ROUTE ahead ${plan.stops.length} next ${plan.nextStop?.name ?? "-"}';
     return plan.stops;
   }
@@ -155,7 +155,7 @@ extension _MapFollow on _HomeMapScreenState {
       line: a.line,
       type: a.vehicleType,
       heading: a.heading,
-      path: _shapeCache[shapeKey],
+      path: _shapes.byLine[shapeKey],
       trajectory: a.trajectory,
       asOf: asOf,
       // [shapeKey] IS the resolved direction route_id the marker moves along, so

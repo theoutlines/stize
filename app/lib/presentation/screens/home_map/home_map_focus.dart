@@ -14,10 +14,7 @@ extension _MapFocus on _HomeMapScreenState {
     if (style == null) return;
     // Tear down any previous focus layers first (colour/route may have changed).
     if (_focusLayersAdded) {
-      for (final id in const [
-        _HomeMapScreenState._focusRouteLayerId,
-        _HomeMapScreenState._focusStopsLayerId,
-      ]) {
+      for (final id in const [_LayerIds.focusRoute, _LayerIds.focusStops]) {
         try {
           await style.removeLayer(id);
         } catch (_) {}
@@ -32,7 +29,7 @@ extension _MapFocus on _HomeMapScreenState {
     final below = focusInsertBelowLayerId(vehicleLayersAdded: _vehLayerAdded);
     try {
       if (focus.polyline.length >= 2) {
-        final srcId = _stopSourceId(_HomeMapScreenState._focusRouteLayerId);
+        final srcId = _stopSourceId(_LayerIds.focusRoute);
         await style.addSource(
           GeoJsonSource(id: srcId, data: _focusRouteGeoJson(focus)),
         );
@@ -43,7 +40,7 @@ extension _MapFocus on _HomeMapScreenState {
         );
         await style.addLayer(
           LineStyleLayer(
-            id: _HomeMapScreenState._focusRouteLayerId,
+            id: _LayerIds.focusRoute,
             sourceId: srcId,
             layout: line.getLayout(),
             paint: line.getPaint(),
@@ -51,7 +48,7 @@ extension _MapFocus on _HomeMapScreenState {
           belowLayerId: below,
         );
       }
-      final stopsSrc = _stopSourceId(_HomeMapScreenState._focusStopsLayerId);
+      final stopsSrc = _stopSourceId(_LayerIds.focusStops);
       await style.addSource(
         GeoJsonSource(id: stopsSrc, data: _focusStopsGeoJson(focus)),
       );
@@ -63,7 +60,7 @@ extension _MapFocus on _HomeMapScreenState {
       );
       await style.addLayer(
         SymbolStyleLayer(
-          id: _HomeMapScreenState._focusStopsLayerId,
+          id: _LayerIds.focusStops,
           sourceId: stopsSrc,
           layout: pin.getLayout(),
           paint: pin.getPaint(),

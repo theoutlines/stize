@@ -95,6 +95,7 @@ part 'home_map/home_map_vehicles.dart';
 part 'home_map/home_map_sync.dart';
 part 'home_map/home_map_view.dart';
 part 'home_map/home_map_types.dart';
+part 'home_map/home_map_state.dart';
 part 'home_map/home_map_lifecycle.dart';
 part 'home_map/home_map_levels.dart';
 part 'home_map/home_map_pill.dart';
@@ -155,73 +156,31 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// setState for the part-file extensions (setState is @protected).
   void _setState(VoidCallback fn) => setState(fn);
 
+  final _diag = _DiagState();
+
+  final _shapes = _ShapeState();
+
+  final _follow = _FollowState();
+
+  final _search = _SearchState();
+
+  final _stops = _StopsState();
+
+  final _browse = _BrowseState();
+
+  final _cov = _CoverageState();
+
+  final _jam = _JamState();
+
   MapController? _controller;
   StyleController? _style;
   ColorScheme _scheme = const ColorScheme.light();
   Brightness? _styleBrightness;
   bool _imagesReady = false;
 
-  // Coverage heatmap overlay (feature-flagged): a passive background shown when
-  // zoomed out, in place of the stop clusters. The GeoJSON is added lazily on
-  // the first zoom-out past the threshold (never fetched if the user stays
-  // zoomed in). See core/coverage_heatmap.dart for the shared source/style.
-  bool _coverageEnabled = false; // remote flag, read in build
-  bool _coverageAdded = false; // source+layer present in the current style
-  bool _coverageActive = false; // hysteresis state for the mount decision
-
-  // Imperative stop layers. maplibre 0.3.5's declarative `MapLibreMap.layers`
-  // reconciles the list *positionally* (`maplibre-layer-$index`) with unawaited
-  // add/remove calls; when the set of stop layers changes (types coming/going by
-  // area, tram rails loading async) it deterministically drops some — on prod a
-  // pure-bus stop lost its whole marker layer, so it had no clickable pin. So the
-  // stop layers are managed imperatively instead: added once per style load, then
-  // only their GeoJSON source data changes (exactly like the coverage layer), so
-  // the buggy LayerManager never touches them. Focus mode still uses the
-  // declarative list (a clean, user-initiated 2-layer swap).
-  bool _stopLayersAdded = false; // layers+sources present in the current style
-  bool _stopLayersAdding =
-      false; // add in flight (guards the ready flag window)
-  static const _railsLayerId = 'stg-stops-rails';
-  static const _clusterLayerId = 'stg-stops-cluster';
-  static const _busLayerId = 'stg-stops-bus';
-  static const _tramLayerId = 'stg-stops-tram';
-  static const _trolleyLayerId = 'stg-stops-trolley';
-  static const _mixedLayerId = 'stg-stops-mixed';
-  static const _favLayerId = 'stg-stops-fav';
-  static const _placeLayerId = 'stg-stops-place';
-  // Focused-line view (route highlight + that line's stops). Added imperatively
-  // — like the stop layers, and unlike the old declarative path — so they can be
-  // inserted *below* the moving-object symbol layers (belowLayerId), keeping the
-  // route from painting over the vehicle coin the user is following.
-  static const _focusRouteLayerId = 'stg-focus-route';
-  static const _focusStopsLayerId = 'stg-focus-stops';
   bool _focusLayersAdded = false;
   String?
   _focusLayerError; // last focus-layer add failure, for the staging overlay
-  static const _emptyFeatureCollection =
-      '{"type":"FeatureCollection","features":[]}';
-
-  // Tram-jam ("stalled segment") overlay (feature/jam-detection, flag-gated). An
-  // amber, pulsing alert: a thin segment along the route where the geometry gate
-  // passes, plus a soft glow on every affected stop (always — the glow is the
-  // primary visual, not a fallback). Off-shape lines get glow only. Its OWN state,
-  // separate from the animator's "looks stuck". The pulse is a cheap opacity
-  // animation (data-driven `['get','opacity']`, tiny source re-push) driven by a
-  // timer that runs ONLY while a jam exists — an empty map spins nothing (thermal).
-  static const _jamSegmentLayerId = 'stg-jam-segment';
-  static const _jamGlowLayerId = 'stg-jam-glow';
-  static const _browseDotLayerId = 'stg-browse-dot';
-  bool _jamLayersAdded = false;
-  bool _jamsProcessing = false; // guards the async shape-load reentrancy
-  List<List<ll.LatLng>> _jamSegments = const []; // amber polylines to draw
-  List<ll.LatLng> _jamGlowStops = const []; // affected-stop points to glow
-  Set<String> _jammedGarages = const {}; // off-shape jams → badge these markers
-  // Direction route_id → its shape path + stop id→coord map (for segment + glow).
-  final Map<String, ({RoutePath? path, Map<String, ll.LatLng> stops})?>
-  _jamShapeCache = {};
-  Timer? _jamPulseTimer; // runs only while a jam is shown
-  double _jamPulsePhase = 0; // 0..2π, advanced by the pulse timer
-  bool _jamModeOn = false; // the jam-mode map toggle (fit to all active jams)
 
   // Live vehicles in the viewport: eased between refreshes by the animator, so
   // markers glide instead of teleporting. Only the vehicle WidgetLayer repaints
@@ -261,7 +220,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
-  Timer? _searchDebounce;
 
   // ---- User's own live position --------------------------------------------
   // The marker is driven by a continuous position stream (distance-filtered,
@@ -270,20 +228,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   late final AnimationController _meAnim;
   ll.LatLng? _meFrom; // where the marker eased from
   ll.LatLng? _meTo; // the latest fix (null = no marker shown)
-  // Nearby around a point on the map instead of around you (owner,
-  // 2026-11-25): your dot leaves its fix and sits on the visible centre while
-  // you drag; null = around you.
-  ll.LatLng? _browsePoint;
-  bool _browseLifted = false;
-  // The centre point is a map layer, not a Flutter overlay: an overlay that
-  // appears over the map as a drag starts broke the drag on iPhone Safari, and
-  // an overlay tied to the visible centre slid over the map with the sheet
-  // (owner, 2026-11-26).
-  bool _browseDotAdded = false;
-  bool _browseDotShown = false;
-  Timer? _browseDropTimer;
-  Timer? _browseIdleTimer;
-  DateTime? _browseDropAt;
 
   /// The guide was opened on this device (ends the first-launch strip).
   bool _guideSeen = true;
@@ -311,50 +255,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   Geographic? _pendingCenter;
   double? _pendingZoom;
 
-  // Stops loaded for the current viewport, and the derived marker features.
-  List<Stop> _areaStops = [];
-  ll.LatLng? _lastFetchCenter;
-  double _lastFetchRadius = 0;
-  int _stopsRequestSeq = 0;
-
-  List<Feature<Point>> _clusterPts = [];
-  List<Feature<Point>> _busPts = [];
-  List<Feature<Point>> _tramPts = [];
-  List<Feature<Point>> _trolleyPts = [];
-  List<Feature<Point>> _mixedPts = [];
-
-  // Tram rail geometry (C2), fetched once from the tram lines' GTFS shapes and
-  // drawn as thin lines under everything else.
-  bool _tramRailsRequested = false;
-  List<List<List<double>>> _tramRails = [];
-
-  // Per-line route geometry cache (X5): line number -> path (null = fetched but
-  // unavailable). Vehicles move along these instead of teleporting.
-  final Map<String, RoutePath?> _shapeCache = {};
-  final Set<String> _shapeFetching = {};
-
-  /// When a shape lookup last failed. A failure (a network blip) is retried
-  /// after [_shapeRetryAfter] instead of being cached for the session, which
-  /// left that direction's vehicles off the road until a reload.
-  final Map<String, DateTime> _shapeFailedAt = {};
   static const _shapeRetryAfter = Duration(seconds: 30);
-
-  // The last vehicle set handed to the animator, kept so a route shape that
-  // finishes loading *after* a sync can be re-applied immediately (upgrading a
-  // vehicle from its raw GPS fix onto the real road geometry)
-  // instead of waiting for the next 30s poll. Debounced by [_shapeResyncTimer]
-  // so a burst of shape loads (panning brings in many lines) coalesces into one
-  // re-sync.
-  List<AreaVehicle> _lastShownVehicles = const [];
-  Timer? _shapeResyncTimer;
-
-  bool _searching = false;
-  // Dedupe the `search_used` event to once per search session (reset when the
-  // query is cleared) so a debounced keystroke burst logs a single event.
-  bool _searchLogged = false;
-  List<Stop> _resultStops = [];
-  List<LineInfo> _resultLines = [];
-  List<GeocodeResult> _resultPlaces = [];
 
   Geographic? _pinnedPlace;
 
@@ -373,26 +274,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   //   B — stop context (`_stopContextId` set): the tapped stop's live arrivals
   //       are the only markers, fed from the SAME arrivals provider the sheet
   //       polls (no second fan-out) and refreshed on its 30s cadence.
-  //   C — vehicle context (`_following` + `_focus`): one vehicle is followed
+  //   C — vehicle context (`_follow.active` + `_focus`): one vehicle is followed
   //       with its direction's route highlighted. Works at BOTH flag values.
   bool _onDemand = false;
-  // Staging-overlay diagnostics for the on-demand context (debugPrint is stripped
-  // in release web, so these surface on the on-screen diagnostics panel instead).
-  int? _lastCtxBoardAgeSec; // freshness of the last context board applied
-  int _lastCtxLive = 0; // live rows in it
-  int _lastCtxWithTraj = 0; // how many carried a timing plan
-  // Board age at the moment each poll landed, most recent last (last 12).
-  //
-  // This is the number that decides whether an *elastic* stop dwell is worth
-  // building. The marker stops predicting once a board passes the 45 s gate, and
-  // the next board is only 30 s away — so a poll that lands carrying a board
-  // already older than 15 s means the marker will freeze before its relief
-  // arrives, for (age + 30 − 45) seconds. Under 15 s it never freezes at all.
-  // The backend caps board age at 40 s, so the whole question is where in 0..40
-  // these samples actually fall — hence a short history rather than one value.
-  final List<int> _boardAgePolls = [];
-  int _refreshTicks = 0; // 30s refresh ticks fired
-  int _pumpCount = 0; // vehicle-driver frames pumped
   // A stop arrivals sheet is currently up. The bottom UI (Nearby panel / search)
   // is hidden while it is, so the two never overlap (#7).
   /// The one mobile sheet: the host drives its height (open a level at half,
@@ -449,16 +333,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // collapsed re-expands (see `_expandPanelIfCollapsed`).
   bool _panelCollapsed = false;
   EdgeInsets? _appliedInsets; // last geometry the camera was settled for
-  // ETA anchoring for the followed vehicle's worded route (owner R1 #5), taken
-  // from the arrival it was opened from; null for a marker-tap follow (the route
-  // then extrapolates from position alone).
-  int? _followStopsRemaining;
-  int? _followEtaMinutes;
-  ll.LatLng?
-  _followBoardStop; // the stop the follow was opened from ("your stop")
-  // That stop's id: its board feeds the follow head's switcher between the
-  // vehicles of the same line and direction (owner, 2026-11-25, S1).
-  String? _followBoardStopId;
 
   String? _stopContextId; // stop feeding the markers (state B); null = not in B
   ProviderSubscription<AsyncValue<ArrivalsBoard>>? _stopArrivalsSub;
@@ -466,41 +340,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // closed (return to B); null → fall back to A.
   String? _returnToStopId;
 
-  // Follow mode: the camera keeps the selected vehicle centred in the visible
-  // area (right of the panel / above the sheet) as it moves — the Google Maps
-  // pattern. Any manual pan/zoom gesture breaks it (the marker and highlight
-  // stay). `_followEngaged` gates the per-tick centring so an entry fly-to
-  // settles first. `_selfCameraMove` marks a camera move the app itself issued,
-  // so the move-start it triggers isn't mistaken for a user gesture and doesn't
-  // break follow (the classic self-cancelling-follow bug).
-  bool _following = false;
-  bool _followEngaged = false;
-
-  /// When the current follow started. If the entry fly-to's future never
-  /// completes (on web an interrupted flight, e.g. by the sheet re-fitting the
-  /// camera as the vehicle level opens, never resolves), follow engages anyway
-  /// once [_followEngageFallback] has passed: the map must never stop tracking.
-  DateTime? _followStartedAt;
   static const _followEngageFallback = Duration(milliseconds: 1200);
-  // The followed line has no route geometry in our GTFS (a suburban / non-GSP
-  // carrier like "Ada 4"): follow degrades to raw GPS — no route line, no route
-  // ahead, an honest label (owner R4 #2).
-  bool _followNoRouteData = false;
-  DateTime? _lastFollowMoveAt; // throttle for the smooth follow ease
   bool _selfCameraMove = false;
-  // A brief grace window after a resume during which a camera-move event does
-  // NOT break follow. Returning to a hidden tab re-lays-out the MapLibre-web
-  // canvas, which surfaces a camera event flagged as a user gesture even though
-  // the user did nothing — that used to silently drop follow, leaving the marker
-  // to wander off-screen with the selection still live. The programmatic follow
-  // pan that re-centres on the re-anchored (jumped) marker also happens inside
-  // this window, so it can't be mistaken for a manual pan either.
-  DateTime? _followResumeGuardUntil;
-  // Where the camera sat when the vehicle context was entered, restored on close
-  // so the user lands back where they came from (the stop, or the pre-focus
-  // viewport) instead of adrift wherever the vehicle wandered.
-  Geographic? _preFollowCenter;
-  double? _preFollowZoom;
   // Where the camera sat before opening a stop sheet (which pans the stop up
   // above the sheet). Restored when the sheet closes back to browsing, so the
   // return is symmetric to the open.
@@ -556,20 +397,20 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   @override
   void dispose() {
-    _stopPushTimer?.cancel();
-    _railsTimer?.cancel();
+    _stops.pushTimer?.cancel();
+    _stops.railsTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _positionSub?.cancel();
     _compassSub?.cancel();
     _heading.dispose();
     _meAnim.dispose();
-    _searchDebounce?.cancel();
+    _search.debounce?.cancel();
     _stopArrivalsSub?.close();
     _vehiclesTimer?.cancel();
-    _shapeResyncTimer?.cancel();
-    _jamPulseTimer?.cancel();
-    _browseDropTimer?.cancel();
-    _browseIdleTimer?.cancel();
+    _shapes.resyncTimer?.cancel();
+    _jam.pulseTimer?.cancel();
+    _browse.dropTimer?.cancel();
+    _browse.idleTimer?.cancel();
     _stopVehDriver();
     _vehTicker?.dispose();
     _vehAnim.removeStatusListener(_onVehAnimStatus);
@@ -607,19 +448,11 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
 
   // ---- Vehicle-layer driver (runs only while something is actually moving) --
 
-  // Rebuild the desktop vehicle panel ~1/s while following, so its worded route
-  // ("Rest of the route") slides as the vehicle progresses along the plan — same
-  // progress the marker uses (its plan position), just re-read (owner R3 #3).
-  DateTime? _lastFollowPanelRefreshAt;
-
   // ---- Location -------------------------------------------------------------
 
   bool _autoprompted = false;
 
   // ---- Stops for the visible area ------------------------------------------
-
-  Timer? _stopPushTimer;
-  Timer? _railsTimer;
 
   // ---- Map geometry owner (single source of truth) --------------------------
   //
@@ -656,14 +489,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // steady between steps. (Matches the conservative sampler cadence used
   // elsewhere.)
   static const _followInterval = Duration(milliseconds: 66);
-
-  /// Route-ahead progress diagnostic (owner R4 #1), set in [_buildUpcomingStops].
-  String _routeAheadDiag = 'ROUTE ahead -';
-
-  /// Diagnostics for the follow camera (owner R3 #1): the marker's pixel before
-  /// the move, the visible-area-centre target pixel, the applied inset and the
-  /// resulting camera centre. Surfaced on the staging overlay.
-  String _followCamDiag = 'FOLLOW cam -';
 
   // ---- Build ----------------------------------------------------------------
 
@@ -747,7 +572,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                       levelBody: _oneScrollRoot
                           ? null
                           : (sc) => _slotContent(l10n, scrollController: sc),
-                      userLocation: _browsePoint ?? _meTo,
+                      userLocation: _browse.point ?? _meTo,
                       locationDenied: _locationDenied,
                       active: _tabActive && _appResumed,
                       onEnableLocation: _recenterOnMe,

@@ -194,10 +194,10 @@ extension _MapLocation on _HomeMapScreenState {
     // (the vehicle marker + route highlight stay put).
     _stopFollow();
     // Back to you: Nearby is around your fix again.
-    if (_browsePoint != null || _browseLifted) {
+    if (_browse.point != null || _browse.lifted) {
       _setState(() {
-        _browsePoint = null;
-        _browseLifted = false;
+        _browse.point = null;
+        _browse.lifted = false;
       });
     }
     // Recenter immediately on the best position we already have (instant
@@ -231,7 +231,7 @@ extension _MapLocation on _HomeMapScreenState {
 
   /// Nearby is on screen with nothing else open: the map can choose its point.
   bool get _browseEligible =>
-      !_following &&
+      !_follow.active &&
       _selectedVehicleKey == null &&
       _focus == null &&
       _levels.isEmpty &&
@@ -240,7 +240,7 @@ extension _MapLocation on _HomeMapScreenState {
 
   /// The centre point is drawn (dragging now, or a point chosen).
   bool get _browseShowing =>
-      _browseEligible && (_browseLifted || _browsePoint != null);
+      _browseEligible && (_browse.lifted || _browse.point != null);
 
   /// The visible map's centre in screen pixels (left of the panel / above the
   /// sheet excluded).
@@ -257,26 +257,29 @@ extension _MapLocation on _HomeMapScreenState {
     if (!_browseEligible) return;
     // A new drag inside the settle window: the last idle was a pause, not the
     // end of the gesture, so the dot stays up.
-    _browseIdleTimer?.cancel();
-    if (_browseLifted) return;
-    _browseDropTimer?.cancel();
-    _browseDropAt = null;
-    _setState(() => _browseLifted = true);
+    _browse.idleTimer?.cancel();
+    if (_browse.lifted) return;
+    _browse.dropTimer?.cancel();
+    _browse.dropAt = null;
+    _setState(() => _browse.lifted = true);
     _pushBrowseDot();
   }
 
   /// The camera stopped. Wait a beat before dropping: on touch a gesture can
   /// report an idle mid-way (a pause, the end of a flick before the next one).
   void _onBrowseIdle() {
-    if (!_browseLifted) return;
-    _browseIdleTimer?.cancel();
-    _browseIdleTimer = Timer(const Duration(milliseconds: 280), _dropBrowseDot);
+    if (!_browse.lifted) return;
+    _browse.idleTimer?.cancel();
+    _browse.idleTimer = Timer(
+      const Duration(milliseconds: 280),
+      _dropBrowseDot,
+    );
   }
 
   /// Drop the dot on the visible centre and make that Nearby's point. A point
   /// within 40 m of your fix is just "around you".
   void _dropBrowseDot() {
-    if (!_browseLifted || !mounted) return;
+    if (!_browse.lifted || !mounted) return;
     final c = _controller;
     if (c == null) return;
     final size = MediaQuery.sizeOf(context);
@@ -286,26 +289,26 @@ extension _MapLocation on _HomeMapScreenState {
     final home =
         me != null && _distance.as(ll.LengthUnit.Meter, me, point) < 40;
     _setState(() {
-      _browseLifted = false;
-      _browsePoint = home ? null : point;
+      _browse.lifted = false;
+      _browse.point = home ? null : point;
     });
     // The bounce: a few tiny source updates over the drop, then still.
     final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    _browseDropTimer?.cancel();
+    _browse.dropTimer?.cancel();
     if (home || still) {
-      _browseDropAt = null;
+      _browse.dropAt = null;
       _pushBrowseDot();
       return;
     }
-    _browseDropAt = DateTime.now();
+    _browse.dropAt = DateTime.now();
     _pushBrowseDot();
-    _browseDropTimer = Timer.periodic(const Duration(milliseconds: 16), (t) {
-      final at = _browseDropAt;
+    _browse.dropTimer = Timer.periodic(const Duration(milliseconds: 16), (t) {
+      final at = _browse.dropAt;
       if (!mounted ||
           at == null ||
           DateTime.now().difference(at) >= StizeMotion.medium) {
         t.cancel();
-        _browseDropAt = null;
+        _browse.dropAt = null;
       }
       _pushBrowseDot();
     });
@@ -315,8 +318,8 @@ extension _MapLocation on _HomeMapScreenState {
   /// its opacity.
   (double, double) _browseDotLift() {
     const lift = 14.0;
-    if (_browseLifted) return (lift, 0.6);
-    final at = _browseDropAt;
+    if (_browse.lifted) return (lift, 0.6);
+    final at = _browse.dropAt;
     if (at == null) return (0, 1);
     final t =
         (DateTime.now().difference(at).inMicroseconds /
@@ -333,10 +336,10 @@ extension _MapLocation on _HomeMapScreenState {
     final features = <Map<String, Object?>>[];
     if (c != null && mounted && _browseShowing) {
       final Offset base;
-      if (_browseLifted) {
+      if (_browse.lifted) {
         base = _visibleCentre(MediaQuery.sizeOf(context));
       } else {
-        final p = _browsePoint;
+        final p = _browse.point;
         base = p == null
             ? _visibleCentre(MediaQuery.sizeOf(context))
             : c.toScreenLocation(Geographic(lon: p.longitude, lat: p.latitude));
@@ -355,7 +358,7 @@ extension _MapLocation on _HomeMapScreenState {
       }
 
       final primary = Theme.of(context).colorScheme.primary.toHexString();
-      if (_browseLifted) {
+      if (_browse.lifted) {
         features.add(
           f(base + const Offset(0, 2), {
             'r': 5.0,
@@ -383,16 +386,16 @@ extension _MapLocation on _HomeMapScreenState {
   Future<void> _pushBrowseDot() async {
     final style = _style;
     if (style == null) return;
-    final srcId = _stopSourceId(_HomeMapScreenState._browseDotLayerId);
+    final srcId = _stopSourceId(_LayerIds.browseDot);
     try {
-      if (!_browseDotAdded) {
-        _browseDotAdded = true;
+      if (!_browse.dotAdded) {
+        _browse.dotAdded = true;
         await style.addSource(
           GeoJsonSource(id: srcId, data: _browseDotGeoJson()),
         );
         await style.addLayer(
           CircleStyleLayer(
-            id: _HomeMapScreenState._browseDotLayerId,
+            id: _LayerIds.browseDot,
             sourceId: srcId,
             paint: {
               'circle-radius': ['get', 'r'],
@@ -410,17 +413,17 @@ extension _MapLocation on _HomeMapScreenState {
         await style.updateGeoJsonSource(id: srcId, data: _browseDotGeoJson());
       }
     } catch (_) {
-      _browseDotAdded = false;
+      _browse.dotAdded = false;
     }
   }
 
   /// The pill's place line: around you, or the stop nearest the map point.
   String? _browsePlaceLabel(AppLocalizations l10n) {
-    final p = _browsePoint;
+    final p = _browse.point;
     if (p == null) return _meTo == null ? null : l10n.nearbyAroundYou;
     Stop? best;
     var bestD = double.infinity;
-    for (final s in _areaStops) {
+    for (final s in _stops.area) {
       final d = _distance.as(ll.LengthUnit.Meter, p, ll.LatLng(s.lat, s.lon));
       if (d < bestD) {
         bestD = d;

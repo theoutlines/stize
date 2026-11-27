@@ -91,7 +91,7 @@ extension _MapVehicles on _HomeMapScreenState {
         [for (final v in shown) shapeKeyOf(v)].whereType<String>(),
         byRouteId: true,
       );
-      _lastShownVehicles = shown;
+      _shapes.lastShown = shown;
       _vehAnimator.syncSamples(_buildVehicleSamples(shown), _vehAnim.value);
       // Drive the layer whenever a fix brings motion (foregrounded); otherwise
       // settle so a screen of stationary vehicles renders zero frames until the
@@ -136,20 +136,20 @@ extension _MapVehicles on _HomeMapScreenState {
     final repo = ref.read(linesRepositoryProvider);
     final now = DateTime.now();
     for (final key in keys.toSet()) {
-      if (_shapeCache.containsKey(key) || _shapeFetching.contains(key)) {
+      if (_shapes.byLine.containsKey(key) || _shapes.fetching.contains(key)) {
         continue;
       }
-      final failed = _shapeFailedAt[key];
+      final failed = _shapes.failedAt[key];
       if (failed != null &&
           now.difference(failed) < _HomeMapScreenState._shapeRetryAfter) {
         continue;
       }
-      _shapeFetching.add(key);
+      _shapes.fetching.add(key);
       (byRouteId ? repo.getShapeByRouteId(key) : repo.getShapeByLineNumber(key))
           .then((shape) {
             final path = RoutePath.fromLatLon(shape.polyline);
-            _shapeCache[key] = path;
-            _shapeFailedAt.remove(key);
+            _shapes.byLine[key] = path;
+            _shapes.failedAt.remove(key);
             if (path == null || !path.isUsable || !mounted) return;
             // The shape landed after the sample that needed it: put every
             // vehicle of this direction on the road now, whichever feed drew it
@@ -165,9 +165,9 @@ extension _MapVehicles on _HomeMapScreenState {
             _scheduleVehicleResync();
           })
           .catchError((_) {
-            _shapeFailedAt[key] = DateTime.now();
+            _shapes.failedAt[key] = DateTime.now();
           })
-          .whenComplete(() => _shapeFetching.remove(key));
+          .whenComplete(() => _shapes.fetching.remove(key));
     }
   }
 
@@ -189,7 +189,7 @@ extension _MapVehicles on _HomeMapScreenState {
           heading: v.heading,
           // Stitch to the direction-resolved shape when available (fixes
           // "through houses"); without it the marker holds its raw GPS fix.
-          path: shapeKeyOf(v) == null ? null : _shapeCache[shapeKeyOf(v)!],
+          path: shapeKeyOf(v) == null ? null : _shapes.byLine[shapeKeyOf(v)!],
           // Same resolved direction, so a marker-tap follow highlights the
           // correct-direction route + stops rather than the line default.
           directionRouteId: shapeKeyOf(v),
@@ -209,11 +209,11 @@ extension _MapVehicles on _HomeMapScreenState {
   /// promptly, without resetting the 30s ease ramp (that would nudge fallback
   /// tracks) — timed tracks upgrade their path in place via updatePlan.
   void _scheduleVehicleResync() {
-    _shapeResyncTimer?.cancel();
-    _shapeResyncTimer = Timer(const Duration(milliseconds: 120), () {
-      if (!mounted || _lastShownVehicles.isEmpty) return;
+    _shapes.resyncTimer?.cancel();
+    _shapes.resyncTimer = Timer(const Duration(milliseconds: 120), () {
+      if (!mounted || _shapes.lastShown.isEmpty) return;
       _vehAnimator.syncSamples(
-        _buildVehicleSamples(_lastShownVehicles),
+        _buildVehicleSamples(_shapes.lastShown),
         _vehAnim.value,
       );
       if (!_paused && _vehAnimator.hasPendingMotion) {
@@ -262,7 +262,7 @@ extension _MapVehicles on _HomeMapScreenState {
         _enterRawFollow();
         return;
       }
-      _followNoRouteData = false;
+      _follow.noRouteData = false;
       final routeStops = shape.stops
           .map(
             (s) => Stop(
@@ -276,7 +276,7 @@ extension _MapVehicles on _HomeMapScreenState {
           .toList();
       // Cache the geometry so the focused line's vehicles ease along the road.
       if (shape.polyline.length >= 2) {
-        _shapeCache[line] = RoutePath.fromLatLon(shape.polyline);
+        _shapes.byLine[line] = RoutePath.fromLatLon(shape.polyline);
       }
       _setState(() {
         _focus = _LineFocus(
@@ -307,7 +307,7 @@ extension _MapVehicles on _HomeMapScreenState {
   void _enterRawFollow() {
     if (!mounted) return;
     _setState(() {
-      _followNoRouteData = true;
+      _follow.noRouteData = true;
       _focus = null; // no route/stops to draw
     });
     _syncFocusLayers(); // remove any stale focus layers

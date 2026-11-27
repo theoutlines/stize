@@ -20,8 +20,8 @@ extension _MapLifecycle on _HomeMapScreenState {
     // Hold follow across the resume: the tab-return canvas re-layout can surface
     // a spurious "gesture" camera event that would otherwise break it. The next
     // follow tick re-centres on the marker, so a re-anchor jump just re-centres.
-    if (_following) {
-      _followResumeGuardUntil = DateTime.now().add(const Duration(seconds: 1));
+    if (_follow.active) {
+      _follow.resumeGuardUntil = DateTime.now().add(const Duration(seconds: 1));
     }
     final hiddenAt = _hiddenAt;
     if (hiddenAt != null) {
@@ -65,7 +65,7 @@ extension _MapLifecycle on _HomeMapScreenState {
       onDemand: _onDemand,
       stopContextId: _stopContextId,
     );
-    _refreshTicks++;
+    _diag.refreshTicks++;
     // Refresh the jam board on the same 30s cadence (no-op / no request when the
     // flag is off — the provider short-circuits to an empty board).
     if (ref.read(jamDetectionEnabledProvider)) ref.invalidate(jamsProvider);

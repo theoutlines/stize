@@ -30,7 +30,7 @@ extension _MapPanels on _HomeMapScreenState {
       navRow: _slotNavRow(l10n),
       borderRadius: BorderRadius.circular(16), // island corners
       hug: true,
-      child: _searching ? _searchResultsList(l10n) : _slotContent(l10n),
+      child: _search.busy ? _searchResultsList(l10n) : _slotContent(l10n),
     );
 
     final widgets = <Widget>[
@@ -156,7 +156,7 @@ extension _MapPanels on _HomeMapScreenState {
     switch (_activeView) {
       case ContextView.nearby:
         return NearbyView(
-          userLocation: _browsePoint ?? _meTo,
+          userLocation: _browse.point ?? _meTo,
           locationDenied: _locationDenied,
           active: _tabActive && _appResumed,
           onEnableLocation: _recenterOnMe,
@@ -262,7 +262,7 @@ extension _MapPanels on _HomeMapScreenState {
           stuckMinutes: f.stuckMinutes,
           // A line with no route geometry in our GTFS (e.g. "Ada 4"): an honest
           // note instead of an empty route list (owner R4 #2).
-          routeUnavailable: _followNoRouteData,
+          routeUnavailable: _follow.noRouteData,
           // Warn only if a jam is on this vehicle's direction AND ahead of it.
           jamAhead: _jamAheadForFollowed(track),
           scrollController: scrollController,
@@ -302,9 +302,9 @@ extension _MapPanels on _HomeMapScreenState {
           child: MapSearchPill(
             controller: _searchController,
             focusNode: _focusNode,
-            active: _deskSearchActive || _searching,
+            active: _deskSearchActive || _search.busy,
             placeLabel: _browsePlaceLabel(l10n),
-            away: _browsePoint != null,
+            away: _browse.point != null,
             onLocate: _recenterOnMe,
             onChanged: _onSearchChanged,
             onActivate: () => _setState(() => _deskSearchActive = true),

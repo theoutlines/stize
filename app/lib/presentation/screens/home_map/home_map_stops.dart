@@ -20,10 +20,10 @@ extension _MapStops on _HomeMapScreenState {
     if (controller == null || !mounted) return;
     final camera = controller.getCamera();
     if (camera.zoom < _minStopsZoom) {
-      if (_areaStops.isNotEmpty) {
-        _lastFetchCenter = null;
+      if (_stops.area.isNotEmpty) {
+        _stops.lastFetchCenter = null;
         _setState(() {
-          _areaStops = [];
+          _stops.area = [];
           _rebuildMarkerFeatures();
         });
       }
@@ -31,22 +31,23 @@ extension _MapStops on _HomeMapScreenState {
     }
     final center = ll.LatLng(camera.center.lat, camera.center.lon);
     final radius = _radiusForVisibleArea(camera);
-    if (_lastFetchCenter != null) {
+    if (_stops.lastFetchCenter != null) {
       final moved = _distance.as(
         ll.LengthUnit.Meter,
-        _lastFetchCenter!,
+        _stops.lastFetchCenter!,
         center,
       );
-      if (moved < _lastFetchRadius * 0.35 &&
-          (radius - _lastFetchRadius).abs() < _lastFetchRadius * 0.5) {
+      if (moved < _stops.lastFetchRadius * 0.35 &&
+          (radius - _stops.lastFetchRadius).abs() <
+              _stops.lastFetchRadius * 0.5) {
         // Barely moved — still recluster (zoom may have changed) but skip refetch.
         _setState(_rebuildMarkerFeatures);
         return;
       }
     }
-    final seq = ++_stopsRequestSeq;
-    _lastFetchCenter = center;
-    _lastFetchRadius = radius;
+    final seq = ++_stops.requestSeq;
+    _stops.lastFetchCenter = center;
+    _stops.lastFetchRadius = radius;
     try {
       final stops = await ref
           .read(stopsRepositoryProvider)
@@ -55,9 +56,9 @@ extension _MapStops on _HomeMapScreenState {
             lon: center.longitude,
             radiusMeters: radius,
           );
-      if (!mounted || seq != _stopsRequestSeq) return;
+      if (!mounted || seq != _stops.requestSeq) return;
       _setState(() {
-        _areaStops = stops;
+        _stops.area = stops;
         _rebuildMarkerFeatures();
       });
     } catch (_) {
@@ -75,8 +76,8 @@ extension _MapStops on _HomeMapScreenState {
   /// [_pushStopSources]; the layers themselves are never removed/re-added, so the
   /// buggy positional reconcile can't drop them.
   Future<void> _addStopLayers(StyleController style) async {
-    if (_stopLayersAdded || _stopLayersAdding) return;
-    _stopLayersAdding = true;
+    if (_stops.layersAdded || _stops.layersAdding) return;
+    _stops.layersAdding = true;
     MarkerLayer pin(String image, {IconAnchor anchor = IconAnchor.center}) =>
         MarkerLayer(
           points: const [],
@@ -87,11 +88,11 @@ extension _MapStops on _HomeMapScreenState {
         );
     final specs = <(String, Layer)>[
       (
-        _HomeMapScreenState._railsLayerId,
+        _LayerIds.rails,
         const PolylineLayer(polylines: [], color: tramRailColor, width: 2),
       ),
       (
-        _HomeMapScreenState._clusterLayerId,
+        _LayerIds.cluster,
         MarkerLayer(
           points: const [],
           iconImage: MapImages.cluster,
@@ -103,24 +104,18 @@ extension _MapStops on _HomeMapScreenState {
           textAllowOverlap: true,
         ),
       ),
-      (_HomeMapScreenState._busLayerId, pin(MapImages.bus)),
-      (_HomeMapScreenState._tramLayerId, pin(MapImages.tram)),
-      (_HomeMapScreenState._trolleyLayerId, pin(MapImages.trolley)),
-      (_HomeMapScreenState._mixedLayerId, pin(MapImages.mixedStop)),
-      (_HomeMapScreenState._favLayerId, pin(MapImages.favorite)),
-      (
-        _HomeMapScreenState._placeLayerId,
-        pin(MapImages.place, anchor: IconAnchor.bottom),
-      ),
+      (_LayerIds.bus, pin(MapImages.bus)),
+      (_LayerIds.tram, pin(MapImages.tram)),
+      (_LayerIds.trolley, pin(MapImages.trolley)),
+      (_LayerIds.mixed, pin(MapImages.mixedStop)),
+      (_LayerIds.fav, pin(MapImages.favorite)),
+      (_LayerIds.place, pin(MapImages.place, anchor: IconAnchor.bottom)),
     ];
     try {
       for (final (id, tmpl) in specs) {
         final srcId = _stopSourceId(id);
         await style.addSource(
-          GeoJsonSource(
-            id: srcId,
-            data: _HomeMapScreenState._emptyFeatureCollection,
-          ),
+          GeoJsonSource(id: srcId, data: _LayerIds.emptyFeatureCollection),
         );
         final StyleLayer layer = tmpl is PolylineLayer
             ? LineStyleLayer(
@@ -141,12 +136,12 @@ extension _MapStops on _HomeMapScreenState {
       // firing mid-add can't call updateGeoJsonSource on a not-yet-created
       // source (that used to throw and poison the whole push — the stop pins
       // then never came back until the data happened to change).
-      _stopLayersAdded = true;
+      _stops.layersAdded = true;
     } catch (_) {
       // Style torn down mid-add (e.g. a theme flip) — allow a later retry.
-      _stopLayersAdded = false;
+      _stops.layersAdded = false;
     } finally {
-      _stopLayersAdding = false;
+      _stops.layersAdding = false;
     }
   }
 
@@ -159,15 +154,15 @@ extension _MapStops on _HomeMapScreenState {
   /// GeoJSON once, on the next tick, instead of once per trigger. Each push
   /// serialises every stop and makes MapLibre re-parse it on the main thread.
   void _pushStopSources() {
-    if (_stopPushTimer?.isActive ?? false) return;
-    _stopPushTimer = Timer(const Duration(milliseconds: 32), () {
+    if (_stops.pushTimer?.isActive ?? false) return;
+    _stops.pushTimer = Timer(const Duration(milliseconds: 32), () {
       if (mounted) _pushStopSourcesNow();
     });
   }
 
   void _pushStopSourcesNow() {
     final style = _style;
-    if (style == null || !_stopLayersAdded) return;
+    if (style == null || !_stops.layersAdded) return;
     // While a line is focused, only its own route shows (via the declarative
     // focus layers) — empty every ambient stop source so nothing else competes.
     // Also hide the stops when the coverage heatmap stands in for them (flag on +
@@ -175,7 +170,7 @@ extension _MapStops on _HomeMapScreenState {
     final focused = _focus != null;
     final zoom = _controller?.getCamera().zoom ?? 15.0;
     final hidden =
-        focused || (_coverageEnabled && coverageMainStopsOpacity(zoom) <= 0.01);
+        focused || (_cov.enabled && coverageMainStopsOpacity(zoom) <= 0.01);
     final favStops =
         ref.read(favoriteStopLocationsProvider).valueOrNull ?? const <Stop>[];
     // Serialise via `jsonEncode`, NOT geobase's `FeatureCollection.toText()`:
@@ -185,7 +180,7 @@ extension _MapStops on _HomeMapScreenState {
     // `setData(JSON.parse(data))` threw on, leaving that source empty and its
     // stops unrendered. `jsonEncode` escapes correctly.
     String pointsFc(List<Feature<Point>> f) {
-      if (hidden) return _HomeMapScreenState._emptyFeatureCollection;
+      if (hidden) return _LayerIds.emptyFeatureCollection;
       return jsonEncode({
         'type': 'FeatureCollection',
         'features': [
@@ -214,12 +209,12 @@ extension _MapStops on _HomeMapScreenState {
       'properties': {'stopId': s.stopId, 'name': s.name},
     };
     final data = <String, String>{
-      _HomeMapScreenState._railsLayerId: focused
-          ? _HomeMapScreenState._emptyFeatureCollection
+      _LayerIds.rails: focused
+          ? _LayerIds.emptyFeatureCollection
           : jsonEncode({
               'type': 'FeatureCollection',
               'features': [
-                for (final poly in _tramRails)
+                for (final poly in _stops.rails)
                   {
                     'type': 'Feature',
                     'geometry': {
@@ -232,19 +227,19 @@ extension _MapStops on _HomeMapScreenState {
                   },
               ],
             }),
-      _HomeMapScreenState._clusterLayerId: pointsFc(_clusterPts),
-      _HomeMapScreenState._busLayerId: pointsFc(_busPts),
-      _HomeMapScreenState._tramLayerId: pointsFc(_tramPts),
-      _HomeMapScreenState._trolleyLayerId: pointsFc(_trolleyPts),
-      _HomeMapScreenState._mixedLayerId: pointsFc(_mixedPts),
-      _HomeMapScreenState._favLayerId: focused
-          ? _HomeMapScreenState._emptyFeatureCollection
+      _LayerIds.cluster: pointsFc(_stops.clusterPts),
+      _LayerIds.bus: pointsFc(_stops.busPts),
+      _LayerIds.tram: pointsFc(_stops.tramPts),
+      _LayerIds.trolley: pointsFc(_stops.trolleyPts),
+      _LayerIds.mixed: pointsFc(_stops.mixedPts),
+      _LayerIds.fav: focused
+          ? _LayerIds.emptyFeatureCollection
           : jsonEncode({
               'type': 'FeatureCollection',
               'features': [for (final s in favStops) stopFeature(s)],
             }),
-      _HomeMapScreenState._placeLayerId: focused
-          ? _HomeMapScreenState._emptyFeatureCollection
+      _LayerIds.place: focused
+          ? _LayerIds.emptyFeatureCollection
           : jsonEncode({
               'type': 'FeatureCollection',
               'features': [
@@ -277,14 +272,14 @@ extension _MapStops on _HomeMapScreenState {
     }
   }
 
-  /// Rebuilds the cluster/per-type marker feature lists from [_areaStops] using
+  /// Rebuilds the cluster/per-type marker feature lists from [_stops.area] using
   /// the current camera. Client-side screen-space grid clustering (the maplibre
   /// 0.3.x GeoJsonSource has no native clustering).
   void _rebuildMarkerFeatures() {
     final controller = _controller;
     final favoriteIds = _favoriteIds;
     final visibleStops = [
-      for (final s in _areaStops)
+      for (final s in _stops.area)
         if (!favoriteIds.contains(s.stopId)) s,
     ];
 
@@ -350,11 +345,11 @@ extension _MapStops on _HomeMapScreenState {
       }
     }
 
-    _clusterPts = clusters;
-    _busPts = bus;
-    _tramPts = tram;
-    _trolleyPts = trolley;
-    _mixedPts = mixed;
+    _stops.clusterPts = clusters;
+    _stops.busPts = bus;
+    _stops.tramPts = tram;
+    _stops.trolleyPts = trolley;
+    _stops.mixedPts = mixed;
     _pushStopSources();
   }
 

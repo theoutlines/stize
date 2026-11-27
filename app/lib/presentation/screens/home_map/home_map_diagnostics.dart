@@ -22,7 +22,7 @@ extension _MapDiagnostics on _HomeMapScreenState {
   /// Staging-only render-diagnostics overlay (`isStaging`, invisible in prod).
   /// On Flutter-CanvasKit the map/layers aren't in the DOM and external JS
   /// inspection is blind, so this is the one reliable window into the stop-render
-  /// pipeline: the gate flags ([_imagesReady]/[_stopLayersAdded]/style), where
+  /// pipeline: the gate flags ([_imagesReady]/[_stops.layersAdded]/style), where
   /// the last viewport fetch landed, how many stops came back and how they split
   /// across the marker lists, which imperative stop layers are actually on the
   /// map, and — via [MapController.queryLayers] — whether each type's layer
@@ -33,7 +33,7 @@ extension _MapDiagnostics on _HomeMapScreenState {
     final key = _selectedVehicleKey;
     final timed = key == null ? null : _vehAnimator.trackFor(key)?.timed;
     final now = DateTime.now();
-    final center = _lastFetchCenter;
+    final center = _stops.lastFetchCenter;
     final controller = _controller;
     final style = _style;
 
@@ -90,33 +90,33 @@ extension _MapDiagnostics on _HomeMapScreenState {
       'STOP DIAGNOSTICS (staging)',
       'zoom ${_currentZoom.toStringAsFixed(2)}  minStops $_minStopsZoom  indiv $_individualZoom',
       // The gates that decide whether ANY stop layer is built/drawn.
-      'imagesReady $_imagesReady  stopLayers $_stopLayersAdded  style ${style != null}  focus ${_focus != null}',
+      'imagesReady $_imagesReady  stopLayers $_stops.layersAdded  style ${style != null}  focus ${_focus != null}',
       center == null
           ? 'last fetch: none yet (zoom < $_minStopsZoom?)'
-          : 'fetch @ ${center.latitude.toStringAsFixed(5)},${center.longitude.toStringAsFixed(5)} r=${_lastFetchRadius.toStringAsFixed(0)}m',
-      'returned ${_areaStops.length} stops (cap 50)',
-      'markers: bus ${_busPts.length} tram ${_tramPts.length} '
-          'trolley ${_trolleyPts.length} mixed ${_mixedPts.length} '
-          'cluster ${_clusterPts.length}',
+          : 'fetch @ ${center.latitude.toStringAsFixed(5)},${center.longitude.toStringAsFixed(5)} r=${_stops.lastFetchRadius.toStringAsFixed(0)}m',
+      'returned ${_stops.area.length} stops (cap 50)',
+      'markers: bus ${_stops.busPts.length} tram ${_stops.tramPts.length} '
+          'trolley ${_stops.trolleyPts.length} mixed ${_stops.mixedPts.length} '
+          'cluster ${_stops.clusterPts.length}',
       'GL layers on map: $glLayers',
       // How many stops of each ambient type actually draw, over ALL on-screen
       // stops. During follow the ambient sources are emptied on purpose, so
       // these read `-`/`0/0` — look at the FOCUS render line below instead.
-      'renders: ${renderStats('bus', _busPts.map(fromFeature))} '
-          '${renderStats('tram', _tramPts.map(fromFeature))} '
-          '${renderStats('trolley', _trolleyPts.map(fromFeature))} '
-          '${renderStats('mixed', _mixedPts.map(fromFeature))}',
+      'renders: ${renderStats('bus', _stops.busPts.map(fromFeature))} '
+          '${renderStats('tram', _stops.tramPts.map(fromFeature))} '
+          '${renderStats('trolley', _stops.trolleyPts.map(fromFeature))} '
+          '${renderStats('mixed', _stops.mixedPts.map(fromFeature))}',
       // Geometry owner: the padding EVERY camera move actually sends to maplibre
       // (owner R3 #1 — prove the panel-aware inset reaches the map).
       'GEO panelActive $_panelActive sheetPx ${_mobileSheetPx.toStringAsFixed(0)} '
           'insets L${_mapInsets.left.toStringAsFixed(0)} B${_mapInsets.bottom.toStringAsFixed(0)}',
       // Follow camera: marker pixel vs visible-area-centre target + camera centre
       // (owner R3 #1 — prove vertical tracking).
-      _followCamDiag,
-      _routeAheadDiag,
+      _diag.followCam,
+      _diag.routeAhead,
       // Vehicle-animation state (on-demand context / follow diagnosis).
       'VEH onDemand $_onDemand stopCtx ${_stopContextId ?? "-"} '
-          'following $_following sel ${_selectedVehicleKey ?? "-"}',
+          'following $_follow.active sel ${_selectedVehicleKey ?? "-"}',
       'VEH tracks ${_vehAnimator.tracks.length} '
           'timed ${_vehAnimator.tracks.values.where((t) => t.timed != null).length} '
           'movingNow ${_vehAnimator.tracks.keys.where(_vehAnimator.hasMotion).length} '
@@ -126,9 +126,9 @@ extension _MapDiagnostics on _HomeMapScreenState {
       // N` it reads as a symptom ("the animation is stuck at 0") while being
       // simply unused. Dropped; `plan`/`vel` below is the real motion read-out.
       'VEH ticker ${_vehTicker?.isActive ?? false} '
-          'paused $_paused refreshTicks $_refreshTicks pumps $_pumpCount',
-      'VEH lastCtx ageSec ${_lastCtxBoardAgeSec ?? "-"} '
-          'live $_lastCtxLive withTraj $_lastCtxWithTraj',
+          'paused $_paused refreshTicks $_diag.refreshTicks pumps $_diag.pumpCount',
+      'VEH lastCtx ageSec ${_diag.ctxBoardAgeSec ?? "-"} '
+          'live $_diag.ctxLive withTraj $_diag.ctxWithTraj',
       // Catch-up instrumentation for the followed vehicle: how far behind the
       // plan's predicted-now spot the marker is (gap) and how fast it's moving
       // to close it (vel). A smooth catch-up shows the gap easing to ~0 with vel
@@ -143,7 +143,7 @@ extension _MapDiagnostics on _HomeMapScreenState {
       // = layer & source are fine but nothing paints (image not resolved for the
       // layer, or z-order); `focus:8/8` = pins ARE there (trust this over eyes).
       'FOCUS render ${renderStats('focus', (_focus?.stops ?? const <Stop>[]).map((s) => (lat: s.lat, lon: s.lon)))}',
-      boardAgeDiagLine(_boardAgePolls),
+      boardAgeDiagLine(_diag.boardAgePolls),
       fixAgeDiagLine(_vehAnimator.fixAgeStats()),
     ];
 

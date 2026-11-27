@@ -84,7 +84,7 @@ extension _MapGeometry on _HomeMapScreenState {
   /// vehicle, else the active stop context. Null = free browse.
   Geographic? _cameraFocus() {
     final key = _selectedVehicleKey;
-    if (_following && key != null && _vehAnimator.trackFor(key) != null) {
+    if (_follow.active && key != null && _vehAnimator.trackFor(key) != null) {
       final p = _vehAnimator.positionOf(key, _vehAnim.value);
       return Geographic(lon: p.longitude, lat: p.latitude);
     }
@@ -165,21 +165,21 @@ extension _MapGeometry on _HomeMapScreenState {
     // Snapshot where the user is before we fly off, so closing the context can
     // bring them back here (the stop, or the pre-focus viewport). Only on a fresh
     // entry — a re-seed mid-follow must not overwrite the origin.
-    if (!_following && controller != null) {
+    if (!_follow.active && controller != null) {
       final cam = controller.getCamera();
-      _preFollowCenter = cam.center;
-      _preFollowZoom = cam.zoom;
+      _follow.preCenter = cam.center;
+      _follow.preZoom = cam.zoom;
     }
-    _following = true;
+    _follow.active = true;
     _selectedVehicleKey = key; // (re)seed on the first follow tick
-    _lastFollowMoveAt = null;
-    _followStartedAt = DateTime.now();
+    _follow.lastMoveAt = null;
+    _follow.startedAt = DateTime.now();
     if (flyTo && controller != null) {
       final zoom = math.max(
         controller.getCamera().zoom,
         kMovingObjectDetailZoom,
       );
-      _followEngaged = false;
+      _follow.engaged = false;
       // Fly the vehicle to the centre of the VISIBLE area — the geometry padding
       // (owned by [_mapInsets]) does the centring, on this and every later tick.
       final flight = _camEase(
@@ -189,12 +189,12 @@ extension _MapGeometry on _HomeMapScreenState {
       // Engage the continuous follow only once the fly-to has actually settled,
       // so the two never fight.
       flight?.whenComplete(() {
-        if (mounted && _following && _selectedVehicleKey == key) {
-          _followEngaged = true;
+        if (mounted && _follow.active && _selectedVehicleKey == key) {
+          _follow.engaged = true;
         }
       });
     } else {
-      _followEngaged = true;
+      _follow.engaged = true;
     }
     // Ensure the layer paints (and the follow tick fires) even if the vehicle is
     // momentarily still; a moving vehicle keeps the driver alive on its own.
@@ -203,9 +203,9 @@ extension _MapGeometry on _HomeMapScreenState {
   }
 
   void _stopFollow() {
-    if (!_following) return;
-    _following = false;
-    _followEngaged = false;
+    if (!_follow.active) return;
+    _follow.active = false;
+    _follow.engaged = false;
   }
 
   /// A brief "vehicle no longer tracked" notice — shown when we can't build a
@@ -223,7 +223,7 @@ extension _MapGeometry on _HomeMapScreenState {
   /// context (back to the stop it came from, or the map), so follow never
   /// continues over an empty map.
   void _onFollowedVehicleLost() {
-    if (!_following) return;
+    if (!_follow.active) return;
     _showVehicleLost();
     _closeVehicleContext();
   }
@@ -235,17 +235,17 @@ extension _MapGeometry on _HomeMapScreenState {
   /// tracking (owner R3 #1). Screen-math moves x AND y explicitly, so the
   /// vehicle can't drift off vertically. Throttled to [_followInterval].
   void _followTick() {
-    if (!_following) return;
-    if (!_followEngaged) {
+    if (!_follow.active) return;
+    if (!_follow.engaged) {
       // The fly-to normally engages follow when it settles; if its future was
       // dropped (an interrupted web flight never resolves), engage on time.
-      final started = _followStartedAt;
+      final started = _follow.startedAt;
       if (started == null ||
           DateTime.now().difference(started) <
               _HomeMapScreenState._followEngageFallback) {
         return;
       }
-      _followEngaged = true;
+      _follow.engaged = true;
     }
     final key = _selectedVehicleKey;
     final controller = _controller;
@@ -259,12 +259,12 @@ extension _MapGeometry on _HomeMapScreenState {
       return;
     }
     final now = DateTime.now();
-    if (_lastFollowMoveAt != null &&
-        now.difference(_lastFollowMoveAt!) <
+    if (_follow.lastMoveAt != null &&
+        now.difference(_follow.lastMoveAt!) <
             _HomeMapScreenState._followInterval) {
       return;
     }
-    _lastFollowMoveAt = now;
+    _follow.lastMoveAt = now;
     final pos = _vehAnimator.positionOf(key, _vehAnim.value);
     _centreOnVisibleArea(
       controller,
@@ -294,7 +294,7 @@ extension _MapGeometry on _HomeMapScreenState {
     // The new camera centre is the geo currently under this screen point; after
     // the move the marker sits exactly on [target].
     final newCentre = c.toLngLat(markerScreen + windowCentre - target);
-    _followCamDiag =
+    _diag.followCam =
         'FOLLOW mk(${markerScreen.dx.toStringAsFixed(0)},'
         '${markerScreen.dy.toStringAsFixed(0)}) '
         'tgt(${target.dx.toStringAsFixed(0)},${target.dy.toStringAsFixed(0)}) '

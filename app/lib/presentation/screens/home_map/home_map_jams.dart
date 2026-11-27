@@ -10,8 +10,8 @@ extension _MapJams on _HomeMapScreenState {
   /// NO segment (wrong-street risk) — but its stops STILL glow (the glow is the
   /// primary visual, not a fallback) and its vehicles are badged. Best-effort.
   Future<void> _onJamsUpdated(JamsBoard board) async {
-    if (_jamsProcessing) return;
-    _jamsProcessing = true;
+    if (_jam.processing) return;
+    _jam.processing = true;
     try {
       final segments = <List<ll.LatLng>>[];
       final glow = <ll.LatLng>[];
@@ -36,25 +36,25 @@ extension _MapJams on _HomeMapScreenState {
         }
       }
       if (!mounted) return;
-      _jamSegments = segments;
-      _jamGlowStops = glow;
-      _jammedGarages = jammed;
+      _jam.segments = segments;
+      _jam.glowStops = glow;
+      _jam.jammedGarages = jammed;
       await _syncJamLayers();
       _updateJamPulse(active: segments.isNotEmpty || glow.isNotEmpty);
       _reconcileCoverageLayer(); // dim coverage under jam mode (2c)
       _paintVehicles(); // refresh the badge state on the markers
       if (mounted) _setState(() {}); // jam-mode button visibility/count
     } finally {
-      _jamsProcessing = false;
+      _jam.processing = false;
     }
   }
 
   Future<({RoutePath? path, Map<String, ll.LatLng> stops})?> _jamShape(
     String directionRouteId,
   ) async {
-    final cached = _jamShapeCache[directionRouteId];
+    final cached = _jam.shapeCache[directionRouteId];
     if (cached != null) return cached;
-    if (_jamShapeCache.containsKey(directionRouteId)) return null;
+    if (_jam.shapeCache.containsKey(directionRouteId)) return null;
     try {
       final shape = await ref
           .read(linesRepositoryProvider)
@@ -63,10 +63,10 @@ extension _MapJams on _HomeMapScreenState {
         path: RoutePath.fromLatLon(shape.polyline),
         stops: {for (final s in shape.stops) s.stopId: ll.LatLng(s.lat, s.lon)},
       );
-      _jamShapeCache[directionRouteId] = rec;
+      _jam.shapeCache[directionRouteId] = rec;
       return rec;
     } catch (_) {
-      _jamShapeCache[directionRouteId] = null;
+      _jam.shapeCache[directionRouteId] = null;
       return null;
     }
   }
@@ -75,32 +75,32 @@ extension _MapJams on _HomeMapScreenState {
   /// runs ONLY while a jam is on screen — an empty map spins nothing (thermal).
   void _updateJamPulse({required bool active}) {
     if (active) {
-      _jamPulseTimer ??= Timer.periodic(const Duration(milliseconds: 90), (_) {
-        _jamPulsePhase =
-            (_jamPulsePhase + (2 * math.pi * 0.09 / 1.75)) % (2 * math.pi);
+      _jam.pulseTimer ??= Timer.periodic(const Duration(milliseconds: 90), (_) {
+        _jam.pulsePhase =
+            (_jam.pulsePhase + (2 * math.pi * 0.09 / 1.75)) % (2 * math.pi);
         _repushJamOpacity();
       });
     } else {
-      _jamPulseTimer?.cancel();
-      _jamPulseTimer = null;
+      _jam.pulseTimer?.cancel();
+      _jam.pulseTimer = null;
     }
   }
 
   double get _jamPulseOpacity =>
-      0.5 + 0.5 * (0.5 + 0.5 * math.sin(_jamPulsePhase));
+      0.5 + 0.5 * (0.5 + 0.5 * math.sin(_jam.pulsePhase));
 
   void _repushJamOpacity() {
     final style = _style;
-    if (style == null || !_jamLayersAdded) return;
+    if (style == null || !_jam.layersAdded) return;
     // Only the tiny feature collections are re-pushed (a few features carrying an
     // opacity number) — not a geometry rebuild. line-opacity/circle-opacity read
     // the per-feature `opacity` via a data expression.
     style.updateGeoJsonSource(
-      id: _stopSourceId(_HomeMapScreenState._jamSegmentLayerId),
+      id: _stopSourceId(_LayerIds.jamSegment),
       data: _jamSegmentsGeoJson(),
     );
     style.updateGeoJsonSource(
-      id: _stopSourceId(_HomeMapScreenState._jamGlowLayerId),
+      id: _stopSourceId(_LayerIds.jamGlow),
       data: _jamGlowGeoJson(),
     );
   }
@@ -110,13 +110,10 @@ extension _MapJams on _HomeMapScreenState {
   Future<void> _syncJamLayers() async {
     final style = _style;
     if (style == null) return;
-    final hasAnything = _jamSegments.isNotEmpty || _jamGlowStops.isNotEmpty;
+    final hasAnything = _jam.segments.isNotEmpty || _jam.glowStops.isNotEmpty;
     if (!hasAnything) {
-      if (_jamLayersAdded) {
-        for (final id in const [
-          _HomeMapScreenState._jamSegmentLayerId,
-          _HomeMapScreenState._jamGlowLayerId,
-        ]) {
+      if (_jam.layersAdded) {
+        for (final id in const [_LayerIds.jamSegment, _LayerIds.jamGlow]) {
           try {
             await style.removeLayer(id);
           } catch (_) {}
@@ -124,28 +121,28 @@ extension _MapJams on _HomeMapScreenState {
             await style.removeSource(_stopSourceId(id));
           } catch (_) {}
         }
-        _jamLayersAdded = false;
+        _jam.layersAdded = false;
       }
       return;
     }
     // Under the stop pins (bus pin is the lowest pin layer) when present, else
     // just under the vehicle symbols.
-    final below = _stopLayersAdded
-        ? _HomeMapScreenState._busLayerId
+    final below = _stops.layersAdded
+        ? _LayerIds.bus
         : focusInsertBelowLayerId(vehicleLayersAdded: _vehLayerAdded);
     try {
-      if (!_jamLayersAdded) {
+      if (!_jam.layersAdded) {
         // Glow first (lowest), then the segment on top of it.
         await style.addSource(
           GeoJsonSource(
-            id: _stopSourceId(_HomeMapScreenState._jamGlowLayerId),
+            id: _stopSourceId(_LayerIds.jamGlow),
             data: _jamGlowGeoJson(),
           ),
         );
         await style.addLayer(
           CircleStyleLayer(
-            id: _HomeMapScreenState._jamGlowLayerId,
-            sourceId: _stopSourceId(_HomeMapScreenState._jamGlowLayerId),
+            id: _LayerIds.jamGlow,
+            sourceId: _stopSourceId(_LayerIds.jamGlow),
             paint: {
               'circle-color': StizeColors.of(context).jam.toHexString(),
               'circle-radius': 13.0,
@@ -157,14 +154,14 @@ extension _MapJams on _HomeMapScreenState {
         );
         await style.addSource(
           GeoJsonSource(
-            id: _stopSourceId(_HomeMapScreenState._jamSegmentLayerId),
+            id: _stopSourceId(_LayerIds.jamSegment),
             data: _jamSegmentsGeoJson(),
           ),
         );
         await style.addLayer(
           LineStyleLayer(
-            id: _HomeMapScreenState._jamSegmentLayerId,
-            sourceId: _stopSourceId(_HomeMapScreenState._jamSegmentLayerId),
+            id: _LayerIds.jamSegment,
+            sourceId: _stopSourceId(_LayerIds.jamSegment),
             layout: {'line-cap': 'round', 'line-join': 'round'},
             paint: {
               'line-color': StizeColors.of(context).jam.toHexString(),
@@ -174,28 +171,28 @@ extension _MapJams on _HomeMapScreenState {
           ),
           belowLayerId: below,
         );
-        _jamLayersAdded = true;
+        _jam.layersAdded = true;
       } else {
         await style.updateGeoJsonSource(
-          id: _stopSourceId(_HomeMapScreenState._jamGlowLayerId),
+          id: _stopSourceId(_LayerIds.jamGlow),
           data: _jamGlowGeoJson(),
         );
         await style.updateGeoJsonSource(
-          id: _stopSourceId(_HomeMapScreenState._jamSegmentLayerId),
+          id: _stopSourceId(_LayerIds.jamSegment),
           data: _jamSegmentsGeoJson(),
         );
       }
     } catch (_) {
-      _jamLayersAdded = false;
+      _jam.layersAdded = false;
     }
   }
 
   String _jamSegmentsGeoJson() {
-    final o = _jamSegments.isEmpty ? 0.0 : _jamPulseOpacity;
+    final o = _jam.segments.isEmpty ? 0.0 : _jamPulseOpacity;
     return jsonEncode({
       'type': 'FeatureCollection',
       'features': [
-        for (final seg in _jamSegments)
+        for (final seg in _jam.segments)
           {
             'type': 'Feature',
             'geometry': {
@@ -212,11 +209,11 @@ extension _MapJams on _HomeMapScreenState {
 
   String _jamGlowGeoJson() {
     // The glow breathes a touch softer than the line.
-    final o = _jamGlowStops.isEmpty ? 0.0 : (_jamPulseOpacity * 0.55);
+    final o = _jam.glowStops.isEmpty ? 0.0 : (_jamPulseOpacity * 0.55);
     return jsonEncode({
       'type': 'FeatureCollection',
       'features': [
-        for (final p in _jamGlowStops)
+        for (final p in _jam.glowStops)
           {
             'type': 'Feature',
             'geometry': {
@@ -242,7 +239,7 @@ extension _MapJams on _HomeMapScreenState {
     final jams = board?.activeJams ?? const <Jam>[];
     if (jams.isEmpty) {
       // Falling out of jam mode when the last jam clears.
-      if (_jamModeOn) {
+      if (_jam.modeOn) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _setJamMode(false));
       }
       return const SizedBox.shrink();
@@ -262,9 +259,9 @@ extension _MapJams on _HomeMapScreenState {
         )
         .length;
     return JamModeButton(
-      on: _jamModeOn,
+      on: _jam.modeOn,
       relevantCount: relevant,
-      onToggle: () => _setJamMode(!_jamModeOn),
+      onToggle: () => _setJamMode(!_jam.modeOn),
     );
   }
 
@@ -290,8 +287,8 @@ extension _MapJams on _HomeMapScreenState {
   }
 
   void _setJamMode(bool on) {
-    if (_jamModeOn == on) return;
-    _setState(() => _jamModeOn = on);
+    if (_jam.modeOn == on) return;
+    _setState(() => _jam.modeOn = on);
     _reconcileCoverageLayer(); // hide/restore the coverage backdrop (2c)
     if (on) _fitToJams();
   }
