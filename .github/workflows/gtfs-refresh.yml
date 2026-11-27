@@ -30,7 +30,7 @@ jobs:
       CITY_URL: ${{ inputs.city_url || 'https://data.gov.rs/sr/datasets/r/729be9a1-7ed9-453d-9a3d-68fa30f07529' }}
       SUB_URL: ${{ inputs.suburban_url || 'https://data.gov.rs/sr/datasets/r/60f82229-16c7-4939-961b-2c24873d3e06' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
