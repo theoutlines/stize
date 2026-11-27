@@ -239,11 +239,11 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
       const tram = gj.features.filter((f: any) => f.properties.type === "tram");
       const bus = gj.features.filter((f: any) => f.properties.type === "bus");
       // Each route draws its own path; on a shared street they share the weight.
-      // 100 + 90 = 190 trips, rounded down to the 175 step.
-      expect(tram.map((f: any) => f.properties.trips)).toEqual([175, 175]);
-      expect(bus.map((f: any) => f.properties.trips)).toEqual([25]);
+      // 100 + 90 = 190 trips, rounded down to the 150 step.
+      expect(tram.map((f: any) => f.properties.trips)).toEqual([150, 150]);
+      expect(bus.map((f: any) => f.properties.trips)).toEqual([35]);
       // Lightest first, so the busiest corridor draws on top.
-      expect(gj.features.map((f: any) => f.properties.trips)).toEqual([25, 175, 175]);
+      expect(gj.features.map((f: any) => f.properties.trips)).toEqual([35, 150, 150]);
     });
 
     it("weights a corridor only by the routes that use it", () => {
@@ -257,8 +257,8 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
         { grid: GRID, simplifyEpsilon: 0 },
       );
       const trips = new Set(gj.features.map((f: any) => f.properties.trips));
-      // Branch alone: 200 → 175; shared: 300.
-      expect([...trips].sort((x: any, y: any) => x - y)).toEqual([175, 300]);
+      // Branch alone: 200; shared: 300 → the 260 step.
+      expect([...trips].sort((x: any, y: any) => x - y)).toEqual([200, 260]);
     });
 
     it("keeps the route's own geometry instead of snapping to the grid", () => {

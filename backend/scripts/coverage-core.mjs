@@ -347,7 +347,8 @@ export function buildCoveragePoints(shapes, opts = {}) {
  */
 // Trips round down to these steps, so neighbouring stretches with slightly
 // different counts join into one line instead of a row of short pieces.
-const TRIP_STEPS = [1, 10, 25, 50, 100, 175, 300, 500, 800, 1200, 1800, 2600, 3600];
+// Steps ~1.3× apart: small enough that neighbouring pieces barely differ.
+const TRIP_STEPS = [1, 5, 10, 15, 20, 25, 35, 50, 65, 85, 110, 150, 200, 260, 340, 450, 600, 800, 1050, 1400, 1850, 2400, 3150, 4100];
 function bucketTrips(n) {
   let out = TRIP_STEPS[0];
   for (const step of TRIP_STEPS) if (n >= step) out = step;
@@ -360,9 +361,9 @@ export function buildCoverageFlow(shapes, opts = {}) {
   // (two route directions) in one cell, so they add up instead of halving.
   const countGrid = opts.countGrid ?? 0.0008;
   const simplifyEpsilon = opts.simplifyEpsilon ?? 0.00003; // ~3 m
+  const smoothMetres = opts.smoothMetres ?? 60;
   const coordPrecision = opts.coordPrecision ?? 5;
   const round = (v) => Number(v.toFixed(coordPrecision));
-  const cellOf = ([lat, lon]) => nodeKey(snap(lat, lon, grid));
 
   const features = [];
   for (const type of TYPE_ORDER) {
@@ -409,28 +410,27 @@ export function buildCoverageFlow(shapes, opts = {}) {
         }
         run = null;
       };
-      let prevCell = cellOf(s.polyline[0]);
-      let inCell = [s.polyline[0]]; // the route's points inside the current cell
-      for (let i = 1; i < s.polyline.length; i++) {
-        const pt = s.polyline[i];
-        const cell = cellOf(pt);
-        if (cell === prevCell) {
-          // Still inside the cell: the point belongs to whatever is running.
-          inCell.push(pt);
-          if (run) run.points.push(pt);
-          continue;
-        }
-        // Every route draws its whole path: routes on one street share the
-        // street's weight, so their strokes coincide and read as one line.
-        // (Skipping stretches another route already drew left dashes where
-        // two routes' points ran a few metres apart.)
-        const trips = stretchTripsAt(s.polyline[i - 1], pt);
+      // Weight per step of the route, then smoothed along it (~±60 m), so
+      // the stroke swells and thins gradually instead of in jumps.
+      const poly = s.polyline;
+      const raw = [0];
+      for (let i = 1; i < poly.length; i++) raw.push(stretchTripsAt(poly[i - 1], poly[i]));
+      raw[0] = raw[1] ?? 0;
+      const along = [0];
+      for (let i = 1; i < poly.length; i++) along.push(along[i - 1] + metresBetween(poly[i - 1], poly[i]));
+      const smooth = raw.map((_, i) => {
+        let sum = 0;
+        let n = 0;
+        for (let j = i; j >= 0 && along[i] - along[j] <= smoothMetres; j--) (sum += raw[j]), n++;
+        for (let j = i + 1; j < poly.length && along[j] - along[i] <= smoothMetres; j++) (sum += raw[j]), n++;
+        return bucketTrips(sum / n);
+      });
+      for (let i = 1; i < poly.length; i++) {
+        const trips = smooth[i];
+        // The next piece starts where this one ends: no gap between them.
         if (run && run.trips !== trips) flush();
-        // A new line starts with the route's points in the cell it leaves.
-        if (!run) run = { trips, points: [...inCell] };
-        run.points.push(pt);
-        prevCell = cell;
-        inCell = [pt];
+        if (!run) run = { trips, points: [poly[i - 1]] };
+        run.points.push(poly[i]);
       }
       flush();
     }

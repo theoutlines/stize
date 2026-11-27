@@ -205,7 +205,7 @@ const coverageOverviewZoom = 11.4;
 
 /// Corridors with `type` and `trips` (backend `build-coverage-flow.mjs`).
 const coverageFlowSourceId = 'coverage-flow-src';
-const coverageFlowUrl = '$apiBaseUrl/api/v1/coverage/flow?rev=4';
+const coverageFlowUrl = '$apiBaseUrl/api/v1/coverage/flow?rev=5';
 
 GeoJsonSource coverageFlowSource() =>
     GeoJsonSource(id: coverageFlowSourceId, data: coverageFlowUrl);
@@ -241,38 +241,51 @@ List<Object> _isType(String type) => [
   type,
 ];
 
-/// Line width by trips at the city view, times [k]: a hairline for a few
-/// trips, ~6.5 px for the busiest corridor.
-List<Object> _widthByTrips(double k) => [
+/// Line width by trips at the city view, times [k], plus [plus] px: a
+/// hairline for a few trips, ~6.5 px for the busiest corridor.
+List<Object> _widthByTrips(double k, {double plus = 0}) => [
   'interpolate',
   ['linear'],
   ['get', 'trips'],
   1,
-  0.4 * k,
+  0.4 * k + plus,
   50,
-  0.9 * k,
+  0.9 * k + plus,
   300,
-  2 * k,
+  2 * k + plus,
   1000,
-  3.6 * k,
+  3.6 * k + plus,
   4000,
-  6.5 * k,
+  6.5 * k + plus,
 ];
 
 /// The width over zoom: as above at the city view, 1.6× up close.
-List<Object> _width(double k) => [
+List<Object> _width({double plus = 0}) => [
   'interpolate',
   ['linear'],
   ['zoom'],
   11,
-  _widthByTrips(k),
+  _widthByTrips(1, plus: plus),
   15,
-  _widthByTrips(k * 1.6),
+  _widthByTrips(1.6, plus: plus * 1.5),
 ];
 
-/// Colour by trips along the type's ramp.
-List<Object> _colorByTrips(String type) {
-  final r = _coverageRamps[type]!;
+/// [hex] mixed toward [bg] by [t] (0 = colour, 1 = background).
+String _mix(String hex, String bg, double t) {
+  int ch(String h, int i) =>
+      int.parse(h.substring(1 + i * 2, 3 + i * 2), radix: 16);
+  String out(int i) => (ch(hex, i) + (ch(bg, i) - ch(hex, i)) * t)
+      .round()
+      .toRadixString(16)
+      .padLeft(2, '0');
+  return '#${out(0)}${out(1)}${out(2)}';
+}
+
+/// Colour by trips along the type's ramp, optionally mixed toward [bg].
+List<Object> _colorByTrips(String type, {String? bg, double mix = 0}) {
+  final r = [
+    for (final c in _coverageRamps[type]!) bg == null ? c : _mix(c, bg, mix),
+  ];
   final t = _coverageTripStops[type]!;
   return [
     'interpolate',
@@ -282,21 +295,24 @@ List<Object> _colorByTrips(String type) {
   ];
 }
 
-/// The crisp stroke of one [type]'s corridors.
+/// The background of the data-viz basemap (see map_style_dataviz.dart): the
+/// halo is premixed toward it, so it reads as glow without being see-through.
+String _bg(bool dark) => dark ? '#0E0F14' : '#EDEEF0';
+
+/// The crisp stroke of one [type]'s corridors. Opaque: routes on one street
+/// coincide and read as one line instead of piling up.
 LineStyleLayer coverageFlowLayer({required String type}) => LineStyleLayer(
   id: coverageFlowLayerId(type),
   sourceId: coverageFlowSourceId,
   filter: _isType(type),
   layout: const {'line-cap': 'round', 'line-join': 'round'},
-  paint: {
-    'line-color': _colorByTrips(type),
-    'line-width': _width(1),
-    'line-opacity': 0.9,
-  },
+  paint: {'line-color': _colorByTrips(type), 'line-width': _width()},
 );
 
-/// The glow under one [type]'s corridors: wide and soft, so busy streets
-/// shine and the city view melts into corridors.
+/// The halo under one [type]'s corridors: a fixed few pixels wider than the
+/// stroke, in the stroke's colour mixed toward the background, and opaque.
+/// However many routes meet at a junction, it never spreads or brightens
+/// past that: no blobs over the block.
 LineStyleLayer coverageGlowLayer({required String type, required bool dark}) =>
     LineStyleLayer(
       id: coverageGlowLayerId(type),
@@ -304,9 +320,12 @@ LineStyleLayer coverageGlowLayer({required String type, required bool dark}) =>
       filter: _isType(type),
       layout: const {'line-cap': 'round', 'line-join': 'round'},
       paint: {
-        'line-color': _colorByTrips(type),
-        'line-width': _width(4),
-        'line-blur': _width(3),
-        'line-opacity': dark ? 0.07 : 0.05,
+        'line-color': _colorByTrips(
+          type,
+          bg: _bg(dark),
+          mix: dark ? 0.72 : 0.7,
+        ),
+        'line-width': _width(plus: 3),
+        'line-blur': 1.5,
       },
     );
