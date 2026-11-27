@@ -3,27 +3,23 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+part 'map_style_dataviz.dart';
 part 'map_style_palette.dart';
 
 /// The Stiže basemap ("Stiže Standard"): our own MapLibre style on MapTiler
 /// vector tiles (OpenMapTiles schema), in light and dark.
 ///
-/// Look: warm built-up land, blue-grey roads without casing (width carries the
-/// hierarchy), flat buildings that rise into soft 3D when the camera tilts,
-/// Serbian-Latin labels, and POI icons in category-coloured discs.
+/// Look: warm built-up land, blue-grey roads without casing, flat buildings
+/// that rise into 3D on tilt, Serbian-Latin labels, POIs in coloured discs.
 ///
 /// POIs are tiered by zoom: landmarks people navigate by from z15, everyday
 /// places from z16, every named venue from z17 (future A→B endpoints). Stops
 /// never come from the basemap: our own GTFS layers draw them.
 ///
-/// The style is built here and handed to the map as a JSON string (the plugin
-/// accepts raw JSON on web, Android and iOS). The POI sprite is a static asset
-/// in `web/map/` (built by `tool/sprite/build-sprite.mjs`).
-///
-/// The API key is a *client* key (it necessarily ships inside the built
-/// app/web bundle so the renderer can fetch tiles) — it is injected at build
-/// time via `--dart-define=MAPTILER_KEY=...` and never hardcoded or committed.
-/// Restrict it by allowed origins in the MapTiler dashboard, not by hiding it.
+/// Built here as a JSON string (raw JSON works on web, Android and iOS); the
+/// POI sprite is `web/map/` (`tool/sprite/build-sprite.mjs`). The MapTiler key
+/// is a client key injected via `--dart-define=MAPTILER_KEY`, never committed;
+/// it is restricted by allowed origins in the MapTiler dashboard.
 class MapStyle {
   const MapStyle._();
 
@@ -32,17 +28,16 @@ class MapStyle {
   /// Whether a MapTiler key was provided at build time.
   static bool get hasKey => _key.isNotEmpty;
 
-  static String? _lightJson;
-  static String? _darkJson;
+  static final _json = <(bool, bool), String>{};
 
-  static String light() => _lightJson ??= jsonEncode(_style(dark: false));
-
-  static String dark() => _darkJson ??= jsonEncode(_style(dark: true));
-
-  /// The style that matches the given UI brightness, so the map follows the
-  /// app's light/dark theme.
-  static String forBrightness(Brightness brightness) =>
-      brightness == Brightness.dark ? dark() : light();
+  /// The style for the app's light/dark theme; [dataviz] is the grey variant
+  /// Coverage draws on (no POIs, no colour).
+  static String forBrightness(Brightness b, {bool dataviz = false}) {
+    final dark = b == Brightness.dark;
+    return _json[(dark, dataviz)] ??= jsonEncode(
+      _style(dark: dark, dataviz: dataviz),
+    );
+  }
 
   /// Where the POI sprite is served from. On web it is the app's own origin
   /// (previews included); native builds read it from production.
@@ -53,8 +48,13 @@ class MapStyle {
 
   // ── Style ──────────────────────────────────────────────────────────────────
 
-  static Map<String, Object?> _style({required bool dark}) {
-    final c = dark ? _dark : _light;
+  static Map<String, Object?> _style({
+    required bool dark,
+    bool dataviz = false,
+  }) {
+    final c = dataviz
+        ? (dark ? _darkDataviz : _lightDataviz)
+        : (dark ? _dark : _light);
     const name = [
       'coalesce',
       ['get', 'name:sr-Latn'],
@@ -528,7 +528,7 @@ class MapStyle {
           },
           'paint': {'text-color': c.road, ...label},
         },
-        for (var i = 0; i < tiers.length; i++)
+        for (var i = 0; i < (dataviz ? 0 : tiers.length); i++)
           {
             'id': 'poi-tier-$i',
             'type': 'symbol',

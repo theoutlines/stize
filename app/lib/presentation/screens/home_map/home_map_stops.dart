@@ -211,7 +211,8 @@ extension _MapStops on _HomeMapScreenState {
       'properties': {'stopId': s.stopId, 'name': s.name},
     };
     final data = <String, String>{
-      _LayerIds.rails: focused
+      // Coverage draws its own tram network; the rails would double it.
+      _LayerIds.rails: focused || _cov.mode
           ? _LayerIds.emptyFeatureCollection
           : jsonEncode({
               'type': 'FeatureCollection',

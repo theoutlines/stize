@@ -59,3 +59,28 @@ export function buildCoveragePoints(
   shapes: CoverageShape[],
   opts?: { stepMetres?: number; coordPrecision?: number },
 ): CoveragePointFeatureCollection;
+
+export interface CoverageDotShape {
+  vehicleType: string;
+  tripsPerDay: number;
+  polyline: number[][];
+}
+
+export interface CoverageDotFeature {
+  type: "Feature";
+  properties: { type: string };
+  geometry: { type: "MultiPoint"; coordinates: number[][] };
+}
+
+export function buildCoverageDots(
+  shapes: CoverageDotShape[],
+  opts?: {
+    budget?: number;
+    dotsPerTripKm?: number;
+    jitterMetres?: number;
+    strayShare?: number;
+    strayMetres?: number;
+    coordPrecision?: number;
+    seed?: number;
+  },
+): { type: "FeatureCollection"; features: CoverageDotFeature[] };

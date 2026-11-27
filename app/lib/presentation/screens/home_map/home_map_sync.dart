@@ -50,13 +50,20 @@ extension _MapSync on _HomeMapScreenState {
     _scheme = theme.colorScheme;
     final brightness = theme.brightness;
 
-    // Follow the app theme: swap the MapTiler style when brightness flips.
+    // Follow the app theme, and Coverage's grey data-viz basemap: swap the
+    // style when either changes.
+    final dataviz = _levels.top is CoverageLevel;
     if (_styleBrightness == null) {
       _styleBrightness = brightness;
-    } else if (_styleBrightness != brightness && _controller != null) {
+      _cov.styleDataviz = dataviz;
+    } else if ((_styleBrightness != brightness || _cov.styleDataviz != dataviz) &&
+        _controller != null) {
       _styleBrightness = brightness;
+      _cov.styleDataviz = dataviz;
       _imagesReady = false;
-      _controller!.setStyle(MapStyle.forBrightness(brightness));
+      _controller!.setStyle(
+        MapStyle.forBrightness(brightness, dataviz: dataviz),
+      );
     }
 
     // Favourites are drawn by an imperative source now; refresh it whenever the

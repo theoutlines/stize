@@ -329,3 +329,86 @@ export function buildCoveragePoints(shapes, opts = {}) {
   }
   return { type: "FeatureCollection", features };
 }
+
+/**
+ * Build the coverage-mode *dot cloud*: every route's shape scattered with dots
+ * in proportion to how often it runs, a little jittered off the street (the
+ * look of a GPS-trace map). Busy corridors fill in and glow; a route with a few
+ * trips a day stays a sparse trail.
+ *
+ * Per route, dots per km = trips/day × `dotsPerTripKm`, scaled down as a whole
+ * when the total would pass `budget`. Each dot sits at a random point of a
+ * segment, nudged by a gaussian of `jitterMetres`; a few (`strayShare`) stray
+ * further (`strayMetres`), the noise around busy streets.
+ *
+ * Output is one MultiPoint per vehicle type (`properties.type`), coordinates at
+ * `coordPrecision` decimals, so the file stays small. Seeded, so a rebuild of
+ * the same data gives the same file.
+ */
+export function buildCoverageDots(shapes, opts = {}) {
+  const budget = opts.budget ?? 220000;
+  const dotsPerTripKm = opts.dotsPerTripKm ?? 2;
+  const jitter = opts.jitterMetres ?? 5;
+  const strayShare = opts.strayShare ?? 0.1;
+  const stray = opts.strayMetres ?? 45;
+  const precision = opts.coordPrecision ?? 5;
+  let seed = opts.seed ?? 20261127;
+  const rnd = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  const gauss = () => {
+    const u = rnd() || 1e-9;
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd());
+  };
+
+  // Total trip-km sets the scale so the whole city fits the budget.
+  let tripKm = 0;
+  const usable = [];
+  for (const s of shapes) {
+    const poly = s.polyline;
+    if (!Array.isArray(poly) || poly.length < 2 || !(s.tripsPerDay > 0)) continue;
+    let km = 0;
+    for (let i = 1; i < poly.length; i++) km += metresBetween(poly[i - 1], poly[i]) / 1000;
+    tripKm += km * s.tripsPerDay;
+    usable.push(s);
+  }
+  const scale = Math.min(1, budget / Math.max(1, tripKm * dotsPerTripKm));
+  const perTripKm = dotsPerTripKm * scale;
+
+  const round = (v) => Number(v.toFixed(precision));
+  const byType = new Map();
+  for (const s of usable) {
+    const out = byType.get(s.vehicleType) ?? [];
+    byType.set(s.vehicleType, out);
+    const poly = s.polyline;
+    const perMetre = (s.tripsPerDay * perTripKm) / 1000;
+    let carry = 0; // fractional dots roll over to the next segment
+    for (let i = 1; i < poly.length; i++) {
+      const a = poly[i - 1];
+      const b = poly[i];
+      const want = metresBetween(a, b) * perMetre + carry;
+      const n = Math.floor(want);
+      carry = want - n;
+      const mLat = M_PER_DEG_LAT;
+      const mLon = metresPerDegLon((a[0] + b[0]) / 2);
+      for (let k = 0; k < n; k++) {
+        const t = rnd();
+        const sd = rnd() < strayShare ? stray : jitter;
+        const lat = a[0] + (b[0] - a[0]) * t + (gauss() * sd) / mLat;
+        const lon = a[1] + (b[1] - a[1]) * t + (gauss() * sd) / mLon;
+        out.push([round(lon), round(lat)]);
+      }
+    }
+  }
+  const features = [];
+  for (const [type, coords] of byType) {
+    if (coords.length === 0) continue;
+    features.push({
+      type: "Feature",
+      properties: { type },
+      geometry: { type: "MultiPoint", coordinates: coords },
+    });
+  }
+  return { type: "FeatureCollection", features };
+}

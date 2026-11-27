@@ -336,21 +336,13 @@ extension _MapLayers on _HomeMapScreenState {
     await _refreshCoverageModeLayers();
   }
 
-  /// (Re)draws the per-type heat for the picked types: removed when coverage
+  /// (Re)draws the dot cloud for the picked types: removed when coverage
   /// mode is off. Swaps layers rather than restyling them (the 0.3.x style
   /// controller has no setFilter); the source stays, so nothing refetches.
   Future<void> _refreshCoverageModeLayers() async {
     final style = _style;
     if (style == null) return;
-    // Colours and theme are read before the first await (no context after).
-    final c = StizeColors.of(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final bg = c.bg.toARGB32();
-    final colors = {
-      'bus': c.transitBus.toARGB32(),
-      'trolleybus': c.transitTrolleybus.toARGB32(),
-      'tram': c.transitTram.toARGB32(),
-    };
     for (final id in _cov.modeLayers.toList()) {
       try {
         await style.removeLayer(id);
@@ -358,27 +350,25 @@ extension _MapLayers on _HomeMapScreenState {
       _cov.modeLayers.remove(id);
     }
     if (!_cov.mode || !mounted) return;
-    await _ensureCoverageSource(style);
+    try {
+      await style.addSource(coverageDotsSource());
+    } catch (_) {
+      // Already there: the cloud is fetched once per style.
+    }
     final picked = ref.read(coverageTypesProvider);
     // Under the stop and vehicle layers, so a focus left over can't hide
-    // beneath the heat; the veil goes first, under the heat.
-    try {
-      await style.addLayer(
-        coverageModeVeil(bgArgb: bg, dark: dark),
-        belowLayerId: _LayerIds.coverageModeBelow,
-      );
-      _cov.modeLayers.add(coverageModeVeilId);
-    } catch (_) {}
+    // beneath the cloud. Per type: dots, then the glow over them.
     for (final type in coverageTypes) {
       if (picked.isNotEmpty && !picked.contains(type)) continue;
-      final id = coverageModeLayerId(type);
-      try {
-        await style.addLayer(
-          coverageModeLayer(type: type, argb: colors[type]!, dark: dark),
-          belowLayerId: _LayerIds.coverageModeBelow,
-        );
-        _cov.modeLayers.add(id);
-      } catch (_) {}
+      for (final layer in [
+        coverageDotsLayer(type: type, dark: dark),
+        coverageGlowLayer(type: type),
+      ]) {
+        try {
+          await style.addLayer(layer, belowLayerId: _LayerIds.coverageModeBelow);
+          _cov.modeLayers.add(layer.id);
+        } catch (_) {}
+      }
     }
   }
 

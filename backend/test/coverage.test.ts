@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accumulateSegments, buildCoverage, buildCoveragePoints } from "../scripts/coverage-core.mjs";
+import { accumulateSegments, buildCoverage, buildCoverageDots, buildCoveragePoints } from "../scripts/coverage-core.mjs";
 
 // A straight west→east run of points along one latitude, spaced ~1 grid cell
 // apart at grid=0.001 so each pair lands in a distinct cell.
@@ -224,4 +224,48 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
     ]);
     expect(gj.features).toHaveLength(0);
   });
+
+  describe("buildCoverageDots", () => {
+    const dotCount = (gj: any, type: string) =>
+      gj.features.find((f: any) => f.properties.type === type)?.geometry.coordinates.length ?? 0;
+
+    it("scatters dots in proportion to trips per day, one MultiPoint per type", () => {
+      const line = horizontalLine(44.8, 20.4, 20); // ~1.6 km
+      const gj = buildCoverageDots(
+        [
+          { vehicleType: "bus", tripsPerDay: 200, polyline: line },
+          { vehicleType: "tram", tripsPerDay: 20, polyline: line },
+        ],
+        { budget: 1e9, dotsPerTripKm: 1 },
+      );
+      expect(gj.features.map((f: any) => f.geometry.type)).toEqual(["MultiPoint", "MultiPoint"]);
+      const bus = dotCount(gj, "bus");
+      const tram = dotCount(gj, "tram");
+      expect(bus).toBeGreaterThan(250);
+      expect(bus / tram).toBeGreaterThan(8);
+      expect(bus / tram).toBeLessThan(12);
+    });
+
+    it("keeps the whole cloud within the budget", () => {
+      const line = horizontalLine(44.8, 20.4, 20);
+      const gj = buildCoverageDots([{ vehicleType: "bus", tripsPerDay: 5000, polyline: line }], { budget: 500 });
+      expect(dotCount(gj, "bus")).toBeLessThanOrEqual(500);
+    });
+
+    it("is deterministic and keeps dots near the route", () => {
+      const line = horizontalLine(44.8, 20.4, 10);
+      const shapes = [{ vehicleType: "bus", tripsPerDay: 100, polyline: line }];
+      const a = buildCoverageDots(shapes, { budget: 1e9, dotsPerTripKm: 1 });
+      const b = buildCoverageDots(shapes, { budget: 1e9, dotsPerTripKm: 1 });
+      expect(a).toEqual(b);
+      // Strays reach ~45 m (σ); nothing should land kilometres away.
+      for (const [, lat] of a.features[0].geometry.coordinates) expect(Math.abs(lat - 44.8)).toBeLessThan(0.003);
+    });
+
+    it("skips routes without trips", () => {
+      const gj = buildCoverageDots([{ vehicleType: "bus", tripsPerDay: 0, polyline: horizontalLine(44.8, 20.4, 5) }]);
+      expect(gj.features).toHaveLength(0);
+    });
+  });
 });
+

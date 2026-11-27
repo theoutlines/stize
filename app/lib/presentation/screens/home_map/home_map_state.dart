@@ -60,6 +60,7 @@ class _CoverageState {
   // Coverage mode (the menu's Coverage level): the map swaps stops and
   // vehicles for one heat layer per vehicle type.
   bool mode = false;
+  bool styleDataviz = false; // the style on the map is the data-viz variant
   final Set<String> modeLayers = {}; // per-type layers in the current style
   Geographic? preCenter; // camera to return to when the level closes
   double? preZoom;

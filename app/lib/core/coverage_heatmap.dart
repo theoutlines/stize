@@ -194,130 +194,119 @@ HeatmapStyleLayer coverageMainLayer({required bool dark}) => HeatmapStyleLayer(
 
 // ---- Coverage mode (the menu's Coverage, over the home map) ---------------
 //
-// One heat layer per vehicle type, each in that type's transit colour, so the
-// map shows not just where transit is dense but what runs there. Where two
-// types share a corridor their glows overlap and the colours mix. Bus (the
-// widest network) sits lowest and tram (the fewest lines) on top, each a little
-// see-through so the one underneath still tints the overlap.
+// A dot cloud on the grey data-viz basemap, after the taxi-trip maps: every
+// route scattered with dots in proportion to its weekday trips, a little off
+// the street. A rare route is a sparse trail of dots; where many trips share a
+// street a tight glow lights up under the dots and runs from the type's colour
+// to a light tint, the way Manhattan turns cyan on the reference.
 
 /// Coverage mode takes in the whole city.
 const coverageOverviewCenter = Geographic(lon: 20.46, lat: 44.80);
 const coverageOverviewZoom = 11.4;
 
-/// The coverage `type` values, bottom layer first.
+/// The dot cloud (backend `build-coverage-dots.mjs`): one MultiPoint per type.
+const coverageDotsSourceId = 'coverage-dots-src';
+const coverageDotsUrl = '$apiBaseUrl/api/v1/coverage/dots?rev=1';
+
+GeoJsonSource coverageDotsSource() =>
+    GeoJsonSource(id: coverageDotsSourceId, data: coverageDotsUrl);
+
+/// The coverage `type` values, bottom layer first: bus (the widest network)
+/// lowest, tram on top.
 const coverageTypes = <String>['bus', 'trolleybus', 'tram'];
 
-/// Layer id of one type's heat in coverage mode.
-String coverageModeLayerId(String type) => 'coverage-mode-$type';
-
-String _rgba(int argb, double alpha) {
-  final r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
-  return 'rgba($r,$g,$b,${alpha.toStringAsFixed(2)})';
-}
-
-/// [argb] mixed toward white (t > 0) or black (t < 0) by |t|.
-int _shade(int argb, double t) {
-  int ch(int v) => t >= 0
-      ? (v + (255 - v) * t).round()
-      : (v * (1 + t)).round();
-  final r = ch((argb >> 16) & 0xFF),
-      g = ch((argb >> 8) & 0xFF),
-      b = ch(argb & 0xFF);
-  return 0xFF000000 | (r << 16) | (g << 8) | b;
-}
-
-/// Heat ramp for one type. A lone route is a thin veil of the type's colour;
-/// a corridor reaches the full colour; only the densest cores go past it:
-/// lighter on the dark map (glow), deeper on the light map (ink), so the heat
-/// never sinks into the base map's own tones.
-List<Object> coverageTypeColorExpression(int argb, {required bool dark}) => [
-  'interpolate',
-  ['linear'],
-  ['heatmap-density'],
-  0.0,
-  _rgba(argb, 0),
-  0.06,
-  _rgba(argb, dark ? 0.22 : 0.18),
-  0.35,
-  _rgba(argb, dark ? 0.6 : 0.55),
-  0.7,
-  _rgba(argb, 0.95),
-  0.9,
-  _rgba(_shade(argb, dark ? 0.35 : -0.1), 1),
-  1.0,
-  _rgba(_shade(argb, dark ? 0.7 : -0.25), 1),
-];
-
-/// Intensity per type at the city overview. Bus covers the most ground, so
-/// it runs cooler; tram and trolleybus, with few lines each, run hotter so a
-/// single line still reaches its full colour. Tuned live on staging
-/// (2026-11-27).
-const _coverageModeBaseIntensity = {
-  'bus': 0.05,
-  'trolleybus': 0.12,
-  'tram': 0.12,
+/// Per type: the dot colour, then the glow from its start to its peak. The
+/// middle stop is the type's transit colour; deep and light tints keep the
+/// three hues glowing together (blue to cyan, orange to yellow, red to coral)
+/// instead of muddying where they cross. Tuned live on staging, 2026-11-27.
+const _coverageRamps = <String, List<String>>{
+  'bus': ['#123FA8', '#2278E6', '#38B6FF', '#B8F2FF'],
+  'trolleybus': ['#8A3D00', '#EA7000', '#FFB020', '#FFF0B0'],
+  'tram': ['#8A1018', '#E4312F', '#FF6A4D', '#FFD6C8'],
 };
 
-/// Intensity over zoom for one type: rises as the points thin out per pixel.
-List<Object> coverageModeIntensityExpression(String type) {
-  final i = _coverageModeBaseIntensity[type] ?? 0.08;
-  return [
-    'interpolate',
-    ['linear'],
-    ['zoom'],
-    11,
-    i,
-    13,
-    i * 2.6,
-    15,
-    i * 9,
-    18,
-    i * 30,
-  ];
-}
+/// Glow intensity at the overview zoom. Bus has by far the most dots, so it
+/// runs coolest; tram and trolleybus run hot enough that a busy line glows.
+const _coverageGlowIntensity = {'bus': 0.045, 'trolleybus': 0.11, 'tram': 0.11};
 
-/// Narrow strands, so each route reads as a line (the refs: fine traces that
-/// add up to bright corridors) rather than a cloud.
-List<Object> coverageModeRadiusExpression() => [
-  'interpolate',
-  ['linear'],
-  ['zoom'],
-  11,
-  6,
-  15,
-  7,
+String coverageDotsLayerId(String type) => 'coverage-dots-$type';
+String coverageGlowLayerId(String type) => 'coverage-glow-$type';
+
+List<Object> _isType(String type) => [
+  '==',
+  ['get', 'type'],
+  type,
 ];
 
-/// Layer id of the veil that mutes the base map under the heat.
-const coverageModeVeilId = 'coverage-mode-veil';
+/// The dots of one [type]: tiny, crisp, slightly see-through.
+CircleStyleLayer coverageDotsLayer({required String type, required bool dark}) {
+  final r = _coverageRamps[type]!;
+  return CircleStyleLayer(
+    id: coverageDotsLayerId(type),
+    sourceId: coverageDotsSourceId,
+    filter: _isType(type),
+    paint: {
+      'circle-radius': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        11,
+        0.6,
+        15,
+        1.2,
+      ],
+      'circle-color': r[0],
+      'circle-opacity': dark ? 0.7 : 0.5,
+    },
+  );
+}
 
-/// A veil in the page colour over the base map, under the heat, so the
-/// transit colours never sink into the map's own blues and greens.
-BackgroundStyleLayer coverageModeVeil({
-  required int bgArgb,
-  required bool dark,
-}) => BackgroundStyleLayer(
-  id: coverageModeVeilId,
-  paint: {'background-color': _rgba(bgArgb, dark ? 0.55 : 0.7)},
-);
-
-/// The heat layer for one [type] in coverage mode.
-HeatmapStyleLayer coverageModeLayer({
-  required String type,
-  required int argb,
-  required bool dark,
-}) => HeatmapStyleLayer(
-  id: coverageModeLayerId(type),
-  sourceId: coverageSourceId,
-  filter: [
-    '==',
-    ['get', 'type'],
-    type,
-  ],
-  paint: {
-    'heatmap-color': coverageTypeColorExpression(argb, dark: dark),
-    'heatmap-radius': coverageModeRadiusExpression(),
-    'heatmap-intensity': coverageModeIntensityExpression(type),
-    'heatmap-opacity': 0.85,
-  },
-);
+/// The glow of one [type]: a tight heatmap that stays clear on a lone route
+/// and lights up only where dots pile up.
+HeatmapStyleLayer coverageGlowLayer({required String type}) {
+  final r = _coverageRamps[type]!;
+  final i = _coverageGlowIntensity[type] ?? 0.08;
+  return HeatmapStyleLayer(
+    id: coverageGlowLayerId(type),
+    sourceId: coverageDotsSourceId,
+    filter: _isType(type),
+    paint: {
+      'heatmap-radius': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        11,
+        3.5,
+        15,
+        7,
+      ],
+      'heatmap-intensity': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        11,
+        i,
+        15,
+        i * 4.6,
+      ],
+      'heatmap-color': [
+        'interpolate',
+        ['linear'],
+        ['heatmap-density'],
+        0,
+        'rgba(0,0,0,0)',
+        0.2,
+        'rgba(0,0,0,0)',
+        0.35,
+        '${r[1]}99',
+        0.6,
+        r[1],
+        0.8,
+        r[2],
+        1,
+        r[3],
+      ],
+      'heatmap-opacity': 0.9,
+    },
+  );
+}
