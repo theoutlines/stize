@@ -408,7 +408,7 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get privacyServicesBody =>
-      'Kao i svaki sajt, aplikacija neke delove učitava sa drugih servisa, koji pri tom vide vašu IP adresu: mapa za oblast koju gledate dolazi sa MapTiler-a, fontovi i delovi pokretača aplikacije sa Google-a (gstatic.com), a aplikaciju i njen API isporučuje Cloudflare. Nijedan od njih od nas ne dobija vašu lokaciju niti podatke o nalogu.';
+      'Kao i svaki sajt, aplikacija neke delove učitava sa drugih servisa, koji pri tom vide vašu IP adresu: mapa za oblast koju gledate dolazi sa MapTiler-a, fontovi i delovi pokretača aplikacije sa Google-a (gstatic.com), pokretač mape sa unpkg.com, fotografije vozila sa Wikimedia Commons (upload.wikimedia.org), a aplikaciju i njen API isporučuje Cloudflare. Nijedan od njih od nas ne dobija vašu lokaciju niti podatke o nalogu.';
 
   @override
   String get privacyOpenSourceTitle => 'Otvoren kod';

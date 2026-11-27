@@ -119,7 +119,7 @@
   "privacyFeedbackTitle": "Utisci koje pošalješ",
   "privacyFeedbackBody": "Ako pošalješ utiske, tvoja poruka — i opcioni kontakt koji navedeš — čuvaju se da bismo je pročitali i odgovorili ti. Ništa drugo se uz nju ne prikuplja.",
   "privacyServicesTitle": "Servisi sa kojih se aplikacija učitava",
-  "privacyServicesBody": "Kao i svaki sajt, aplikacija neke delove učitava sa drugih servisa, koji pri tom vide vašu IP adresu: mapa za oblast koju gledate dolazi sa MapTiler-a, fontovi i delovi pokretača aplikacije sa Google-a (gstatic.com), a aplikaciju i njen API isporučuje Cloudflare. Nijedan od njih od nas ne dobija vašu lokaciju niti podatke o nalogu.",
+  "privacyServicesBody": "Kao i svaki sajt, aplikacija neke delove učitava sa drugih servisa, koji pri tom vide vašu IP adresu: mapa za oblast koju gledate dolazi sa MapTiler-a, fontovi i delovi pokretača aplikacije sa Google-a (gstatic.com), pokretač mape sa unpkg.com, fotografije vozila sa Wikimedia Commons (upload.wikimedia.org), a aplikaciju i njen API isporučuje Cloudflare. Nijedan od njih od nas ne dobija vašu lokaciju niti podatke o nalogu.",
   "privacyOpenSourceTitle": "Otvoren kod",
   "privacyOpenSourceBody": "Kod aplikacije Stiže je otvoren pod AGPL-3.0 licencom, tako da svako može proveriti kako tačno radi.",
   "jamStopBannerTitle": "Tramvaji {line} stoje duže nego obično — moguće kašnjenje",
