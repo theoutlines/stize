@@ -7,6 +7,12 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-27
 
+### Changed
+- **Faster web app.** The site is now built for WebAssembly: on Safari 18.2+
+  and current Chrome and Firefox the map's sheets and menus animate more
+  smoothly and the app loads faster. Older browsers get the same app as
+  before.
+
 ### Fixed (backend)
 - **KV reads cut about tenfold.** Flags and settings now live in one KV value
   as well as their own keys, so the per-minute cron reads one key instead of

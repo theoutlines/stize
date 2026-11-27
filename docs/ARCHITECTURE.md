@@ -155,7 +155,10 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
   in an error state and will crash the widget instead of showing an offline/
   empty state.
 - **Map render bug on web? Two observation channels — use both, console FIRST.**
-  The map runs on Flutter-CanvasKit, so the map/layers are **not** in the DOM and
+  The web build is `--wasm` (see `app/tool/cf_pages_build.sh`): browsers with
+  WasmGC (Safari 18.2+, Chrome 119+, Firefox 120+) run the skwasm renderer,
+  others load `main.dart.js` with CanvasKit. Either way Flutter draws on a
+  canvas, so the map/layers are **not** in the DOM and
   JS map-object inspection is unreliable/blind. Instead: (1) the **browser
   console** still catches real exceptions (`JSON.parse`/`SyntaxError`, tile/style
   errors) — a whole class of "the layer exists but has no features / nothing

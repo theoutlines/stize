@@ -30,7 +30,8 @@ vehicles themselves, and how reliable the picture is.
 
 ## Stack
 
-- **App** — Flutter, web-first (CanvasKit), also iOS & Android. MapLibre GL +
+- **App** — Flutter, web-first (WebAssembly/skwasm where the browser supports
+  WasmGC, CanvasKit JS otherwise), also iOS & Android. MapLibre GL +
   MapTiler vector tiles.
 - **Backend** — Cloudflare Worker (Hono, TypeScript) + D1 + KV, a
   proxy/cache/normalization layer over a fragile upstream transit feed.
