@@ -331,57 +331,96 @@ export function buildCoveragePoints(shapes, opts = {}) {
 }
 
 /**
- * Build coverage mode's *flow lines*: per vehicle type, the routes' shapes
- * collapsed into shared corridors (same grid identity and centroid smoothing
- * as buildCoverage), each carrying `trips`: the weekday trips of every route
- * direction along it. The client turns `trips` into line width and glow, so a
- * street with hundreds of trams a day reads heavier than a lone night bus.
+ * Build coverage mode's *flow lines*: the routes' own street geometry, each
+ * stretch drawn once and carrying `trips`: the weekday trips of every route
+ * direction of that vehicle type along it. The client turns `trips` into line
+ * width and colour, so a street with hundreds of trams a day reads heavier
+ * than a lone night bus.
  *
- * Types are collapsed separately (a tram corridor stays a tram corridor even
- * where buses share the street) and features come out lightest first, so the
- * busiest corridors draw on top.
+ * The grid is used only to *count*: a stretch's identity is the pair of grid
+ * cells it crosses between (so both directions and every route on a street
+ * add up). The geometry is never snapped: busiest routes go first and lend
+ * their real points to each stretch; a stretch already drawn is skipped, and
+ * consecutive stretches with the same total join into one line.
  *
  * @param {Array<{routeId:string, vehicleType:string, tripsPerDay:number, polyline:number[][]}>} shapes
  * @param {{grid?:number, simplifyEpsilon?:number, coordPrecision?:number}} opts
  */
 export function buildCoverageFlow(shapes, opts = {}) {
   const grid = opts.grid ?? DEFAULT_GRID_DEG;
-  const simplifyEpsilon = opts.simplifyEpsilon ?? grid * 0.4;
+  const simplifyEpsilon = opts.simplifyEpsilon ?? 0.00003; // ~3 m
   const coordPrecision = opts.coordPrecision ?? 5;
   const round = (v) => Number(v.toFixed(coordPrecision));
-  const trips = new Map(shapes.map((s) => [s.routeId, s.tripsPerDay ?? 0]));
+  const cellOf = ([lat, lon]) => nodeKey(snap(lat, lon, grid));
 
   const features = [];
   for (const type of TYPE_ORDER) {
     const ofType = shapes
       .filter((s) => s.vehicleType === type && (s.tripsPerDay ?? 0) > 0)
-      .map((s) => ({ line: s.routeId, vehicleType: type, polyline: s.polyline }));
+      .filter((s) => Array.isArray(s.polyline) && s.polyline.length >= 2)
+      .sort((a, b) => b.tripsPerDay - a.tripsPerDay);
     if (ofType.length === 0) continue;
-    const { segments, nodeCoord } = accumulate(ofType, grid);
-    const groups = new Map();
-    for (const seg of segments.values()) {
-      const sig = signatureOf(seg);
-      let group = groups.get(sig);
-      if (!group) {
-        let sum = 0;
-        for (const id of seg.lines) sum += trips.get(id) ?? 0;
-        group = { edges: [], trips: sum };
-        groups.set(sig, group);
+
+    // Pass 1: trips per stretch (each route counted once per stretch).
+    const routesOn = new Map(); // stretch key -> Set(routeId)
+    for (const s of ofType) {
+      let prev = cellOf(s.polyline[0]);
+      for (let i = 1; i < s.polyline.length; i++) {
+        const cell = cellOf(s.polyline[i]);
+        if (cell === prev) continue;
+        const k = segmentKey(prev, cell);
+        if (!routesOn.has(k)) routesOn.set(k, new Set());
+        routesOn.get(k).add(s.routeId);
+        prev = cell;
       }
-      group.edges.push({ a: seg.a, b: seg.b });
     }
-    for (const group of groups.values()) {
-      for (const chain of chainEdges(group.edges)) {
-        const latLon = simplify(
-          chain.map((node) => nodeCoord.get(nodeKey(node))),
-          simplifyEpsilon,
-        );
-        features.push({
-          type: "Feature",
-          properties: { type, trips: group.trips },
-          geometry: { type: "LineString", coordinates: latLon.map(([lat, lon]) => [round(lon), round(lat)]) },
-        });
+    const tripsOf = new Map(ofType.map((s) => [s.routeId, s.tripsPerDay]));
+    const stretchTrips = new Map();
+    for (const [k, ids] of routesOn) {
+      let sum = 0;
+      for (const id of ids) sum += tripsOf.get(id);
+      stretchTrips.set(k, sum);
+    }
+
+    // Pass 2: draw each stretch once, in real geometry.
+    const drawn = new Set();
+    for (const s of ofType) {
+      let run = null; // { trips, points }
+      const flush = () => {
+        if (run && run.points.length >= 2) {
+          const pts = simplify(run.points, simplifyEpsilon);
+          features.push({
+            type: "Feature",
+            properties: { type, trips: run.trips },
+            geometry: { type: "LineString", coordinates: pts.map(([lat, lon]) => [round(lon), round(lat)]) },
+          });
+        }
+        run = null;
+      };
+      let prevCell = cellOf(s.polyline[0]);
+      let prevPt = s.polyline[0];
+      for (let i = 1; i < s.polyline.length; i++) {
+        const pt = s.polyline[i];
+        const cell = cellOf(pt);
+        if (cell === prevCell) {
+          // Still inside the cell: the point belongs to whatever is running.
+          if (run) run.points.push(pt);
+        } else {
+          const k = segmentKey(prevCell, cell);
+          if (drawn.has(k)) {
+            flush();
+          } else {
+            drawn.add(k);
+            const trips = stretchTrips.get(k);
+            if (run && run.trips !== trips) flush();
+            if (!run) run = { trips, points: [prevPt] };
+            run.points.push(pt);
+          }
+          prevCell = cell;
+        }
+        prevPt = pt;
       }
+      flush();
     }
   }
   features.sort((a, b) => a.properties.trips - b.properties.trips);

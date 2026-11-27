@@ -260,6 +260,18 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
       expect(trips).toEqual([30, 40]);
     });
 
+    it("keeps the route's own geometry instead of snapping to the grid", () => {
+      // A curve sampled every ~15 m: off-grid points must survive as drawn.
+      const curve = Array.from({ length: 12 }, (_, i) => [44.8 + i * 0.00013, 20.4 + Math.sin(i / 3) * 0.0004]);
+      const gj = buildCoverageFlow([{ routeId: "c", vehicleType: "bus", tripsPerDay: 50, polyline: curve }], {
+        simplifyEpsilon: 0,
+      });
+      const drawn = gj.features.flatMap((f: any) => f.geometry.coordinates);
+      for (const [lat, lon] of curve) {
+        expect(drawn.some(([x, y]: number[]) => Math.abs(x - lon) < 1e-5 && Math.abs(y - lat) < 1e-5)).toBe(true);
+      }
+    });
+
     it("skips routes without trips", () => {
       const gj = buildCoverageFlow([
         { routeId: "x", vehicleType: "bus", tripsPerDay: 0, polyline: horizontalLine(44.8, 20.4, 3) },
