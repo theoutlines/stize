@@ -172,14 +172,13 @@ extension _MapGeometry on _HomeMapScreenState {
     }
     _follow.active = true;
     _selectedVehicleKey = key; // (re)seed on the first follow tick
-    _follow.lastMoveAt = null;
-    _follow.startedAt = DateTime.now();
-    if (flyTo && controller != null) {
+    final afterFlight = flyTo && controller != null;
+    _follow.pacer.start(DateTime.now(), afterFlight: afterFlight);
+    if (afterFlight) {
       final zoom = math.max(
         controller.getCamera().zoom,
         kMovingObjectDetailZoom,
       );
-      _follow.engaged = false;
       // Fly the vehicle to the centre of the VISIBLE area — the geometry padding
       // (owned by [_mapInsets]) does the centring, on this and every later tick.
       final flight = _camEase(
@@ -190,11 +189,9 @@ extension _MapGeometry on _HomeMapScreenState {
       // so the two never fight.
       flight?.whenComplete(() {
         if (mounted && _follow.active && _selectedVehicleKey == key) {
-          _follow.engaged = true;
+          _follow.pacer.engage();
         }
       });
-    } else {
-      _follow.engaged = true;
     }
     // Ensure the layer paints (and the follow tick fires) even if the vehicle is
     // momentarily still; a moving vehicle keeps the driver alive on its own.
@@ -205,7 +202,7 @@ extension _MapGeometry on _HomeMapScreenState {
   void _stopFollow() {
     if (!_follow.active) return;
     _follow.active = false;
-    _follow.engaged = false;
+    _follow.pacer.stop();
   }
 
   /// A brief "vehicle no longer tracked" notice — shown when we can't build a
@@ -233,20 +230,12 @@ extension _MapGeometry on _HomeMapScreenState {
   /// the visible-area-centre pixel) rather than `moveCamera(center, padding)` —
   /// `jumpTo`'s padding shifted only the horizontal, which dropped vertical
   /// tracking (owner R3 #1). Screen-math moves x AND y explicitly, so the
-  /// vehicle can't drift off vertically. Throttled to [_followInterval].
+  /// vehicle can't drift off vertically. Paced by [FollowPacer].
   void _followTick() {
     if (!_follow.active) return;
-    if (!_follow.engaged) {
-      // The fly-to normally engages follow when it settles; if its future was
-      // dropped (an interrupted web flight never resolves), engage on time.
-      final started = _follow.startedAt;
-      if (started == null ||
-          DateTime.now().difference(started) <
-              _HomeMapScreenState._followEngageFallback) {
-        return;
-      }
-      _follow.engaged = true;
-    }
+    // The fly-to normally engages follow when it settles; if its future was
+    // dropped (an interrupted web flight never resolves), engage on time.
+    if (!_follow.pacer.readyAt(DateTime.now())) return;
     final key = _selectedVehicleKey;
     final controller = _controller;
     if (key == null || controller == null) return;
@@ -258,13 +247,7 @@ extension _MapGeometry on _HomeMapScreenState {
       );
       return;
     }
-    final now = DateTime.now();
-    if (_follow.lastMoveAt != null &&
-        now.difference(_follow.lastMoveAt!) <
-            _HomeMapScreenState._followInterval) {
-      return;
-    }
-    _follow.lastMoveAt = now;
+    if (!_follow.pacer.moveDueAt(DateTime.now())) return;
     final pos = _vehAnimator.positionOf(key, _vehAnim.value);
     _centreOnVisibleArea(
       controller,

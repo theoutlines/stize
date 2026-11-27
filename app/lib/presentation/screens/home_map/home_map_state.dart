@@ -120,23 +120,18 @@ class _FollowState {
   // Follow mode: the camera keeps the selected vehicle centred in the visible
   // area (right of the panel / above the sheet) as it moves — the Google Maps
   // pattern. Any manual pan/zoom gesture breaks it (the marker and highlight
-  // stay). `_followEngaged` gates the per-tick centring so an entry fly-to
-  // settles first. `_selfCameraMove` marks a camera move the app itself issued,
+  // stay). [pacer] gates the per-tick centring so an entry fly-to settles
+  // first, and paces it. `_selfCameraMove` marks a camera move the app itself issued,
   // so the move-start it triggers isn't mistaken for a user gesture and doesn't
   // break follow (the classic self-cancelling-follow bug).
   bool active = false;
-  bool engaged = false;
 
-  /// When the current follow started. If the entry fly-to's future never
-  /// completes (on web an interrupted flight, e.g. by the sheet re-fitting the
-  /// camera as the vehicle level opens, never resolves), follow engages anyway
-  /// once [_followEngageFallback] has passed: the map must never stop tracking.
-  DateTime? startedAt;
+  /// When the camera may track and how often it moves (see [FollowPacer]).
+  final FollowPacer pacer = FollowPacer();
   // The followed line has no route geometry in our GTFS (a suburban / non-GSP
   // carrier like "Ada 4"): follow degrades to raw GPS — no route line, no route
   // ahead, an honest label (owner R4 #2).
   bool noRouteData = false;
-  DateTime? lastMoveAt; // throttle for the smooth follow ease
   // A brief grace window after a resume during which a camera-move event does
   // NOT break follow. Returning to a hidden tab re-lays-out the MapLibre-web
   // canvas, which surfaces a camera event flagged as a user gesture even though

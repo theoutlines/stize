@@ -336,7 +336,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // closed (return to B); null → fall back to A.
   String? _returnToStopId;
 
-  static const _followEngageFallback = Duration(milliseconds: 1200);
   bool _selfCameraMove = false;
   // Where the camera sat before opening a stop sheet (which pans the stop up
   // above the sheet). Restored when the sheet closes back to browsing, so the
@@ -476,15 +475,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// no focus, shifts the free-browse scene by the geometry delta (open the
   /// panel → the city slides right by half the panel, it isn't covered).
   static const _geometryEaseDuration = StizeMotion.fast;
-
-  // Follow re-centres at ~15fps, not every render frame. Panning the whole map
-  // with a jumpTo on every one of ~60 fps thrashes the tile/label renderer and
-  // the neighbouring GL layers visibly jitter (pins, street labels) against a
-  // moving camera. At 15fps the per-step drift of the followed marker is
-  // sub-pixel at follow zoom, so it still reads as screen-fixed, but the map is
-  // steady between steps. (Matches the conservative sampler cadence used
-  // elsewhere.)
-  static const _followInterval = Duration(milliseconds: 66);
 
   // ---- Build ----------------------------------------------------------------
 
