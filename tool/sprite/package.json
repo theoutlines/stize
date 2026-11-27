@@ -2,7 +2,7 @@
   "name": "stize-poi-sprite",
   "private": true,
   "type": "module",
-  "description": "Builds the basemap POI sprite (app/web/map/poi-*). Run: npm i && node build-sprite.mjs ../../app/web/map",
+  "description": "Builds the basemap POI sprite (app/web/map/poi-*). Run: npm i && node build-sprite.mjs ../../app/web/map ../../app/assets/poi",
   "dependencies": {
     "@mapbox/maki": "^8.0.0",
     "sharp": "^0.33.0"

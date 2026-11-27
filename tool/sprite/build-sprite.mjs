@@ -1,5 +1,6 @@
 // Builds the Stiže POI sprite: a white Maki glyph (CC0) on a category-coloured disc,
-// light + dark themes, @1x + @2x. Output goes to app/web/map/ (served by Pages).
+// light + dark themes, @1x + @2x. Output goes to app/web/map/ (served by Pages) and, given a
+// second path, single badges for the app's search results.
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -56,4 +57,24 @@ for (const theme of ['light', 'dark']) {
     fs.writeFileSync(path.join(out, name + '.json'), JSON.stringify(index));
   }
 }
-console.log('sprites written to', out);
+// The same badges one by one for the app's search results (a street or a place
+// found by search shows the badge it has on the map). 60 px, drawn at 20-28 dp.
+// `address` is search-only: a street or house number has no map POI badge.
+const appDir = process.argv[3];
+if (appDir) {
+  const ADDRESS = { light: '#6E7480', dark: '#5C626D' };
+  for (const theme of ['light', 'dark']) {
+    const dir = path.join(appDir, theme);
+    fs.mkdirSync(dir, { recursive: true });
+    const ring = theme === 'dark' ? '#14171D' : '#FFFFFF';
+    const items = [
+      ...Object.values(GROUPS).flatMap(g => g.classes.map(c => [c, g[theme], c])),
+      ['address', ADDRESS[theme], 'marker'],
+    ];
+    for (const [cls, fill, glyph] of items) {
+      MAKI[cls] = MAKI[cls] || (glyph !== cls ? glyph : undefined);
+      await sharp(Buffer.from(iconSvg(cls, fill, ring, 60))).png().toFile(path.join(dir, cls + '.png'));
+    }
+  }
+}
+console.log('sprites written to', out, appDir ? `and ${appDir}` : '');

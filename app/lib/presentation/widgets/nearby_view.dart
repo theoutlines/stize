@@ -24,6 +24,7 @@ import 'empty_state.dart';
 import 'jam_nearby_strip.dart';
 import 'live_unavailable_banner.dart';
 import 'nearby_list.dart';
+import 'place_badge.dart';
 import 'stop_result_tile.dart';
 import 'guide/belgrade_guide.dart';
 import 'flat_cards.dart';

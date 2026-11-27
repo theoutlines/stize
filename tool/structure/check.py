@@ -22,7 +22,8 @@ Checks (each finding has a short code, like a linter):
   duplicate       the same 12+ normalised lines in two places: a pattern that
                   should be one shared function or component.
   unused-dep      a package in pubspec.yaml or package.json no source imports.
-  unused-asset    a file under app/assets that no Dart code or font entry names.
+  unused-asset    a file under app/assets that no Dart code or font entry names
+                  (a folder picked from at run time is named as 'assets/x/').
   interp-member   `'$_name.field'` in a Dart string: Dart interpolates only
                   `_name` there, so the text reads "Instance of ...".field;
                   write `${_name.field}`.
@@ -270,13 +271,17 @@ def unused_assets() -> list[str]:
     pub = (APP / "pubspec.yaml").read_text(encoding="utf-8")
     fonts = set(re.findall(r"asset:\s*(\S+)", pub))
     dart = "\n".join(f.read_text(encoding="utf-8") for f in APP_LIB.rglob("*.dart"))
+    # A folder of assets picked by name at run time is named once as a whole,
+    # as a string literal ending in "/" ('assets/poi/').
+    folders = set(re.findall(r"""['"](assets/[\w/.-]+/)['"]""", dart))
     out = []
     for f in sorted((APP / "assets").rglob("*")):
         if not f.is_file() or f.name.startswith("."):
             continue
         path = f.relative_to(APP).as_posix()
-        if path not in fonts and path not in dart:
-            out.append(rel(f))
+        if path in fonts or path in dart or any(path.startswith(d) for d in folders):
+            continue
+        out.append(rel(f))
     return out
 
 

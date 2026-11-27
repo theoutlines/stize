@@ -222,7 +222,7 @@ extension _NearbyRows on NearbyViewState {
       case PlaceSearchRow(:final place):
         return ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-          leading: const Icon(StizeIcons.map),
+          leading: PlaceBadge(kind: place.kind),
           title: Text(place.displayName),
           onTap: widget.onSelectPlace == null
               ? null

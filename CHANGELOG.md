@@ -11,7 +11,11 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 - **One search on phone and desktop.** Desktop search now shows the same
   results as the phone: nearby matches first, then lines with their coloured
   badge, stops, and streets and places. Phones now find streets and places
-  too (Knez Mihailova, Kalemegdan); tapping one centres the map on it.
+  too (Knez Mihailova, Kalemegdan); tapping one centres the map on it. A
+  found place shows the same badge it has on the map (museum, park, cafe…);
+  a street or address shows a neutral grey one.
+- **"Live unavailable" sits where live vehicles would be.** On a stop board
+  the note now stands right above "By timetable" instead of at the top.
 - **Feedback opens the form.** "Share feedback" in the menu goes straight to
   the message form; the extra screen with a GitHub Issues link is gone.
 - **Stop links open on the map.** A `/stop/<id>` link opens the home map with
