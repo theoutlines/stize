@@ -59,11 +59,17 @@ source into a stable versioned API under `/api/v1`. Key pieces:
 - **Feature flags** live in KV and flip without a redeploy
   (`backend/src/lib/featureFlags.ts`).
 
-- **Code map (backend)**. Transport analytics live in `lib/analytics/`
+- **Code map (backend)**. `index.ts` sets up CORS, the admin check and error
+  handling, then registers the routes from `routes/`: `transit` (read-only
+  config, stops, lines, arrivals, vehicles, coverage, geocode), `write` (events,
+  stop reports, feedback under the per-IP limit), `city` (alerts, jams,
+  analytics reads), `admin`. The cron is `cron.ts`. Transport analytics live in `lib/analytics/`
   (`shared`, `observe` on the request path, `aggregate` and `aggregateParts`
   for the hourly roll-up, `read` for the app) and the stop sweep in
-  `lib/sweep/` (`config`, `tick`, `status`, `state`); `lib/analytics.ts` and
-  `lib/sweep.ts` re-export them, so import from those.
+  `lib/sweep/` (`config`, `tick`, `status`, `state`), jam detection in
+  `lib/jam/` (`config`, `fixes`, `types`, `compute`, `journal`);
+  `lib/analytics.ts`, `lib/sweep.ts` and `lib/jamDetector.ts` re-export them,
+  so import from those.
 
 ## App — layered Flutter (`app/lib/`)
 
@@ -80,8 +86,11 @@ interfaces) → `presentation/` (Riverpod providers, go_router, screens/widgets)
 - **Map stack** (MapLibre + MapTiler vector tiles): `core/map_style.dart`
   builds our own basemap style ("Stiže Standard", light + dark) as JSON on the
   MapTiler v3 / OpenMapTiles source, with zoom-tiered POI icons from the
-  sprite in `web/map/` (rebuild with `tool/sprite/`); `core/map_support.dart` (per-type classification,
-  the `VehicleMarker` pill, `kMapRenderingEnabled` flag). Moving vehicles on the
+  sprite in `web/map/` (rebuild with `tool/sprite/`), its palettes and POI
+  groups in the part `map_style_palette.dart`; `core/map_support.dart` (per-type
+  classification, `kMapRenderingEnabled` flag) with its parts `map_images.dart`
+  (pins, the location dot, image registration) and `vehicle_marker.dart` (the
+  `VehicleMarker` pill). Moving vehicles on the
   main map render as a **batched GPU symbol layer** (`core/moving_object_layer.dart`)
   — one GeoJSON source, sub-linear in vehicle count. The `VehicleMarker` widget
   is still used by the per-stop "vehicles approaching this stop" mini-map

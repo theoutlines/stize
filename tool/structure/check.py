@@ -9,7 +9,8 @@ Zero dependencies (stdlib only), runs in CI and locally:
 
 Checks (each finding has a short code, like a linter):
 
-  big-file        a source file over the line limit. Files that were already
+  big-file        a source file over the line limit; generated files (first
+                  line "// GENERATED ...") are skipped. Files that were already
                   over it are recorded in baseline.json with their size; they
                   may shrink but not grow (a ratchet), new files may not cross.
   dead-file       a Dart file nothing reaches from main.dart (conditional
@@ -66,8 +67,14 @@ def line_count(p: Path) -> int:
 
 # ---- big-file ---------------------------------------------------------------
 
+def generated(p: Path) -> bool:
+    """A file whose first line says it is generated (edit its source instead)."""
+    with p.open(encoding="utf-8") as fh:
+        return fh.readline().startswith("// GENERATED")
+
+
 def big_files() -> dict[str, int]:
-    return {rel(f): n for f in sources() if (n := line_count(f)) > MAX_LINES}
+    return {rel(f): n for f in sources() if (n := line_count(f)) > MAX_LINES and not generated(f)}
 
 
 # ---- dead-file (Dart reachability) -----------------------------------------

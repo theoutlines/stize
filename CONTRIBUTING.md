@@ -77,7 +77,8 @@ touching the map stack or adding a backend route.
 CI runs `python3 tool/structure/check.py` (stdlib only, ~1 s; run it locally
 too). It reports, each with a short code:
 
-- `big-file`: a source file over 500 lines. The ones already over it are in
+- `big-file`: a source file over 500 lines (generated files, whose first line
+  starts with `// GENERATED`, are skipped). The ones already over it are in
   `tool/structure/baseline.json` with their size: they may shrink, never grow,
   and no new file may cross the limit. Split by responsibility: a widget gets
   what it shows plus callbacks; logic without Flutter goes to `core/` with a
