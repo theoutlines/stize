@@ -6,20 +6,14 @@ extension _MapSearch on _HomeMapScreenState {
   void _onSearchChanged(String query) {
     _search.debounce?.cancel();
     if (query.trim().isEmpty) {
-      _search.logged = false; // a new non-empty query starts a fresh session
-      _setState(() {
-        _search.busy = false;
-        _search.stops = [];
-        _search.lines = [];
-        _search.places = [];
-      });
+      _setState(_search.session.clear);
       return;
     }
     // The results render in the panel body, which is hidden while collapsed —
     // so starting a search re-expands the panel (a search is a context entry,
     // owner A#4) to give the results (and the row you'll tap) somewhere to show.
     _expandPanelIfCollapsed();
-    _setState(() => _search.busy = true);
+    _setState(_search.session.typed);
     _search.debounce = Timer(
       const Duration(milliseconds: 300),
       () => _runSearch(query),
@@ -27,8 +21,9 @@ extension _MapSearch on _HomeMapScreenState {
   }
 
   Future<void> _runSearch(String query) async {
-    if (!_search.logged) {
-      _search.logged = true;
+    final session = _search.session;
+    final ticket = session.ticket;
+    if (session.firstUse()) {
       ref.read(eventLoggerProvider).log(Ev.searchUsed);
     }
     // Shared stop+line fan-out (one fork for both breakpoints — C#4).
@@ -41,22 +36,19 @@ extension _MapSearch on _HomeMapScreenState {
     }
     if (!mounted) return;
     _setState(() {
-      _search.stops = results.stops;
-      _search.lines = results.lines;
-      _search.places = places;
+      session.apply(
+        ticket,
+        stops: results.stops,
+        lines: results.lines,
+        places: places,
+      );
     });
   }
 
   void _clearSearch() {
     _searchController.clear();
     _focusNode.unfocus();
-    _search.logged = false;
-    _setState(() {
-      _search.busy = false;
-      _search.stops = [];
-      _search.lines = [];
-      _search.places = [];
-    });
+    _setState(_search.session.clear);
   }
 
   void _openStop(Stop stop, {String? source}) => _openStopById(
@@ -156,12 +148,7 @@ extension _MapSearch on _HomeMapScreenState {
     // next level in the context slot — the persistent panel on desktop, the
     // one bottom sheet on mobile. Re-opening the stop already on top (e.g. the
     // return from a vehicle follow) doesn't push it twice.
-    final top = _levels.isEmpty ? null : _levels.last;
-    if (!(top is _StopLevel && top.id == stopId)) {
-      _levels.add(_StopLevel(stopId, stopName));
-      // Keep the chain short: tapping pin after pin shouldn't build a long trail.
-      if (_levels.length > 8) _levels.removeAt(0);
-    }
+    _levels.open(StopLevel(stopId, stopName));
     ref.read(openStopNameProvider.notifier).state = stopName;
     _setState(() => _slotModel = null); // a fresh stop clears any model leaf
     _raiseSheetToHalf();
@@ -354,10 +341,7 @@ extension _MapSearch on _HomeMapScreenState {
       _bodyHeight ?? size.height - MediaQuery.viewInsetsOf(context).bottom;
 
   Widget _searchResultsList(AppLocalizations l10n) {
-    final hasResults =
-        _search.stops.isNotEmpty ||
-        _search.lines.isNotEmpty ||
-        _search.places.isNotEmpty;
+    final hasResults = _search.session.hasResults;
     if (!hasResults) {
       return Padding(
         padding: const EdgeInsets.all(24),
@@ -365,7 +349,10 @@ extension _MapSearch on _HomeMapScreenState {
       );
     }
     // An exact line number goes above the stops (core/search.dart).
-    final lines = splitExactLines(_search.lines, _searchController.text);
+    final lines = splitExactLines(
+      _search.session.lines,
+      _searchController.text,
+    );
     Widget lineTile(LineInfo line) => ListTile(
       leading: vehicleGlyph(
         line.vehicleType,
@@ -389,13 +376,13 @@ extension _MapSearch on _HomeMapScreenState {
       shrinkWrap: true,
       children: [
         for (final line in lines.exact) lineTile(line),
-        for (final stop in _search.stops)
+        for (final stop in _search.session.stops)
           StopResultTile(
             stop: stop,
             onTap: () => _openStop(stop, source: Ev.srcSearch),
           ),
         for (final line in lines.rest) lineTile(line),
-        for (final place in _search.places)
+        for (final place in _search.session.places)
           ListTile(
             leading: const Icon(StizeIcons.map),
             title: Text(place.displayName),

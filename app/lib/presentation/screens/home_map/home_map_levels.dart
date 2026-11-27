@@ -8,22 +8,15 @@ extension _MapLevels on _HomeMapScreenState {
   /// mobile sheet), on top of whatever is open, so back returns there.
   void _openMyStopsLevel() {
     _expandPanelIfCollapsed();
-    if (_levels.isEmpty || _levels.last is! _MyStopsLevel) {
-      _levels.add(const _MyStopsLevel());
-    }
+    _levels.open(const MyStopsLevel());
     _setState(() => _slotModel = null);
     _raiseSheetToHalf();
   }
 
   /// Pushes a non-stop level (Settings, Feedback) onto the one sheet/panel.
-  void _pushLevel(_SlotLevel level) {
+  void _pushLevel(SheetLevel level) {
     _expandPanelIfCollapsed();
-    final top = _levels.isEmpty ? null : _levels.last;
-    if (top.runtimeType != level.runtimeType ||
-        (level is _FeedbackLevel &&
-            (top as _FeedbackLevel).form != level.form)) {
-      _levels.add(level);
-    }
+    _levels.open(level);
     _setState(() => _slotModel = null);
     _raiseSheetToHalf();
   }
@@ -31,10 +24,7 @@ extension _MapLevels on _HomeMapScreenState {
   /// Opens a page of the Belgrade guide as the next level.
   void _openGuideLevel(GuidePage page) {
     _expandPanelIfCollapsed();
-    final top = _levels.isEmpty ? null : _levels.last;
-    if (top is! _GuideLevel || top.page != page) {
-      _levels.add(_GuideLevel(page));
-    }
+    _levels.open(GuideLevel(page));
     _setState(() {
       _slotModel = null;
       _guideSeen = true;
@@ -63,12 +53,12 @@ extension _MapLevels on _HomeMapScreenState {
   /// restored), or Nearby when the chain is empty.
   void _popLevel() {
     if (_levels.isEmpty) return;
-    final popped = _levels.removeLast();
-    if (popped is _StopLevel && _onDemand && _stopContextId == popped.id) {
+    final popped = _levels.pop();
+    if (popped is StopLevel && _onDemand && _stopContextId == popped.id) {
       _exitStopContext();
     }
-    final top = _levels.isEmpty ? null : _levels.last;
-    if (top is _StopLevel) {
+    final top = _levels.top;
+    if (top is StopLevel) {
       if (_onDemand) _enterStopContext(top.id);
       _bringStopIntoView(top.id, null);
       ref.read(openStopNameProvider.notifier).state = top.name;
@@ -82,8 +72,8 @@ extension _MapLevels on _HomeMapScreenState {
   /// Close every level (the × on the first level, or a swipe below peek):
   /// back to Nearby, camera where the user was before the first stop.
   void _closeAllLevels() {
-    final top = _levels.isEmpty ? null : _levels.last;
-    if (top is _StopLevel && _onDemand && _stopContextId == top.id) {
+    final top = _levels.top;
+    if (top is StopLevel && _onDemand && _stopContextId == top.id) {
       _exitStopContext();
     }
     _levels.clear();

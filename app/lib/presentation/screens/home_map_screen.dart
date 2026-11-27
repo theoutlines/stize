@@ -81,6 +81,8 @@ import '../widgets/my_stops_list.dart';
 import '../widgets/vehicle_icon.dart';
 import '../widgets/vehicle_mode_toggle.dart';
 import '../widgets/vehicle_view.dart';
+import 'home_map/search_session.dart';
+import 'home_map/sheet_levels.dart';
 import 'map_screen_args.dart';
 
 part 'home_map/home_map_layers.dart';
@@ -311,16 +313,10 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// The chain of levels open in the context slot — the mobile sheet and the
   /// desktop panel alike (owner, 2026-11-23: one sheet, levels stack inside it).
   /// Oldest first; the last is what's shown. Empty = Nearby.
-  final List<_SlotLevel> _levels = [];
-  String? get _slotStopId {
-    final top = _levels.isEmpty ? null : _levels.last;
-    return top is _StopLevel ? top.id : null;
-  }
+  final _levels = SheetLevelStack();
+  String? get _slotStopId => _levels.topStop?.id;
 
-  String? get _slotStopName {
-    final top = _levels.isEmpty ? null : _levels.last;
-    return top is _StopLevel ? top.name : null;
-  }
+  String? get _slotStopName => _levels.topStop?.name;
 
   // A tapped Fleet-ID vehicle shown as a leaf sub-view of the vehicle view (the
   // desktop model card lives INSIDE the panel — no second surface). Null = not
@@ -340,7 +336,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   // closed (return to B); null → fall back to A.
   String? _returnToStopId;
 
-  static const _followEngageFallback = Duration(milliseconds: 1200);
   bool _selfCameraMove = false;
   // Where the camera sat before opening a stop sheet (which pans the stop up
   // above the sheet). Restored when the sheet closes back to browsing, so the
@@ -480,15 +475,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   /// no focus, shifts the free-browse scene by the geometry delta (open the
   /// panel → the city slides right by half the panel, it isn't covered).
   static const _geometryEaseDuration = StizeMotion.fast;
-
-  // Follow re-centres at ~15fps, not every render frame. Panning the whole map
-  // with a jumpTo on every one of ~60 fps thrashes the tile/label renderer and
-  // the neighbouring GL layers visibly jitter (pins, street labels) against a
-  // moving camera. At 15fps the per-step drift of the followed marker is
-  // sub-pixel at follow zoom, so it still reads as screen-fixed, but the map is
-  // steady between steps. (Matches the conservative sampler cadence used
-  // elsewhere.)
-  static const _followInterval = Duration(milliseconds: 66);
 
   // ---- Build ----------------------------------------------------------------
 
