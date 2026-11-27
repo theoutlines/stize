@@ -7,6 +7,14 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## 2026-11-27
 
+### Fixed (backend)
+- **KV reads cut about tenfold.** Flags and settings now live in one KV value
+  as well as their own keys, so the per-minute cron reads one key instead of
+  about fifteen. On 26 Nov the account used half of the free 100k KV reads a
+  day; now a day of cron costs a couple of thousand. Keys changed by hand in
+  the dashboard apply within an hour, or at once via
+  `POST /api/v1/admin/config/rebuild`.
+
 ### Changed (developers)
 - **A check that keeps the code small.** CI now reports files over 500
   lines (existing ones may not grow), dead files, widgets, exports and UI

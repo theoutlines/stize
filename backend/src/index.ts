@@ -11,9 +11,9 @@ import type {
   VehiclesResponse,
 } from "./types";
 import { isServiceKilled, setServiceKilled } from "./lib/killswitch";
-import { FEATURE_FLAGS, getAllFlags, getFlagMemoized, isFeatureFlag, setFlag, getFlag } from "./lib/featureFlags";
+import { FEATURE_FLAGS, getAllFlags, getFlagMemoized, isFeatureFlag, setFlag } from "./lib/featureFlags";
 import { aggregate, getLineAnalytics } from "./lib/analytics";
-import { getCitySummary, refreshCitySummary } from "./lib/cityAnalytics";
+import { getCitySummary } from "./lib/cityAnalytics";
 import { runSweepTick, sweepStatus } from "./lib/sweep";
 import { logProductEvents, sanitizeBatch } from "./lib/productAnalytics";
 import { getArrivals } from "./lib/arrivals";
@@ -32,19 +32,19 @@ import {
 } from "./lib/gtfsData";
 import { GeocodeRateLimited, geocodeSearch } from "./lib/geocode";
 import { listAlerts, refreshAlerts } from "./lib/alerts";
-import { computeJams, journalJams, type JamsResponse } from "./lib/jamDetector";
+import { computeJams, type JamsResponse } from "./lib/jamDetector";
 import { RateLimitedError, ValidationError, adminTokenOk } from "./lib/errors";
 import { createFeedback, createFeedbackIssue, stopReportToFeedback } from "./lib/feedback";
 import {
   fetchUsageToday,
   forgetGovernedFlag,
-  governorDue,
   readGovernorState,
   readsConstrained,
   resolveGovernorConfig,
   runD1Governor,
 } from "./lib/d1Governor";
-import { kvGetCached } from "./lib/kvCache";
+import { kvGetCached, rebuildConfigBundle } from "./lib/kvCache";
+import { runScheduled } from "./cron";
 
 // KV key for the drawer's optional Donate link. Empty/unset ⇒ the client hides
 // the Donate item; set it (dashboard/wrangler) to reveal it. See the internal flag registry.
@@ -408,6 +408,15 @@ app.post("/api/v1/admin/killswitch", async (c) => {
   return c.json({ status: body.killed ? "killed" : "ok" });
 });
 
+// Rebuild the config bundle (lib/kvCache.ts) from the individual KV keys at
+// once, after a key was changed by hand in the dashboard or with `wrangler kv
+// key put` (otherwise the hourly cron picks it up).
+//   curl -X POST .../api/v1/admin/config/rebuild -H "X-Admin-Token: $T"
+app.post("/api/v1/admin/config/rebuild", async (c) => {
+  const bundle = await rebuildConfigBundle(c.env);
+  return c.json({ keys: Object.keys(bundle).length });
+});
+
 // Flip a feature flag remotely (no redeploy). Same admin-token auth as above.
 //   curl -X POST .../api/v1/admin/flags -H "X-Admin-Token: $T" \
 //        -d '{"flag":"analytics_collect","value":true}'
@@ -663,88 +672,5 @@ app.post("/api/v1/admin/d1-budget/tick", async (c) => {
 
 export default {
   fetch: app.fetch,
-  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    // Two triggers share this handler (see wrangler.toml). The per-minute one
-    // drives the sentinel sweep; the daily one refreshes alerts and rolls up
-    // analytics. Branch on which cron fired so a minute tick never runs the
-    // heavy daily job (and vice-versa).
-    if (event.cron === "* * * * *") {
-      // D1 write-budget governor: every `config:d1_governor_interval_min` minutes
-      // (default every 15 min, incl. 00:00 UTC for the day-rollover restore). KV + one
-      // GraphQL read; never touches D1 itself.
-      const tickAt = new Date(event.scheduledTime);
-      ctx.waitUntil(
-        resolveGovernorConfig(env)
-          .then((cfg) => (governorDue(tickAt, cfg.intervalMin) ? runD1Governor(env, tickAt) : null))
-          .then(
-            (r) => r && console.log(`d1 governor: ${r.action} ${r.detail}`),
-            (err) => console.error("d1 governor failed", err),
-          ),
-      );
-
-      // Jam journal: every 5 minutes while jams are shown, record what users see.
-      if (tickAt.getUTCMinutes() % 5 === 0) {
-        ctx.waitUntil(
-          getFlag(env, "jam_detection_show")
-            .then((on) => (on ? journalJams(env, tickAt.getTime()) : 0))
-            .then(
-              (n) => n > 0 && console.log(`jam journal: ${n} active`),
-              (err) => console.error("jam journal failed", err),
-            ),
-        );
-      }
-
-      // Cron path applies jitter (randomized 0..2×jitter-s pre-fetch delay) so the
-      // upstream hit doesn't land on a fixed phase every minute.
-      ctx.waitUntil(
-        runSweepTick(env, ctx, new Date(), { applyJitter: true }).then(
-          (r) => {
-            // One greppable line per tick: reason + counts + the budget/breaker
-            // numbers behind the decision (no secrets). Logged even on a no-op so a
-            // "budget-exhausted" / "degradation-breaker" stand-down is visible.
-            const m = r.meter
-              ? ` live_hr=${r.meter.liveHr} sweep_hr=${r.meter.sweepHr}` +
-                ` sweep_ceiling=${r.meter.sweepCeiling} p95=${r.meter.p95LatencyMs ?? "-"}ms` +
-                ` nonjson=${(r.meter.nonJsonFraction * 100).toFixed(0)}% samples=${r.meter.samples}`
-              : "";
-            console.log(
-              `sweep: ${r.reason} swept=${r.swept.length} skipped=${r.skipped}` +
-                ` fail=${r.failures} jitter=${r.jitterMs ?? 0}ms${m}`,
-            );
-          },
-          (err) => console.error("sweep tick failed", err),
-        ),
-      );
-      return;
-    }
-
-    ctx.waitUntil(
-      refreshAlerts(env).then(
-        (result) => console.log(`alerts refresh: +${result.added}, total ${result.total}`),
-        (err) => console.error("alerts refresh failed", err),
-      ),
-    );
-    // Roll raw observations into per-line metrics (raw is kept; no prune). Deferred
-    // (whole run, incl. its catch-up) while the D1 read-budget governor is tripped —
-    // the drift guard takes the backlog on the next run.
-    ctx.waitUntil(
-      readsConstrained(env).then(async (constrained) => {
-        if (constrained) {
-          console.warn("analytics aggregate deferred: D1 read budget governor tripped");
-          return;
-        }
-        try {
-          const r = await aggregate(env);
-          console.log(
-            `analytics aggregate: ${r.buckets} buckets, window ${r.from}..${r.to}, caughtUp=${r.caughtUp}`,
-          );
-          // The city page reads one precomputed summary; refresh it right after
-          // the aggregate moved (best-effort: the old one stays served).
-          await refreshCitySummary(env).catch((err) => console.error("city summary refresh failed", err));
-        } catch (err) {
-          console.error("analytics aggregate failed", err);
-        }
-      }),
-    );
-  },
+  scheduled: runScheduled,
 };

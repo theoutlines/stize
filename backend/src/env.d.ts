@@ -2,6 +2,8 @@ export interface Env {
   STIGLA_KV: KVNamespace;
   /** Tests set "0" so KV writes are visible at once; prod/staging use the default. */
   KV_CACHE_TTL_MS?: string;
+  /** "0" turns the config bundle off (tests); see lib/kvCache.ts. */
+  KV_CONFIG_BUNDLE?: string;
   STIGLA_IDEAS_DB: D1Database;
   STIGLA_ANALYTICS_DB: D1Database;
   ASSETS: Fetcher;
