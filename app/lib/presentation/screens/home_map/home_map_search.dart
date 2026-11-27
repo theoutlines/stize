@@ -156,12 +156,7 @@ extension _MapSearch on _HomeMapScreenState {
     // next level in the context slot — the persistent panel on desktop, the
     // one bottom sheet on mobile. Re-opening the stop already on top (e.g. the
     // return from a vehicle follow) doesn't push it twice.
-    final top = _levels.isEmpty ? null : _levels.last;
-    if (!(top is _StopLevel && top.id == stopId)) {
-      _levels.add(_StopLevel(stopId, stopName));
-      // Keep the chain short: tapping pin after pin shouldn't build a long trail.
-      if (_levels.length > 8) _levels.removeAt(0);
-    }
+    _levels.open(StopLevel(stopId, stopName));
     ref.read(openStopNameProvider.notifier).state = stopName;
     _setState(() => _slotModel = null); // a fresh stop clears any model leaf
     _raiseSheetToHalf();

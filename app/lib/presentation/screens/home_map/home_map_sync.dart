@@ -14,11 +14,11 @@ extension _MapSync on _HomeMapScreenState {
     });
     ref.listen(settingsRequestProvider, (prev, next) {
       if (prev == next) return;
-      _pushLevel(const _SettingsLevel());
+      _pushLevel(const SettingsLevel());
     });
     ref.listen(feedbackRequestProvider, (prev, next) {
       if (prev == next) return;
-      _pushLevel(const _FeedbackLevel());
+      _pushLevel(const FeedbackLevel());
     });
     ref.listen(guideRequestProvider, (prev, next) {
       if (prev == next) return;

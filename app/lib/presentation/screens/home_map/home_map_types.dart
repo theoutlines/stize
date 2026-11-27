@@ -26,32 +26,3 @@ class _LineFocus {
   /// Opened from a tap on a schedule-predicted object — the panel notes it.
   final bool scheduled;
 }
-
-/// A level in the context slot's chain.
-sealed class _SlotLevel {
-  const _SlotLevel();
-}
-
-class _StopLevel extends _SlotLevel {
-  const _StopLevel(this.id, this.name);
-  final String id;
-  final String? name;
-}
-
-class _MyStopsLevel extends _SlotLevel {
-  const _MyStopsLevel();
-}
-
-class _SettingsLevel extends _SlotLevel {
-  const _SettingsLevel();
-}
-
-class _FeedbackLevel extends _SlotLevel {
-  const _FeedbackLevel({this.form = false});
-  final bool form;
-}
-
-class _GuideLevel extends _SlotLevel {
-  const _GuideLevel(this.page);
-  final GuidePage page;
-}

@@ -79,15 +79,15 @@ extension _MapPanels on _HomeMapScreenState {
 
   /// Title of a level, for its own header and for the back link of the level
   /// above it.
-  String _levelTitle(_SlotLevel level, AppLocalizations l10n) =>
+  String _levelTitle(SheetLevel level, AppLocalizations l10n) =>
       switch (level) {
-        _StopLevel(:final id, :final name) =>
+        StopLevel(:final id, :final name) =>
           ref.watch(stopLocationProvider(id)).valueOrNull?.name ?? name ?? '',
-        _MyStopsLevel() => l10n.navMyStops,
-        _SettingsLevel() => l10n.settingsTitle,
-        _FeedbackLevel(:final form) =>
+        MyStopsLevel() => l10n.navMyStops,
+        SettingsLevel() => l10n.settingsTitle,
+        FeedbackLevel(:final form) =>
           form ? l10n.feedbackFormTitle : l10n.drawerFeedbackSheetTitle,
-        _GuideLevel(:final page) => switch (page) {
+        GuideLevel(:final page) => switch (page) {
           GuidePage.home => l10n.guideTitle,
           GuidePage.readStop => l10n.guideReadStop,
           GuidePage.places => l10n.guidePlaces,
@@ -103,9 +103,10 @@ extension _MapPanels on _HomeMapScreenState {
     if (model != null) {
       return LevelHeader(
         title: model.fleet.modelName ?? l10n.fleetUnknownModel,
-        backLabel: _levels.isEmpty
-            ? l10n.followingVehicle
-            : _levelTitle(_levels.last, l10n),
+        backLabel: switch (_levels.top) {
+          null => l10n.followingVehicle,
+          final top => _levelTitle(top, l10n),
+        },
         onBack: _slotBack,
       );
     }
@@ -117,17 +118,18 @@ extension _MapPanels on _HomeMapScreenState {
       case ContextView.guide:
       case ContextView.settings:
       case ContextView.feedback:
-        final top = _levels.last;
+        final top = _levels.top!;
         final title = _levelTitle(top, l10n);
         return LevelHeader(
           title: title,
-          backLabel: _levels.length > 1
-              ? _levelTitle(_levels[_levels.length - 2], l10n)
-              : null,
+          backLabel: switch (_levels.below) {
+            null => null,
+            final below => _levelTitle(below, l10n),
+          },
           onBack: _slotBack,
           // Mobile: the close rides above the sheet (MapSheetCloseButton).
           onClose: _panelActive ? _closeAllLevels : null,
-          trailing: top is _StopLevel
+          trailing: top is StopLevel
               ? StopHeaderActions(stopId: top.id, stopName: title)
               : null,
         );
@@ -177,7 +179,7 @@ extension _MapPanels on _HomeMapScreenState {
           children: const [SettingsPanel()],
         );
       case ContextView.feedback:
-        final fb = _levels.last as _FeedbackLevel;
+        final fb = _levels.top! as FeedbackLevel;
         if (fb.form) {
           return SingleChildScrollView(
             controller: scrollController,
@@ -196,7 +198,7 @@ extension _MapPanels on _HomeMapScreenState {
                 icon: StizeIcons.edit,
                 title: l10n.feedbackWriteToMe,
                 subtitle: l10n.feedbackWriteToMeSubtitle,
-                onTap: () => _pushLevel(const _FeedbackLevel(form: true)),
+                onTap: () => _pushLevel(const FeedbackLevel(form: true)),
               ),
             GuideRow(
               icon: StizeIcons.bug,
@@ -207,7 +209,7 @@ extension _MapPanels on _HomeMapScreenState {
           ],
         );
       case ContextView.guide:
-        final page = (_levels.last as _GuideLevel).page;
+        final page = (_levels.top! as GuideLevel).page;
         void openStop(String id, String name) =>
             _openStopById(id, stopName: name, source: Ev.srcGuide);
         return switch (page) {

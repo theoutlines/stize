@@ -177,13 +177,13 @@ extension _MapContext on _HomeMapScreenState {
   ContextView get _activeView {
     if (_selectedVehicleKey != null || _focus != null)
       return ContextView.vehicle;
-    if (_levels.isEmpty) return ContextView.nearby;
-    return switch (_levels.last) {
-      _MyStopsLevel() => ContextView.myStops,
-      _GuideLevel() => ContextView.guide,
-      _SettingsLevel() => ContextView.settings,
-      _FeedbackLevel() => ContextView.feedback,
-      _StopLevel() => ContextView.stop,
+    return switch (_levels.top) {
+      null => ContextView.nearby,
+      MyStopsLevel() => ContextView.myStops,
+      GuideLevel() => ContextView.guide,
+      SettingsLevel() => ContextView.settings,
+      FeedbackLevel() => ContextView.feedback,
+      StopLevel() => ContextView.stop,
     };
   }
 
