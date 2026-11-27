@@ -346,8 +346,20 @@ export function buildCoveragePoints(shapes, opts = {}) {
  * @param {Array<{routeId:string, vehicleType:string, tripsPerDay:number, polyline:number[][]}>} shapes
  * @param {{grid?:number, simplifyEpsilon?:number, coordPrecision?:number}} opts
  */
+// Trips round down to these steps, so neighbouring stretches with slightly
+// different counts join into one line instead of a row of short pieces.
+const TRIP_STEPS = [1, 10, 25, 50, 100, 175, 300, 500, 800, 1200, 1800, 2600, 3600];
+function bucketTrips(n) {
+  let out = TRIP_STEPS[0];
+  for (const step of TRIP_STEPS) if (n >= step) out = step;
+  return out;
+}
+
 export function buildCoverageFlow(shapes, opts = {}) {
   const grid = opts.grid ?? DEFAULT_GRID_DEG;
+  // Counting grid: ~90 m, wide enough to put a boulevard's two carriageways
+  // (two route directions) in one cell, so they add up instead of halving.
+  const countGrid = opts.countGrid ?? 0.0008;
   const simplifyEpsilon = opts.simplifyEpsilon ?? 0.00003; // ~3 m
   const coordPrecision = opts.coordPrecision ?? 5;
   const round = (v) => Number(v.toFixed(coordPrecision));
@@ -361,26 +373,27 @@ export function buildCoverageFlow(shapes, opts = {}) {
       .sort((a, b) => b.tripsPerDay - a.tripsPerDay);
     if (ofType.length === 0) continue;
 
-    // Pass 1: trips per stretch (each route counted once per stretch).
-    const routesOn = new Map(); // stretch key -> Set(routeId)
+    // Pass 1: trips per cell of a coarser counting grid (each route once per
+    // cell). Cells, not cell pairs: both carriageways and every route on a
+    // street land in the same cell even where their points cross it apart.
+    const countCell = ([lat, lon]) => nodeKey(snap(lat, lon, countGrid));
+    const routesIn = new Map(); // count cell -> Set(routeId)
     for (const s of ofType) {
-      let prev = cellOf(s.polyline[0]);
-      for (let i = 1; i < s.polyline.length; i++) {
-        const cell = cellOf(s.polyline[i]);
-        if (cell === prev) continue;
-        const k = segmentKey(prev, cell);
-        if (!routesOn.has(k)) routesOn.set(k, new Set());
-        routesOn.get(k).add(s.routeId);
-        prev = cell;
+      for (const pt of s.polyline) {
+        const c = countCell(pt);
+        if (!routesIn.has(c)) routesIn.set(c, new Set());
+        routesIn.get(c).add(s.routeId);
       }
     }
     const tripsOf = new Map(ofType.map((s) => [s.routeId, s.tripsPerDay]));
-    const stretchTrips = new Map();
-    for (const [k, ids] of routesOn) {
+    const cellTrips = new Map();
+    for (const [c, ids] of routesIn) {
       let sum = 0;
       for (const id of ids) sum += tripsOf.get(id);
-      stretchTrips.set(k, sum);
+      cellTrips.set(c, bucketTrips(sum));
     }
+    // A stretch weighs what the busier of its two ends does.
+    const stretchTripsAt = (a, b) => Math.max(cellTrips.get(countCell(a)), cellTrips.get(countCell(b)));
 
     // Pass 2: draw each stretch once, in real geometry.
     const drawn = new Set();
@@ -413,7 +426,7 @@ export function buildCoverageFlow(shapes, opts = {}) {
           flush();
         } else {
           drawn.add(k);
-          const trips = stretchTrips.get(k);
+          const trips = stretchTripsAt(s.polyline[i - 1], pt);
           if (run && run.trips !== trips) flush();
           // A new line starts with the route's points in the cell it leaves.
           if (!run) run = { trips, points: [...inCell] };

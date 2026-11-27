@@ -239,11 +239,12 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
       const tram = gj.features.filter((f: any) => f.properties.type === "tram");
       const bus = gj.features.filter((f: any) => f.properties.type === "bus");
       expect(tram).toHaveLength(1);
-      expect(tram[0].properties.trips).toBe(190);
+      // 100 + 90 = 190 trips, rounded down to the 175 step.
+      expect(tram[0].properties.trips).toBe(175);
       expect(bus).toHaveLength(1);
-      expect(bus[0].properties.trips).toBe(40);
+      expect(bus[0].properties.trips).toBe(25);
       // Lightest first, so the busiest corridor draws on top.
-      expect(gj.features.map((f: any) => f.properties.trips)).toEqual([40, 190]);
+      expect(gj.features.map((f: any) => f.properties.trips)).toEqual([25, 175]);
     });
 
     it("weights a corridor only by the routes that use it", () => {
@@ -251,13 +252,14 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
       const branch = [...shared, [44.801, 20.402], [44.802, 20.402]];
       const gj = buildCoverageFlow(
         [
-          { routeId: "a", vehicleType: "bus", tripsPerDay: 10, polyline: shared },
-          { routeId: "b", vehicleType: "bus", tripsPerDay: 30, polyline: branch },
+          { routeId: "a", vehicleType: "bus", tripsPerDay: 100, polyline: shared },
+          { routeId: "b", vehicleType: "bus", tripsPerDay: 200, polyline: branch },
         ],
         { grid: GRID, simplifyEpsilon: 0 },
       );
       const trips = gj.features.map((f: any) => f.properties.trips).sort((x: number, y: number) => x - y);
-      expect(trips).toEqual([30, 40]);
+      // Branch alone: 200 → 175; shared: 300.
+      expect(trips).toEqual([175, 300]);
     });
 
     it("keeps the route's own geometry instead of snapping to the grid", () => {
