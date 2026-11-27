@@ -29,4 +29,22 @@ void main() {
     expect(lon, closeTo(20.46, 1e-9));
     expect(lat, closeTo(44.81, 1e-9));
   });
+
+  test('simplify keeps the ends and corners, drops points on a straight run', () {
+    final tr = CoverageTraces.fromJson({
+      'routes': [
+        {
+          't': 'bus',
+          'n': 10,
+          // East in 4 small steps, then north: a corner at the fifth point.
+          'p': [2046000, 4481000, 100, 0, 100, 0, 100, 0, 100, 0, 0, 100],
+        },
+      ],
+    }).traces.single;
+    final s = tr.simplified(0.01);
+    expect(s.length ~/ 2, 3); // start, corner, end
+    expect(s[0], tr.points[0]);
+    expect(s[s.length - 1], tr.points[tr.points.length - 1]);
+    expect(tr.simplified(0), same(tr.points));
+  });
 }
