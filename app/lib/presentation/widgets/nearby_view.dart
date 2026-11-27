@@ -14,6 +14,7 @@ import '../../core/nearby_focus.dart';
 import '../../core/search.dart';
 import '../../data/api/api_exceptions.dart';
 import '../../domain/models/arrival.dart' show ServiceStatus;
+import '../../domain/models/geocode_result.dart';
 import '../../domain/models/line_info.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../domain/models/stop.dart';
@@ -23,6 +24,7 @@ import 'empty_state.dart';
 import 'jam_nearby_strip.dart';
 import 'live_unavailable_banner.dart';
 import 'nearby_list.dart';
+import 'place_badge.dart';
 import 'stop_result_tile.dart';
 import 'guide/belgrade_guide.dart';
 import 'flat_cards.dart';
@@ -67,6 +69,7 @@ class NearbyView extends ConsumerStatefulWidget {
     this.onTapGroup,
     this.onSelectStop,
     this.onSelectLine,
+    this.onSelectPlace,
     this.scrollController,
     this.showLocalSearch = true,
     this.banner,
@@ -90,6 +93,7 @@ class NearbyView extends ConsumerStatefulWidget {
   /// unified search is shown (the mobile nearby sheet).
   final void Function(Stop stop)? onSelectStop;
   final void Function(LineInfo line)? onSelectLine;
+  final void Function(GeocodeResult place)? onSelectPlace;
 
   /// Provided by a scrolling container (the sheet); null lets the view scroll
   /// itself (the fixed-height desktop panel).
@@ -152,6 +156,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   void initState() {
     super.initState();
     widget.externalSearch?.addListener(_onExternalQuery);
+    _syncExternalQueryLater();
     _searchFocused = widget.externalSearchActive;
     _searchFocus.addListener(() {
       if (_searchFocus.hasFocus == _searchFocused) return;
@@ -164,9 +169,17 @@ class NearbyViewState extends ConsumerState<NearbyView> {
   }
 
   void _onExternalQuery() {
-    final q = widget.externalSearch!.text;
+    final q = widget.externalSearch?.text ?? '';
     if (q != _query) _onQueryChanged(q);
   }
+
+  /// The field may already hold a query when this view starts listening (the
+  /// desktop panel swaps to the search view on the first keystroke): take it
+  /// over after this frame.
+  void _syncExternalQueryLater() =>
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _onExternalQuery();
+      });
 
   @override
   void didUpdateWidget(covariant NearbyView oldWidget) {
@@ -174,6 +187,7 @@ class NearbyViewState extends ConsumerState<NearbyView> {
     if (oldWidget.externalSearch != widget.externalSearch) {
       oldWidget.externalSearch?.removeListener(_onExternalQuery);
       widget.externalSearch?.addListener(_onExternalQuery);
+      _syncExternalQueryLater();
     }
     if (widget.externalSearch != null &&
         widget.externalSearchActive != _searchFocused) {

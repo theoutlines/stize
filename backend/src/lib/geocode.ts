@@ -19,6 +19,8 @@ export interface GeocodeResult {
   display_name: string;
   lat: number;
   lon: number;
+  /** The map's POI class for a named place ("museum", "park"), or null for a street or address. */
+  kind: string | null;
 }
 
 export class GeocodeRateLimited extends Error {}
@@ -39,7 +41,7 @@ export async function geocodeSearch(
   if (!normalized) return [];
 
   const cache = caches.default;
-  const cacheKey = new Request(`https://cache.stigla.internal/geocode/v4/${encodeURIComponent(normalized)}`);
+  const cacheKey = new Request(`https://cache.stigla.internal/geocode/v5/${encodeURIComponent(normalized)}`);
   const cached = await cache.match(cacheKey);
   if (cached) return (await cached.json()) as GeocodeResult[];
   if (!(await allowUpstream())) throw new GeocodeRateLimited(normalized);
@@ -66,6 +68,8 @@ export async function geocodeSearch(
   const body = (await res.json()) as Array<{
     display_name: string;
     name?: string;
+    category?: string;
+    type?: string;
     lat: string;
     lon: string;
     address?: Record<string, string>;
@@ -74,7 +78,12 @@ export async function geocodeSearch(
   // ("Kneza Mihaila, Stari grad" twice): keep the first of each.
   const seen = new Set<string>();
   const results = body
-    .map((r) => ({ display_name: shortAddress(r), lat: parseFloat(r.lat), lon: parseFloat(r.lon) }))
+    .map((r) => ({
+      display_name: shortAddress(r),
+      lat: parseFloat(r.lat),
+      lon: parseFloat(r.lon),
+      kind: poiKind(r.category, r.type),
+    }))
     .filter((r) => insideBelgrade(r.lat, r.lon))
     .filter((r) => !seen.has(r.display_name) && seen.add(r.display_name));
 
@@ -85,6 +94,76 @@ export async function geocodeSearch(
     }),
   );
   return results;
+}
+
+// OSM tag (key=value) → the POI class the basemap draws for it (its badge in
+// app/web/map/poi-*). A key alone ("shop") matches every value of that key.
+const POI_KINDS: Record<string, string> = {
+  "tourism=museum": "museum",
+  "amenity=theatre": "theatre",
+  "tourism=gallery": "art_gallery",
+  "amenity=arts_centre": "art_gallery",
+  "amenity=cinema": "cinema",
+  "amenity=library": "library",
+  "tourism=attraction": "attraction",
+  "tourism=viewpoint": "attraction",
+  "historic=monument": "monument",
+  "historic=memorial": "monument",
+  "tourism=artwork": "monument",
+  "historic=castle": "castle",
+  "historic=fort": "castle",
+  "historic=fortress": "castle",
+  "amenity=place_of_worship": "place_of_worship",
+  "amenity=hospital": "hospital",
+  "amenity=clinic": "hospital",
+  "amenity=pharmacy": "pharmacy",
+  "amenity=doctors": "doctors",
+  "amenity=dentist": "dentist",
+  "amenity=university": "college",
+  "amenity=college": "college",
+  "amenity=school": "school",
+  "amenity=kindergarten": "school",
+  "amenity=townhall": "town_hall",
+  "office=diplomatic": "embassy",
+  "amenity=embassy": "embassy",
+  "amenity=police": "police",
+  "amenity=post_office": "post",
+  "tourism=information": "information",
+  "shop=supermarket": "grocery",
+  "shop=convenience": "grocery",
+  "shop=clothes": "clothing_store",
+  "shop=mall": "commercial",
+  "shop=department_store": "commercial",
+  "shop=bakery": "bakery",
+  "shop=florist": "florist",
+  "shop=gift": "gift",
+  shop: "shop",
+  "amenity=restaurant": "restaurant",
+  "amenity=cafe": "cafe",
+  "amenity=bar": "bar",
+  "amenity=pub": "bar",
+  "amenity=fast_food": "fast_food",
+  "amenity=biergarten": "beer",
+  "amenity=ice_cream": "ice_cream",
+  "tourism=hotel": "lodging",
+  "tourism=hostel": "lodging",
+  "tourism=guest_house": "lodging",
+  "tourism=motel": "lodging",
+  "tourism=apartment": "lodging",
+  "leisure=park": "park",
+  "leisure=garden": "garden",
+  "leisure=playground": "playground",
+  "tourism=zoo": "zoo",
+  "leisure=stadium": "stadium",
+  "leisure=sports_centre": "stadium",
+  "railway=station": "railway",
+  "public_transport=station": "railway",
+};
+
+/** The basemap POI class for an OSM object, or null (streets, addresses, unknown kinds). */
+export function poiKind(category?: string, type?: string): string | null {
+  if (!category) return null;
+  return POI_KINDS[`${category}=${type}`] ?? POI_KINDS[category] ?? null;
 }
 
 /** "Place or street + number, district" in Latin script; falls back to the first two parts of the full line. */

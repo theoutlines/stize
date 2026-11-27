@@ -170,11 +170,6 @@ abstract class AppLocalizations {
   /// **'Your location is unavailable right now. Try again in a moment.'**
   String get locationUnavailable;
 
-  /// No description provided for @mapZoomInForVehicles.
-  ///
-  /// In en, this message translates to:
-  /// **'Zoom in to see live transport'**
-  String get mapZoomInForVehicles;
 
   /// No description provided for @vehicleScheduled.
   ///
@@ -194,11 +189,6 @@ abstract class AppLocalizations {
   /// **'Following'**
   String get followingVehicle;
 
-  /// No description provided for @noLiveVehiclesOnMap.
-  ///
-  /// In en, this message translates to:
-  /// **'No live-tracked vehicles to map right now — see the arrivals below.'**
-  String get noLiveVehiclesOnMap;
 
   /// No description provided for @nearbyDistanceMeters.
   ///
@@ -284,53 +274,13 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{At the stop} =1{1 stop away} other{{count} stops away}}'**
   String arrivalStopsAway(int count);
 
-  /// No description provided for @vehicleMoving.
-  ///
-  /// In en, this message translates to:
-  /// **'On the move'**
-  String get vehicleMoving;
 
-  /// No description provided for @vehicleStuck.
-  ///
-  /// In en, this message translates to:
-  /// **'Looks stopped'**
-  String get vehicleStuck;
 
-  /// No description provided for @vehicleNextStop.
-  ///
-  /// In en, this message translates to:
-  /// **'Next stop'**
-  String get vehicleNextStop;
 
-  /// No description provided for @vehicleUpcomingStops.
-  ///
-  /// In en, this message translates to:
-  /// **'Rest of the route'**
-  String get vehicleUpcomingStops;
 
-  /// No description provided for @vehicleYourStop.
-  ///
-  /// In en, this message translates to:
-  /// **'your stop'**
-  String get vehicleYourStop;
 
-  /// No description provided for @vehicleEtaApprox.
-  ///
-  /// In en, this message translates to:
-  /// **'Arrival times are approximate'**
-  String get vehicleEtaApprox;
 
-  /// No description provided for @vehicleShowRoute.
-  ///
-  /// In en, this message translates to:
-  /// **'Show route on map'**
-  String get vehicleShowRoute;
 
-  /// No description provided for @vehicleEtaMinutesApprox.
-  ///
-  /// In en, this message translates to:
-  /// **'≈ {minutes} min'**
-  String vehicleEtaMinutesApprox(int minutes);
 
   /// Title/back-chip label for the nearby view of the adaptive context slot
   ///
@@ -434,11 +384,6 @@ abstract class AppLocalizations {
   /// **'Remove from My Stops'**
   String get removeFromFavorites;
 
-  /// No description provided for @pinLineTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'Pin line'**
-  String get pinLineTooltip;
 
   /// No description provided for @settingsTitle.
   ///
@@ -669,29 +614,9 @@ abstract class AppLocalizations {
   /// **'Feedback'**
   String get drawerFeedbackSheetTitle;
 
-  /// No description provided for @feedbackWriteToMe.
-  ///
-  /// In en, this message translates to:
-  /// **'Write to me'**
-  String get feedbackWriteToMe;
 
-  /// No description provided for @feedbackWriteToMeSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Send a message: bugs, ideas, anything.'**
-  String get feedbackWriteToMeSubtitle;
 
-  /// No description provided for @feedbackGithubIssues.
-  ///
-  /// In en, this message translates to:
-  /// **'GitHub Issues'**
-  String get feedbackGithubIssues;
 
-  /// No description provided for @feedbackGithubIssuesSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'For technical reports (public).'**
-  String get feedbackGithubIssuesSubtitle;
 
   /// No description provided for @feedbackFormTitle.
   ///

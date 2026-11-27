@@ -16,7 +16,6 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/api_config.dart';
 import '../../core/context_slot.dart';
-import '../../core/search.dart';
 import '../../core/coverage_heatmap.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../core/follow_camera.dart';
@@ -47,7 +46,6 @@ import '../../domain/models/arrival.dart';
 import '../../domain/models/geocode_result.dart';
 import '../../domain/models/jam.dart';
 import '../../domain/models/line_info.dart';
-import '../../domain/models/pinned_line.dart';
 import '../../domain/models/nearby_arrival.dart';
 import '../../domain/models/route_shape.dart';
 import '../../domain/models/stop.dart';
@@ -64,7 +62,6 @@ import '../widgets/sheet_chrome.dart';
 import '../widgets/nearby_sheet.dart';
 import '../widgets/nearby_view.dart';
 import '../widgets/stop_board.dart';
-import '../widgets/stop_result_tile.dart';
 import '../../core/app_links.dart';
 import '../../core/external_link.dart';
 import 'settings_screen.dart';
@@ -76,7 +73,6 @@ import '../widgets/map/follow_bar.dart';
 import '../widgets/map/map_controls.dart';
 import '../widgets/map_search_pill.dart';
 import '../widgets/my_stops_list.dart';
-import '../widgets/vehicle_icon.dart';
 import '../widgets/vehicle_mode_toggle.dart';
 import '../widgets/vehicle_view.dart';
 import 'home_map/search_session.dart';
@@ -119,7 +115,6 @@ const _individualZoom = 15.0;
 // Positions refresh on a fixed 30s cadence (and on camera-idle), matched to the
 // backend's ~30s per-stop cache: polling faster just re-reads the same cached
 // positions, which the movement heuristic would misread as "stuck".
-const _minVehiclesZoom = 14.0;
 // Fixed 30s cadence, shared with the stop views, matched to the backend cache.
 const _vehiclesRefreshInterval = kLiveRefreshInterval;
 // Widened 1000 -> 1500 m (matched to the backend's MAX_RADIUS_METERS and the
@@ -215,10 +210,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   bool _paused = false;
   DateTime? _hiddenAt;
   int _vehiclesRequestSeq = 0;
-  bool _hasVehicles = false;
   ll.LatLng? _lastVehiclesCenter;
-  // Last settled camera zoom, tracked so the build can show the "zoom in to see
-  // transport" hint at far-out zoom when the bounded area has no vehicles (F5).
+  // Last settled camera zoom (the staging diagnostics overlay shows it).
   double _currentZoom = 15;
 
   final _searchController = TextEditingController();
@@ -393,7 +386,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
     _compassSub?.cancel();
     _heading.dispose();
     _meAnim.dispose();
-    _search.debounce?.cancel();
     _stopArrivalsSub?.close();
     _vehiclesTimer?.cancel();
     _shapes.resyncTimer?.cancel();
@@ -512,15 +504,6 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   // The one reliable render-observation channel on Flutter-CanvasKit —
                   // see _stopDiagnosticsOverlay and the map-render gotchas.
                   if (isStaging) _stopDiagnosticsOverlay(theme),
-                  // Far-out zoom with no vehicles in the bounded area: nudge the user to
-                  // zoom in rather than leaving them staring at a blank map (F5).
-                  // On-demand mode has no background vehicle layer, so the "zoom in to
-                  // see transport" hint (which is about that empty layer) doesn't apply.
-                  if (_focus == null &&
-                      !_onDemand &&
-                      _currentZoom < _minVehiclesZoom &&
-                      !_hasVehicles)
-                    const MapZoomHint(),
                   // Bottom UI. On desktop with the flag ON the three views live in the
                   // persistent left panel. On mobile (and flag OFF) we fall through to
                   // today's independent bottom cluster, UNTOUCHED — the panel is a
@@ -562,6 +545,7 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                       onSelectStop: (stop) =>
                           _openStop(stop, source: Ev.srcSearch),
                       onSelectLine: _openLine,
+                      onSelectPlace: _openPlace,
                       // Feed the mobile sheet height to the geometry owner so a followed
                       // vehicle is kept above the sheet as it's dragged (R2 #2).
                       onHeightChanged: _onMobileSheetHeight,

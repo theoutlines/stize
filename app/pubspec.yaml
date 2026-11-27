@@ -76,6 +76,9 @@ flutter:
 
   assets:
     - assets/data/
+    # Map POI badges for places found by search (tool/sprite builds them).
+    - assets/poi/light/
+    - assets/poi/dark/
     - assets/fonts/UncutSans-OFL.txt
     - assets/fonts/GeistMono-OFL.txt
 

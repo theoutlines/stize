@@ -24,14 +24,13 @@ import 'stretch_card_list.dart';
 import '../../core/arrival_display.dart';
 import '../../core/design/stize_icons.dart';
 
-/// THE arrivals list of a stop, shared by both shutters: the in-app sheet
-/// ([StopBoard]) and the `/stop/:id` deep-link screen ([StopScreen]). Owns the
-/// line filter, the line×direction folding, the ETA-change
-/// badges and the card wiring, so a change to how arrivals render is made once.
+/// THE arrivals list of a stop, hosted by [StopBoard] in the mobile sheet and
+/// the desktop panel. Owns the line filter, the line×direction folding, the
+/// ETA-change badges and the card wiring, so a change to how arrivals render
+/// is made once.
 ///
-/// The hosts keep only their chrome (header / app bar, alerts, jam banner,
-/// refresh timer) and pass [aboveFreshness] for anything that sits between the
-/// outage banner and the freshness line (the deep-link screen's mini map).
+/// The hosts keep only their chrome (header, alerts, jam banner, refresh
+/// timer).
 class StopArrivalsList extends ConsumerStatefulWidget {
   const StopArrivalsList({
     super.key,
@@ -39,7 +38,6 @@ class StopArrivalsList extends ConsumerStatefulWidget {
     required this.board,
     required this.stopLines,
     required this.onRetry,
-    this.aboveFreshness,
     this.onFocusVehicle,
   });
 
@@ -51,9 +49,6 @@ class StopArrivalsList extends ConsumerStatefulWidget {
   final List<String> stopLines;
 
   final VoidCallback onRetry;
-
-  /// Optional block between the outage banner and the freshness line.
-  final Widget? aboveFreshness;
 
   /// Tap on a live row → the host map focuses that vehicle. Null → not tappable.
   final void Function(Arrival arrival, DateTime asOf)? onFocusVehicle;
@@ -222,9 +217,27 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
         }
       }
     }
+    // Live is down: say so where the live vehicles would be. With a
+    // timetable below, the note IS its header (one line, the offline mark),
+    // not a second line over "By timetable" (owner, 2026-11-27).
+    final liveDown = board.serviceStatus == ServiceStatus.unavailable;
+    if (liveDown && timetable.isEmpty) {
+      tiles.add(
+        const LiveUnavailableBanner(key: ValueKey('live-unavailable')),
+      );
+    }
     if (timetable.isNotEmpty) {
       tiles.add(
-        TimetableHeader(key: const ValueKey('timetable'), label: l10n.arrivalByTimetable),
+        liveDown
+            ? TimetableHeader(
+                key: const ValueKey('timetable'),
+                label: l10n.liveUnavailableBanner,
+                icon: StizeIcons.offline,
+              )
+            : TimetableHeader(
+                key: const ValueKey('timetable'),
+                label: l10n.arrivalByTimetable,
+              ),
       );
       tiles.addAll(timetable);
     }
@@ -241,9 +254,6 @@ class _StopArrivalsListState extends ConsumerState<StopArrivalsList> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (board.serviceStatus == ServiceStatus.unavailable)
-          const LiveUnavailableBanner(),
-        ?widget.aboveFreshness,
         Padding(
           // Reads as the title's subline: tight under the level header.
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),

@@ -1,3 +1,4 @@
+import '../domain/models/geocode_result.dart';
 import '../domain/models/line_info.dart';
 import '../domain/models/nearby_arrival.dart';
 import '../domain/models/stop.dart';
@@ -70,12 +71,19 @@ List<Stop> searchStopsLocal(List<Stop> stops, String query) {
 /// The stop/line (and, on desktop, place) results of one global query. Places
 /// are desktop-only in the nearby merge; kept here so both hosts share the type.
 class GlobalSearchResults {
-  const GlobalSearchResults({this.stops = const [], this.lines = const []});
+  const GlobalSearchResults({
+    this.stops = const [],
+    this.lines = const [],
+    this.places = const [],
+  });
 
   final List<Stop> stops;
   final List<LineInfo> lines;
 
-  bool get isEmpty => stops.isEmpty && lines.isEmpty;
+  /// Streets, addresses and named places (geocoding), best-effort.
+  final List<GeocodeResult> places;
+
+  bool get isEmpty => stops.isEmpty && lines.isEmpty && places.isEmpty;
 }
 
 /// A single row in the unified nearby-sheet search results.
@@ -101,6 +109,12 @@ class LineSearchRow extends SearchRow {
   final LineInfo line;
 }
 
+/// A street, address or named place (centres the map on it).
+class PlaceSearchRow extends SearchRow {
+  const PlaceSearchRow(this.place);
+  final GeocodeResult place;
+}
+
 /// Lines whose number is exactly the query ("83" → line 83, both directions)
 /// and the rest. An exact line goes above the stops: a number the size of a
 /// line number most likely means the line, and stops found by their sign
@@ -121,12 +135,13 @@ class LineSearchRow extends SearchRow {
 /// Merge the two sources into ONE ordered list: every nearby match ranks ABOVE
 /// every global result for the same query (owner C#3 — nearby first preserves
 /// the old filter). Then a line whose number is exactly the query, then global
-/// stops, then the other lines. A global result already surfaced as a nearby
+/// stops, then the other lines, then places. A global result already surfaced as a nearby
 /// match (same stop id / same line) is dropped so it isn't shown twice.
 List<SearchRow> mergeNearbyThenGlobal({
   required List<NearbyGroup> nearby,
   required List<Stop> stops,
   required List<LineInfo> lines,
+  List<GeocodeResult> places = const [],
   String query = '',
 }) {
   final nearbyStopIds = {for (final g in nearby) g.stopId};
@@ -140,5 +155,6 @@ List<SearchRow> mergeNearbyThenGlobal({
       if (!nearbyStopIds.contains(s.stopId)) StopSearchRow(s),
     for (final l in split.rest)
       if (!nearbyLines.contains(l.line)) LineSearchRow(l),
+    for (final p in places) PlaceSearchRow(p),
   ];
 }

@@ -56,6 +56,28 @@ Widget _stopPin(Widget glyph, Color color, ColorScheme scheme) {
   );
 }
 
+/// A stop's map pin as a plain widget, for lists that show a stop the way the
+/// map does (search results): the same disc, ring colour and glyph.
+Widget stopPinFor(Stop stop, ColorScheme scheme) {
+  final type = stopMarkerType(stop);
+  final (Widget glyph, Color color) = switch (type) {
+    null => (mixedStopGlyph(size: 20, color: _mixedStopColor), _mixedStopColor),
+    VehicleType.bus => (
+      vehicleGlyph(VehicleType.bus, size: 20, color: _busColor),
+      _busColor,
+    ),
+    VehicleType.tram => (
+      vehicleGlyph(VehicleType.tram, size: 20, color: _tramColor),
+      _tramColor,
+    ),
+    VehicleType.trolleybus => (
+      vehicleGlyph(VehicleType.trolleybus, size: 20, color: _trolleyColor),
+      _trolleyColor,
+    ),
+  };
+  return _stopPin(glyph, color, scheme);
+}
+
 /// A filled marker for a moving vehicle — solid colour so it reads as "live",
 /// distinct from the hollow stop pins.
 Widget _vehiclePin(IconData icon, Color color, ColorScheme scheme) {

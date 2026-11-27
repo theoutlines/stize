@@ -21,17 +21,12 @@ class MapSearchPill extends StatelessWidget {
     required this.onLocate,
     required this.onActivate,
     required this.onClose,
-    this.away = false,
     this.onChanged,
   });
 
   /// Each edit of the query (desktop runs its search from here; mobile
   /// listens to [controller]).
   final ValueChanged<String>? onChanged;
-
-  /// Nearby is around a point on the map, not around you: the locate button
-  /// reads as "back to me".
-  final bool away;
 
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -88,7 +83,7 @@ class MapSearchPill extends StatelessWidget {
                                 shape: const RoundedRectangleBorder(),
                               ),
                               icon: Icon(
-                                away ? StizeIcons.nearMe : StizeIcons.locate,
+                                StizeIcons.locate,
                                 color: c.ink,
                                 size: 24,
                               ),

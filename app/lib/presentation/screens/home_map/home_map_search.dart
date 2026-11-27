@@ -4,7 +4,6 @@ extension _MapSearch on _HomeMapScreenState {
   // ---- Search ---------------------------------------------------------------
 
   void _onSearchChanged(String query) {
-    _search.debounce?.cancel();
     if (query.trim().isEmpty) {
       _setState(_search.session.clear);
       return;
@@ -14,35 +13,11 @@ extension _MapSearch on _HomeMapScreenState {
     // owner A#4) to give the results (and the row you'll tap) somewhere to show.
     _expandPanelIfCollapsed();
     _setState(_search.session.typed);
-    _search.debounce = Timer(
-      const Duration(milliseconds: 300),
-      () => _runSearch(query),
-    );
-  }
-
-  Future<void> _runSearch(String query) async {
-    final session = _search.session;
-    final ticket = session.ticket;
-    if (session.firstUse()) {
+    // The results view runs the query itself (shared with mobile); here we
+    // only log the first search of a session.
+    if (_search.session.firstUse()) {
       ref.read(eventLoggerProvider).log(Ev.searchUsed);
     }
-    // Shared stop+line fan-out (one fork for both breakpoints — C#4).
-    final results = await ref.read(globalSearchProvider).run(query);
-    List<GeocodeResult> places = [];
-    try {
-      places = await ref.read(geocodeRepositoryProvider).search(query);
-    } catch (_) {
-      // Geocoding is best-effort, and desktop-only in the search scope.
-    }
-    if (!mounted) return;
-    _setState(() {
-      session.apply(
-        ticket,
-        stops: results.stops,
-        lines: results.lines,
-        places: places,
-      );
-    });
   }
 
   void _clearSearch() {
@@ -155,32 +130,6 @@ extension _MapSearch on _HomeMapScreenState {
     _raiseSheetToHalf();
   }
 
-  bool _isLinePinned(String line) {
-    final pinned =
-        ref.watch(pinnedLinesControllerProvider).valueOrNull ??
-        const <PinnedLine>[];
-    return pinned.any((l) => l.line == line);
-  }
-
-  void _togglePinLine(LineInfo line) {
-    final notifier = ref.read(pinnedLinesControllerProvider.notifier);
-    final pinned =
-        ref.read(pinnedLinesControllerProvider).valueOrNull ??
-        const <PinnedLine>[];
-    if (pinned.any((l) => l.line == line.line)) {
-      notifier.remove(line.line);
-    } else {
-      notifier.add(
-        PinnedLine(
-          line: line.line,
-          vehicleType: line.vehicleType,
-          origin: line.origin,
-          destination: line.destination,
-        ),
-      );
-    }
-  }
-
   Future<void> _openLine(LineInfo line) async {
     // Fetch by the entry's route/direction key, not by number, so the exact
     // direction the user tapped in the results opens (F8).
@@ -215,6 +164,7 @@ extension _MapSearch on _HomeMapScreenState {
     final center = Geographic(lon: place.lon, lat: place.lat);
     if (!mounted) return;
     _clearSearch();
+    if (_pillActive) _closePill(); // mobile: the map, not the list, answers
     _setState(() {
       _pinnedPlace = center;
     });
@@ -339,56 +289,4 @@ extension _MapSearch on _HomeMapScreenState {
   /// The sheet lives in the Scaffold body, which shrinks by the keyboard.
   double _bodyH(Size size) =>
       _bodyHeight ?? size.height - MediaQuery.viewInsetsOf(context).bottom;
-
-  Widget _searchResultsList(AppLocalizations l10n) {
-    final hasResults = _search.session.hasResults;
-    if (!hasResults) {
-      return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(l10n.searchNoResults, textAlign: TextAlign.center),
-      );
-    }
-    // An exact line number goes above the stops (core/search.dart).
-    final lines = splitExactLines(
-      _search.session.lines,
-      _searchController.text,
-    );
-    Widget lineTile(LineInfo line) => ListTile(
-      leading: vehicleGlyph(
-        line.vehicleType,
-        size: 24,
-        color: vehicleColor(line.vehicleType),
-      ),
-      title: Text(line.line),
-      subtitle: Text('${line.origin} → ${line.destination}'),
-      trailing: IconButton(
-        icon: Icon(
-          _isLinePinned(line.line)
-              ? StizeIcons.pinPushFilled
-              : StizeIcons.pinPush,
-        ),
-        tooltip: l10n.pinLineTooltip,
-        onPressed: () => _togglePinLine(line),
-      ),
-      onTap: () => _openLine(line),
-    );
-    return StretchCardList(
-      shrinkWrap: true,
-      children: [
-        for (final line in lines.exact) lineTile(line),
-        for (final stop in _search.session.stops)
-          StopResultTile(
-            stop: stop,
-            onTap: () => _openStop(stop, source: Ev.srcSearch),
-          ),
-        for (final line in lines.rest) lineTile(line),
-        for (final place in _search.session.places)
-          ListTile(
-            leading: const Icon(StizeIcons.map),
-            title: Text(place.displayName),
-            onTap: () => _openPlace(place),
-          ),
-      ],
-    );
-  }
 }

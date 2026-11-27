@@ -125,6 +125,15 @@ extension _MapLayers on _HomeMapScreenState {
       });
     }
     _reconcileCoverageLayer();
+    _openLinkedStop();
+  }
+
+  /// A `/stop/:id` link: open that stop in the sheet / panel, once.
+  void _openLinkedStop() {
+    final link = ref.read(linkedStopProvider);
+    if (link == null) return;
+    ref.read(linkedStopProvider.notifier).state = null;
+    _openStopById(link.id, stopName: link.name, source: Ev.srcLink);
   }
 
   /// Adds the moving-object GeoJSON source and its three symbol layers (badge,

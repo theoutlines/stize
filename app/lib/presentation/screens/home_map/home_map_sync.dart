@@ -18,7 +18,13 @@ extension _MapSync on _HomeMapScreenState {
     });
     ref.listen(feedbackRequestProvider, (prev, next) {
       if (prev == next) return;
-      _pushLevel(const FeedbackLevel());
+      // One way to reach us: the form. With the form switched off remotely,
+      // the public issue tracker is the fallback.
+      if (ref.read(feedbackFormEnabledProvider)) {
+        _pushLevel(const FeedbackLevel());
+      } else {
+        openExternalUrl(kRepoIssuesUrl);
+      }
     });
     ref.listen(guideRequestProvider, (prev, next) {
       if (prev == next) return;

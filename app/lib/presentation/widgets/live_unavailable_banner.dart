@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../../core/design/stize_icons.dart';
 
-/// A thin note above an arrivals list: the live board is down, so what follows
-/// is the timetable.
+/// A thin note that the live board is down, so what follows is the timetable:
+/// on a stop board it stands where the live vehicles would be, right above
+/// "By timetable"; on the Nearby list, above the cards.
 ///
-/// Deliberately quiet — the list underneath is still useful, and a night board
-/// looks the same. Shared by both shutters (`stop_sheet` in-app and
-/// `stop_screen` deep-link) and the Nearby list, so the three can't drift.
+/// Deliberately quiet: the list underneath is still useful, and a night board
+/// looks the same. Shared by the stop board and the Nearby list.
 class LiveUnavailableBanner extends StatelessWidget {
   const LiveUnavailableBanner({super.key});
 
@@ -23,7 +23,7 @@ class LiveUnavailableBanner extends StatelessWidget {
       color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
       child: Row(
         children: [
-          Icon(StizeIcons.clock, size: 16, color: scheme.outline),
+          Icon(StizeIcons.offline, size: 16, color: scheme.outline),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

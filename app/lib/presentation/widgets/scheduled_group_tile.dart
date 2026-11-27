@@ -41,9 +41,17 @@ class ScheduledGroupTile extends StatelessWidget {
 /// and "By timetable", quiet, so the section reads as a different kind of
 /// information without repeating a clock on every card.
 class TimetableHeader extends StatelessWidget {
-  const TimetableHeader({super.key, required this.label});
+  const TimetableHeader({
+    super.key,
+    required this.label,
+    this.icon = StizeIcons.clock,
+  });
 
   final String label;
+
+  /// The clock for "By timetable"; the offline mark when live is down and the
+  /// timetable stands in for it.
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +66,7 @@ class TimetableHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(StizeIcons.clock, size: 14, color: color),
+          Icon(icon, size: 14, color: color),
           const SizedBox(width: 6),
           Text(label, style: StizeType.caption.copyWith(color: color)),
         ],
