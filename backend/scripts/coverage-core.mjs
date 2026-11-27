@@ -361,7 +361,6 @@ export function buildCoverageFlow(shapes, opts = {}) {
   // (two route directions) in one cell, so they add up instead of halving.
   const countGrid = opts.countGrid ?? 0.0008;
   const simplifyEpsilon = opts.simplifyEpsilon ?? 0.00003; // ~3 m
-  const smoothMetres = opts.smoothMetres ?? 60;
   const coordPrecision = opts.coordPrecision ?? 5;
   const round = (v) => Number(v.toFixed(coordPrecision));
 
@@ -386,11 +385,27 @@ export function buildCoverageFlow(shapes, opts = {}) {
       }
     }
     const tripsOf = new Map(ofType.map((s) => [s.routeId, s.tripsPerDay]));
-    const cellTrips = new Map();
+    const rawTrips = new Map();
     for (const [c, ids] of routesIn) {
       let sum = 0;
       for (const id of ids) sum += tripsOf.get(id);
-      cellTrips.set(c, bucketTrips(sum));
+      rawTrips.set(c, sum);
+    }
+    // Smooth over the 3×3 neighbourhood (cells the type uses), the same for
+    // every route: routes on one street get the same width at the same spot,
+    // so their strokes coincide, and a junction's spike spreads into a swell.
+    const cellTrips = new Map();
+    for (const c of rawTrips.keys()) {
+      const [y, x] = c.split(",").map(Number);
+      let sum = 0;
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const v = rawTrips.get(`${y + dy},${x + dx}`);
+          if (v) (sum += v), n++;
+        }
+      }
+      cellTrips.set(c, bucketTrips(sum / n));
     }
     // A stretch weighs what the quieter of its two ends does: at a junction
     // the cell also counts the crossing street's routes, the next one doesn't.
@@ -410,23 +425,9 @@ export function buildCoverageFlow(shapes, opts = {}) {
         }
         run = null;
       };
-      // Weight per step of the route, then smoothed along it (~±60 m), so
-      // the stroke swells and thins gradually instead of in jumps.
       const poly = s.polyline;
-      const raw = [0];
-      for (let i = 1; i < poly.length; i++) raw.push(stretchTripsAt(poly[i - 1], poly[i]));
-      raw[0] = raw[1] ?? 0;
-      const along = [0];
-      for (let i = 1; i < poly.length; i++) along.push(along[i - 1] + metresBetween(poly[i - 1], poly[i]));
-      const smooth = raw.map((_, i) => {
-        let sum = 0;
-        let n = 0;
-        for (let j = i; j >= 0 && along[i] - along[j] <= smoothMetres; j--) (sum += raw[j]), n++;
-        for (let j = i + 1; j < poly.length && along[j] - along[i] <= smoothMetres; j++) (sum += raw[j]), n++;
-        return bucketTrips(sum / n);
-      });
       for (let i = 1; i < poly.length; i++) {
-        const trips = smooth[i];
+        const trips = stretchTripsAt(poly[i - 1], poly[i]);
         // The next piece starts where this one ends: no gap between them.
         if (run && run.trips !== trips) flush();
         if (!run) run = { trips, points: [poly[i - 1]] };

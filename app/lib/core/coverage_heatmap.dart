@@ -205,7 +205,7 @@ const coverageOverviewZoom = 11.4;
 
 /// Corridors with `type` and `trips` (backend `build-coverage-flow.mjs`).
 const coverageFlowSourceId = 'coverage-flow-src';
-const coverageFlowUrl = '$apiBaseUrl/api/v1/coverage/flow?rev=5';
+const coverageFlowUrl = '$apiBaseUrl/api/v1/coverage/flow?rev=6';
 
 GeoJsonSource coverageFlowSource() =>
     GeoJsonSource(id: coverageFlowSourceId, data: coverageFlowUrl);
@@ -302,7 +302,7 @@ GeoJsonSource coverageGlowSource() =>
 
 /// The glow under one [type]'s corridors: a narrow heatmap of the routes'
 /// points. Routes sharing a street add up and the glow brightens, but within
-/// limits: the radius bounds how far it spreads (about 35 m on the ground up
+/// limits: the radius bounds how far it spreads (about 70 m on the ground up
 /// close, a few pixels at the city view), and the ramp tops out at the
 /// type's tint at [_glowPeak] opacity, so a junction of thirty routes glows
 /// no wider and no brighter than a busy boulevard.
@@ -331,22 +331,22 @@ HeatmapStyleLayer coverageGlowLayer({required String type, required bool dark}) 
         ['exponential', 2],
         ['zoom'],
         11,
-        3,
+        6,
         13,
-        5,
-        15,
         11,
+        15,
+        22,
         18,
-        80,
+        90,
       ],
       'heatmap-intensity': [
         'interpolate',
         ['linear'],
         ['zoom'],
         11,
-        0.6,
+        0.5,
         15,
-        0.9,
+        0.7,
       ],
       'heatmap-color': [
         'interpolate',
