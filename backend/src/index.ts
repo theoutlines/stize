@@ -44,7 +44,7 @@ import {
   resolveGovernorConfig,
   runD1Governor,
 } from "./lib/d1Governor";
-import { kvGetCached } from "./lib/kvCache";
+import { kvGetCached, rebuildConfigBundle } from "./lib/kvCache";
 
 // KV key for the drawer's optional Donate link. Empty/unset ⇒ the client hides
 // the Donate item; set it (dashboard/wrangler) to reveal it. See the internal flag registry.
@@ -408,6 +408,15 @@ app.post("/api/v1/admin/killswitch", async (c) => {
   return c.json({ status: body.killed ? "killed" : "ok" });
 });
 
+// Rebuild the config bundle (lib/kvCache.ts) from the individual KV keys at
+// once, after a key was changed by hand in the dashboard or with `wrangler kv
+// key put` (otherwise the hourly cron picks it up).
+//   curl -X POST .../api/v1/admin/config/rebuild -H "X-Admin-Token: $T"
+app.post("/api/v1/admin/config/rebuild", async (c) => {
+  const bundle = await rebuildConfigBundle(c.env);
+  return c.json({ keys: Object.keys(bundle).length });
+});
+
 // Flip a feature flag remotely (no redeploy). Same admin-token auth as above.
 //   curl -X POST .../api/v1/admin/flags -H "X-Admin-Token: $T" \
 //        -d '{"flag":"analytics_collect","value":true}'
@@ -681,6 +690,17 @@ export default {
             (err) => console.error("d1 governor failed", err),
           ),
       );
+
+      // Config bundle: rebuilt from the individual keys once an hour, so a key
+      // changed by hand reaches the app within the hour (lib/kvCache.ts).
+      if (tickAt.getUTCMinutes() === 0) {
+        ctx.waitUntil(
+          rebuildConfigBundle(env).then(
+            (b) => console.log(`config bundle: ${Object.keys(b).length} keys`),
+            (err) => console.error("config bundle rebuild failed", err),
+          ),
+        );
+      }
 
       // Jam journal: every 5 minutes while jams are shown, record what users see.
       if (tickAt.getUTCMinutes() % 5 === 0) {
