@@ -358,24 +358,47 @@ function bucketTrips(n) {
 export function buildCoverageFlow(shapes, opts = {}) {
   const simplifyEpsilon = opts.simplifyEpsilon ?? 0.00003; // ~3 m
   const coordPrecision = opts.coordPrecision ?? 5;
+  const stationMetres = opts.stationMetres ?? 150;
+  const passMetres = opts.passMetres ?? 25;
   const round = (v) => Number(v.toFixed(coordPrecision));
-  // A station: the stop's name without a platform number, at ~300 m.
-  const stationOf = (st) =>
-    `${String(st.name ?? st.stop_id).replace(/\s+\d+$/, "").trim()}|${Math.round(st.lat / 0.003)}|${Math.round(st.lon / 0.004)}`;
-  const stationPos = new Map(); // station -> [sumLat, sumLon, n]
+  // A station: stops sharing a name (platform number dropped) within
+  // `stationMetres` of each other, e.g. both sides of the street.
+  const baseName = (st) => String(st.name ?? st.stop_id).replace(/\s+\d+$/, "").trim();
+  const stations = []; // { name, lat, lon, n }
+  const stationIdOf = new Map(); // stop_id -> station index
   for (const sh of shapes) {
     for (const st of sh.stops ?? []) {
-      const k = stationOf(st);
-      const p = stationPos.get(k) ?? [0, 0, 0];
-      p[0] += st.lat;
-      p[1] += st.lon;
-      p[2] += 1;
-      stationPos.set(k, p);
+      if (stationIdOf.has(st.stop_id)) continue;
+      const name = baseName(st);
+      let i = stations.findIndex(
+        (x) => x.name === name && metresBetween([x.lat, x.lon], [st.lat, st.lon]) < stationMetres,
+      );
+      if (i < 0) {
+        stations.push({ name, lat: st.lat, lon: st.lon, n: 1 });
+        i = stations.length - 1;
+      } else {
+        const x = stations[i];
+        x.lat = (x.lat * x.n + st.lat) / (x.n + 1);
+        x.lon = (x.lon * x.n + st.lon) / (x.n + 1);
+        x.n += 1;
+      }
+      stationIdOf.set(st.stop_id, i);
     }
   }
-  const at = (k) => {
-    const p = stationPos.get(k);
-    return [p[0] / p[2], p[1] / p[2]];
+  const at = (i) => [stations[i].lat, stations[i].lon];
+  // Stations by ~200 m cell, to find the ones a route passes without stopping.
+  const cellKey = (lat, lon) => `${Math.round(lat / 0.002)},${Math.round(lon / 0.0028)}`;
+  const byCell = new Map();
+  stations.forEach((x, i) => {
+    const k = cellKey(x.lat, x.lon);
+    if (!byCell.has(k)) byCell.set(k, []);
+    byCell.get(k).push(i);
+  });
+  const stationsNear = (pt) => {
+    const [cy, cx] = cellKey(pt[0], pt[1]).split(",").map(Number);
+    const out = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) out.push(...(byCell.get(`${cy + dy},${cx + dx}`) ?? []));
+    return out;
   };
   // Index of the polyline point nearest to a stop, searching forward.
   const nearest = (poly, st, from) => {
@@ -387,6 +410,33 @@ export function buildCoverageFlow(shapes, opts = {}) {
     }
     return best;
   };
+  // A route's stations in order: the ones it stops at, plus the ones it
+  // passes within `passMetres` of without stopping (express runs), so a
+  // street is cut at the same stations for every route along it.
+  const stationsAlong = (s) => {
+    const seq = [];
+    let from = 0;
+    const stopAt = new Map();
+    for (const st of s.stops) {
+      const idx = nearest(s.polyline, st, from);
+      stopAt.set(idx, stationIdOf.get(st.stop_id));
+      from = idx;
+    }
+    for (let i = 0; i < s.polyline.length; i++) {
+      if (stopAt.has(i)) {
+        seq.push({ k: stopAt.get(i), idx: i });
+        continue;
+      }
+      for (const k of stationsNear(s.polyline[i])) {
+        if (metresBetween(s.polyline[i], at(k)) < passMetres) {
+          seq.push({ k, idx: i });
+          break;
+        }
+      }
+    }
+    // Collapse repeats (a station spans several points).
+    return seq.filter((x, j) => j === 0 || x.k !== seq[j - 1].k);
+  };
 
   const features = [];
   for (const type of TYPE_ORDER) {
@@ -396,23 +446,19 @@ export function buildCoverageFlow(shapes, opts = {}) {
       .sort((a, b) => b.tripsPerDay - a.tripsPerDay);
     const segs = new Map(); // undirected station pair -> { trips, a, b, points }
     for (const s of ofType) {
-      let from = 0;
       let prev = null;
-      for (const st of s.stops) {
-        const k = stationOf(st);
-        const idx = nearest(s.polyline, st, from);
-        if (prev && prev.k !== k) {
-          const key = prev.k < k ? `${prev.k}~${k}` : `${k}~${prev.k}`;
+      for (const cur of stationsAlong(s)) {
+        if (prev) {
+          const key = prev.k < cur.k ? `${prev.k}~${cur.k}` : `${cur.k}~${prev.k}`;
           let seg = segs.get(key);
           if (!seg) {
             // The busiest route lends its geometry (routes come busiest first).
-            seg = { trips: 0, a: prev.k, b: k, points: s.polyline.slice(prev.idx, idx + 1) };
+            seg = { trips: 0, a: prev.k, b: cur.k, points: s.polyline.slice(prev.idx, cur.idx + 1) };
             segs.set(key, seg);
           }
           seg.trips += s.tripsPerDay;
         }
-        prev = { k, idx };
-        from = idx;
+        prev = cur;
       }
     }
     for (const seg of segs.values()) {
