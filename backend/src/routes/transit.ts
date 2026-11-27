@@ -226,22 +226,11 @@ export function transitRoutes(app: App): void {
     });
   });
 
-  // Coverage mode's flow lines (build-coverage-flow.mjs → coverage-flow.geojson):
-  // per-type corridors carrying weekday `trips`. Same serving rules as
-  // /api/v1/coverage above.
-  app.get("/api/v1/coverage/flow", async (c) => {
-    const res = await c.env.ASSETS.fetch(new URL("/gtfs/coverage-flow.geojson", "https://assets.internal"));
-    if (!res.ok) return c.json({ error: "coverage data unavailable" }, 404);
-    return c.newResponse(res.body, 200, {
-      "content-type": "application/json",
-      "cache-control": "public, max-age=3600, s-maxage=60",
-    });
-  });
-
-  // Coverage mode's glow points (coverage-glow.geojson): per-route points the
-  // client sums in a narrow heatmap. Same serving rules as above.
-  app.get("/api/v1/coverage/glow", async (c) => {
-    const res = await c.env.ASSETS.fetch(new URL("/gtfs/coverage-glow.geojson", "https://assets.internal"));
+  // Coverage mode's route traces (build-coverage-routes.mjs →
+  // coverage-routes.json): every city route with type, weekday trips and a
+  // compact polyline; the app draws them. Same serving rules as above.
+  app.get("/api/v1/coverage/routes", async (c) => {
+    const res = await c.env.ASSETS.fetch(new URL("/gtfs/coverage-routes.json", "https://assets.internal"));
     if (!res.ok) return c.json({ error: "coverage data unavailable" }, 404);
     return c.newResponse(res.body, 200, {
       "content-type": "application/json",

@@ -330,180 +330,36 @@ export function buildCoveragePoints(shapes, opts = {}) {
   return { type: "FeatureCollection", features };
 }
 
-// Trips round down to these steps (~1.3× apart), so a street with slightly
-// different counts along it stays one piece.
-const TRIP_STEPS = [1, 5, 10, 15, 20, 25, 35, 50, 65, 85, 110, 150, 200, 260, 340, 450, 600, 800, 1050, 1400, 1850, 2400, 3150, 4100];
-function bucketTrips(n) {
-  let out = TRIP_STEPS[0];
-  for (const step of TRIP_STEPS) if (n >= step) out = step;
-  return out;
-}
-
 /**
- * Build coverage mode's *flow lines* the way transit frequency maps do it:
- * by stop-to-stop segments. Every route direction is cut at its stops; a
- * segment's identity is the pair of stations it runs between (a station is a
- * stop name at one place, so both directions' stops across the street count
- * as one). Routes serving the same pair share that segment exactly, so there
- * is no geometric guesswork: each segment is drawn once, from the busiest
- * route's own shape, and carries `trips`, the weekday trips of every route
- * direction of that type between those two stations. Segment ends are pinned
- * to the station, so segments meet exactly and run on as one line; the width
- * changes only at a stop.
+ * Build coverage mode's *route traces*: every city route direction as a
+ * compact polyline with its vehicle type and weekday trips. The app draws
+ * them itself as thin threads that add up in light where routes share a
+ * street (Flutter's additive blending, the same on web and native), so the
+ * data stays raw: no merging, no tiles.
  *
- * @param {Array<{routeId:string, vehicleType:string, tripsPerDay:number,
- *   polyline:number[][], stops:Array<{stop_id:string,name:string,lat:number,lon:number}>}>} shapes
- * @param {{simplifyEpsilon?:number, coordPrecision?:number}} opts
- */
-export function buildCoverageFlow(shapes, opts = {}) {
-  const simplifyEpsilon = opts.simplifyEpsilon ?? 0.00003; // ~3 m
-  const coordPrecision = opts.coordPrecision ?? 5;
-  const stationMetres = opts.stationMetres ?? 150;
-  const passMetres = opts.passMetres ?? 25;
-  const round = (v) => Number(v.toFixed(coordPrecision));
-  // A station: stops sharing a name (platform number dropped) within
-  // `stationMetres` of each other, e.g. both sides of the street.
-  const baseName = (st) => String(st.name ?? st.stop_id).replace(/\s+\d+$/, "").trim();
-  const stations = []; // { name, lat, lon, n }
-  const stationIdOf = new Map(); // stop_id -> station index
-  for (const sh of shapes) {
-    for (const st of sh.stops ?? []) {
-      if (stationIdOf.has(st.stop_id)) continue;
-      const name = baseName(st);
-      let i = stations.findIndex(
-        (x) => x.name === name && metresBetween([x.lat, x.lon], [st.lat, st.lon]) < stationMetres,
-      );
-      if (i < 0) {
-        stations.push({ name, lat: st.lat, lon: st.lon, n: 1 });
-        i = stations.length - 1;
-      } else {
-        const x = stations[i];
-        x.lat = (x.lat * x.n + st.lat) / (x.n + 1);
-        x.lon = (x.lon * x.n + st.lon) / (x.n + 1);
-        x.n += 1;
-      }
-      stationIdOf.set(st.stop_id, i);
-    }
-  }
-  const at = (i) => [stations[i].lat, stations[i].lon];
-  // Stations by ~200 m cell, to find the ones a route passes without stopping.
-  const cellKey = (lat, lon) => `${Math.round(lat / 0.002)},${Math.round(lon / 0.0028)}`;
-  const byCell = new Map();
-  stations.forEach((x, i) => {
-    const k = cellKey(x.lat, x.lon);
-    if (!byCell.has(k)) byCell.set(k, []);
-    byCell.get(k).push(i);
-  });
-  const stationsNear = (pt) => {
-    const [cy, cx] = cellKey(pt[0], pt[1]).split(",").map(Number);
-    const out = [];
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) out.push(...(byCell.get(`${cy + dy},${cx + dx}`) ?? []));
-    return out;
-  };
-  // Index of the polyline point nearest to a stop, searching forward.
-  const nearest = (poly, st, from) => {
-    let best = from;
-    let bestD = Infinity;
-    for (let i = from; i < poly.length; i++) {
-      const d = metresBetween(poly[i], [st.lat, st.lon]);
-      if (d < bestD) (bestD = d), (best = i);
-    }
-    return best;
-  };
-  // A route's stations in order: the ones it stops at, plus the ones it
-  // passes within `passMetres` of without stopping (express runs), so a
-  // street is cut at the same stations for every route along it.
-  const stationsAlong = (s) => {
-    const seq = [];
-    let from = 0;
-    const stopAt = new Map();
-    for (const st of s.stops) {
-      const idx = nearest(s.polyline, st, from);
-      stopAt.set(idx, stationIdOf.get(st.stop_id));
-      from = idx;
-    }
-    for (let i = 0; i < s.polyline.length; i++) {
-      if (stopAt.has(i)) {
-        seq.push({ k: stopAt.get(i), idx: i });
-        continue;
-      }
-      for (const k of stationsNear(s.polyline[i])) {
-        if (metresBetween(s.polyline[i], at(k)) < passMetres) {
-          seq.push({ k, idx: i });
-          break;
-        }
-      }
-    }
-    // Collapse repeats (a station spans several points).
-    return seq.filter((x, j) => j === 0 || x.k !== seq[j - 1].k);
-  };
-
-  const features = [];
-  for (const type of TYPE_ORDER) {
-    const ofType = shapes
-      .filter((s) => s.vehicleType === type && (s.tripsPerDay ?? 0) > 0)
-      .filter((s) => Array.isArray(s.polyline) && s.polyline.length >= 2 && (s.stops?.length ?? 0) >= 2)
-      .sort((a, b) => b.tripsPerDay - a.tripsPerDay);
-    const segs = new Map(); // undirected station pair -> { trips, a, b, points }
-    for (const s of ofType) {
-      let prev = null;
-      for (const cur of stationsAlong(s)) {
-        if (prev) {
-          const key = prev.k < cur.k ? `${prev.k}~${cur.k}` : `${cur.k}~${prev.k}`;
-          let seg = segs.get(key);
-          if (!seg) {
-            // The busiest route lends its geometry (routes come busiest first).
-            seg = { trips: 0, a: prev.k, b: cur.k, points: s.polyline.slice(prev.idx, cur.idx + 1) };
-            segs.set(key, seg);
-          }
-          seg.trips += s.tripsPerDay;
-        }
-        prev = cur;
-      }
-    }
-    for (const seg of segs.values()) {
-      // Pin the ends to the stations, so neighbouring segments meet exactly.
-      const pts = [at(seg.a), ...seg.points.slice(1, -1), at(seg.b)];
-      features.push({
-        type: "Feature",
-        properties: { type, trips: bucketTrips(seg.trips) },
-        geometry: {
-          type: "LineString",
-          coordinates: simplify(pts, simplifyEpsilon).map(([lat, lon]) => [round(lon), round(lat)]),
-        },
-      });
-    }
-  }
-  features.sort((a, b) => a.properties.trips - b.properties.trips);
-  return { type: "FeatureCollection", features };
-}
-
-/**
- * Build coverage mode's *glow points*: every city route resampled every
- * `stepMetres`, one MultiPoint per route carrying its `type` and own weekday
- * `trips`. The client draws them as a narrow heatmap under the strokes: where
- * routes share a street their points pile up and the glow brightens, but only
- * within the heatmap's radius and up to the top of its colour ramp, so it
- * accumulates without blooming over the block.
+ * Coordinates are delta-encoded integers of 1e-5 degrees, flat
+ * [lon0, lat0, dLon1, dLat1, ...], after a ~`simplifyMetres` simplification.
  *
  * @param {Array<{vehicleType:string, tripsPerDay:number, polyline:number[][]}>} shapes
- * @param {{stepMetres?:number, coordPrecision?:number}} opts
+ * @param {{simplifyMetres?:number}} opts
  */
-export function buildCoverageGlow(shapes, opts = {}) {
-  const step = opts.stepMetres ?? 25;
-  const precision = opts.coordPrecision ?? 5;
-  const round = (v) => Number(v.toFixed(precision));
-  const features = [];
+export function buildCoverageRoutes(shapes, opts = {}) {
+  const eps = (opts.simplifyMetres ?? 4) / M_PER_DEG_LAT;
+  const routes = [];
   for (const s of shapes) {
     if (!(s.tripsPerDay > 0) || !Array.isArray(s.polyline) || s.polyline.length < 2) continue;
-    features.push({
-      type: "Feature",
-      properties: { type: s.vehicleType, trips: s.tripsPerDay },
-      geometry: {
-        type: "MultiPoint",
-        coordinates: resample(s.polyline, step).map(([lat, lon]) => [round(lon), round(lat)]),
-      },
-    });
+    const pts = simplify(s.polyline, eps);
+    const p = [];
+    let plon = 0;
+    let plat = 0;
+    for (const [lat, lon] of pts) {
+      const ilon = Math.round(lon * 1e5);
+      const ilat = Math.round(lat * 1e5);
+      p.push(ilon - plon, ilat - plat);
+      plon = ilon;
+      plat = ilat;
+    }
+    routes.push({ t: s.vehicleType, n: s.tripsPerDay, p });
   }
-  return { type: "FeatureCollection", features };
+  return { routes };
 }

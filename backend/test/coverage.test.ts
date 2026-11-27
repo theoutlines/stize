@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accumulateSegments, buildCoverage, buildCoverageFlow, buildCoverageGlow, buildCoveragePoints } from "../scripts/coverage-core.mjs";
+import { accumulateSegments, buildCoverage, buildCoveragePoints, buildCoverageRoutes } from "../scripts/coverage-core.mjs";
 
 // A straight west→east run of points along one latitude, spaced ~1 grid cell
 // apart at grid=0.001 so each pair lands in a distinct cell.
@@ -225,55 +225,38 @@ describe("buildCoveragePoints (render layer: heatmap points)", () => {
     expect(gj.features).toHaveLength(0);
   });
 
-  describe("buildCoverageFlow", () => {
-    const stop = (name: string, lat: number, lon: number) => ({ stop_id: name, name, lat, lon });
-    const A = stop("Alfa 1", 44.8, 20.4);
-    const A2 = stop("Alfa 2", 44.8002, 20.4); // the other side of the street
-    const B = stop("Beta", 44.8, 20.41);
-    const C = stop("Gama", 44.8, 20.42);
-    const line = horizontalLine(44.8, 20.4, 20);
+  describe("buildCoverageRoutes", () => {
+    const decode = (p: number[]) => {
+      const out: number[][] = [];
+      let lon = 0;
+      let lat = 0;
+      for (let i = 0; i < p.length; i += 2) {
+        lon += p[i];
+        lat += p[i + 1];
+        out.push([lon / 1e5, lat / 1e5]);
+      }
+      return out;
+    };
 
-    it("one segment per station pair, both directions and all routes summed", () => {
-      const gj = buildCoverageFlow([
-        { routeId: "2", vehicleType: "tram", tripsPerDay: 100, polyline: line, stops: [A, B, C] },
-        { routeId: "2-1", vehicleType: "tram", tripsPerDay: 90, polyline: [...line].reverse(), stops: [C, B, A2] },
-        { routeId: "7", vehicleType: "tram", tripsPerDay: 60, polyline: line.slice(0, 11), stops: [A, B] },
+    it("keeps each route with type and trips, delta-encoded", () => {
+      const line = horizontalLine(44.8, 20.4, 3);
+      const { routes } = buildCoverageRoutes([
+        { vehicleType: "tram", tripsPerDay: 120, polyline: line },
+        { vehicleType: "bus", tripsPerDay: 0, polyline: line },
       ]);
-      const trips = gj.features.map((f: any) => f.properties.trips);
-      // A–B: 100 + 90 + 60 = 250 → 200 step; B–C: 190 → 150 step.
-      expect(gj.features).toHaveLength(2);
-      expect(trips).toEqual([150, 200]);
+      expect(routes).toHaveLength(1);
+      expect(routes[0].t).toBe("tram");
+      expect(routes[0].n).toBe(120);
+      const pts = decode(routes[0].p);
+      expect(pts[0]).toEqual([20.4, 44.8]);
+      expect(pts.at(-1)![0]).toBeCloseTo(20.403, 5);
     });
 
-    it("pins segment ends to the station, so neighbours meet exactly", () => {
-      const gj = buildCoverageFlow([
-        { routeId: "2", vehicleType: "bus", tripsPerDay: 100, polyline: line, stops: [A, B, C] },
+    it("simplifies straight runs to their ends", () => {
+      const { routes } = buildCoverageRoutes([
+        { vehicleType: "bus", tripsPerDay: 10, polyline: horizontalLine(44.8, 20.4, 20) },
       ]);
-      const [ab, bc] = gj.features.sort((x: any, y: any) => x.geometry.coordinates[0][0] - y.geometry.coordinates[0][0]);
-      expect(ab.geometry.coordinates.at(-1)).toEqual(bc.geometry.coordinates[0]);
-    });
-
-    it("skips routes without trips", () => {
-      const gj = buildCoverageFlow([
-        { routeId: "x", vehicleType: "bus", tripsPerDay: 0, polyline: line, stops: [A, B] },
-      ]);
-      expect(gj.features).toHaveLength(0);
-    });
-  });
-
-  describe("buildCoverageGlow", () => {
-    it("one MultiPoint per route, resampled, carrying its own trips", () => {
-      const gj = buildCoverageGlow(
-        [
-          { vehicleType: "tram", tripsPerDay: 120, polyline: horizontalLine(44.8, 20.4, 10) },
-          { vehicleType: "bus", tripsPerDay: 0, polyline: horizontalLine(44.8, 20.4, 10) },
-        ],
-        { stepMetres: 25 },
-      );
-      expect(gj.features).toHaveLength(1);
-      expect(gj.features[0].properties).toEqual({ type: "tram", trips: 120 });
-      // ~790 m at 25 m steps.
-      expect(gj.features[0].geometry.coordinates.length).toBeGreaterThan(28);
+      expect(routes[0].p.length).toBe(4);
     });
   });
 });

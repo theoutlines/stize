@@ -20,9 +20,6 @@ extension _MapSync on _HomeMapScreenState {
       if (prev == next) return;
       _openCoverageLevel();
     });
-    ref.listen(coverageTypesProvider, (prev, next) {
-      if (_cov.mode) _refreshCoverageModeLayers();
-    });
     // Coverage mode follows the level on top: on while Coverage is shown,
     // off as soon as anything else is (back, close, a stop from search).
     final covMode = _levels.top is CoverageLevel;

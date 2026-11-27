@@ -9,8 +9,8 @@
     "deploy:staging": "wrangler deploy --env staging",
     "staging:version": "node scripts/staging-version.mjs",
     "test": "vitest run",
-    "gtfs:build": "node scripts/build-gtfs.mjs && node scripts/compact-stops.mjs && node scripts/build-schedule.mjs && node scripts/build-trips.mjs && node scripts/build-schedule-lead.mjs && node scripts/build-coverage-points.mjs && node scripts/build-coverage-flow.mjs && node scripts/build-coverage.mjs && node scripts/build-sentinels.mjs",
-    "coverage:build": "node scripts/build-coverage-points.mjs && node scripts/build-coverage-flow.mjs && node scripts/build-coverage.mjs"
+    "gtfs:build": "node scripts/build-gtfs.mjs && node scripts/compact-stops.mjs && node scripts/build-schedule.mjs && node scripts/build-trips.mjs && node scripts/build-schedule-lead.mjs && node scripts/build-coverage-points.mjs && node scripts/build-coverage-routes.mjs && node scripts/build-coverage.mjs && node scripts/build-sentinels.mjs",
+    "coverage:build": "node scripts/build-coverage-points.mjs && node scripts/build-coverage-routes.mjs && node scripts/build-coverage.mjs"
   },
   "dependencies": {
     "hono": "^4.13.20"

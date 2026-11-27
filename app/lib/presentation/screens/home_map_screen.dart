@@ -53,6 +53,7 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/stretch_card_list.dart';
 import '../widgets/coverage_panel.dart';
+import '../widgets/coverage_traces_layer.dart';
 import '../widgets/context_shell.dart';
 import '../widgets/stop_header_actions.dart';
 import '../widgets/follow_model.dart';
@@ -137,8 +138,7 @@ class HomeMapScreen extends ConsumerStatefulWidget {
   /// Opens the app's navigation drawer (owned by the root scaffold).
   final VoidCallback? onOpenDrawer;
 
-  /// Whether the map is on screen; off, it pauses the live location stream
-  /// (no battery drain while hidden).
+  /// Whether the map is on screen (off pauses the live location stream).
   final bool active;
 
   @override

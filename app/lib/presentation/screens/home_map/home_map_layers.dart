@@ -125,8 +125,6 @@ extension _MapLayers on _HomeMapScreenState {
       });
     }
     _reconcileCoverageLayer();
-    _cov.modeLayers.clear();
-    if (_cov.mode) _refreshCoverageModeLayers();
     _openLinkedStop();
   }
 
@@ -333,44 +331,6 @@ extension _MapLayers on _HomeMapScreenState {
     _pushStopSources();
     _writeVehiclesToSource();
     await _reconcileCoverageLayer();
-    await _refreshCoverageModeLayers();
-  }
-
-  /// (Re)draws the corridors for the picked types: removed when coverage
-  /// mode is off. Swaps layers rather than restyling them (the 0.3.x style
-  /// controller has no setFilter); the source stays, so nothing refetches.
-  Future<void> _refreshCoverageModeLayers() async {
-    final style = _style;
-    if (style == null) return;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    for (final id in _cov.modeLayers.toList()) {
-      try {
-        await style.removeLayer(id);
-      } catch (_) {}
-      _cov.modeLayers.remove(id);
-    }
-    if (!_cov.mode || !mounted) return;
-    // Fetched once per style; a second add just throws.
-    for (final src in [coverageFlowSource(), coverageGlowSource()]) {
-      try {
-        await style.addSource(src);
-      } catch (_) {}
-    }
-    final picked = ref.read(coverageTypesProvider);
-    // Under the stop and vehicle layers, so a focus left over can't hide
-    // beneath the corridors. Per type: the glow, then the stroke over it.
-    for (final type in coverageTypes) {
-      if (picked.isNotEmpty && !picked.contains(type)) continue;
-      for (final layer in [
-        coverageGlowLayer(type: type, dark: dark),
-        coverageFlowLayer(type: type),
-      ]) {
-        try {
-          await style.addLayer(layer, belowLayerId: _LayerIds.coverageModeBelow);
-          _cov.modeLayers.add(layer.id);
-        } catch (_) {}
-      }
-    }
   }
 
   /// Fetches the tram lines' route shapes once and keeps them as thin rail

@@ -44,17 +44,15 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   whole city and hides stops and vehicles; back returns the camera. The level
   holds the type filters (All, Tram, Trolleybus, Bus, now with the vehicle
   icons and the app's chip style, scrolling sideways) and a short density key.
-- **Coverage as flow lines.** City routes are cut into stop-to-stop
-  segments (stations pair up both directions), each drawn once from a
-  route's own shape and pinned to its stations, with the weekday trips of
-  every route along it: a few trips is a hairline in the type's deep tone, a
-  busy segment a thick stroke running to a light tint (bus blue to cyan,
-  trolleybus orange to yellow, tram red to coral). A narrow heatmap of the
-  routes' points glows under the strokes: it adds up where routes share a
-  street but its radius and ramp cap how far and how bright. The basemap
-  turns into a quiet grey data-viz variant while Coverage is open; tram rails
-  hide. Data: backend `build-coverage-flow.mjs` → `/api/v1/coverage/flow`
-  (~150 KB gzip) and `/api/v1/coverage/glow` (~700 KB gzip).
+- **Coverage drawn by the app.** Every city route is a thin thread drawn
+  by Flutter over the grey data-viz basemap, the same on web and native: on
+  the dark map threads add up as light (blue on blue runs to cyan and white,
+  tram over bus to magenta), on the light map they multiply as ink; a soft
+  glow of the same threads sits under them. Threads keep a fixed screen
+  width, so busy streets get brighter, never wider. Opacity follows each
+  route's weekday trips. Data: backend `build-coverage-routes.mjs` →
+  `/api/v1/coverage/routes` (~135 KB gzip). Stops, vehicles and tram rails
+  hide while Coverage is open.
 - **One mark for "no stop here".** "No stops nearby" and "Can't find that
   stop" now share a crossed-out stop sign instead of a crossed-out arrow and
   a crossed-out crosshair; a stop that can't be found shows no ⋯ menu.
