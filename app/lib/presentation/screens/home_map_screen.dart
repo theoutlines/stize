@@ -253,11 +253,9 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
   bool _locationDenied = false;
   bool _tabActive = true; // is the map the selected IndexedStack child
 
-  // A camera target that resolved (e.g. from geolocation) before the map
-  // controller was ready; applied in [_onMapCreated].
+  // A camera target known before the map was ready; set in [_onMapCreated].
   Geographic? _pendingCenter;
   double? _pendingZoom;
-
 
   Geographic? _pinnedPlace;
 
