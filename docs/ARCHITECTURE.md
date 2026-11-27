@@ -23,6 +23,13 @@ source into a stable versioned API under `/api/v1`. Key pieces:
   `ctx.waitUntil()` refresh keeps it fresh, capped at ~1 upstream request per
   30s **per cache key, globally** (not per user), with exponential backoff on
   failure. Respect this — never bypass it or poll the upstream faster.
+- **Flags and config in KV** (`src/lib/kvCache.ts`): every `flag:*`, `config:*`
+  and `service_killed` key is also kept in ONE value, `config:bundle`, so a cold
+  isolate (the per-minute cron, mostly) reads one key instead of ~15; the free
+  plan has 100k KV reads/day and bulk reads are billed per key. Write flags
+  through `setFlag` / the admin routes (they update the bundle). A key changed
+  by hand reaches the app within an hour (the cron rebuilds the bundle at :00)
+  or at once with `POST /api/v1/admin/config/rebuild`.
 - **GTFS reference data** (`scripts/build-gtfs.mjs` → `public/gtfs/`, served via
   `env.ASSETS`): stop names/coords, line metadata, per-route shapes, and
   precomputed timetables come from the official GTFS feed, **not** the live

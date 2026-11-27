@@ -1,5 +1,5 @@
 import type { Env } from "../env";
-import { kvCacheRemember, kvGetCached } from "./kvCache";
+import { kvGetCached, kvPutConfig } from "./kvCache";
 
 const KV_KEY = "service_killed";
 
@@ -9,6 +9,5 @@ export async function isServiceKilled(env: Env): Promise<boolean> {
 }
 
 export async function setServiceKilled(env: Env, killed: boolean): Promise<void> {
-  await env.STIGLA_KV.put(KV_KEY, killed ? "1" : "0");
-  kvCacheRemember(env, KV_KEY, killed ? "1" : "0");
+  await kvPutConfig(env, KV_KEY, killed ? "1" : "0");
 }

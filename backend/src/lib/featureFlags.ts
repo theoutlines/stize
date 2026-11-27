@@ -1,5 +1,5 @@
 import type { Env } from "../env";
-import { kvCacheRemember, kvGetCached } from "./kvCache";
+import { kvGetCached, kvPutConfig } from "./kvCache";
 
 // Feature flags live in KV — the same remote, no-redeploy mechanism as the kill
 // switch (see killswitch.ts). Flipping a flag is a single KV write; every worker
@@ -143,8 +143,7 @@ export function getFlagMemoized(env: Env, scope: object, flag: FeatureFlag): Pro
 }
 
 export async function setFlag(env: Env, flag: FeatureFlag, on: boolean): Promise<void> {
-  await env.STIGLA_KV.put(kvKey(flag), on ? "1" : "0");
-  kvCacheRemember(env, kvKey(flag), on ? "1" : "0");
+  await kvPutConfig(env, kvKey(flag), on ? "1" : "0");
 }
 
 export async function getAllFlags(env: Env): Promise<Record<FeatureFlag, boolean>> {
