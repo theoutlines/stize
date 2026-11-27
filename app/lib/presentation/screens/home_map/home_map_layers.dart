@@ -342,6 +342,14 @@ extension _MapLayers on _HomeMapScreenState {
   Future<void> _refreshCoverageModeLayers() async {
     final style = _style;
     if (style == null) return;
+    // Colours and theme are read before the first await (no context after).
+    final c = StizeColors.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final colors = {
+      'bus': c.transitBus.toARGB32(),
+      'trolleybus': c.transitTrolleybus.toARGB32(),
+      'tram': c.transitTram.toARGB32(),
+    };
     for (final id in _cov.modeLayers.toList()) {
       try {
         await style.removeLayer(id);
@@ -351,13 +359,6 @@ extension _MapLayers on _HomeMapScreenState {
     if (!_cov.mode || !mounted) return;
     await _ensureCoverageSource(style);
     final picked = ref.read(coverageTypesProvider);
-    final c = StizeColors.of(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final colors = {
-      'bus': c.transitBus.toARGB32(),
-      'trolleybus': c.transitTrolleybus.toARGB32(),
-      'tram': c.transitTram.toARGB32(),
-    };
     // Under the stop and vehicle layers, so a focus left over can't hide
     // beneath the heat.
     for (final type in coverageTypes) {
