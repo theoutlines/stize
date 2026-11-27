@@ -23,6 +23,10 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com).
   dead code and 25 unused strings removed; the map's floating controls,
   diagnostics box and vehicle layout moved out of the 6,000-line map screen
   into small widgets and a tested class. Nothing changes for riders.
+- **Big files split by job.** Backend analytics (913 lines) and the stop
+  sweep (650) are now folders of small modules; vehicle movement, the follow
+  sheet and the Nearby list each lost 200 to 300 lines to their own files.
+  The old import paths still work. Nothing changes for riders.
 
 ## 2026-11-26
 

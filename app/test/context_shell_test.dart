@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:stize/l10n/app_localizations.dart';
 import 'package:stize/presentation/widgets/context_shell.dart';
+import 'package:stize/presentation/widgets/level_header.dart';
 import 'package:stize/core/design/stize_icons.dart';
 
 Widget _wrap(Widget child, {Locale? locale}) => MaterialApp(
@@ -28,9 +29,10 @@ void main() {
                 key: Key('panel-search'),
                 decoration: InputDecoration(hintText: 'search'),
               ),
-              navRow: ContextNavRow(
-                onBack: () => backTapped = true,
+              navRow: LevelHeader(
                 title: 'Batutova',
+                backLabel: 'Nearby',
+                onBack: () => backTapped = true,
               ),
               child: const Center(child: Text('STOP-CONTENT')),
             ),
@@ -65,7 +67,7 @@ void main() {
         ),
       );
       expect(find.text('NEARBY'), findsOneWidget);
-      expect(find.byType(ContextNavRow), findsNothing);
+      expect(find.byType(LevelHeader), findsNothing);
       expect(find.byIcon(StizeIcons.back), findsNothing);
     });
   });

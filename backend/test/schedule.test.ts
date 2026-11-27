@@ -5,11 +5,9 @@ import {
   upcomingScheduled,
   dedupScheduledAgainstLive,
   isReachable,
-  scheduledMapObjectsForRoute,
   type ScheduleMeta,
   type StopSchedule,
   type NowContext,
-  type TripTimed,
 } from "../src/lib/schedule";
 
 const meta: ScheduleMeta = {
@@ -99,75 +97,6 @@ describe("dedupScheduledAgainstLive", () => {
     const scheduled = upcomingScheduled(sched({ RD: [600, 620] }), meta, friday); // +5,+25
     const live = new Map<string, number[]>([["00010", [90]]]); // 90 min out, beyond tolerance
     expect(dedupScheduledAgainstLive(scheduled, live)).toHaveLength(2);
-  });
-});
-
-describe("scheduledMapObjectsForRoute", () => {
-  // A straight 3-stop route heading east, ~1.4 km apart.
-  const coords = [
-    { lat: 44.80, lon: 20.40 },
-    { lat: 44.80, lon: 20.42 },
-    { lat: 44.80, lon: 20.44 },
-  ];
-  // A trip departs each stop at 10:00 / 10:10 / 10:20 (weekday service).
-  const trips: TripTimed[] = [{ trip_id: "T1", service: "RD", times: [600, 610, 620] }];
-
-  it("places an in-transit trip between its two current stops with a forward trajectory", () => {
-    const now: NowContext = { dateISO: "2026-01-02", yesterdayISO: "2026-01-01", minutes: 605 }; // 10:05
-    const objs = scheduledMapObjectsForRoute(trips, coords, meta, now);
-    expect(objs).toHaveLength(1);
-    const o = objs[0];
-    // Halfway between stop 0 (10:00) and stop 1 (10:10).
-    expect(o.lon).toBeCloseTo(20.41, 3);
-    expect(o.heading).toBeCloseTo(90, 0); // due east
-    // Trajectory: current pos (eta 0), then stop1 (+5 min), stop2 (+15 min).
-    expect(o.trajectory.map((p) => p.eta_seconds)).toEqual([0, 300, 900]);
-  });
-
-  it("omits trips not currently in transit", () => {
-    const before: NowContext = { dateISO: "2026-01-02", yesterdayISO: "2026-01-01", minutes: 590 }; // 09:50
-    expect(scheduledMapObjectsForRoute(trips, coords, meta, before)).toHaveLength(0);
-    const after: NowContext = { dateISO: "2026-01-02", yesterdayISO: "2026-01-01", minutes: 630 }; // 10:30
-    expect(scheduledMapObjectsForRoute(trips, coords, meta, after)).toHaveLength(0);
-  });
-
-  it("ignores trips whose service isn't active today", () => {
-    const sundayTrip: TripTimed[] = [{ trip_id: "N1", service: "N", times: [600, 610, 620] }];
-    const weekday: NowContext = { dateISO: "2026-01-02", yesterdayISO: "2026-01-01", minutes: 605 };
-    expect(scheduledMapObjectsForRoute(sundayTrip, coords, meta, weekday)).toHaveLength(0);
-  });
-
-  it("places a trip sitting exactly on its final timepoint at the terminus (no throw)", () => {
-    // now === last stop time (10:20). Previously the segment loop overran and
-    // reading pts[i+1].t threw a TypeError, dropping every scheduled object.
-    const atTerminus: NowContext = { dateISO: "2026-01-02", yesterdayISO: "2026-01-01", minutes: 620 };
-    const objs = scheduledMapObjectsForRoute(trips, coords, meta, atTerminus);
-    expect(objs).toHaveLength(1);
-    expect(objs[0].lon).toBeCloseTo(20.44, 3); // last stop
-    expect(objs[0].trajectory[0].eta_seconds).toBe(0);
-  });
-
-  it("mixes normal + at-terminus + not-in-transit trips without one edge dropping the rest", () => {
-    // Regression for the swallowed TypeError: a route whose trip list mixes a
-    // mid-segment trip (renders), a trip exactly at its terminus (used to throw),
-    // and a trip not in transit (skipped) must return both renderable objects.
-    const now: NowContext = { dateISO: "2026-01-02", yesterdayISO: "2026-01-01", minutes: 620 }; // 10:20
-    const mixed: TripTimed[] = [
-      { trip_id: "MID", service: "RD", times: [615, 625, 635] }, // 10:15..10:35, mid first segment
-      { trip_id: "END", service: "RD", times: [600, 610, 620] }, // 10:00..10:20, exactly at terminus
-      { trip_id: "GONE", service: "RD", times: [500, 510, 520] }, // already finished
-    ];
-    const objs = scheduledMapObjectsForRoute(mixed, coords, meta, now);
-    expect(objs.map((o) => o.trip_id).sort()).toEqual(["END", "MID"]);
-  });
-
-  it("runs yesterday's overnight trip in today's small hours", () => {
-    // Friday(RD) trip 24:00/24:10/24:20 -> runs Sat 00:00..00:20.
-    const overnight: TripTimed[] = [{ trip_id: "O1", service: "RD", times: [1440, 1450, 1460] }];
-    const satEarly: NowContext = { dateISO: "2026-01-03", yesterdayISO: "2026-01-02", minutes: 5 }; // 00:05
-    const objs = scheduledMapObjectsForRoute(overnight, coords, meta, satEarly);
-    expect(objs).toHaveLength(1);
-    expect(objs[0].lon).toBeCloseTo(20.41, 3); // halfway stop0->stop1
   });
 });
 

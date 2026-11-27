@@ -3,30 +3,20 @@
     "app/lib/core/design/stize_tokens.dart": 836,
     "app/lib/core/map_style.dart": 787,
     "app/lib/core/map_support.dart": 851,
-    "app/lib/core/timed_trajectory.dart": 863,
-    "app/lib/core/vehicle_track_animator.dart": 656,
+    "app/lib/core/timed_trajectory.dart": 552,
+    "app/lib/core/vehicle_track_animator.dart": 526,
     "app/lib/presentation/screens/home_map_screen.dart": 617,
     "app/lib/presentation/widgets/fleet_model_card.dart": 536,
-    "app/lib/presentation/widgets/follow_view.dart": 754,
     "app/lib/presentation/widgets/guide/belgrade_guide.dart": 511,
     "app/lib/presentation/widgets/nearby_list.dart": 528,
     "app/lib/presentation/widgets/nearby_sheet.dart": 509,
-    "app/lib/presentation/widgets/nearby_view.dart": 617,
     "backend/src/index.ts": 676,
-    "backend/src/lib/analytics.ts": 913,
-    "backend/src/lib/jamDetector.ts": 597,
-    "backend/src/lib/sweep.ts": 650
+    "backend/src/lib/jamDetector.ts": 597
   },
   "dead-file": [],
-  "dead-widget": [
-    "app/lib/presentation/widgets/context_shell.dart:ContextNavRow"
-  ],
+  "dead-widget": [],
   "dead-export": [
-    "backend/src/lib/feedback.ts:StopReportCategory",
-    "backend/src/lib/gtfsData.ts:getLineDirections (tests only)",
-    "backend/src/lib/gtfsData.ts:nearestStop (tests only)",
-    "backend/src/lib/kvCache.ts:kvCacheClear (tests only)",
-    "backend/src/lib/schedule.ts:scheduledMapObjectsForRoute (tests only)"
+    "backend/src/lib/kvCache.ts:kvCacheClear (tests only)"
   ],
   "unused-string": [],
   "duplicate": [],

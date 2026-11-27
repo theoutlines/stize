@@ -159,7 +159,6 @@ export const STOP_REPORT_CATEGORIES = [
   "wrong_name",
   "other",
 ] as const;
-export type StopReportCategory = (typeof STOP_REPORT_CATEGORIES)[number];
 
 const MAX_REPORT_COMMENT = 500;
 
