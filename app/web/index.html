@@ -100,9 +100,10 @@
     })();
   </script>
 
-  <!-- MapLibre GL JS: the web rendering backend for the `maplibre` Flutter plugin. -->
-  <script src="https://unpkg.com/maplibre-gl@^5.0/dist/maplibre-gl.js"></script>
-  <link href="https://unpkg.com/maplibre-gl@^5.0/dist/maplibre-gl.css" rel="stylesheet"/>
+  <!-- MapLibre GL JS: the web rendering backend for the `maplibre` Flutter plugin. Served from our
+       own domain (pinned in app/tool/maplibre/package.json, copied by sync.sh), not from a CDN. -->
+  <script src="vendor/maplibre-gl/maplibre-gl.js"></script>
+  <link href="vendor/maplibre-gl/maplibre-gl.css" rel="stylesheet"/>
   <script>
     // The `maplibre` Flutter plugin creates the GL JS map during the platform
     // view's initState — before Flutter has laid the view into its final slot —

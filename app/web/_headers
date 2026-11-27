@@ -3,13 +3,13 @@
 #
 # Security headers for every path. Permissions-Policy: only our own origin may
 # ask for location; camera/mic/etc. are off. CSP is enforcing (since 2026-11-23;
-# Flutter web needs wasm + inline bootstrap; MapTiler, gstatic, unpkg; fleet
+# Flutter web needs wasm + inline bootstrap; MapTiler, gstatic; fleet
 # photos from upload.wikimedia.org). A new external host needs a line here.
 /*
   Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=()
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://unpkg.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://*.maptiler.com https://upload.wikimedia.org; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://upload.wikimedia.org https://api.stize.app https://api-staging.stize.app https://*.theoutlines.workers.dev https://*.maptiler.com https://www.gstatic.com https://fonts.gstatic.com https://cloudflareinsights.com; worker-src 'self' blob:; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.maptiler.com https://upload.wikimedia.org; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://upload.wikimedia.org https://api.stize.app https://api-staging.stize.app https://*.theoutlines.workers.dev https://*.maptiler.com https://www.gstatic.com https://fonts.gstatic.com https://cloudflareinsights.com; worker-src 'self' blob:; frame-ancestors 'none'
 
 /index.html
   Cache-Control: public, max-age=0, must-revalidate

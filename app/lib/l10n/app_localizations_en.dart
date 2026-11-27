@@ -407,7 +407,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyServicesBody =>
-      'Like any website, the app loads some parts from other services, which see your IP address as part of the request: map tiles for the area you view come from MapTiler, fonts and parts of the app engine from Google (gstatic.com), the map engine from unpkg.com, vehicle photos from Wikimedia Commons (upload.wikimedia.org), and the app and its API are served by Cloudflare. None of them receive your location from us or any account details.';
+      'Like any website, the app loads some parts from other services, which see your IP address as part of the request: map tiles for the area you view come from MapTiler, fonts and parts of the app engine from Google (gstatic.com), vehicle photos from Wikimedia Commons (upload.wikimedia.org), and the app and its API are served by Cloudflare. None of them receive your location from us or any account details.';
 
   @override
   String get privacyOpenSourceTitle => 'Open source';

@@ -115,3 +115,10 @@ in its PR.
 ## Local setup
 
 See `backend/README.md` and `app/README.md` (added as those stages land).
+
+## Dependencies
+
+Dependabot opens update PRs weekly (backend, app, MapLibre) and monthly (GitHub Actions).
+MapLibre GL JS is served from our own domain, not a CDN: `app/web/vendor/maplibre-gl` is a copy
+of the version pinned in `app/tool/maplibre/package.json`. When Dependabot bumps that pin, run
+`app/tool/maplibre/sync.sh` on the PR branch; CI fails until the copy matches.

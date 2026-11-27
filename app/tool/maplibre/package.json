@@ -1,0 +1,8 @@
+{
+  "name": "stize-maplibre-vendor",
+  "private": true,
+  "description": "Pins the MapLibre GL JS build that app/web/vendor/maplibre-gl serves. Dependabot bumps this; then run sync.sh.",
+  "dependencies": {
+    "maplibre-gl": "5.24.1"
+  }
+}

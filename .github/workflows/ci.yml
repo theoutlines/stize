@@ -52,6 +52,8 @@ jobs:
         with:
           fetch-depth: 0
       - run: python3 tool/structure/check.py --strict
+      - name: Vendored MapLibre matches its pin (app/tool/maplibre)
+        run: bash app/tool/maplibre/check.sh
       - name: Lines this change adds and removes (app/lib, backend/src)
         if: github.ref != 'refs/heads/main'
         run: git diff --shortstat origin/main...HEAD -- app/lib backend/src ':!app/lib/l10n'

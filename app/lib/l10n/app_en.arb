@@ -204,7 +204,7 @@
   "privacyFeedbackTitle": "Feedback you send",
   "privacyFeedbackBody": "If you send feedback, your message — and the optional contact you provide — are stored so we can read it and reply to you. Nothing else is collected with it.",
   "privacyServicesTitle": "Services the app loads from",
-  "privacyServicesBody": "Like any website, the app loads some parts from other services, which see your IP address as part of the request: map tiles for the area you view come from MapTiler, fonts and parts of the app engine from Google (gstatic.com), the map engine from unpkg.com, vehicle photos from Wikimedia Commons (upload.wikimedia.org), and the app and its API are served by Cloudflare. None of them receive your location from us or any account details.",
+  "privacyServicesBody": "Like any website, the app loads some parts from other services, which see your IP address as part of the request: map tiles for the area you view come from MapTiler, fonts and parts of the app engine from Google (gstatic.com), vehicle photos from Wikimedia Commons (upload.wikimedia.org), and the app and its API are served by Cloudflare. None of them receive your location from us or any account details.",
   "privacyOpenSourceTitle": "Open source",
   "privacyOpenSourceBody": "Stiže's code is open source under the AGPL-3.0 license, so anyone can inspect exactly how it works.",
   "jamStopBannerTitle": "Trams {line} have been stopped longer than usual — possible delay",
