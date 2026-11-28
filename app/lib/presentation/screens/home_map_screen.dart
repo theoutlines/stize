@@ -497,17 +497,8 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   _mapView(brightness),
                   // Round action buttons at the top: menu (left), recenter (right).
                   _pushedTopButtons(theme, size),
-                  // Staging-only stop-render diagnostics (isStaging; invisible in prod).
-                  // The one reliable render-observation channel on Flutter-CanvasKit —
-                  // see _stopDiagnosticsOverlay and the map-render gotchas.
-                  // Off until the STAGING badge is tapped (owner, 2026-11-28).
-                  if (isStaging)
-                    ValueListenableBuilder<bool>(
-                      valueListenable: stagingDiagnosticsOn,
-                      builder: (context, on, _) => on
-                          ? _stopDiagnosticsOverlay(theme)
-                          : const SizedBox.shrink(),
-                    ),
+                  // Staging-only diagnostics, shown by a tap on the STAGING badge.
+                  if (isStaging) _diagnosticsOnTap(theme),
                   // Bottom UI. On desktop with the flag ON the three views live in the
                   // persistent left panel. On mobile (and flag OFF) we fall through to
                   // today's independent bottom cluster, UNTOUCHED — the panel is a

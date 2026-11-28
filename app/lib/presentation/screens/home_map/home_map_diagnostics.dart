@@ -19,6 +19,14 @@ extension _MapDiagnostics on _HomeMapScreenState {
       ? id.substring('stg-'.length)
       : id;
 
+  /// The diagnostics box, off until the STAGING badge is tapped (owner,
+  /// 2026-11-28): it covered the map and does per-frame map lookups.
+  Widget _diagnosticsOnTap(ThemeData theme) => ValueListenableBuilder<bool>(
+    valueListenable: stagingDiagnosticsOn,
+    builder: (context, on, _) =>
+        on ? _stopDiagnosticsOverlay(theme) : const SizedBox.shrink(),
+  );
+
   /// Staging-only render-diagnostics overlay (`isStaging`, invisible in prod).
   /// On Flutter-CanvasKit the map/layers aren't in the DOM and external JS
   /// inspection is blind, so this is the one reliable window into the stop-render
