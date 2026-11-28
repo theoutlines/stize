@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:stize/core/coverage_traces.dart';
@@ -30,21 +32,21 @@ void main() {
     expect(lat, closeTo(44.81, 1e-9));
   });
 
-  test('simplify keeps the ends and corners, drops points on a straight run', () {
-    final tr = CoverageTraces.fromJson({
+  test('GeoJSON gives the route back in lon/lat with type and trips', () {
+    final t = CoverageTraces.fromJson({
       'routes': [
         {
-          't': 'bus',
-          'n': 10,
-          // East in 4 small steps, then north: a corner at the fifth point.
-          'p': [2046000, 4481000, 100, 0, 100, 0, 100, 0, 100, 0, 0, 100],
+          't': 'tram',
+          'n': 120,
+          'p': [2046000, 4481000, 100, 0],
         },
       ],
-    }).traces.single;
-    final s = tr.simplified(0.01);
-    expect(s.length ~/ 2, 3); // start, corner, end
-    expect(s[0], tr.points[0]);
-    expect(s[s.length - 1], tr.points[tr.points.length - 1]);
-    expect(tr.simplified(0), same(tr.points));
+    });
+    final f = (jsonDecode(t.toGeoJson())['features'] as List).single as Map;
+    expect(f['properties'], {'type': 'tram', 'trips': 120});
+    final c = (f['geometry']['coordinates'] as List).cast<List>();
+    expect(c[0][0], closeTo(20.46, 1e-5));
+    expect(c[0][1], closeTo(44.81, 1e-5));
+    expect(c[1][0], closeTo(20.461, 1e-5));
   });
 }

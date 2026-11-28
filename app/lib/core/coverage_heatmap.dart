@@ -194,7 +194,99 @@ HeatmapStyleLayer coverageMainLayer({required bool dark}) => HeatmapStyleLayer(
 
 // ---- Coverage mode (the menu's Coverage, over the home map) ---------------
 //
-// Drawn by the app itself (CoverageTracesLayer), not by map layers.
+// Every route as a thin line drawn by the map itself (GPU, one canvas): faint
+// alone, brighter where routes share a street, with a soft blurred glow under
+// it. An earlier version painted the routes with Flutter over the map, which
+// crashed iPhone Safari (owner, 2026-11-28); the map draws 450 lines easily.
+
+/// The routes (`CoverageTraces.toGeoJson`), added once per style.
+const coverageRoutesSourceId = 'coverage-routes-src';
+
+/// Bottom first: bus, the widest network, under trolleybus and tram.
+const coverageRouteTypes = ['bus', 'trolleybus', 'tram'];
+
+/// Per type: line colour on the dark map, then on the light map.
+const _routeColors = <String, (String, String)>{
+  'bus': ('#2D7FF0', '#1E5FD0'),
+  'trolleybus': ('#FF8A1A', '#E07000'),
+  'tram': ('#FF3B3B', '#D6282B'),
+};
+
+String coverageRouteLayerId(String type) => 'coverage-route-$type';
+String coverageRouteGlowLayerId(String type) => 'coverage-route-glow-$type';
+
+/// A route's opacity from its weekday trips (up to the busiest, ~260), times
+/// [k]; fainter at the city view, where many more routes overlap per pixel.
+List<Object> _routeOpacity(double k) {
+  List<Object> byTrips(double f) => [
+    '*',
+    k * f,
+    [
+      '+',
+      0.08,
+      [
+        '*',
+        0.42,
+        [
+          'min',
+          1,
+          [
+            'sqrt',
+            ['/', ['get', 'trips'], 260],
+          ],
+        ],
+      ],
+    ],
+  ];
+  return ['interpolate', ['linear'], ['zoom'], 11, byTrips(0.4), 15, byTrips(1)];
+}
+
+/// Screen width: a hairline at the city view, ~2.6 px up close, times [k].
+List<Object> _routeWidth(double k) => [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  11,
+  1.0 * k,
+  17,
+  2.6 * k,
+];
+
+/// The crisp line of one [type]'s routes.
+LineStyleLayer coverageRouteLayer({required String type, required bool dark}) {
+  final (onDark, onLight) = _routeColors[type]!;
+  return LineStyleLayer(
+    id: coverageRouteLayerId(type),
+    sourceId: coverageRoutesSourceId,
+    filter: ['==', ['get', 'type'], type],
+    layout: const {'line-cap': 'round', 'line-join': 'round'},
+    paint: {
+      'line-color': dark ? onDark : onLight,
+      'line-width': _routeWidth(1),
+      'line-opacity': _routeOpacity(1),
+    },
+  );
+}
+
+/// The soft glow under one [type]'s routes: wider, faint and blurred.
+LineStyleLayer coverageRouteGlowLayer({
+  required String type,
+  required bool dark,
+}) {
+  final (onDark, onLight) = _routeColors[type]!;
+  return LineStyleLayer(
+    id: coverageRouteGlowLayerId(type),
+    sourceId: coverageRoutesSourceId,
+    filter: ['==', ['get', 'type'], type],
+    layout: const {'line-cap': 'round', 'line-join': 'round'},
+    paint: {
+      'line-color': dark ? onDark : onLight,
+      'line-width': _routeWidth(dark ? 4 : 3),
+      'line-blur': _routeWidth(dark ? 3 : 2),
+      'line-opacity': _routeOpacity(dark ? 0.35 : 0.15),
+    },
+  );
+}
 
 /// Coverage mode takes in the whole city.
 const coverageOverviewCenter = Geographic(lon: 20.46, lat: 44.80);

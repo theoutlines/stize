@@ -56,9 +56,11 @@ class _CoverageState {
   bool added = false; // source+layer present in the current style
   bool active = false; // hysteresis state for the mount decision
   // Coverage mode (the menu's Coverage level): the map hides stops and
-  // vehicles; CoverageTracesLayer draws the routes over it.
+  // vehicles and shows every route as map lines over a grey veil.
   bool mode = false;
   bool veil = false; // the grey veil over the basemap is on the map
+  bool routesSource = false; // the routes' GeoJSON source is in this style
+  final Set<String> routeLayers = {}; // route line layers in this style
   Geographic? preCenter; // camera to return to when the level closes
   double? preZoom;
 }

@@ -125,8 +125,11 @@ extension _MapLayers on _HomeMapScreenState {
       });
     }
     _reconcileCoverageLayer();
-    _cov.veil = false; // a new style has no veil
-    _syncCoverageVeil();
+    // A new style has no veil and no route lines.
+    _cov.veil = false;
+    _cov.routesSource = false;
+    _cov.routeLayers.clear();
+    _syncCoverageVeil().then((_) => _syncCoverageRoutes());
     _openLinkedStop();
   }
 
@@ -334,6 +337,53 @@ extension _MapLayers on _HomeMapScreenState {
     _writeVehiclesToSource();
     await _reconcileCoverageLayer();
     await _syncCoverageVeil();
+    await _syncCoverageRoutes();
+  }
+
+  /// Coverage's route lines for the picked types: (re)added over the veil and
+  /// under our own layers; removed when Coverage closes. Layers are swapped,
+  /// not restyled (the style controller has no setFilter); the source stays.
+  Future<void> _syncCoverageRoutes() async {
+    final style = _style;
+    if (style == null || !mounted) return;
+    for (final id in _cov.routeLayers.toList()) {
+      try {
+        await style.removeLayer(id);
+      } catch (_) {}
+      _cov.routeLayers.remove(id);
+    }
+    if (!_cov.mode) return;
+    final CoverageTraces traces;
+    try {
+      traces = await ref.read(coverageTracesProvider.future);
+    } catch (_) {
+      return; // no data: Coverage shows just the veiled map
+    }
+    if (!mounted || !_cov.mode || !identical(style, _style)) return;
+    if (!_cov.routesSource) {
+      try {
+        await style.addSource(
+          GeoJsonSource(id: coverageRoutesSourceId, data: traces.toGeoJson()),
+        );
+      } catch (_) {
+        // Already there.
+      }
+      _cov.routesSource = true;
+    }
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final picked = ref.read(coverageTypesProvider);
+    for (final type in coverageRouteTypes) {
+      if (picked.isNotEmpty && !picked.contains(type)) continue;
+      for (final layer in [
+        coverageRouteGlowLayer(type: type, dark: dark),
+        coverageRouteLayer(type: type, dark: dark),
+      ]) {
+        try {
+          await style.addLayer(layer, belowLayerId: _LayerIds.rails);
+          _cov.routeLayers.add(layer.id);
+        } catch (_) {}
+      }
+    }
   }
 
   /// The grey veil over the basemap while Coverage is open: the city keeps

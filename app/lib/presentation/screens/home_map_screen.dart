@@ -53,7 +53,7 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../widgets/stretch_card_list.dart';
 import '../widgets/coverage_panel.dart';
-import '../widgets/coverage_traces_layer.dart';
+import '../../core/coverage_traces.dart';
 import '../widgets/context_shell.dart';
 import '../widgets/stop_header_actions.dart';
 import '../widgets/follow_model.dart';

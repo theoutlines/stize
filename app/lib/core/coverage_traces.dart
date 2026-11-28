@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -17,58 +18,6 @@ class CoverageTrace {
 
   /// Flat x0, y0, x1, y1… in local units.
   final Float32List points;
-
-  /// [points] with every vertex dropped that lies within [tolerance] (local
-  /// units) of the line kept around it (Douglas–Peucker). At the city view a
-  /// pixel spans many vertices; drawing them all is what makes the threads
-  /// expensive to stroke on phones.
-  Float32List simplified(double tolerance) {
-    final n = points.length ~/ 2;
-    if (n < 3 || tolerance <= 0) return points;
-    final keep = List<bool>.filled(n, false)
-      ..[0] = true
-      ..[n - 1] = true;
-    final t2 = tolerance * tolerance;
-    final stack = <int>[0, n - 1];
-    while (stack.isNotEmpty) {
-      final b = stack.removeLast();
-      final a = stack.removeLast();
-      final ax = points[2 * a], ay = points[2 * a + 1];
-      final dx = points[2 * b] - ax, dy = points[2 * b + 1] - ay;
-      final len2 = dx * dx + dy * dy;
-      var worst = -1.0;
-      var at = -1;
-      for (var i = a + 1; i < b; i++) {
-        final px = points[2 * i] - ax, py = points[2 * i + 1] - ay;
-        double d2;
-        if (len2 == 0) {
-          d2 = px * px + py * py;
-        } else {
-          final u = ((px * dx + py * dy) / len2).clamp(0.0, 1.0);
-          final ex = px - u * dx, ey = py - u * dy;
-          d2 = ex * ex + ey * ey;
-        }
-        if (d2 > worst) {
-          worst = d2;
-          at = i;
-        }
-      }
-      if (at >= 0 && worst > t2) {
-        keep[at] = true;
-        stack
-          ..addAll([a, at])
-          ..addAll([at, b]);
-      }
-    }
-    final out = Float32List(2 * keep.where((k) => k).length);
-    var j = 0;
-    for (var i = 0; i < n; i++) {
-      if (!keep[i]) continue;
-      out[j++] = points[2 * i];
-      out[j++] = points[2 * i + 1];
-    }
-    return out;
-  }
 }
 
 /// Every route trace (backend `/api/v1/coverage/routes`), ready to draw.
@@ -108,6 +57,33 @@ class CoverageTraces {
       );
     }
     return CoverageTraces(out);
+  }
+
+  /// The routes as a GeoJSON FeatureCollection of LineStrings with `type`
+  /// and `trips`, for the map's own line layers.
+  String toGeoJson() {
+    double r5(double v) => (v * 1e5).roundToDouble() / 1e5;
+    final features = [
+      for (final t in traces)
+        {
+          'type': 'Feature',
+          'properties': {'type': t.type, 'trips': t.trips},
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': [
+              for (var i = 0; i + 1 < t.points.length; i += 2)
+                () {
+                  final (lon, lat) = lonLatOf(
+                    t.points[i] / unit + origin.$1,
+                    t.points[i + 1] / unit + origin.$2,
+                  );
+                  return [r5(lon), r5(lat)];
+                }(),
+            ],
+          },
+        },
+    ];
+    return jsonEncode({'type': 'FeatureCollection', 'features': features});
   }
 
   /// Web Mercator world coordinates (0..1, y down) of a lon/lat.

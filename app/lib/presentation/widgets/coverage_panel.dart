@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/coverage_traces.dart';
 import '../../core/design/stize_text.dart';
 import '../../core/design/stize_tokens.dart';
 import '../../domain/models/vehicle_type.dart';
@@ -8,6 +9,15 @@ import '../../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'stize_filter_chips.dart';
 import 'vehicle_icon.dart';
+
+/// Every city route for the Coverage map (backend `/api/v1/coverage/routes`),
+/// fetched once when Coverage first opens; the map draws them as lines.
+final coverageTracesProvider = FutureProvider<CoverageTraces>((ref) async {
+  final json = await ref
+      .watch(apiClientProvider)
+      .getJson('/api/v1/coverage/routes', {'rev': '1'});
+  return CoverageTraces.fromJson(json);
+});
 
 /// The Coverage level: what the heat on the map means, and which vehicle
 /// types it shows. The map itself switches to coverage while this is open.
