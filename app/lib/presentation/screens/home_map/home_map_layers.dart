@@ -346,6 +346,7 @@ extension _MapLayers on _HomeMapScreenState {
   Future<void> _syncCoverageRoutes() async {
     final style = _style;
     if (style == null || !mounted) return;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     for (final id in _cov.routeLayers.toList()) {
       try {
         await style.removeLayer(id);
@@ -370,7 +371,6 @@ extension _MapLayers on _HomeMapScreenState {
       }
       _cov.routesSource = true;
     }
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final picked = ref.read(coverageTypesProvider);
     for (final type in coverageRouteTypes) {
       if (picked.isNotEmpty && !picked.contains(type)) continue;
