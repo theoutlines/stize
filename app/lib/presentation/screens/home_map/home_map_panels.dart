@@ -177,7 +177,7 @@ extension _MapPanels on _HomeMapScreenState {
       case ContextView.coverage:
         return SingleChildScrollView(
           controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+          padding: const EdgeInsets.fromLTRB(0, 8, 0, 12),
           child: const CoveragePanel(),
         );
       case ContextView.feedback:

@@ -129,6 +129,7 @@ extension _MapLayers on _HomeMapScreenState {
     _cov.veil = false;
     _cov.routesSource = false;
     _cov.routeLayers.clear();
+    _cov.vehiclesCleared = false;
     _syncCoverageVeil().then((_) => _syncCoverageRoutes());
     _openLinkedStop();
   }
@@ -183,6 +184,11 @@ extension _MapLayers on _HomeMapScreenState {
   void _writeVehiclesToSource() {
     final style = _style;
     if (style == null || !_vehLayerAdded) return;
+    // Coverage hides the vehicles: clear the source once, then leave it alone.
+    // Writing an empty source on every animation frame made the map re-render
+    // its data mid-gesture, so panning in Coverage stuttered (owner, 2026-11-28).
+    if (_cov.mode && _cov.vehiclesCleared) return;
+    _cov.vehiclesCleared = _cov.mode;
     final t = _vehAnim.value;
     final focusLine = _focus?.line;
     final objects = <MovingObject>[];

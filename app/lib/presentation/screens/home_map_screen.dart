@@ -73,6 +73,7 @@ import '../widgets/map/follow_bar.dart';
 import '../widgets/map/map_controls.dart';
 import '../widgets/map_search_pill.dart';
 import '../widgets/my_stops_list.dart';
+import '../widgets/staging_badge.dart';
 import '../widgets/vehicle_mode_toggle.dart';
 import '../widgets/vehicle_view.dart';
 import 'home_map/search_session.dart';
@@ -499,7 +500,14 @@ class _HomeMapScreenState extends ConsumerState<HomeMapScreen>
                   // Staging-only stop-render diagnostics (isStaging; invisible in prod).
                   // The one reliable render-observation channel on Flutter-CanvasKit —
                   // see _stopDiagnosticsOverlay and the map-render gotchas.
-                  if (isStaging) _stopDiagnosticsOverlay(theme),
+                  // Off until the STAGING badge is tapped (owner, 2026-11-28).
+                  if (isStaging)
+                    ValueListenableBuilder<bool>(
+                      valueListenable: stagingDiagnosticsOn,
+                      builder: (context, on, _) => on
+                          ? _stopDiagnosticsOverlay(theme)
+                          : const SizedBox.shrink(),
+                    ),
                   // Bottom UI. On desktop with the flag ON the three views live in the
                   // persistent left panel. On mobile (and flag OFF) we fall through to
                   // today's independent bottom cluster, UNTOUCHED — the panel is a

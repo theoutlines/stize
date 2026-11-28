@@ -30,8 +30,13 @@ extension _MapLevels on _HomeMapScreenState {
     if (_panelActive) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_sheetCtl.isAttached) return;
+      // Just tall enough for the title, the chips and the key (owner,
+      // 2026-11-28: the peek detent left empty space under them), but not
+      // below the swipe-to-close line (peek − 0.1).
+      final h = _bodyHeight ?? MediaQuery.sizeOf(context).height;
+      final px = 150 + MediaQuery.paddingOf(context).bottom;
       _sheetCtl.animateTo(
-        kSheetPeek,
+        (px / h).clamp(kSheetPeek - 0.08, kSheetPeek),
         duration: StizeMotion.slow,
         curve: StizeMotion.smoothOut,
       );

@@ -60,6 +60,7 @@ class _CoverageState {
   bool mode = false;
   bool veil = false; // the grey veil over the basemap is on the map
   bool routesSource = false; // the routes' GeoJSON source is in this style
+  bool vehiclesCleared = false; // Coverage emptied the vehicle source once
   final Set<String> routeLayers = {}; // route line layers in this style
   Geographic? preCenter; // camera to return to when the level closes
   double? preZoom;
