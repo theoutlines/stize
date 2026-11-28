@@ -35,7 +35,7 @@ extension _MapView on _HomeMapScreenState {
           layers: const [],
           children: [
             // Coverage: the routes drawn by the app over the grey basemap.
-            if (_cov.mode) const CoverageTracesLayer(),
+            if (_cov.mode && Uri.base.queryParameters['covdraw'] != '0') const CoverageTracesLayer(),
             const CompactAttribution(),
             // "My position" as a widget marker so it survives every zoom
             // level (X2), not a cullable GL symbol. Wrapped in an

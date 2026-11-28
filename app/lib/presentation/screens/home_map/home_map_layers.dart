@@ -324,7 +324,9 @@ extension _MapLayers on _HomeMapScreenState {
         _cov.preCenter = cam.center;
         _cov.preZoom = cam.zoom;
       }
-      _camEase(coverageOverviewCenter, zoom: coverageOverviewZoom);
+      if (Uri.base.queryParameters['covcam'] != '0') {
+        _camEase(coverageOverviewCenter, zoom: coverageOverviewZoom);
+      }
     } else if (_cov.preCenter != null) {
       _camEase(_cov.preCenter!, zoom: _cov.preZoom);
       _cov.preCenter = null;
@@ -349,7 +351,7 @@ extension _MapLayers on _HomeMapScreenState {
       } catch (_) {}
       _cov.veil = false;
     }
-    if (!_cov.mode) return;
+    if (!_cov.mode || Uri.base.queryParameters['covveil'] == '0') return;
     try {
       await style.addLayer(
         coverageVeil(dark: dark),
